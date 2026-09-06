@@ -1191,6 +1191,10 @@
       </div>
     </div>
     <div class="rest-list" id="rest-list"></div>
+    <div id="product-results-wrap" style="display:none;">
+      <p class="item-list-label" id="product-results-label">Products</p>
+      <div class="item-grid" id="product-list"></div>
+    </div>
   </section>
 
   <!-- MENU -->
@@ -3426,7 +3430,7 @@ function renderHome() {
     : "FOOD · DELIVER TO";
   searchInput.placeholder = isGroceries ? "Search groceries or stores"
     : isOnlineShop ? "Search products or shops"
-    : "Search restaurants or cuisine";
+    : "Search dishes or restaurants";
   updateHomeTrackBtn();
   renderRestaurantList();
 }
@@ -3466,6 +3470,9 @@ function renderRestaurantList() {
     });
   }
 
+  // Shop list matches on shop name/cuisine only. Product matches are shown
+  // separately below (see renderProductResults) as photo cards the
+  // customer can tap straight into.
   const searchFiltered = categoryFiltered.filter(r => (r.name + r.cuisine).toLowerCase().includes(q));
 
   // Once the customer has picked a location, only show restaurants whose
@@ -3527,8 +3534,60 @@ function renderRestaurantList() {
     });
     restListEl.appendChild(card);
   });
+  renderProductResults(q, categoryFiltered);
 }
 searchInput.addEventListener('input', renderRestaurantList);
+
+const productResultsWrap = document.getElementById('product-results-wrap');
+const productResultsLabel = document.getElementById('product-results-label');
+const productListEl = document.getElementById('product-list');
+
+// Shows matching products (with photo) from every shop in this category,
+// separately from the shop-name matches above. Tapping a product card
+// opens straight into that shop's item detail screen for that product —
+// not just the shop's menu list — since that's the exact thing the
+// customer searched for.
+function renderProductResults(q, categoryFiltered) {
+  if (!q) { productResultsWrap.style.display = 'none'; productListEl.innerHTML = ''; return; }
+
+  // Respect the same delivery-zone filter as the shop list, so a product
+  // from a shop that doesn't deliver here doesn't show up as tappable.
+  const deliverable = state.customerPos
+    ? categoryFiltered.filter(r => !r.zone || isPointInZone(state.customerPos, r.zone))
+    : categoryFiltered;
+
+  const products = [];
+  deliverable.forEach(r => {
+    if (!Array.isArray(r.items)) return;
+    r.items.forEach(it => {
+      if (it.name.toLowerCase().includes(q)) products.push({ item: it, shop: r });
+    });
+  });
+
+  if (products.length === 0) { productResultsWrap.style.display = 'none'; productListEl.innerHTML = ''; return; }
+
+  productResultsWrap.style.display = 'block';
+  productResultsLabel.textContent = "Products (" + products.length + ")";
+  productListEl.innerHTML = '';
+  products.forEach(({ item: it, shop: r }) => {
+    const card = document.createElement('div');
+    card.className = "item-card2";
+    card.style.cursor = "pointer";
+    card.innerHTML = `
+      <div class="item-img-wrap">
+        <img class="item-img" src="${it.image || ''}" alt="${escapeHtml(it.name)}" loading="lazy" />
+      </div>
+      <p class="item-name2">${escapeHtml(it.name)}</p>
+      <p class="item-desc" style="margin-top:2px;">${escapeHtml(r.name)}</p>
+      <p class="item-price2" style="margin-top:4px; display:block;">₹${it.price}${UNIT_SUFFIX[it.unit] || ''}</p>
+    `;
+    card.addEventListener('click', () => {
+      openRestaurant(r.id);
+      openItemDetail(it.id);
+    });
+    productListEl.appendChild(card);
+  });
+}
 
 // ---------- MENU ----------
 const menuRestName = document.getElementById('menu-rest-name');
@@ -3566,11 +3625,15 @@ const menuNoResults = document.getElementById('menu-no-results');
 // or totals a cart line goes through getUnitPrice()/weightLabel() below so
 // the actual amount charged always matches the weight they chose.
 const DEFAULT_GRAMS = 250;
+const GROCERY_DEFAULT_GRAMS = 1000; // groceries: kg/g items default to 1kg, not 250g
 const UNIT_SUFFIX = { piece: "", gram: "/g", kg: "/kg" };
 function isWeightUnit(unit) { return unit === 'gram' || unit === 'kg'; }
-function getSelectedGrams(itemId) {
-  const g = state.cartGrams && Number(state.cartGrams[itemId]);
-  return g > 0 ? g : DEFAULT_GRAMS;
+function getSelectedGrams(it) {
+  const g = state.cartGrams && Number(state.cartGrams[it.id]);
+  if (g > 0) return g;
+  const isGroceryShop = (state.selectedRestaurant && state.selectedRestaurant.businessType === 'groceries')
+    || state.category === 'groceries';
+  return isGroceryShop ? GROCERY_DEFAULT_GRAMS : DEFAULT_GRAMS;
 }
 function setSelectedGrams(itemId, grams) {
   if (!state.cartGrams) state.cartGrams = {};
@@ -3583,12 +3646,12 @@ function setSelectedGrams(itemId, grams) {
 // weight items.
 function getUnitPrice(it) {
   if (!isWeightUnit(it.unit)) return it.price;
-  const grams = getSelectedGrams(it.id);
+  const grams = getSelectedGrams(it);
   const perGramRate = it.unit === 'kg' ? it.price / 1000 : it.price;
   return Math.round(perGramRate * grams * 100) / 100;
 }
 function weightLabel(it) {
-  const grams = getSelectedGrams(it.id);
+  const grams = getSelectedGrams(it);
   return grams >= 1000 ? ((Math.round((grams / 1000) * 100) / 100) + 'kg') : (grams + 'g');
 }
 
@@ -3660,7 +3723,7 @@ function renderMenu() {
         ${it.desc ? `<p class="item-desc" style="margin-top:2px;">${it.desc}</p>` : ''}
         ${isWeightUnit(it.unit) ? `
         <div class="item-weight-row" style="display:flex; align-items:center; gap:6px; margin-top:6px;">
-          <input type="number" class="item-weight-input" min="1" step="1" value="${getSelectedGrams(it.id)}" style="width:60px; padding:4px 6px; border:1px solid #ddd; border-radius:6px; font-size:12px;" />
+          <input type="number" class="item-weight-input" min="1" step="1" value="${getSelectedGrams(it)}" style="width:60px; padding:4px 6px; border:1px solid #ddd; border-radius:6px; font-size:12px;" />
           <span style="font-size:11px; color:var(--muted-2);">grams (₹${it.price}${UNIT_SUFFIX[it.unit]})</span>
         </div>` : ''}
         ${hasSizes(it) ? `
@@ -3813,7 +3876,7 @@ function renderItemDetail() {
   }
   if (isWeightUnit(it.unit)) {
     itemDetailWeightRow.style.display = 'flex';
-    itemDetailWeightInput.value = getSelectedGrams(it.id);
+    itemDetailWeightInput.value = getSelectedGrams(it);
     itemDetailWeightHint.textContent = `grams (rate ₹${it.price}${UNIT_SUFFIX[it.unit]})`;
     itemDetailPrice.textContent = `₹${getUnitPrice(it)} for ${weightLabel(it)}`;
   } else {
@@ -4952,7 +5015,7 @@ payConfirmBtn.addEventListener('click', async () => {
     .filter(it => state.cart[it.id])
     .map(it => {
       if (isWeightUnit(it.unit)) {
-        return { name: `${it.name} (${weightLabel(it)})`, desc: it.desc || '', price: getUnitPrice(it), qty: state.cart[it.id], unit: it.unit, weightGrams: getSelectedGrams(it.id) };
+        return { name: `${it.name} (${weightLabel(it)})`, desc: it.desc || '', price: getUnitPrice(it), qty: state.cart[it.id], unit: it.unit, weightGrams: getSelectedGrams(it) };
       }
       if (hasSizes(it)) {
         const size = getSelectedSize(it);
