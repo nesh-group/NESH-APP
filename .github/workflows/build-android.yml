@@ -59,6 +59,16 @@ jobs:
       - name: Sync web assets into Android project
         run: npx cap sync android
 
+      - name: Fix Kotlin stdlib duplicate class conflict
+        run: |
+          cat >> android/app/build.gradle << 'EOF'
+
+          configurations.all {
+              exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk7'
+              exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk8'
+          }
+          EOF
+
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug
