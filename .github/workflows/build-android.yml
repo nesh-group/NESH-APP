@@ -42,6 +42,8 @@ jobs:
         run: |
           npm init -y
           npm install @capacitor/core @capacitor/android @capacitor/cli
+          npm install @capacitor/geolocation
+          npm install @capacitor/assets --save-dev
 
       - name: Create capacitor.config.json
         run: |
@@ -55,6 +57,17 @@ jobs:
 
       - name: Add Android platform
         run: npx cap add android
+
+      - name: Generate app icon from icon-512.png
+        run: |
+          mkdir -p assets
+          cp icon-512.png assets/icon.png
+          npx capacitor-assets generate --android
+
+      - name: Add location permissions to AndroidManifest.xml
+        run: |
+          sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />#' android/app/src/main/AndroidManifest.xml
+          cat android/app/src/main/AndroidManifest.xml
 
       - name: Sync web assets into Android project
         run: npx cap sync android
