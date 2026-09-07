@@ -2487,7 +2487,7 @@ function useTaxiGps() {
       updateTaxiPinRows();
     },
     () => { btn.textContent = prevLabel; },
-    { enableHighAccuracy: true, timeout: 8000 }
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
   );
 }
 document.getElementById('taxi-pickup-gps-btn').addEventListener('click', useTaxiGps);
@@ -4586,12 +4586,15 @@ locGpsBtn.addEventListener('click', () => {
       locGpsBtn.disabled = false;
       locGpsBtn.textContent = "📍 Use my current location";
     },
-    () => {
-      locCurrentValue.textContent = "Location permission denied";
+    (err) => {
+      locCurrentValue.textContent =
+        err.code === 1 ? "Location permission denied — enable it in browser settings" :
+        err.code === 2 ? "Location unavailable — check GPS/network" :
+        "Location request timed out — try again";
       locGpsBtn.disabled = false;
       locGpsBtn.textContent = "📍 Use my current location";
     },
-    { enableHighAccuracy: true, timeout: 8000 }
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
   );
 });
 
@@ -4724,12 +4727,15 @@ browseLocGpsBtn.addEventListener('click', () => {
       browseLocGpsBtn.disabled = false;
       browseLocGpsBtn.textContent = "📍 Use my current location";
     },
-    () => {
-      browseLocCurrentValue.textContent = "Location permission denied";
+    (err) => {
+      browseLocCurrentValue.textContent =
+        err.code === 1 ? "Location permission denied — enable it in browser settings" :
+        err.code === 2 ? "Location unavailable — check GPS/network" :
+        "Location request timed out — try again";
       browseLocGpsBtn.disabled = false;
       browseLocGpsBtn.textContent = "📍 Use my current location";
     },
-    { enableHighAccuracy: true, timeout: 8000 }
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
   );
 });
 
