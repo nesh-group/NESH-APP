@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Delete Account - NESH</title>
+<meta name="description" content="Request deletion of your NESH account and associated data." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FFFFFF;
+    --bg-outer:#FFFCF2;
+    --ink:#2B2410;
+    --marigold:#F2B705;
+    --marigold-dark:#D69E00;
+    --chili:#C97F00;
+    --leaf:#1BA672;
+    --muted:#B4A87F;
+    --muted-2:#6B5E3D;
+    --field-bg:#FFF8DF;
+    --field-border:#F2E2A6;
+    --card-shadow:0 2px 14px rgba(43,36,16,.08);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg-outer);
+    font-family:'Inter',sans-serif;
+    display:flex;
+    justify-content:center;
+    min-height:100vh;
+  }
+  #app{
+    width:100%;
+    max-width:560px;
+    min-height:100vh;
+    background:var(--bg);
+    padding:40px 24px 60px;
+  }
+  .eyebrow{
+    color:var(--chili);
+    font-weight:700;
+    font-size:12px;
+    letter-spacing:1.5px;
+    margin:0 0 4px;
+  }
+  h1{
+    color:var(--ink);
+    font-family:'Fraunces',serif;
+    font-size:28px;
+    font-weight:700;
+    margin:0 0 20px;
+  }
+  p{
+    color:var(--muted-2);
+    font-size:15px;
+    line-height:1.6;
+  }
+  .card{
+    background:var(--field-bg);
+    border:1.5px solid var(--field-border);
+    border-radius:16px;
+    padding:20px;
+    margin:20px 0;
+  }
+  .card h2{
+    color:var(--ink);
+    font-size:16px;
+    margin:0 0 10px;
+  }
+  .card ul{
+    margin:0;
+    padding-left:20px;
+    color:var(--muted-2);
+    font-size:14px;
+    line-height:1.8;
+  }
+  .contact-box{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:16px;
+    border-radius:14px;
+    background:linear-gradient(135deg, var(--marigold) 0%, var(--marigold-dark) 100%);
+    box-shadow:0 6px 16px rgba(242,183,5,.3);
+    margin:24px 0;
+  }
+  .contact-box a{
+    color:var(--ink);
+    font-weight:700;
+    text-decoration:none;
+    font-size:15px;
+  }
+  .contact-icon{
+    width:40px;height:40px;border-radius:12px;
+    background:rgba(255,255,255,.9);
+    display:flex;align-items:center;justify-content:center;
+    font-size:18px;flex-shrink:0;
+  }
+  .stamp{
+    display:inline-flex;align-items:center;gap:4px;
+    padding:6px 10px;border:1.5px solid var(--leaf);
+    color:var(--leaf);border-radius:20px;
+    background:rgba(27,166,114,.08);
+    font-weight:700;font-size:11px;letter-spacing:.5px;
+    margin-top:24px;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <p class="eyebrow">NESH ACCOUNT</p>
+  <h1>Delete your account</h1>
+  <p>You can request permanent deletion of your NESH account and all associated data at any time. To submit a deletion request, please contact us using the details below with your registered phone number.</p>
+
+  <div class="contact-box">
+    <div class="contact-icon">✉️</div>
+    <a href="mailto:neshgroup1@gmail.com?subject=Account%20Deletion%20Request">neshgroup1@gmail.com</a>
+  </div>
+
+  <div class="card">
+    <h2>What gets deleted</h2>
+    <ul>
+      <li>Your profile information (name, phone number, email)</li>
+      <li>Saved delivery addresses and locations</li>
+      <li>Order history and past transactions</li>
+      <li>Any other personal data linked to your account</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>How it works</h2>
+    <ul>
+      <li>Send us an email or message with your registered phone number and a request to delete your account</li>
+      <li>We verify your identity to protect your data</li>
+      <li>Your account and associated data are permanently deleted within 7 business days</li>
+    </ul>
+  </div>
+
+  <p style="font-size:13px;color:var(--muted);">Note: Some information may be retained where required by law (e.g. transaction records for tax or legal compliance) even after account deletion.</p>
+
+  <span class="stamp">✓ NESH · Taxi and Delivery Services</span>
+</div>
+</body>
+</html>
