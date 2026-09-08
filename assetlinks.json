@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.neshgroup.nesh",
+        "sha256_cert_fingerprints": ["72:BC:87:E3:87:78:E3:97:68:F7:A4:CE:96:3E:D7:F1:75:BE:A9:3D:95:51:66:40:ED:59:3B:CE:C4:AE:93:3E"]
+      }
+    }]
