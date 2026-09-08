@@ -39,6 +39,14 @@
     --card-shadow:0 2px 14px rgba(43,36,16,.08);
   }
   *{box-sizing:border-box;}
+  /* Disable the browser's native "pull-to-refresh" gesture (the dark
+     circle + reload-arrow indicator Android Chrome/WebView shows when you
+     drag down from the top). Everything in this app already updates live
+     via Firebase `onValue` listeners, so that gesture only tempts people
+     into a disruptive full page reload for no reason — this removes it. */
+  html, body{
+    overscroll-behavior-y: contain;
+  }
   body{
     margin:0;
     background:var(--bg-outer);
@@ -54,6 +62,7 @@
     background:var(--bg);
     position:relative;
     padding-top:env(safe-area-inset-top);
+    overscroll-behavior-y: contain;
   }
   .screen{ display:none; padding-bottom:24px; }
   .screen.active{ display:block; }
