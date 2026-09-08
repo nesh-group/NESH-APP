@@ -846,6 +846,22 @@
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
+<script>
+  // The compat SDK above (used for firebase.messaging()) is a separate
+  // instance from the modular SDK used everywhere else in this file, so it
+  // needs its own initializeApp() call with the same config — otherwise
+  // firebase.messaging() fails with "No Firebase App '[DEFAULT]' has been
+  // created".
+  firebase.initializeApp({
+    apiKey: "AIzaSyCrM5wKwsnGtIc7HSTk_5R1d3dXEcYyd7o",
+    authDomain: "texi-and-food.firebaseapp.com",
+    databaseURL: "https://texi-and-food-default-rtdb.firebaseio.com",
+    projectId: "texi-and-food",
+    storageBucket: "texi-and-food.firebasestorage.app",
+    messagingSenderId: "98800730432",
+    appId: "1:98800730432:web:9d7651e792c60baafabaa5"
+  });
+</script>
 </head>
 <body>
 <div id="app">
