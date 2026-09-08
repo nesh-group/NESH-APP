@@ -3184,7 +3184,13 @@ async function registerCustomerPush(phone) {
       const { db, ref, update } = window.fb;
       await update(ref(db, 'customers/' + phone), { fcmToken: token });
     }
-  } catch (e) { console.error('Push registration failed:', e); }
+  } catch (e) {
+    console.error('Push registration failed:', e);
+    // TEMP DIAGNOSTIC — remove this alert() line once push is confirmed
+    // working. Shows the exact error on-screen so it's visible without a
+    // computer/devtools attached.
+    alert('Push registration error: ' + (e && e.message ? e.message : e));
+  }
 }
 
 let orderNotifyUnsub = null;
