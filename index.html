@@ -844,6 +844,8 @@
   .order-summary-overlay.show{ display:flex; }
   .order-summary-sheet{ width:100%; max-width:420px; position:relative; animation:locUp .25s ease-out; }
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
 </head>
 <body>
 <div id="app">
@@ -2040,6 +2042,13 @@ try {
     state.user = savedUser;
     attachScratchListener(savedUser.number);
     attachOrderStatusWatcher(savedUser.number);
+    registerCustomerPush(savedUser.number);
+  } else {
+    // Not logged in — still ask for notification permission and subscribe
+    // this device to "all_customers" (guests still get offer/announcement
+    // broadcasts, they just won't get single-order status alerts, which
+    // need a phone number to look up).
+    registerCustomerPush();
   }
 } catch (e) {}
 
@@ -2983,6 +2992,7 @@ loginSubmitBtn.addEventListener('click', async () => {
       saveUserSession(state.user);
       attachScratchListener(state.user.number);
       attachOrderStatusWatcher(state.user.number);
+      registerCustomerPush(state.user.number);
       loginErrorEl.style.display = "none";
       finishAuthFlow();
     } else {
@@ -3037,6 +3047,7 @@ regSendOtpBtn.addEventListener('click', async () => {
     saveUserSession(state.user);
     attachScratchListener(state.user.number);
     attachOrderStatusWatcher(state.user.number);
+    registerCustomerPush(state.user.number);
     finishAuthFlow();
   } catch (e) {
     regErrorEl.textContent = "Couldn't create your account — check your connection and try again.";
@@ -3114,6 +3125,44 @@ orderNotifyToast.addEventListener('click', () => {
   if (orderNotifyPendingOrder) openTrackOrder(orderNotifyPendingOrder, 'home');
 });
 orderNotifyClose.addEventListener('click', (e) => { e.stopPropagation(); hideOrderNotifyToast(); });
+
+// ---------- Push notifications: registers this device for real
+// OS-level order-status alerts (works even when the app is closed/
+// backgrounded), on top of the in-app toast that attachOrderStatusWatcher
+// already shows while the app is open. Token is saved to
+// customers/{number}/fcmToken so the Cloudflare Worker can find it. ----------
+// phone is optional — pass it for a logged-in customer (also saves the
+// token under customers/{phone}/fcmToken for single-order alerts); call
+// with no argument for a guest, which still asks permission and
+// subscribes the device to "all_customers" so operator broadcasts
+// (offers/announcements) reach everyone, logged in or not.
+async function registerCustomerPush(phone) {
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (typeof firebase === 'undefined' || !firebase.messaging) return;
+    const messaging = firebase.messaging();
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return;
+    const swReg = await navigator.serviceWorker.getRegistration('./sw.js') || await navigator.serviceWorker.ready;
+    const token = await messaging.getToken({
+      vapidKey: 'BJy2vLBreoMThId_Nm1pQlJWpAlcYdG4U2XW0eEW8_98xoA8ajBjwPGVlKNZSAgj9QBubFO3D5BkkqVYJvDHL3Q',
+      serviceWorkerRegistration: swReg
+    });
+    if (!token) return;
+    // Subscribe this device to the "all_customers" topic so operator
+    // broadcasts (offers/announcements) can reach everyone with one
+    // send, without the Worker needing every customer's token.
+    fetch('https://broad-paper-6445.raise3715.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'subscribe_topic', token }),
+    }).catch(() => {});
+    if (phone) {
+      const { db, ref, update } = window.fb;
+      await update(ref(db, 'customers/' + phone), { fcmToken: token });
+    }
+  } catch (e) { console.error('Push registration failed:', e); }
+}
 
 let orderNotifyUnsub = null;
 function attachOrderStatusWatcher(number) {
