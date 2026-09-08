@@ -3131,6 +3131,29 @@ orderNotifyClose.addEventListener('click', (e) => { e.stopPropagation(); hideOrd
 // backgrounded), on top of the in-app toast that attachOrderStatusWatcher
 // already shows while the app is open. Token is saved to
 // customers/{number}/fcmToken so the Cloudflare Worker can find it. ----------
+// Foreground handler: FCM's own background handling (sw.js) only fires
+// while the app is closed/backgrounded — a push that arrives while the
+// person has the app open right now would otherwise show nothing at all.
+// This shows the same notification manually in that case, so order-status
+// and broadcast alerts look the same either way.
+if (typeof firebase !== 'undefined' && firebase.messaging) {
+  try {
+    firebase.messaging().onMessage((payload) => {
+      const title = (payload.notification && payload.notification.title) || 'Order update!';
+      const body = (payload.notification && payload.notification.body) || 'Tap to view your order.';
+      if (Notification.permission === 'granted') {
+        navigator.serviceWorker.getRegistration('./sw.js').then((reg) => {
+          if (reg) {
+            reg.showNotification(title, { body, icon: './icon-192.png', badge: './icon-192.png' });
+          } else {
+            new Notification(title, { body, icon: './icon-192.png' });
+          }
+        }).catch(() => { new Notification(title, { body, icon: './icon-192.png' }); });
+      }
+    });
+  } catch (e) {}
+}
+
 // phone is optional — pass it for a logged-in customer (also saves the
 // token under customers/{phone}/fcmToken for single-order alerts); call
 // with no argument for a guest, which still asks permission and
