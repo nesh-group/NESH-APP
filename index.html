@@ -1333,6 +1333,7 @@
         <div class="track-map" id="track-map"></div>
       </div>
       <div class="timeline" id="track-timeline"></div>
+      <button class="btn-link" id="track-cancel-order-btn" style="margin-top:8px; display:none;">Cancel order</button>
     </div>
   </section>
 
@@ -5245,6 +5246,7 @@ const trackTimelineEl = document.getElementById('track-timeline');
 const trackReasonBox = document.getElementById('track-reason-box');
 const trackReasonText = document.getElementById('track-reason-text');
 const confirmTrackBtn = document.getElementById('confirm-track-btn');
+const trackCancelOrderBtn = document.getElementById('track-cancel-order-btn');
 
 // Unsubscribe function for the live Firebase listener on the order being
 // tracked. Cleared whenever the user leaves the track screen so it doesn't
@@ -5254,6 +5256,7 @@ let trackUnsub = null;
 // used by renderTrackTimeline to pick food vs generic order wording.
 let trackBusinessType = 'hotel';
 let trackCurrentRestId = null; // used to look up the restaurant's pickup location for the live map
+let trackCurrentOrderKey = null; // used by the cancel-order button to write back to Firebase
 let trackMap = null; // live-driver map on the food/grocery order tracking screen
 let trackMapDriverId = null;
 
@@ -5309,9 +5312,15 @@ function renderTrackTimeline(rawStatus, reason, o) {
     }
     trackMap.hide();
     trackMapDriverId = null;
+    trackCancelOrderBtn.style.display = "none";
     return;
   }
   trackReasonBox.style.display = "none";
+
+  // The customer can only cancel from here before the shop has acted on the
+  // order — once it moves to "preparing" (i.e. the shop accepted) or beyond,
+  // cancellation has to go through the shop instead.
+  trackCancelOrderBtn.style.display = (status === 'pending' || status === 'awaiting_payment') ? 'block' : 'none';
 
   const currentIdx = steps.findIndex(s => s.key === status);
   trackStatusText.textContent = steps[currentIdx].label;
@@ -5364,6 +5373,7 @@ function openTrackOrder(order, returnScreen) {
   trackReturnScreen = returnScreen || 'home';
   trackBusinessType = order.businessType || 'hotel';
   trackCurrentRestId = order.restId || null;
+  trackCurrentOrderKey = order.orderKey || null;
   trackRestName.textContent = order.restName;
   trackOrderNum.textContent = "Order " + order.orderNumber;
   renderTrackTimeline('pending');
@@ -5390,6 +5400,36 @@ function leaveTrackScreen() {
 
 confirmTrackBtn.addEventListener('click', () => openTrackOrder(state.lastOrder, 'home'));
 trackBackBtn.addEventListener('click', leaveTrackScreen);
+
+trackCancelOrderBtn.addEventListener('click', async () => {
+  if (!trackCurrentRestId || !trackCurrentOrderKey) return;
+  if (!confirm('Cancel this order?')) return;
+  trackCancelOrderBtn.disabled = true;
+  try {
+    const { db, ref, update } = window.fb;
+    await update(ref(db, 'restaurants/' + trackCurrentRestId + '/orders/' + trackCurrentOrderKey), {
+      status: 'cancelled',
+      statusReason: 'Cancelled by customer'
+    });
+    // Fire-and-forget: also tell the Cloudflare Worker to send a stop-ring
+    // push to the shop, so the native full-screen ringing screen goes away
+    // even if the partner app is fully closed (the shop's own live Firebase
+    // listener only clears the ring while the app is open/foregrounded).
+    fetch('https://broad-paper-6445.raise3715.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'cancel_ring',
+        restId: trackCurrentRestId,
+        orderId: trackCurrentOrderKey,
+      }),
+    }).catch(() => {});
+  } catch (e) {
+    alert("Couldn't cancel the order. Please check your connection and try again.");
+  } finally {
+    trackCancelOrderBtn.disabled = false;
+  }
+});
 
 // ---------- YOUR ORDERS ----------
 const yourOrdersBtn = document.getElementById('your-orders-btn');
