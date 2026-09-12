@@ -157,6 +157,19 @@
     animation:slideUp .2s ease;
   }
   @keyframes slideUp{ from{ transform:translateY(24px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
+  .welcome-banner{
+    width:100%; height:150px; object-fit:cover; border-radius:14px;
+    background:var(--field-bg); margin-bottom:16px; display:block;
+  }
+  .welcome-badges{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:2px 0 14px; }
+  .welcome-badge{
+    display:inline-block; padding:4px 10px; border-radius:20px; font-size:11.5px; font-weight:700;
+    background:var(--field-bg); color:var(--muted-2); border:1px solid var(--field-border);
+  }
+  .welcome-badge.open{ background:rgba(27,166,114,.1); color:var(--leaf-dark); border-color:rgba(27,166,114,.3); }
+  .welcome-badge.closed{ background:rgba(201,59,59,.08); color:#C93B3B; border-color:rgba(201,59,59,.25); }
+  .welcome-row{ display:flex; align-items:flex-start; gap:8px; font-size:13px; color:var(--muted-2); margin-bottom:8px; line-height:1.4; }
+  .welcome-row svg{ flex-shrink:0; margin-top:2px; }
   .sheet-title{ font-family:'Fraunces',serif; font-size:20px; font-weight:700; margin:0 0 4px; }
   .sheet-sub{ color:var(--muted-2); font-size:13px; margin:0 0 18px; line-height:1.4; }
   .field-group{ margin-bottom:14px; }
@@ -193,7 +206,16 @@
   .review-info{ flex:1; min-width:0; }
   .review-name{ font-size:13.5px; font-weight:700; margin:0; }
   .review-qty{ font-size:12px; color:var(--muted-2); margin:2px 0 0; }
-  .review-line-total{ font-size:13.5px; font-weight:700; color:var(--chili); flex-shrink:0; }
+  .review-controls{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0; }
+  .review-line-total{ font-size:13px; font-weight:700; color:var(--chili); }
+
+  /* ---------- item detail sheet ---------- */
+  .item-card.expanded{ flex-direction:column; align-items:stretch; }
+  .item-card.expanded .item-photo{ width:100%; height:170px; border-radius:12px; }
+  .item-card.expanded .item-info{ width:100%; }
+  .item-card.expanded .qty-controls{ width:100%; margin-top:4px; }
+  .item-card.expanded .qty-controls .add-btn{ width:100%; padding:11px 16px; }
+  .item-card.expanded .qty-controls .qty-stepper{ margin-left:auto; }
   .review-total-row{
     display:flex; justify-content:space-between; align-items:center; padding-top:12px;
     border-top:1px solid var(--field-border); margin-bottom:16px;
@@ -267,6 +289,20 @@
       <p id="cart-bar-total" class="cart-bar-total">₹0</p>
     </div>
     <button id="order-btn" class="order-btn">Place Order</button>
+  </div>
+</div>
+
+<!-- ---------- WELCOME / SHOP INTRO ---------- -->
+<div class="overlay" id="welcome-overlay">
+  <div class="sheet">
+    <img class="welcome-banner" id="welcome-banner" src="" alt="">
+    <p class="sheet-title" id="welcome-name"></p>
+    <div class="welcome-badges" id="welcome-badges"></div>
+    <div id="welcome-address-row" class="welcome-row" style="display:none;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      <span id="welcome-address"></span>
+    </div>
+    <button class="sheet-btn" id="welcome-continue">Start Order</button>
   </div>
 </div>
 
@@ -404,6 +440,7 @@
   }
 
   const cart = {}; // itemId -> qty
+  let expandedItemId = null; // which menu item card is currently expanded inline
   let shopData = null;
   let itemList = [];
   let searchQuery = "";
@@ -454,6 +491,7 @@
     }
     renderMenu();
     renderCartBar();
+    if (reviewOverlay.classList.contains("show")) renderReviewList();
   }
 
   function renderMenu() {
@@ -471,8 +509,10 @@
     menuListEl.innerHTML = "";
     visibleItems.forEach((item) => {
       const qty = cart[item.id] || 0;
+      const isExpanded = expandedItemId === item.id;
       const card = document.createElement("div");
-      card.className = "item-card";
+      card.className = "item-card" + (isExpanded ? " expanded" : "");
+      card.style.cursor = "pointer";
       card.innerHTML = `
         ${item.photo ? `<img class="item-photo" src="${item.photo}" alt="">` : ""}
         <div class="item-info">
@@ -482,6 +522,10 @@
         </div>
         <div class="qty-controls"></div>
       `;
+      card.addEventListener("click", () => {
+        expandedItemId = isExpanded ? null : item.id;
+        renderMenu();
+      });
       const controls = card.querySelector(".qty-controls");
       if (qty > 0) {
         controls.innerHTML = `
@@ -491,11 +535,11 @@
             <button class="qty-btn" data-action="inc">+</button>
           </div>
         `;
-        controls.querySelector('[data-action="dec"]').onclick = () => setQty(item.id, qty - 1);
-        controls.querySelector('[data-action="inc"]').onclick = () => setQty(item.id, qty + 1);
+        controls.querySelector('[data-action="dec"]').onclick = (e) => { e.stopPropagation(); setQty(item.id, qty - 1); };
+        controls.querySelector('[data-action="inc"]').onclick = (e) => { e.stopPropagation(); setQty(item.id, qty + 1); };
       } else {
         controls.innerHTML = `<button class="add-btn">Add</button>`;
-        controls.querySelector(".add-btn").onclick = () => setQty(item.id, 1);
+        controls.querySelector(".add-btn").onclick = (e) => { e.stopPropagation(); setQty(item.id, 1); };
       }
       menuListEl.appendChild(card);
     });
@@ -518,6 +562,57 @@
     try { localStorage.setItem(USER_LOCATION_KEY, JSON.stringify(loc)); } catch (e) {}
   }
   let pendingLocation = loadUserLocation();
+
+  const welcomeOverlay = document.getElementById("welcome-overlay");
+  const welcomeBanner = document.getElementById("welcome-banner");
+  const welcomeNameEl = document.getElementById("welcome-name");
+  const welcomeBadgesEl = document.getElementById("welcome-badges");
+  const welcomeAddressRow = document.getElementById("welcome-address-row");
+  const welcomeAddressEl = document.getElementById("welcome-address");
+  const welcomeContinueBtn = document.getElementById("welcome-continue");
+  welcomeContinueBtn.addEventListener("click", () => welcomeOverlay.classList.remove("show"));
+
+  function formatTime12(hhmm) {
+    if (!hhmm) return "";
+    const [h, m] = hhmm.split(":").map(Number);
+    const period = h >= 12 ? "PM" : "AM";
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+  }
+  function isWithinShopHours(openTime, closeTime, now) {
+    if (!openTime || !closeTime || openTime === closeTime) return true;
+    const [oh, om] = openTime.split(":").map(Number);
+    const [ch, cm] = closeTime.split(":").map(Number);
+    const cur = now.getHours() * 60 + now.getMinutes();
+    const open = oh * 60 + om;
+    const close = ch * 60 + cm;
+    return open < close ? (cur >= open && cur < close) : (cur >= open || cur < close);
+  }
+  function showWelcomeCard() {
+    const name = shopData.restaurantName || shopData.name || "Shop";
+    welcomeBanner.src = shopData.photo || FALLBACK_IMAGE;
+    welcomeNameEl.textContent = name;
+
+    const badges = [];
+    const typeLabel = shopData.opCategory
+      ? shopData.opCategory
+      : shopData.businessType === "groceries" ? "Groceries"
+      : shopData.businessType === "online_shop" ? "Other Shop" : "Restaurant";
+    badges.push(`<span class="welcome-badge">${typeLabel}</span>`);
+    if (shopData.hoursEnabled && shopData.openTime && shopData.closeTime) {
+      const open = isWithinShopHours(shopData.openTime, shopData.closeTime, new Date());
+      badges.push(`<span class="welcome-badge ${open ? "open" : "closed"}">${open ? "Open now" : "Closed now"} · ${formatTime12(shopData.openTime)}–${formatTime12(shopData.closeTime)}</span>`);
+    }
+    welcomeBadgesEl.innerHTML = badges.join("");
+
+    if (shopData.address) {
+      welcomeAddressEl.textContent = shopData.address;
+      welcomeAddressRow.style.display = "flex";
+    } else {
+      welcomeAddressRow.style.display = "none";
+    }
+    welcomeOverlay.classList.add("show");
+  }
 
   const loginOverlay = document.getElementById("login-overlay");
   const loginNumberInput = document.getElementById("login-number");
@@ -760,7 +855,15 @@
   });
 
   function openReviewSheet() {
+    renderReviewList();
+    reviewOverlay.classList.add("show");
+  }
+  function renderReviewList() {
     const entries = Object.entries(cart).filter(([, qty]) => qty > 0);
+    if (!entries.length) {
+      closeReviewSheet();
+      return;
+    }
     reviewListEl.innerHTML = "";
     let total = 0;
     entries.forEach(([id, qty]) => {
@@ -774,14 +877,22 @@
         ${item.photo ? `<img class="review-photo" src="${item.photo}" alt="">` : `<div class="review-photo"></div>`}
         <div class="review-info">
           <p class="review-name">${item.name}</p>
-          <p class="review-qty">Qty ${qty} × ₹${getPrice(item)}</p>
+          <p class="review-qty">₹${getPrice(item)} each</p>
         </div>
-        <div class="review-line-total">₹${lineTotal}</div>
+        <div class="review-controls">
+          <div class="qty-stepper">
+            <button class="qty-btn" data-action="dec">−</button>
+            <span class="qty-val">${qty}</span>
+            <button class="qty-btn" data-action="inc">+</button>
+          </div>
+          <div class="review-line-total">₹${lineTotal}</div>
+        </div>
       `;
+      row.querySelector('[data-action="dec"]').addEventListener("click", (e) => { e.stopPropagation(); setQty(id, qty - 1); });
+      row.querySelector('[data-action="inc"]').addEventListener("click", (e) => { e.stopPropagation(); setQty(id, qty + 1); });
       reviewListEl.appendChild(row);
     });
     reviewTotalValueEl.textContent = `₹${total}`;
-    reviewOverlay.classList.add("show");
   }
   function closeReviewSheet() { reviewOverlay.classList.remove("show"); }
 
@@ -887,6 +998,7 @@
     shopView.style.display = "block";
     renderMenu();
     renderCartBar();
+    showWelcomeCard();
   }
 
   init();
