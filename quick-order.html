@@ -102,6 +102,23 @@
 
   .empty-menu{ padding:40px 24px; text-align:center; color:var(--muted-2); font-size:14px; }
 
+  /* ---------- item search ---------- */
+  .search-wrap{ padding:14px 16px 0; }
+  .search-box{
+    display:flex; align-items:center; gap:8px; padding:11px 14px; border-radius:12px;
+    background:var(--field-bg); border:1.5px solid var(--field-border);
+  }
+  .search-box svg{ flex-shrink:0; color:var(--muted-2); }
+  .search-box input{
+    flex:1; min-width:0; border:none; outline:none; background:transparent;
+    font-size:14px; font-family:'Inter',sans-serif; color:var(--ink);
+  }
+  .search-box input::placeholder{ color:var(--muted); }
+  .search-clear{
+    border:none; background:none; color:var(--muted-2); font-size:16px; line-height:1;
+    cursor:pointer; padding:2px 4px; flex-shrink:0; display:none;
+  }
+
   /* ---------- sticky cart bar ---------- */
   .cart-bar{
     position:fixed; bottom:0; left:0; right:0; display:flex; justify-content:center;
@@ -119,13 +136,63 @@
   .cart-bar-info{ flex:1; min-width:0; }
   .cart-bar-count{ font-size:11.5px; color:var(--muted-2); margin:0 0 2px; }
   .cart-bar-total{ font-family:'Fraunces',serif; font-size:18px; font-weight:700; margin:0; }
-  .whatsapp-btn{
-    display:flex; align-items:center; gap:8px; padding:13px 18px; border:none; border-radius:12px;
+  .order-btn{
+    display:flex; align-items:center; gap:8px; padding:13px 20px; border:none; border-radius:12px;
     background:var(--leaf); color:#fff; font-weight:700; font-size:14px; cursor:pointer;
     font-family:'Inter',sans-serif; box-shadow:0 6px 16px rgba(27,166,114,.35); white-space:nowrap;
   }
-  .whatsapp-btn:active{ transform:scale(0.98); }
-  .whatsapp-btn svg{ flex-shrink:0; }
+  .order-btn:active{ transform:scale(0.98); }
+  .order-btn:disabled{ opacity:.6; cursor:not-allowed; }
+
+  /* ---------- modal overlay (login / confirm / success) ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(43,36,16,.45); display:none;
+    align-items:flex-end; justify-content:center; z-index:50;
+  }
+  .overlay.show{ display:flex; }
+  .sheet{
+    width:100%; max-width:420px; background:#fff; border-radius:20px 20px 0 0;
+    padding:22px 20px calc(22px + env(safe-area-inset-bottom));
+    box-shadow:0 -10px 30px rgba(43,36,16,.18);
+    animation:slideUp .2s ease;
+  }
+  @keyframes slideUp{ from{ transform:translateY(24px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
+  .sheet-title{ font-family:'Fraunces',serif; font-size:20px; font-weight:700; margin:0 0 4px; }
+  .sheet-sub{ color:var(--muted-2); font-size:13px; margin:0 0 18px; line-height:1.4; }
+  .field-group{ margin-bottom:14px; }
+  .field-label{ font-size:12px; font-weight:600; color:var(--muted-2); margin:0 0 6px; display:block; }
+  .field-input{
+    width:100%; padding:13px 14px; border-radius:10px; border:1.5px solid var(--field-border);
+    background:var(--field-bg); font-size:15px; font-family:'Inter',sans-serif; color:var(--ink); outline:none;
+  }
+  .field-input:focus{ border-color:var(--marigold-dark); }
+  .field-error{ color:#C93B3B; font-size:12px; margin:6px 0 0; display:none; }
+  .sheet-btn{
+    width:100%; padding:14px; border:none; border-radius:12px; background:var(--leaf); color:#fff;
+    font-weight:700; font-size:15px; font-family:'Inter',sans-serif; cursor:pointer; margin-top:4px;
+  }
+  .sheet-btn:disabled{ opacity:.55; cursor:not-allowed; }
+  .sheet-btn:active{ transform:scale(0.99); }
+  .sheet-link{
+    width:100%; text-align:center; padding:10px; background:none; border:none; margin-top:6px;
+    color:var(--muted-2); font-size:13px; cursor:pointer; font-family:'Inter',sans-serif; text-decoration:underline;
+  }
+  .locate-btn{
+    width:100%; padding:12px; border:1.5px solid var(--leaf); background:#fff; color:var(--leaf-dark);
+    border-radius:10px; font-weight:700; font-size:13.5px; cursor:pointer; font-family:'Inter',sans-serif;
+    display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:14px;
+  }
+  .locate-btn:active{ background:rgba(27,166,114,.08); }
+  .locate-btn:disabled{ opacity:.6; cursor:not-allowed; }
+  .locate-status{ font-size:12px; color:var(--muted-2); margin:-8px 0 14px; line-height:1.4; }
+  .success-icon{
+    width:56px; height:56px; border-radius:50%; background:var(--leaf); color:#fff;
+    display:flex; align-items:center; justify-content:center; margin:0 auto 14px; font-size:28px;
+  }
+  .success-order-num{
+    font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:17px; text-align:center;
+    background:var(--field-bg); border:1px dashed var(--field-border); border-radius:10px; padding:10px; margin:14px 0;
+  }
 </style>
 </head>
 <body>
@@ -139,7 +206,14 @@
     <div id="shop-banner" class="shop-banner"></div>
     <div class="shop-header">
       <p id="shop-name" class="shop-name"></p>
-      <p class="shop-meta">Add items, then send your order on WhatsApp</p>
+      <p class="shop-meta">Add items, then place your order</p>
+    </div>
+    <div class="search-wrap">
+      <div class="search-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="search-input" type="text" placeholder="Search items…">
+        <button id="search-clear" class="search-clear">&times;</button>
+      </div>
     </div>
     <div id="menu-list" class="menu-list"></div>
   </div>
@@ -151,18 +225,73 @@
       <p id="cart-bar-count" class="cart-bar-count">0 items</p>
       <p id="cart-bar-total" class="cart-bar-total">₹0</p>
     </div>
-    <button id="whatsapp-btn" class="whatsapp-btn">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.5 0-9.96 4.46-9.96 9.96 0 1.76.46 3.48 1.34 5L2 22l5.2-1.36c1.46.8 3.1 1.22 4.84 1.22 5.5 0 9.96-4.46 9.96-9.96S17.54 2 12.04 2zm5.84 14.24c-.25.7-1.45 1.33-2 1.42-.53.08-1.15.12-1.85-.12-.43-.14-.98-.33-1.68-.64-2.96-1.28-4.9-4.25-5.05-4.45-.15-.2-1.2-1.6-1.2-3.05 0-1.45.76-2.16 1.03-2.46.27-.3.6-.37.8-.37h.57c.18 0 .43-.07.67.51.25.6.85 2.08.92 2.23.07.15.12.33.02.53-.1.2-.15.33-.3.5-.15.18-.3.4-.44.54-.15.15-.3.3-.13.6.17.3.75 1.24 1.62 2 1.12.99 2.05 1.3 2.35 1.45.3.15.47.13.65-.08.18-.2.75-.87.95-1.17.2-.3.4-.25.65-.15.27.1 1.7.8 2 .95.3.15.5.22.57.35.08.13.08.75-.17 1.45z"/></svg>
-      Order on WhatsApp
-    </button>
+    <button id="order-btn" class="order-btn">Place Order</button>
+  </div>
+</div>
+
+<!-- ---------- LOGIN: phone number step ---------- -->
+<div class="overlay" id="login-overlay">
+  <div class="sheet">
+    <p class="sheet-title">Log in to order</p>
+    <p class="sheet-sub">Enter your mobile number — same login as the NESH app.</p>
+    <div class="field-group">
+      <label class="field-label">MOBILE NUMBER</label>
+      <input class="field-input" id="login-number" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit number">
+      <p class="field-error" id="login-error">Couldn't check that number — check your connection and try again.</p>
+    </div>
+    <button class="sheet-btn" id="login-submit" disabled>Continue</button>
+    <button class="sheet-link" id="login-cancel">Cancel</button>
+  </div>
+</div>
+
+<!-- ---------- REGISTER: name step (new customers only) ---------- -->
+<div class="overlay" id="register-overlay">
+  <div class="sheet">
+    <p class="sheet-title">What's your name?</p>
+    <p class="sheet-sub" id="register-number-display"></p>
+    <div class="field-group">
+      <label class="field-label">FULL NAME</label>
+      <input class="field-input" id="register-name" type="text" placeholder="Your name">
+      <p class="field-error" id="register-error">Couldn't create your account — check your connection and try again.</p>
+    </div>
+    <button class="sheet-btn" id="register-submit" disabled>Continue</button>
+  </div>
+</div>
+
+<!-- ---------- DELIVERY LOCATION ---------- -->
+<div class="overlay" id="location-overlay">
+  <div class="sheet">
+    <p class="sheet-title">Delivery location</p>
+    <p class="sheet-sub">Let the shop know where to send your order.</p>
+    <button class="locate-btn" id="locate-btn" type="button">📍 Use my current location</button>
+    <p class="locate-status" id="locate-status" style="display:none;"></p>
+    <div class="field-group">
+      <label class="field-label">ADDRESS / LANDMARK</label>
+      <textarea class="field-input" id="location-address" rows="3" placeholder="House name, street, landmark…" style="resize:none;"></textarea>
+      <p class="field-error" id="location-error">Please add an address or share your location.</p>
+    </div>
+    <button class="sheet-btn" id="location-submit">Continue</button>
+    <button class="sheet-link" id="location-cancel">Cancel</button>
+  </div>
+</div>
+
+<!-- ---------- SUCCESS ---------- -->
+<div class="overlay" id="success-overlay">
+  <div class="sheet" style="text-align:center;">
+    <div class="success-icon">✓</div>
+    <p class="sheet-title">Order placed!</p>
+    <p class="sheet-sub" id="success-sub">The shop has been notified.</p>
+    <p class="success-order-num" id="success-order-num"></p>
+    <button class="sheet-btn" id="success-close">Done</button>
   </div>
 </div>
 
 <script>
   // ---------- Config ----------
   const FIREBASE_DB = "https://texi-and-food-default-rtdb.firebaseio.com";
-  const WHATSAPP_NUMBER = "919656504127"; // NESH order bot, with country code, no + or spaces
   const FALLBACK_IMAGE = "https://nesh-group.github.io/NESH-APP/icon-512.png";
+  const USER_SESSION_KEY = "nesh_customer_user"; // { name, number }
+  const USER_LOCATION_KEY = "nesh_customer_location"; // { address, lat, lng }
 
   const params = new URLSearchParams(window.location.search);
   const shopId = params.get("id") || params.get("shop");
@@ -175,7 +304,7 @@
   const cartBarInner = document.getElementById("cart-bar-inner");
   const cartBarCount = document.getElementById("cart-bar-count");
   const cartBarTotal = document.getElementById("cart-bar-total");
-  const whatsappBtn = document.getElementById("whatsapp-btn");
+  const orderBtn = document.getElementById("order-btn");
 
   function showState(title, text) {
     stateScreen.innerHTML = `
@@ -189,6 +318,23 @@
   const cart = {}; // itemId -> qty
   let shopData = null;
   let itemList = [];
+  let searchQuery = "";
+
+  const searchInput = document.getElementById("search-input");
+  const searchClearBtn = document.getElementById("search-clear");
+
+  searchInput.addEventListener("input", () => {
+    searchQuery = searchInput.value.trim().toLowerCase();
+    searchClearBtn.style.display = searchQuery ? "block" : "none";
+    renderMenu();
+  });
+  searchClearBtn.addEventListener("click", () => {
+    searchInput.value = "";
+    searchQuery = "";
+    searchClearBtn.style.display = "none";
+    renderMenu();
+    searchInput.focus();
+  });
 
   function renderCartBar() {
     const qtys = Object.values(cart);
@@ -222,8 +368,15 @@
       menuListEl.innerHTML = `<div class="empty-menu">No items available right now. Please check back later.</div>`;
       return;
     }
+    const visibleItems = searchQuery
+      ? itemList.filter((it) => (it.name || "").toLowerCase().includes(searchQuery) || (it.desc || "").toLowerCase().includes(searchQuery))
+      : itemList;
+    if (!visibleItems.length) {
+      menuListEl.innerHTML = `<div class="empty-menu">No items match "${searchInput.value.trim()}".</div>`;
+      return;
+    }
     menuListEl.innerHTML = "";
-    itemList.forEach((item) => {
+    visibleItems.forEach((item) => {
       const qty = cart[item.id] || 0;
       const card = document.createElement("div");
       card.className = "item-card";
@@ -255,14 +408,250 @@
     });
   }
 
-  whatsappBtn.addEventListener("click", () => {
+  // ---------- customer session (same account system as the NESH customer app —
+  // keyed by phone number under `customers/{number}` in the same Firebase project) ----------
+  function loadUserSession() {
+    try { return JSON.parse(localStorage.getItem(USER_SESSION_KEY) || "null"); } catch (e) { return null; }
+  }
+  function saveUserSession(user) {
+    try { localStorage.setItem(USER_SESSION_KEY, JSON.stringify(user)); } catch (e) {}
+  }
+  let currentUser = loadUserSession();
+
+  function loadUserLocation() {
+    try { return JSON.parse(localStorage.getItem(USER_LOCATION_KEY) || "null"); } catch (e) { return null; }
+  }
+  function saveUserLocation(loc) {
+    try { localStorage.setItem(USER_LOCATION_KEY, JSON.stringify(loc)); } catch (e) {}
+  }
+  let pendingLocation = loadUserLocation();
+
+  const loginOverlay = document.getElementById("login-overlay");
+  const loginNumberInput = document.getElementById("login-number");
+  const loginSubmitBtn = document.getElementById("login-submit");
+  const loginErrorEl = document.getElementById("login-error");
+  const loginCancelBtn = document.getElementById("login-cancel");
+
+  const registerOverlay = document.getElementById("register-overlay");
+  const registerNumberDisplay = document.getElementById("register-number-display");
+  const registerNameInput = document.getElementById("register-name");
+  const registerSubmitBtn = document.getElementById("register-submit");
+  const registerErrorEl = document.getElementById("register-error");
+
+  const locationOverlay = document.getElementById("location-overlay");
+  const locateBtn = document.getElementById("locate-btn");
+  const locateStatus = document.getElementById("locate-status");
+  const locationAddressInput = document.getElementById("location-address");
+  const locationErrorEl = document.getElementById("location-error");
+  const locationSubmitBtn = document.getElementById("location-submit");
+  const locationCancelBtn = document.getElementById("location-cancel");
+
+  const successOverlay = document.getElementById("success-overlay");
+  const successSub = document.getElementById("success-sub");
+  const successOrderNum = document.getElementById("success-order-num");
+  const successCloseBtn = document.getElementById("success-close");
+
+  let pendingRegNumber = null;
+
+  function openLogin() {
+    loginNumberInput.value = "";
+    loginErrorEl.style.display = "none";
+    loginSubmitBtn.disabled = true;
+    loginOverlay.classList.add("show");
+    setTimeout(() => loginNumberInput.focus(), 50);
+  }
+  function closeLogin() { loginOverlay.classList.remove("show"); }
+
+  loginNumberInput.addEventListener("input", () => {
+    loginNumberInput.value = loginNumberInput.value.replace(/\D/g, "").slice(0, 10);
+    loginErrorEl.style.display = "none";
+    loginSubmitBtn.disabled = loginNumberInput.value.length !== 10;
+  });
+  loginCancelBtn.addEventListener("click", closeLogin);
+
+  loginSubmitBtn.addEventListener("click", async () => {
+    const number = loginNumberInput.value;
+    loginSubmitBtn.disabled = true;
+    try {
+      const res = await fetch(`${FIREBASE_DB}/customers/${number}.json`);
+      const record = await res.json();
+      if (record && record.name) {
+        currentUser = { name: record.name, number };
+        saveUserSession(currentUser);
+        closeLogin();
+        openLocationSheet();
+      } else {
+        pendingRegNumber = number;
+        registerNumberDisplay.textContent = "+91 " + number;
+        registerNameInput.value = "";
+        registerErrorEl.style.display = "none";
+        registerSubmitBtn.disabled = true;
+        closeLogin();
+        registerOverlay.classList.add("show");
+        setTimeout(() => registerNameInput.focus(), 50);
+      }
+    } catch (e) {
+      loginErrorEl.style.display = "block";
+    } finally {
+      loginSubmitBtn.disabled = false;
+    }
+  });
+
+  registerNameInput.addEventListener("input", () => {
+    registerErrorEl.style.display = "none";
+    registerSubmitBtn.disabled = !registerNameInput.value.trim();
+  });
+
+  registerSubmitBtn.addEventListener("click", async () => {
+    const name = registerNameInput.value.trim();
+    if (!name || !pendingRegNumber) return;
+    registerSubmitBtn.disabled = true;
+    try {
+      const newUser = { name, number: pendingRegNumber };
+      await fetch(`${FIREBASE_DB}/customers/${pendingRegNumber}.json`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newUser),
+      });
+      currentUser = newUser;
+      saveUserSession(currentUser);
+      registerOverlay.classList.remove("show");
+      openLocationSheet();
+    } catch (e) {
+      registerErrorEl.style.display = "block";
+    } finally {
+      registerSubmitBtn.disabled = false;
+    }
+  });
+
+  successCloseBtn.addEventListener("click", () => {
+    successOverlay.classList.remove("show");
+  });
+
+  function openLocationSheet() {
+    locationErrorEl.style.display = "none";
+    locateStatus.style.display = "none";
+    locateBtn.disabled = false;
+    locateBtn.textContent = "📍 Use my current location";
+    locationAddressInput.value = pendingLocation && pendingLocation.address ? pendingLocation.address : "";
+    locationOverlay.classList.add("show");
+    setTimeout(() => locationAddressInput.focus(), 50);
+  }
+  function closeLocationSheet() { locationOverlay.classList.remove("show"); }
+
+  locationCancelBtn.addEventListener("click", closeLocationSheet);
+
+  locateBtn.addEventListener("click", () => {
+    if (!navigator.geolocation) {
+      locateStatus.textContent = "Location isn't available on this device/browser.";
+      locateStatus.style.display = "block";
+      return;
+    }
+    locateBtn.disabled = true;
+    locateBtn.textContent = "Getting your location…";
+    locateStatus.style.display = "none";
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        pendingLocation = { ...(pendingLocation || {}), lat: latitude, lng: longitude };
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          const data = await res.json();
+          if (data && data.display_name) {
+            locationAddressInput.value = data.display_name;
+            pendingLocation.address = data.display_name;
+          }
+        } catch (e) {
+          // reverse geocoding failed, coordinates are still saved
+        }
+        locateStatus.textContent = `Location captured (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`;
+        locateStatus.style.display = "block";
+        locateBtn.disabled = false;
+        locateBtn.textContent = "📍 Use my current location";
+        locationErrorEl.style.display = "none";
+      },
+      (err) => {
+        locateStatus.textContent = "Couldn't get your location. Please type your address instead.";
+        locateStatus.style.display = "block";
+        locateBtn.disabled = false;
+        locateBtn.textContent = "📍 Use my current location";
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  });
+
+  locationSubmitBtn.addEventListener("click", () => {
+    const address = locationAddressInput.value.trim();
+    if (!address && !(pendingLocation && pendingLocation.lat)) {
+      locationErrorEl.style.display = "block";
+      return;
+    }
+    pendingLocation = { ...(pendingLocation || {}), address };
+    saveUserLocation(pendingLocation);
+    closeLocationSheet();
+    placeOrder();
+  });
+
+  // ---------- place order (writes straight into `restaurants/{shopId}/orders`,
+  // the exact path the shop's partner app is already listening on) ----------
+  orderBtn.addEventListener("click", () => {
     const entries = Object.entries(cart).filter(([, qty]) => qty > 0);
     if (!entries.length) return;
-    const cartStr = entries.map(([id, qty]) => `${id}x${qty}`).join(",");
-    const orderText = `ORDER|${shopId}|${cartStr}`;
-    const waLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(orderText)}`;
-    window.location.href = waLink;
+    if (!currentUser) {
+      openLogin();
+      return;
+    }
+    openLocationSheet();
   });
+
+  async function placeOrder() {
+    const entries = Object.entries(cart).filter(([, qty]) => qty > 0);
+    if (!entries.length || !currentUser) return;
+
+    orderBtn.disabled = true;
+    orderBtn.textContent = "Placing order…";
+
+    const orderItems = entries.map(([id, qty]) => {
+      const item = itemList.find((it) => it.id === id);
+      return { name: item ? item.name : id, price: item ? item.price : 0, qty };
+    });
+    const total = orderItems.reduce((sum, it) => sum + it.price * it.qty, 0);
+    const orderNumber = "ORD-" + Math.floor(1000 + Math.random() * 9000);
+
+    const orderPayload = {
+      orderNumber,
+      status: "pending",
+      createdAt: Date.now(),
+      customerName: currentUser.name,
+      customerPhone: currentUser.number,
+      items: orderItems,
+      total,
+      deliveryLocation: pendingLocation ? {
+        address: pendingLocation.address || "",
+        lat: typeof pendingLocation.lat === "number" ? pendingLocation.lat : null,
+        lng: typeof pendingLocation.lng === "number" ? pendingLocation.lng : null,
+      } : null,
+    };
+
+    try {
+      await fetch(`${FIREBASE_DB}/restaurants/${encodeURIComponent(shopId)}/orders.json`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(orderPayload),
+      });
+      for (const id of Object.keys(cart)) delete cart[id];
+      renderMenu();
+      renderCartBar();
+      successSub.textContent = `Thanks ${currentUser.name.split(" ")[0]}, the shop has been notified.`;
+      successOrderNum.textContent = orderNumber;
+      successOverlay.classList.add("show");
+    } catch (e) {
+      alert("Couldn't place the order. Please check your connection and try again.");
+    } finally {
+      orderBtn.disabled = false;
+      orderBtn.textContent = "Place Order";
+    }
+  }
 
   async function init() {
     if (!shopId) {
