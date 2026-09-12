@@ -67,6 +67,17 @@
   .screen{ display:none; padding-bottom:24px; }
   .screen.active{ display:block; }
 
+  #nesh-blocked-overlay{
+    display:none; position:fixed; inset:0; z-index:99999;
+    background:var(--ink); color:#fff;
+    flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:40px 32px;
+  }
+  #nesh-blocked-overlay.show{ display:flex; }
+  #nesh-blocked-icon{ font-size:40px; margin-bottom:14px; }
+  #nesh-blocked-overlay h2{ font-family:'Fraunces',serif; font-size:24px; font-weight:700; margin:0 0 12px; }
+  #nesh-blocked-overlay p{ font-size:15px; line-height:1.55; color:#F2E2A6; max-width:320px; margin:0; }
+
   .header{ padding:40px 24px 24px; }
   .eyebrow{
     color:var(--chili);
@@ -122,6 +133,11 @@
     cursor:pointer; font-family:'Inter',sans-serif; padding:0; text-decoration:underline;
   }
   .btn-link-inline:disabled{ color:var(--muted); text-decoration:none; cursor:default; }
+  .bus-date-chip{
+    background:var(--field-bg); border:1.5px solid var(--field-border); border-radius:10px;
+    padding:8px 12px; font-size:13px; font-weight:600; color:var(--ink); font-family:'Inter',sans-serif; cursor:pointer;
+  }
+  .bus-date-chip.active{ background:var(--marigold); border-color:var(--marigold); color:var(--ink); font-weight:700; }
 
   .gps-btn{
     padding:12px 14px; border:none; border-radius:12px; background:var(--leaf);
@@ -475,6 +491,35 @@
   .track-reason-label{ color:#B23B3B; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; margin:0 0 4px; font-family:'IBM Plex Mono',monospace; }
   .track-reason-text{ color:#7A2A1D; font-size:13px; margin:0; line-height:1.4; }
 
+  /* "Where is my Train"-style schematic route line for bus tracking —
+     stops shown in order on a straight vertical line at their correct
+     sequence, with a bus icon that slides along the line between the
+     two stops the bus is currently between (computed from GPS, not a
+     real map). */
+  .bus-line{ display:flex; flex-direction:column; padding:4px 0 0; }
+  .bus-line-row{ display:flex; gap:14px; }
+  .bus-line-dotcol{ position:relative; display:flex; flex-direction:column; align-items:center; }
+  .bus-line-dot{
+    position:relative; width:16px; height:16px; border-radius:50%; flex-shrink:0; z-index:1; margin-top:2px;
+    background:#fff; border:2.5px solid var(--field-border);
+  }
+  .bus-line-row.passed .bus-line-dot{ background:var(--leaf); border-color:var(--leaf); }
+  .bus-line-row.next .bus-line-dot{ background:#fff; border-color:var(--chili); width:18px; height:18px; margin-top:1px; }
+  .bus-line-seg{ position:relative; width:3px; flex:1; min-height:34px; background:var(--field-border); }
+  .bus-line-row.passed .bus-line-seg{ background:var(--leaf); }
+  .bus-line-bus{
+    position:absolute; top:50%; left:50%; width:26px; height:26px; border-radius:50%;
+    background:var(--marigold); border:2px solid #fff; box-shadow:0 2px 8px rgba(43,36,16,.3);
+    display:flex; align-items:center; justify-content:center; font-size:13px;
+    transform:translate(-50%,-50%); z-index:3;
+  }
+  .bus-line-content{ padding-bottom:22px; }
+  .bus-line-name{ color:var(--ink); font-weight:600; font-size:14px; margin:0; }
+  .bus-line-row.next .bus-line-name{ color:var(--chili); font-weight:700; }
+  .bus-line-row.passed .bus-line-name{ color:var(--muted-2); }
+  .bus-line-eta{ color:var(--leaf); font-size:11.5px; font-weight:700; margin:2px 0 0; font-family:'IBM Plex Mono',monospace; }
+  .bus-line-eta-dist{ color:var(--muted-2); font-weight:600; }
+
   /* ---- TAXI ---- */
   .taxi-header{ padding:40px 24px 8px; display:flex; align-items:center; gap:14px; }
   .taxi-title{ color:var(--ink); font-family:'Fraunces',serif; font-size:22px; font-weight:700; margin:2px 0 0; }
@@ -758,6 +803,18 @@
     background:#fff; color:var(--ink); font-family:'Inter',sans-serif; font-weight:700; font-size:12px;
     padding:6px 10px; border-radius:8px; box-shadow:0 2px 8px rgba(36,31,27,.2);
   }
+  /* "Black mark" shown on a shop's card once it's closed (manually, or
+     outside its set opening/closing time) — dims the photo and stamps a
+     clear CLOSED badge so it reads as closed at a glance in the list. */
+  .rest-img-wrap.is-shop-closed .rest-img{ filter:grayscale(60%) brightness(.55); }
+  .rest-badge-closed{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.28);
+  }
+  .rest-badge-closed span{
+    background:#000; color:#fff; font-family:'Inter',sans-serif; font-weight:800; font-size:12px;
+    letter-spacing:1px; text-transform:uppercase; padding:7px 16px; border-radius:8px;
+  }
   .rest-info2{ padding:14px 16px 16px; }
   .rest-name2{ color:var(--ink); font-weight:800; font-family:'Poppins',sans-serif; font-size:17px; margin:0; }
   .rest-meta2{ display:flex; align-items:center; gap:6px; margin-top:8px; font-size:13px; color:var(--muted-2); flex-wrap:wrap; }
@@ -865,6 +922,14 @@
 </head>
 <body>
 <div id="app">
+  <!-- Full-screen block gate — shown whenever the operator has blocked this
+       device or this phone number. No close button and no other screen can
+       show underneath it while it's up. -->
+  <div id="nesh-blocked-overlay">
+    <div id="nesh-blocked-icon">🚫</div>
+    <h2>Access blocked</h2>
+    <p id="nesh-blocked-message">Your access has been blocked. Please contact support.</p>
+  </div>
 
   <!-- In-app "push" notification banner — shown when a placed order gets accepted -->
   <div class="order-notify-toast" id="order-notify-toast">
@@ -1147,6 +1212,16 @@
         <div class="cat-card-text">
           <p class="cat-card-title">Taxi</p>
           <p class="cat-card-sub">Book a ride, anywhere you go</p>
+        </div>
+      </div>
+      <div class="cat-card" id="cat-card-bus" style="background-image:url('https://images.unsplash.com/photo-1570125909517-53cb21c89ff2?w=800&q=80');">
+        <div class="cat-card-icon">🚌</div>
+        <div class="cat-card-arrow">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#241F1B" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="cat-card-text">
+          <p class="cat-card-title">Bus</p>
+          <p class="cat-card-sub">See live bus location & stops</p>
         </div>
       </div>
     </div>
@@ -1465,6 +1540,94 @@
     </div>
   </section>
 
+  <!-- BUS LIST — all buses currently registered, live-loaded from Firebase -->
+  <section class="screen" id="screen-bus-list">
+    <div class="track-header">
+      <button class="btn-back" id="bus-list-back-btn">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div>
+        <p class="eyebrow">BUS TRIPS</p>
+        <h1 class="track-title">Find a trip</h1>
+      </div>
+    </div>
+    <div class="track-body">
+      <div class="stack">
+        <div class="taxi-pin-row active" id="bus-from-row">
+          <div class="taxi-pin-dot pickup"></div>
+          <input id="bus-from-input" type="text" placeholder="From — evide ninn?" autocomplete="off" />
+          <button class="taxi-gps-btn" id="bus-from-gps-btn">📍 GPS</button>
+        </div>
+        <div class="loc-search-results" id="bus-from-suggestions"></div>
+        <p class="hint-text" id="bus-from-hint" style="margin:2px 2px 0;"></p>
+        <div class="taxi-pin-row" id="bus-to-row">
+          <div class="taxi-pin-dot drop"></div>
+          <input id="bus-to-input" type="text" placeholder="To — evide ekk?" autocomplete="off" />
+        </div>
+        <div class="loc-search-results" id="bus-to-suggestions"></div>
+      </div>
+      <button class="btn-link-inline" id="bus-route-clear-btn" style="margin-top:8px; display:none;">✕ Clear route, show all trips</button>
+      <div style="display:flex; align-items:center; gap:8px; margin-top:16px;">
+        <button type="button" class="bus-date-chip" data-chip="today" style="flex-shrink:0;">Today</button>
+        <button type="button" class="bus-date-chip" data-chip="tomorrow" style="flex-shrink:0;">Tomorrow</button>
+        <input type="date" id="bus-date-input" style="flex:1; min-width:0; background:var(--field-bg); border:1.5px solid var(--field-border); border-radius:10px; padding:8px 10px; font-size:13px; color:var(--ink); font-family:'Inter',sans-serif;" />
+      </div>
+      <p class="item-list-label" id="bus-list-date-label" style="margin-top:14px;">Trips</p>
+      <div id="bus-list-empty" class="hint-text" style="text-align:center; margin-top:40px; display:none;">No trips scheduled right now. Check back later.</div>
+      <div id="bus-list-route-empty" class="hint-text" style="text-align:center; margin-top:40px; display:none;">No trip on this route right now.</div>
+      <div id="bus-list-items" style="display:flex; flex-direction:column; gap:12px;"></div>
+    </div>
+  </section>
+
+  <!-- BUS ADD STOP — quick form to suggest a stop that isn't in any route yet -->
+  <section class="screen" id="screen-bus-add-stop">
+    <div class="track-header">
+      <button class="btn-back" id="bus-add-stop-back-btn">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div>
+        <p class="eyebrow">NEW STOP</p>
+        <h1 class="track-title">Add a stop</h1>
+      </div>
+    </div>
+    <div class="track-body">
+      <div class="stack">
+        <input id="bus-add-stop-name-input" type="text" placeholder="Stop name" autocomplete="off" />
+      </div>
+      <button class="taxi-gps-btn" id="bus-add-stop-gps-btn" style="margin-top:10px;">📍 Use my current location</button>
+      <p class="hint-text" id="bus-add-stop-hint" style="margin:8px 2px 0;"></p>
+      <button class="btn-primary" id="bus-add-stop-save-btn" style="margin-top:18px;" disabled>Save stop</button>
+      <p class="hint-text" style="margin-top:14px; text-align:center;">Bus operators will see this and can add it to their route.</p>
+    </div>
+  </section>
+
+  <!-- BUS TRACK — live map of one bus + its stop list -->
+  <section class="screen" id="screen-bus-track">
+    <div class="track-header">
+      <button class="btn-back" id="bus-track-back-btn">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div id="bus-track-photo" style="width:44px; height:44px; border-radius:12px; background:var(--field-bg); border:1.5px solid var(--field-border); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:20px; overflow:hidden; background-size:cover; background-position:center;">🚌</div>
+      <div>
+        <p class="eyebrow" id="bus-track-eyebrow">TRIP</p>
+        <h1 class="track-title" id="bus-track-name">Bus</h1>
+        <p class="track-sub" id="bus-track-status">Waiting for location…</p>
+      </div>
+    </div>
+    <div class="track-body">
+      <p class="item-list-label" id="bus-track-trips-label" style="padding-top:0; display:none;">Other trips today</p>
+      <div id="bus-track-trips" style="display:flex; flex-direction:column; gap:0;"></div>
+      <p class="item-list-label" style="padding-top:0;">Route</p>
+      <div class="bus-line" id="bus-track-stops"></div>
+      <p class="item-list-label" style="margin-top:18px;">Request a stop</p>
+      <div class="field">
+        <input id="bus-stop-request-input" type="text" placeholder="Stop name (e.g. near XYZ)" />
+      </div>
+      <button style="width:100%; padding:13px; border-radius:12px; background:var(--field-bg); border:1.5px solid var(--field-border); color:var(--ink); font-weight:700; font-size:14px; cursor:pointer;" id="bus-stop-request-btn">📍 Request stop at my location</button>
+      <p class="hint-text" id="bus-stop-request-hint" style="margin-top:6px;">ഡ്രൈവർ accept ചെയ്താൽ മാത്രം stop ലിസ്റ്റിൽ വരും.</p>
+    </div>
+  </section>
+
   <!-- PWA INSTALL PROMPT (Android/Chrome native prompt, and iOS manual-steps fallback) -->
   <div class="install-overlay" id="install-overlay">
     <div class="install-sheet">
@@ -1724,7 +1887,14 @@
           discountAmount: Number(v.discountAmount) || 0,
           discountCardImage: v.discountCardImage || null,
           shopUnavailable: !!v.shopUnavailable,
-          shopUnavailableMessage: v.shopUnavailableMessage || ""
+          shopUnavailableMessage: v.shopUnavailableMessage || "",
+          // Daily opening/closing time, set by the shop in the partner app
+          // (Account → Opening & closing time). When hoursEnabled is true,
+          // the shop is treated as closed outside this window automatically
+          // — see getShopClosedInfo() / isWithinShopHours() below.
+          hoursEnabled: !!v.hoursEnabled,
+          openTime: v.openTime || "",
+          closeTime: v.closeTime || ""
         });
       } catch (e) {
         console.error('Skipped one broken restaurant record while rendering:', child.key, e);
@@ -1750,6 +1920,16 @@
     const data = snapshot.val();
     PLATFORM_EXTRA_AMOUNT = (data && Number(data.amount)) || 0;
     window.PLATFORM_EXTRA_AMOUNT = PLATFORM_EXTRA_AMOUNT;    if (window.onPlatformFeeUpdated) window.onPlatformFeeUpdated();
+  });
+
+  // Live-listens to the operator's Bus feature on/off switch (Operator
+  // Panel → Buses → "Bus feature"). Off by default only if the operator
+  // explicitly sets it false — hides the home-screen Bus card entirely so
+  // customers never see any trace of the feature while it's switched off.
+  onValue(ref(db, 'app_config/busFeatureEnabled'), (snapshot) => {
+    const enabled = snapshot.val() !== false;
+    const card = document.getElementById('cat-card-bus');
+    if (card) card.style.display = enabled ? '' : 'none';
   });
 
   // Live-listens to the operator-set order for the home-screen category
@@ -1926,6 +2106,91 @@ let state = {
   roadDistanceLoading: false,
 };
 
+// ---------- Device ID ----------
+// A persistent per-installation identifier (this is a PWA, so there's no
+// real hardware ID available — this is the closest equivalent) generated
+// once and kept in localStorage until the app's storage is cleared or it's
+// reinstalled. Stamped onto every order/ride so the operator panel can
+// block a device, not just a phone number.
+function neshGetDeviceId() {
+  try {
+    let id = localStorage.getItem('asfood_device_id');
+    if (!id) {
+      id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('dev-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2));
+      localStorage.setItem('asfood_device_id', id);
+    }
+    return id;
+  } catch (e) {
+    return 'unknown-device';
+  }
+}
+const NESH_DEVICE_ID = neshGetDeviceId();
+
+// Firebase keys can't contain '.', '#', '$', '[', ']', '/' — this scrubs any
+// identifier (phone number, device id) before it's used as a path segment.
+function neshSanitizeFbKey(s) {
+  return String(s || '').replace(/[.#$\[\]/]/g, '_');
+}
+
+// Retries until the Firebase module script (further down the page) has set
+// window.fb, since this classic script can run before that happens.
+function neshWaitForFb(cb) {
+  if (window.fb) { cb(); return; }
+  setTimeout(() => neshWaitForFb(cb), 200);
+}
+
+// ---------- Operator block check ----------
+// Two independent live listeners: one keyed by this device, one keyed by
+// the logged-in customer's phone number (if any). Either being blocked
+// shows the full-screen block message and keeps it up — there's no way to
+// dismiss it from inside the app.
+let neshBlockedByDevice = false;
+let neshBlockedByUser = false;
+let neshBlockedMessage = '';
+function neshUpdateBlockedUI() {
+  const overlay = document.getElementById('nesh-blocked-overlay');
+  if (!overlay) return;
+  if (neshBlockedByDevice || neshBlockedByUser) {
+    document.getElementById('nesh-blocked-message').textContent =
+      neshBlockedMessage || 'Your access has been blocked. Please contact support.';
+    overlay.classList.add('show');
+  } else {
+    overlay.classList.remove('show');
+  }
+}
+function neshAttachDeviceBlockListener() {
+  neshWaitForFb(() => {
+    const { db, ref, onValue } = window.fb;
+    onValue(ref(db, 'blockedDevices/' + neshSanitizeFbKey(NESH_DEVICE_ID)), snap => {
+      const val = snap.val();
+      neshBlockedByDevice = !!val;
+      if (val && val.message) neshBlockedMessage = val.message;
+      neshUpdateBlockedUI();
+    });
+  });
+}
+let neshUserBlockAttachedFor = null;
+function neshAttachUserBlockListener(phone) {
+  if (!phone) {
+    neshBlockedByUser = false;
+    neshUserBlockAttachedFor = null;
+    neshUpdateBlockedUI();
+    return;
+  }
+  if (neshUserBlockAttachedFor === phone) return; // already listening for this number
+  neshUserBlockAttachedFor = phone;
+  neshWaitForFb(() => {
+    const { db, ref, onValue } = window.fb;
+    onValue(ref(db, 'blockedUsers/' + neshSanitizeFbKey(phone)), snap => {
+      const val = snap.val();
+      neshBlockedByUser = !!val;
+      if (val && val.message) neshBlockedMessage = val.message;
+      neshUpdateBlockedUI();
+    });
+  });
+}
+neshAttachDeviceBlockListener();
+
 // ---------- Resume-on-refresh bookkeeping ----------
 // `resumed` becomes true once we've successfully placed the customer back
 // on their saved screen. `pendingScreenResume` holds a saved screen that
@@ -2034,6 +2299,16 @@ function tryResumeScreen(saved) {
     openTaxiChat();
     resumed = true;
     return true;
+  } else if (saved.id === 'bus-list') {
+    if (!window.fb) return false;
+    openBusList();
+    resumed = true;
+    return true;
+  } else if (saved.id === 'bus-track' && saved.busId && saved.tripId) {
+    if (!window.fb) return false;
+    openBusTrack(saved.busId, saved.tripId, saved.dateStr);
+    resumed = true;
+    return true;
   }
   // Unrecognized saved.id — nothing we know how to resume.
   resumed = true;
@@ -2052,11 +2327,13 @@ try {
 // stay signed in until they explicitly tap Logout.
 function saveUserSession(user) {
   try { localStorage.setItem('asfood_customer_user', JSON.stringify(user)); } catch (e) {}
+  neshAttachUserBlockListener(user && user.number);
 }
 try {
   const savedUser = JSON.parse(localStorage.getItem('asfood_customer_user') || 'null');
   if (savedUser && savedUser.number) {
     state.user = savedUser;
+    neshAttachUserBlockListener(savedUser.number);
     attachScratchListener(savedUser.number);
     attachOrderStatusWatcher(savedUser.number);
     registerCustomerPush(savedUser.number);
@@ -2217,6 +2494,7 @@ document.getElementById('cat-card-groceries').addEventListener('click', () => op
 document.getElementById('cat-card-online-shop').addEventListener('click', () => openCategory('online_shop'));
 document.getElementById('home-cat-back-btn').addEventListener('click', goToCategoryScreen);
 document.getElementById('cat-card-taxi').addEventListener('click', () => goToTaxiBooking());
+document.getElementById('cat-card-bus').addEventListener('click', () => openBusList());
 document.getElementById('cat-card-orders').addEventListener('click', () => openOrdersScreen());
 document.getElementById('cat-loc-card').addEventListener('click', () => openBrowseLocationPicker());
 
@@ -2303,6 +2581,772 @@ let taxiTrackLastStatus = 'searching';
 const taxiCancelBtn = document.getElementById('taxi-cancel-ride-btn');
 let taxiTrackMap = null; // live-driver map on the ride tracking screen — created lazily, see renderTaxiTimeline
 let taxiTrackMapDriverId = null; // which driver we're currently watching, so we don't re-subscribe every snapshot
+
+// ---------- BUS TRACKING (customer side) ----------
+// Reads from the same `buses/{busId}` node the bus operator app writes to:
+//   buses/{busId}/name      -> display name, e.g. "KL-10 AB 1234"
+//   buses/{busId}/onDuty    -> true while the operator has tracking switched on
+//   buses/{busId}/location  -> { lat, lng, ts }
+//   buses/{busId}/stops     -> { stopId: { name, lat, lng, order } }
+let busListUnsub = null;
+let busListCache = {};           // last-seen `buses` snapshot, re-filtered on every route change
+let busFilterFrom = '';          // stop name text the customer picked as "From"
+let busFilterTo = '';            // stop name text the customer picked as "To"
+let busFilterDateStr = '';       // YYYY-MM-DD the customer wants trips for; '' means today
+
+// --- Date helpers for the "Today / Tomorrow / pick a date" trip filter ---
+function todayDateStr() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+function addDaysStr(dateStr, days) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + days);
+  const p = n => String(n).padStart(2, '0');
+  return `${dt.getFullYear()}-${p(dt.getMonth() + 1)}-${p(dt.getDate())}`;
+}
+// Midnight Date object for a YYYY-MM-DD string, in local time.
+function parseDateStr(dateStr) {
+  const [y, m, d] = (dateStr || todayDateStr()).split('-').map(Number);
+  return new Date(y, m - 1, d, 0, 0, 0, 0);
+}
+function formatDateLabel(dateStr) {
+  const today = todayDateStr();
+  if (dateStr === today) return 'Today';
+  if (dateStr === addDaysStr(today, 1)) return 'Tomorrow';
+  return parseDateStr(dateStr).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+}
+let busTrackUnsub = null;
+let busTrackStopsUnsub = null;
+let busTrackTripsUnsub = null;
+let busTrackCurrentId = null;
+let busTrackCurrentTripId = null;    // which of the bus's trips is open on the track screen
+let busListTickInterval = null;      // re-renders trip list periodically so countdowns/live
+                                      // transitions stay fresh without a page reload
+let busTrackTickInterval = null;     // same, for the single trip's status banner
+let busTrackStopsCache = [];     // full ordered list [start, ...stops, end] for the bus
+                                  // currently open — rebuilt whenever start/end/stops change
+let busTrackLastLoc = null;      // last known bus location
+let busTrackReachedIndex = -1;   // highest index in busTrackStopsCache the bus has actually
+                                  // arrived at (GPS within ARRIVAL_RADIUS_METERS) this session —
+                                  // monotonically increasing, like a real train app: a station
+                                  // only lights up once the train has actually reached it, and
+                                  // stays lit after
+const ARRIVAL_RADIUS_METERS = 80;
+let busTrackPrevLoc = null;      // { lat, lng, ts } from the previous location update, used to
+                                  // derive the bus's current speed
+let busTrackSpeedMps = 0;        // smoothed speed estimate (metres/second), used for per-stop ETA
+
+// Rebuilds the ordered [start, ...stops, end] list from the separately-
+// stored routeStart / routeEnd / stops nodes.
+function buildBusRouteList(start, stops, end) {
+  const list = [];
+  if (start && typeof start.lat === 'number') list.push(start);
+  stops.forEach(s => list.push(s));
+  if (end && typeof end.lat === 'number') list.push(end);
+  return list;
+}
+
+function renderBusTrackLine() {
+  const stops = busTrackStopsCache;
+  const wrap = document.getElementById('bus-track-stops');
+  wrap.innerHTML = '';
+  if (!stops.length) {
+    wrap.innerHTML = '<p class="hint-text" style="padding:0 24px;">This bus hasn\'t added any stops yet.</p>';
+    return;
+  }
+  // Cumulative distance (metres) from the bus's current position to each
+  // upcoming stop, walking forward through the remaining stops one by one
+  // (not a straight line cutting across the map) — combined with the
+  // bus's current speed to give each pending stop its own rough ETA.
+  let cumFromBus = null;
+  if (busTrackLastLoc) {
+    cumFromBus = new Array(stops.length).fill(null);
+    let running = 0;
+    for (let i = busTrackReachedIndex + 1; i < stops.length; i++) {
+      const from = i === busTrackReachedIndex + 1 ? busTrackLastLoc : stops[i - 1];
+      running += haversineMeters(from.lat, from.lng, stops[i].lat, stops[i].lng);
+      cumFromBus[i] = running;
+    }
+  }
+  stops.forEach((stop, i) => {
+    const isLast = i === stops.length - 1;
+    const passed = i <= busTrackReachedIndex;
+    const isHere = i === busTrackReachedIndex;
+    const isNext = i === busTrackReachedIndex + 1;
+    const row = document.createElement('div');
+    row.className = 'bus-line-row' + (passed ? ' passed' : '') + (isNext ? ' next' : '');
+    let segInner = '';
+    if (isHere) {
+      // Bus has actually arrived (GPS within range) at THIS stop —
+      // show the bus icon sitting right on its dot, not interpolated.
+      segInner = `<div class="bus-line-bus" style="top:0%;">🚌</div>`;
+    }
+    let etaText = '';
+    if (!passed && cumFromBus && cumFromBus[i] != null) {
+      const meters = cumFromBus[i];
+      const distStr = meters >= 1000 ? (meters / 1000).toFixed(1) + ' km' : Math.round(meters) + ' m';
+      if (busTrackSpeedMps > 0.6) {
+        const etaMin = Math.max(1, Math.round(meters / busTrackSpeedMps / 60));
+        etaText = `<p class="bus-line-eta">~${etaMin} min · ${distStr}</p>`;
+      } else {
+        etaText = `<p class="bus-line-eta bus-line-eta-dist">${distStr} away</p>`;
+      }
+    }
+    row.innerHTML = `
+      <div class="bus-line-dotcol">
+        <div class="bus-line-dot">${segInner}</div>
+        ${isLast ? '' : `<div class="bus-line-seg"></div>`}
+      </div>
+      <div class="bus-line-content">
+        <p class="bus-line-name">${escapeHtml(stop.name || 'Stop')}</p>
+        ${etaText}
+      </div>`;
+    wrap.appendChild(row);
+  });
+}
+
+// True when `trip` (a scheduled run of `bus`, going from trip.from to
+// trip.to along the bus's own ordered stop list) passes the selected "From"
+// stop before (or at) the selected "To" stop, in the trip's own direction.
+// Matches stop names by substring (case insensitive) so "town" matches
+// "Town Bus Stand". A bus can run different segments at different times of
+// day, so this checks the TRIP's segment, not the bus's full stop list.
+function tripMatchesRoute(bus, trip, fromName, toName) {
+  if (!fromName && !toName) return true;
+  const stops = Object.values(bus.stops || {}).sort((a, b) => (a.order || 0) - (b.order || 0));
+  if (!stops.length || !trip.from || !trip.to) return false;
+  const norm = s => (s || '').trim().toLowerCase();
+  const tripFromIdx = stops.findIndex(s => norm(s.name) === norm(trip.from));
+  const tripToIdx = stops.findIndex(s => norm(s.name) === norm(trip.to));
+  if (tripFromIdx === -1 || tripToIdx === -1) return false;
+  const dir = tripToIdx >= tripFromIdx ? 1 : -1;
+  const lo = Math.min(tripFromIdx, tripToIdx), hi = Math.max(tripFromIdx, tripToIdx);
+  const findWithin = name => {
+    if (!name) return -1;
+    const n = norm(name);
+    for (let i = lo; i <= hi; i++) { if (norm(stops[i].name).includes(n)) return i; }
+    return -1;
+  };
+  const fromIdx = findWithin(fromName);
+  const toIdx = findWithin(toName);
+  if (fromName && fromIdx === -1) return false;
+  if (toName && toIdx === -1) return false;
+  if (fromName && toName) return dir === 1 ? fromIdx <= toIdx : fromIdx >= toIdx;
+  return true;
+}
+
+// A trip's "started" state is auto-detected from its scheduled time — no
+// manual operator action needed. A trip is:
+//  - 'upcoming' before its scheduled time
+//  - 'live'     from its scheduled time until the next trip starts (or a
+//               default duration passes, if it's the day's last trip)
+//  - 'done'     after that
+// Like "Where is my Train": before a trip starts we never show mid-route
+// progress, only a countdown; live GPS progress only applies once the
+// schedule says the trip is actually running.
+const DEFAULT_TRIP_DURATION_MS = 90 * 60 * 1000; // fallback if no next trip today
+
+function parseTripTimeOn(timeStr, dateObj) {
+  const [h, m] = (timeStr || '00:00').split(':').map(Number);
+  const d = new Date(dateObj);
+  d.setHours(h || 0, m || 0, 0, 0);
+  return d;
+}
+function parseTripTimeToday(timeStr) {
+  return parseTripTimeOn(timeStr, new Date());
+}
+
+// `forDateStr` (YYYY-MM-DD) picks which day we're asking about — defaults
+// to today. Only TODAY can ever be 'live': any other date (always a future
+// date, since the date picker's min is today) is a schedule preview only —
+// "upcoming" no matter what, since the trip genuinely hasn't happened yet.
+function computeTripStatus(bus, trip, forDateStr) {
+  const dateStr = forDateStr || todayDateStr();
+  const isToday = dateStr === todayDateStr();
+  const start = parseTripTimeOn(trip.time, parseDateStr(dateStr));
+  if (!isToday) return { status: 'upcoming', start, end: start, isToday: false };
+
+  const startMs = start.getTime();
+  const laterStartsMs = Object.values(bus.trips || {})
+    .filter(t => t && t.time)
+    .map(t => parseTripTimeToday(t.time).getTime())
+    .filter(ms => ms > startMs)
+    .sort((a, b) => a - b);
+  const end = new Date(Math.min(
+    laterStartsMs.length ? laterStartsMs[0] : Infinity,
+    startMs + DEFAULT_TRIP_DURATION_MS
+  ));
+  const now = Date.now();
+  const status = now >= end.getTime() ? 'done' : (now >= startMs ? 'live' : 'upcoming');
+  return { status, start, end, isToday: true };
+}
+
+// "in 42 min" / "in 1h 15m" style countdown to a future Date.
+function formatCountdown(target) {
+  const mins = Math.max(0, Math.round((target.getTime() - Date.now()) / 60000));
+  if (mins < 60) return `${mins} min`;
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
+
+// Unique stop names across every bus currently known, used to power the
+// From/To autocomplete dropdowns.
+function allKnownStopNames() {
+  const names = new Set();
+  Object.values(busListCache).forEach(bus => {
+    Object.values(bus.stops || {}).forEach(stop => { if (stop && stop.name) names.add(stop.name); });
+  });
+  return Array.from(names);
+}
+
+// Same, but keeps one lat/lng per stop name (first one seen), so "Use my
+// current location" can find the physically nearest stop.
+function allKnownStopsWithCoords() {
+  const map = new Map();
+  Object.values(busListCache).forEach(bus => {
+    Object.values(bus.stops || {}).forEach(stop => {
+      if (stop && stop.name && typeof stop.lat === 'number' && typeof stop.lng === 'number' && !map.has(stop.name)) {
+        map.set(stop.name, { name: stop.name, lat: stop.lat, lng: stop.lng });
+      }
+    });
+  });
+  return Array.from(map.values());
+}
+
+// "Where is my train"-style ETA: distance from the bus's live GPS point to
+// ITS OWN copy of the "From" stop (not a generic stop database — the same
+// stop name can have slightly different coordinates per bus), divided by
+// its current speed. A stationary/very-slow-moving bus (traffic light, stuck
+// in traffic, GPS jitter) would otherwise show no ETA or a wildly wrong one,
+// so below a walking-pace threshold we fall back to a realistic town-bus
+// average speed and just give a rough estimate rather than nothing.
+function estimateEtaText(bus, fromName) {
+  if (!fromName) return null;
+  const stops = Object.values(bus.stops || {}).sort((a, b) => (a.order || 0) - (b.order || 0));
+  const norm = s => (s || '').trim().toLowerCase();
+  const fromNorm = norm(fromName);
+  const stop = stops.find(s => norm(s.name).includes(fromNorm));
+  const loc = bus.location;
+  if (!stop || typeof stop.lat !== 'number' || !loc || typeof loc.lat !== 'number') return null;
+  const meters = haversineMeters(stop.lat, stop.lng, loc.lat, loc.lng);
+  const FALLBACK_SPEED_MS = (20 * 1000) / 3600; // ~20 km/h town-bus average
+  const speedMs = (typeof loc.speed === 'number' && loc.speed > 1.5) ? loc.speed : FALLBACK_SPEED_MS;
+  const etaMin = Math.max(1, Math.round(meters / speedMs / 60));
+  const approx = !(typeof loc.speed === 'number' && loc.speed > 1.5);
+  const distText = meters >= 1000 ? (meters / 1000).toFixed(1) + ' km' : Math.round(meters) + ' m';
+  return { etaMin, distText, meters, approx };
+}
+
+function renderStopSuggestions(inputEl, listEl, onPick, onAddNew) {
+  const q = inputEl.value.trim().toLowerCase();
+  const names = allKnownStopNames();
+  const matches = q ? names.filter(n => n.toLowerCase().includes(q)) : names;
+  listEl.innerHTML = '';
+  matches.slice(0, 8).forEach(name => {
+    const item = document.createElement('div');
+    item.className = 'loc-search-item';
+    item.textContent = name;
+    item.addEventListener('click', () => {
+      inputEl.value = name;
+      listEl.classList.remove('show');
+      onPick(name);
+    });
+    listEl.appendChild(item);
+  });
+  // The stop the customer wants might not be added by any operator yet —
+  // always offer a way to suggest it as a new stop, instead of just going
+  // blank when nothing matches.
+  if (onAddNew) {
+    const addItem = document.createElement('div');
+    addItem.className = 'loc-search-item';
+    addItem.style.cssText = 'color:var(--chili); font-weight:700;';
+    const typed = inputEl.value.trim();
+    addItem.textContent = typed ? `➕ Add "${typed}" as a new stop` : '➕ Add a new stop';
+    addItem.addEventListener('click', () => {
+      listEl.classList.remove('show');
+      onAddNew(typed);
+    });
+    listEl.appendChild(addItem);
+  }
+  if (!matches.length && !onAddNew) { listEl.classList.remove('show'); return; }
+  listEl.classList.add('show');
+}
+
+function renderTripList() {
+  syncBusDateUi();
+  const wrap = document.getElementById('bus-list-items');
+  const emptyEl = document.getElementById('bus-list-empty');
+  const routeEmptyEl = document.getElementById('bus-list-route-empty');
+  const clearBtn = document.getElementById('bus-route-clear-btn');
+  const hasFilter = !!(busFilterFrom || busFilterTo);
+  clearBtn.style.display = hasFilter ? 'block' : 'none';
+
+  // Flatten every bus's trips into one list — the customer picks a trip
+  // (bus + time + direction), not a bus.
+  let entries = [];
+  Object.keys(busListCache).forEach(busId => {
+    const bus = busListCache[busId];
+    if (!bus || !bus.name) return;
+    Object.entries(bus.trips || {}).forEach(([tripId, trip]) => {
+      if (trip && trip.time) entries.push({ busId, tripId, trip, bus });
+    });
+  });
+  const totalCount = entries.length;
+
+  entries = entries.filter(e => tripMatchesRoute(e.bus, e.trip, busFilterFrom, busFilterTo));
+  // Only show trips still relevant for the chosen day — hide ones already
+  // finished (today only; a future day never has a "done" trip yet), like
+  // a "next departures" board rather than a full static timetable.
+  const dateStr = busFilterDateStr || todayDateStr();
+  entries = entries
+    .map(e => Object.assign(e, { statusInfo: computeTripStatus(e.bus, e.trip, dateStr) }))
+    .filter(e => e.statusInfo.status !== 'done');
+
+  // Live trips first (soonest-arriving to the chosen "From" stop first),
+  // then upcoming trips ordered by scheduled start time — same idea as a
+  // train-arrival listing.
+  entries.sort((a, b) => {
+    const aLive = a.statusInfo.status === 'live', bLive = b.statusInfo.status === 'live';
+    if (aLive !== bLive) return aLive ? -1 : 1;
+    if (aLive && busFilterFrom) {
+      const ea = estimateEtaText(a.bus, busFilterFrom);
+      const eb = estimateEtaText(b.bus, busFilterFrom);
+      if (ea && eb) return ea.meters - eb.meters;
+      if (ea) return -1;
+      if (eb) return 1;
+    }
+    return a.statusInfo.start - b.statusInfo.start;
+  });
+
+  wrap.innerHTML = '';
+  emptyEl.style.display = totalCount ? 'none' : 'block';
+  routeEmptyEl.style.display = (totalCount && !entries.length) ? 'block' : 'none';
+
+  entries.forEach(({ busId, tripId, trip, bus, statusInfo }) => {
+    const isLive = statusInfo.status === 'live';
+    let subText, subColor;
+    if (!statusInfo.isToday) {
+      subColor = 'var(--muted-2)';
+      subText = `📅 ${formatDateLabel(dateStr)} · runs at ${escapeHtml(trip.time)}`;
+    } else if (isLive) {
+      subColor = 'var(--leaf)';
+      const eta = busFilterFrom ? estimateEtaText(bus, busFilterFrom) : null;
+      subText = eta
+        ? `🔴 Live · ~${eta.etaMin} min away${eta.approx ? ' (approx)' : ''} to ${escapeHtml(busFilterFrom)}`
+        : '🔴 Live now';
+    } else {
+      subColor = 'var(--muted-2)';
+      subText = `Starts ${escapeHtml(trip.time)} · in ${formatCountdown(statusInfo.start)}`;
+    }
+    const row = document.createElement('div');
+    row.className = 'card';
+    row.style.cssText = 'display:flex; align-items:center; gap:12px; cursor:pointer;';
+    const avatarStyle = bus.photo
+      ? `background-image:url('${bus.photo}'); background-size:cover; background-position:center;`
+      : `background:${isLive ? 'var(--leaf)' : '#E3DFD8'};`;
+    row.innerHTML = `
+      <div style="width:44px; height:44px; border-radius:12px; ${avatarStyle} display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0;">${bus.photo ? '' : '🚌'}</div>
+      <div style="flex:1; min-width:0;">
+        <p style="margin:0; font-weight:700; color:var(--ink); font-size:15px;">${escapeHtml(bus.name)} <span style="font-weight:600; color:var(--muted-2); font-size:12.5px;">· ${escapeHtml(trip.from || '')} → ${escapeHtml(trip.to || '')}</span></p>
+        <p style="margin:2px 0 0; font-size:12.5px; color:${subColor};">${subText}</p>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>`;
+    row.addEventListener('click', () => openBusTrack(busId, tripId, dateStr));
+    wrap.appendChild(row);
+  });
+}
+
+function openBusList() {
+  showScreen('bus-list');
+  persistScreen('bus-list');
+  if (busListUnsub) { busListUnsub(); busListUnsub = null; }
+  if (busListTickInterval) { clearInterval(busListTickInterval); busListTickInterval = null; }
+  if (!busFilterDateStr) busFilterDateStr = todayDateStr();
+  syncBusDateUi();
+  if (!window.fb) return;
+  const { db, ref, onValue } = window.fb;
+  busListUnsub = onValue(ref(db, 'buses'), snap => {
+    busListCache = snap.val() || {};
+    renderTripList();
+  });
+  // Countdowns tick down and an "upcoming" trip flips to "live" on its own
+  // as the clock passes its scheduled time — keep the list current.
+  busListTickInterval = setInterval(renderTripList, 20000);
+}
+
+// Keeps the Today/Tomorrow chips, the native date input, and the "Trips"
+// section label all in sync with busFilterDateStr.
+function syncBusDateUi() {
+  const today = todayDateStr();
+  const tomorrow = addDaysStr(today, 1);
+  document.querySelectorAll('.bus-date-chip').forEach(chip => {
+    const chipDate = chip.dataset.chip === 'today' ? today : tomorrow;
+    chip.classList.toggle('active', busFilterDateStr === chipDate);
+  });
+  const dateInput = document.getElementById('bus-date-input');
+  dateInput.min = today;
+  if (document.activeElement !== dateInput) dateInput.value = busFilterDateStr;
+  const labelEl = document.getElementById('bus-list-date-label');
+  labelEl.textContent = busFilterDateStr === today ? 'Trips' : `Trips · ${formatDateLabel(busFilterDateStr)}`;
+}
+
+const busFromInput = document.getElementById('bus-from-input');
+const busToInput = document.getElementById('bus-to-input');
+const busFromSuggestions = document.getElementById('bus-from-suggestions');
+const busToSuggestions = document.getElementById('bus-to-suggestions');
+const busFromHint = document.getElementById('bus-from-hint');
+
+busFromInput.addEventListener('input', () => renderStopSuggestions(busFromInput, busFromSuggestions, name => { busFilterFrom = name; busFromHint.textContent = ''; renderTripList(); }, typed => openBusAddStop('from', typed)));
+busToInput.addEventListener('input', () => renderStopSuggestions(busToInput, busToSuggestions, name => { busFilterTo = name; renderTripList(); }, typed => openBusAddStop('to', typed)));
+busFromInput.addEventListener('focus', () => renderStopSuggestions(busFromInput, busFromSuggestions, name => { busFilterFrom = name; busFromHint.textContent = ''; renderTripList(); }, typed => openBusAddStop('from', typed)));
+busToInput.addEventListener('focus', () => renderStopSuggestions(busToInput, busToSuggestions, name => { busFilterTo = name; renderTripList(); }, typed => openBusAddStop('to', typed)));
+document.addEventListener('click', e => {
+  if (!busFromInput.contains(e.target) && !busFromSuggestions.contains(e.target)) busFromSuggestions.classList.remove('show');
+  if (!busToInput.contains(e.target) && !busToSuggestions.contains(e.target)) busToSuggestions.classList.remove('show');
+});
+// Typing without picking a suggestion still filters, using whatever text is
+// currently in the box (substring match), so the list updates live.
+busFromInput.addEventListener('change', () => { busFilterFrom = busFromInput.value.trim(); renderTripList(); });
+busToInput.addEventListener('change', () => { busFilterTo = busToInput.value.trim(); renderTripList(); });
+document.getElementById('bus-route-clear-btn').addEventListener('click', () => {
+  busFilterFrom = ''; busFilterTo = '';
+  busFromInput.value = ''; busToInput.value = '';
+  busFromHint.textContent = '';
+  renderTripList();
+});
+
+// Today / Tomorrow quick chips + a native date picker for anything further
+// out. Selecting a non-today date switches every trip in the list into
+// schedule-preview mode (see computeTripStatus) since it hasn't run yet.
+document.querySelectorAll('.bus-date-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const today = todayDateStr();
+    busFilterDateStr = chip.dataset.chip === 'today' ? today : addDaysStr(today, 1);
+    renderTripList();
+  });
+});
+document.getElementById('bus-date-input').addEventListener('change', e => {
+  const v = e.target.value;
+  if (v) { busFilterDateStr = v; renderTripList(); }
+});
+
+// "Use my current location" for From — finds the physically nearest known
+// stop (across all buses' stop lists) and selects it, with a small
+// indication of which stop it picked and how far it is.
+document.getElementById('bus-from-gps-btn').addEventListener('click', () => {
+  if (!navigator.geolocation) { busFromHint.textContent = 'GPS ലഭ്യമല്ല ഈ device-ൽ'; busFromHint.style.color = 'var(--chili)'; return; }
+  busFromHint.textContent = 'Location കണ്ടെത്തുന്നു…';
+  busFromHint.style.color = 'var(--muted)';
+  navigator.geolocation.getCurrentPosition(pos => {
+    const { latitude, longitude } = pos.coords;
+    const stops = allKnownStopsWithCoords();
+    if (!stops.length) { busFromHint.textContent = 'അടുത്തുള്ള stop ഒന്നും കിട്ടിയില്ല'; busFromHint.style.color = 'var(--chili)'; return; }
+    let nearest = null, nearestMeters = Infinity;
+    stops.forEach(s => {
+      const d = haversineMeters(latitude, longitude, s.lat, s.lng);
+      if (d < nearestMeters) { nearestMeters = d; nearest = s; }
+    });
+    busFromInput.value = nearest.name;
+    busFilterFrom = nearest.name;
+    const distText = nearestMeters >= 1000 ? (nearestMeters / 1000).toFixed(1) + ' km' : Math.round(nearestMeters) + ' m';
+    busFromHint.textContent = `📍 Nearest stop: ${nearest.name} (${distText} away)`;
+    busFromHint.style.color = 'var(--leaf)';
+    renderTripList();
+  }, () => {
+    busFromHint.textContent = 'Location കിട്ടിയില്ല, GPS ഓൺ ആണോ എന്ന് നോക്കുക';
+    busFromHint.style.color = 'var(--chili)';
+  }, { enableHighAccuracy: true, timeout: 15000 });
+});
+
+// --- "Add a new stop" — reached from the From/To suggestion dropdown when
+// the stop a customer wants isn't on any bus's route yet. Sends it as a
+// stopRequest to whichever bus(es) plausibly run that route (matched via
+// the OTHER field, if picked) — reusing the same buses/{busId}/stopRequests
+// node and Accept/Reject flow the operator app already has for on-trip stop
+// requests — and immediately fills the field that was being edited.
+let busAddStopField = null;   // 'from' | 'to' — which field to fill in on save
+let busAddStopCoords = null;
+
+// Picks which bus(es) should receive the request: buses whose existing
+// stops already include the OTHER field's stop (so they plausibly run
+// through this area) — or, with no route context yet, every known bus.
+function candidateBusIdsForStopRequest(field) {
+  const ids = Object.keys(busListCache).filter(id => busListCache[id] && busListCache[id].name);
+  const otherName = field === 'from' ? busFilterTo : busFilterFrom;
+  if (!otherName) return ids;
+  const norm = s => (s || '').trim().toLowerCase();
+  const n = norm(otherName);
+  const matching = ids.filter(id => Object.values(busListCache[id].stops || {}).some(s => norm(s.name).includes(n)));
+  return matching.length ? matching : ids;
+}
+
+function updateBusAddStopSaveEnabled() {
+  const name = document.getElementById('bus-add-stop-name-input').value.trim();
+  document.getElementById('bus-add-stop-save-btn').disabled = !(name && busAddStopCoords);
+}
+
+function openBusAddStop(field, prefillName) {
+  busAddStopField = field;
+  busAddStopCoords = null;
+  document.getElementById('bus-add-stop-name-input').value = prefillName || '';
+  const hintEl = document.getElementById('bus-add-stop-hint');
+  hintEl.textContent = '';
+  updateBusAddStopSaveEnabled();
+  showScreen('bus-add-stop');
+}
+
+document.getElementById('bus-add-stop-name-input').addEventListener('input', updateBusAddStopSaveEnabled);
+
+document.getElementById('bus-add-stop-gps-btn').addEventListener('click', () => {
+  const hintEl = document.getElementById('bus-add-stop-hint');
+  if (!navigator.geolocation) { hintEl.textContent = 'GPS ലഭ്യമല്ല ഈ device-ൽ'; hintEl.style.color = 'var(--chili)'; return; }
+  hintEl.textContent = 'Location കണ്ടെത്തുന്നു…';
+  hintEl.style.color = 'var(--muted)';
+  navigator.geolocation.getCurrentPosition(pos => {
+    busAddStopCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    hintEl.textContent = '📍 Location captured';
+    hintEl.style.color = 'var(--leaf)';
+    updateBusAddStopSaveEnabled();
+  }, () => {
+    hintEl.textContent = 'Location കിട്ടിയില്ല, GPS ഓൺ ആണോ എന്ന് നോക്കുക';
+    hintEl.style.color = 'var(--chili)';
+  }, { enableHighAccuracy: true, timeout: 15000 });
+});
+
+document.getElementById('bus-add-stop-save-btn').addEventListener('click', () => {
+  const name = document.getElementById('bus-add-stop-name-input').value.trim();
+  if (!name || !busAddStopCoords || !window.fb) return;
+  const { db, ref, push, set } = window.fb;
+  const targetBusIds = candidateBusIdsForStopRequest(busAddStopField);
+  targetBusIds.forEach(busId => {
+    const reqRef = push(ref(db, 'buses/' + busId + '/stopRequests'));
+    set(reqRef, { name, lat: busAddStopCoords.lat, lng: busAddStopCoords.lng, ts: Date.now() });
+  });
+  if (busAddStopField === 'from') { busFromInput.value = name; busFilterFrom = name; busFromHint.textContent = ''; }
+  else if (busAddStopField === 'to') { busToInput.value = name; busFilterTo = name; }
+  renderTripList();
+  showScreen('bus-list');
+});
+
+document.getElementById('bus-add-stop-back-btn').addEventListener('click', () => showScreen('bus-list'));
+
+function openBusTrack(busId, tripId, dateStr) {
+  showScreen('bus-track');
+  const trackDateStr = dateStr || todayDateStr();
+  persistScreen('bus-track', { busId, tripId, dateStr: trackDateStr });
+  busTrackCurrentId = busId;
+  busTrackCurrentTripId = tripId;
+  const isToday = trackDateStr === todayDateStr();
+  if (busTrackUnsub) { busTrackUnsub(); busTrackUnsub = null; }
+  if (busTrackStopsUnsub) { busTrackStopsUnsub(); busTrackStopsUnsub = null; }
+  if (busTrackTripsUnsub) { busTrackTripsUnsub(); busTrackTripsUnsub = null; }
+  if (busTrackTickInterval) { clearInterval(busTrackTickInterval); busTrackTickInterval = null; }
+  busTrackStopsCache = [];
+  busTrackLastLoc = null;
+  busTrackReachedIndex = -1;
+  busTrackPrevLoc = null;
+  busTrackSpeedMps = 0;
+  let busTrackStart = null, busTrackEnd = null, busTrackMidStops = [];
+  let busTrackTripsData = {};
+
+  // Rebuilds the ordered stop list for the CURRENTLY OPEN trip's own
+  // segment only (from trip.from to trip.to, in the trip's own direction)
+  // — not the bus's whole route, since one bus can run different segments
+  // at different times of day.
+  const rebuildBusRouteList = () => {
+    const full = buildBusRouteList(busTrackStart, busTrackMidStops, busTrackEnd);
+    const trip = busTrackTripsData[busTrackCurrentTripId];
+    if (trip && trip.from && trip.to && full.length) {
+      const norm = s => (s || '').trim().toLowerCase();
+      const fIdx = full.findIndex(s => norm(s.name).includes(norm(trip.from)));
+      const tIdx = full.findIndex(s => norm(s.name).includes(norm(trip.to)));
+      if (fIdx !== -1 && tIdx !== -1) {
+        const lo = Math.min(fIdx, tIdx), hi = Math.max(fIdx, tIdx);
+        const slice = full.slice(lo, hi + 1);
+        busTrackStopsCache = fIdx <= tIdx ? slice : slice.reverse();
+      } else {
+        busTrackStopsCache = full;
+      }
+    } else {
+      busTrackStopsCache = full;
+    }
+    renderBusTrackLine();
+  };
+
+  // Re-checks whether THIS trip is upcoming / live / done for the chosen
+  // date (purely from its scheduled time, auto-detected — no operator
+  // "start" button) and updates the header banner accordingly. Any date
+  // other than today is always a schedule preview — it hasn't run yet.
+  const refreshTripStatus = () => {
+    const trip = busTrackTripsData[busTrackCurrentTripId];
+    const eyebrowEl = document.getElementById('bus-track-eyebrow');
+    const statusEl = document.getElementById('bus-track-status');
+    if (!trip) { eyebrowEl.textContent = 'TRIP'; statusEl.textContent = 'Trip not found.'; return; }
+    const info = computeTripStatus({ trips: busTrackTripsData }, trip, trackDateStr);
+    if (!info.isToday) {
+      eyebrowEl.textContent = 'SCHEDULED';
+      statusEl.textContent = `${formatDateLabel(trackDateStr)} · runs at ${trip.time} — live tracking opens on the day of travel`;
+      renderBusTrackLine();
+    } else if (info.status === 'upcoming') {
+      eyebrowEl.textContent = 'UPCOMING TRIP';
+      statusEl.textContent = `Starts at ${trip.time} · in ${formatCountdown(info.start)} — trip hasn't started yet`;
+      // Like "Where is my Train": never show mid-route progress before the
+      // trip has actually begun — the bus may still be on an earlier run.
+      busTrackReachedIndex = -1;
+      renderBusTrackLine();
+    } else if (info.status === 'live') {
+      eyebrowEl.textContent = 'LIVE STATUS';
+      statusEl.textContent = busTrackLastLoc ? 'Live now' : 'Trip started — waiting for location…';
+    } else {
+      eyebrowEl.textContent = 'TRIP ENDED';
+      statusEl.textContent = 'This trip has ended for today.';
+    }
+  };
+
+  if (!window.fb) return;
+  const { db, ref, onValue } = window.fb;
+
+  onValue(ref(db, 'buses/' + busId + '/name'), snap => {
+    document.getElementById('bus-track-name').textContent = snap.val() || 'Bus';
+  }, { onlyOnce: true });
+
+  onValue(ref(db, 'buses/' + busId + '/photo'), snap => {
+    const dataUrl = snap.val();
+    const photoEl = document.getElementById('bus-track-photo');
+    if (dataUrl) { photoEl.style.backgroundImage = `url('${dataUrl}')`; photoEl.textContent = ''; }
+    else { photoEl.style.backgroundImage = ''; photoEl.textContent = '🚌'; }
+  }, { onlyOnce: true });
+
+  // All of this bus's scheduled trips — powers both the "other trips"
+  // switcher list and this trip's live/upcoming/done window (which depends
+  // on when the NEXT trip starts, for today).
+  busTrackTripsUnsub = onValue(ref(db, 'buses/' + busId + '/trips'), snap => {
+    busTrackTripsData = snap.val() || {};
+    const entries = Object.entries(busTrackTripsData).sort((a, b) => (a[1].time || '').localeCompare(b[1].time || ''));
+    const labelEl = document.getElementById('bus-track-trips-label');
+    const listEl = document.getElementById('bus-track-trips');
+    listEl.innerHTML = '';
+    labelEl.textContent = isToday ? 'Other trips today' : `Other trips · ${formatDateLabel(trackDateStr)}`;
+    labelEl.style.display = entries.length > 1 ? 'block' : 'none';
+    entries.forEach(([tid, trip]) => {
+      const isOpen = tid === busTrackCurrentTripId;
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--field-border); cursor:pointer;' + (isOpen ? '' : ' opacity:0.65;');
+      row.innerHTML = `<p style="margin:0; font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:${isOpen ? '800' : '600'}; color:var(--chili); flex-shrink:0;">${escapeHtml(trip.time || '--:--')}</p><p style="margin:0; font-size:14px; color:var(--ink); font-weight:${isOpen ? '700' : '400'};">${escapeHtml(trip.from || '')} → ${escapeHtml(trip.to || '')}${isOpen ? ' · open' : ''}</p>`;
+      row.addEventListener('click', () => { if (tid !== busTrackCurrentTripId) openBusTrack(busId, tid, trackDateStr); });
+      listEl.appendChild(row);
+    });
+    rebuildBusRouteList();
+    refreshTripStatus();
+  });
+
+  onValue(ref(db, 'buses/' + busId + '/routeStart'), snap => {
+    const v = snap.val();
+    busTrackStart = (v && typeof v.lat === 'number') ? v : null;
+    rebuildBusRouteList();
+  });
+  onValue(ref(db, 'buses/' + busId + '/routeEnd'), snap => {
+    const v = snap.val();
+    busTrackEnd = (v && typeof v.lat === 'number') ? v : null;
+    rebuildBusRouteList();
+  });
+  busTrackStopsUnsub = onValue(ref(db, 'buses/' + busId + '/stops'), snap => {
+    const stops = snap.val() || {};
+    busTrackMidStops = Object.values(stops)
+      .filter(s => typeof s.lat === 'number' && typeof s.lng === 'number')
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+    rebuildBusRouteList();
+  });
+
+  // A future date is a schedule preview only — the bus's live GPS today
+  // says nothing about a trip that hasn't happened yet, so don't even
+  // subscribe to it (avoids a misleading marker on the map).
+  if (isToday) {
+    busTrackUnsub = onValue(ref(db, 'buses/' + busId + '/location'), snap => {
+      const loc = snap.val();
+      if (!loc || typeof loc.lat !== 'number' || typeof loc.lng !== 'number') {
+        busTrackLastLoc = null;
+        renderBusTrackLine();
+        refreshTripStatus();
+        return;
+      }
+      busTrackLastLoc = { lat: loc.lat, lng: loc.lng };
+      const nowTs = loc.ts || Date.now();
+      if (busTrackPrevLoc) {
+        const dtSec = (nowTs - busTrackPrevLoc.ts) / 1000;
+        if (dtSec >= 4 && dtSec <= 180) {
+          const distM = haversineMeters(busTrackPrevLoc.lat, busTrackPrevLoc.lng, loc.lat, loc.lng);
+          const instSpeed = distM / dtSec;
+          if (instSpeed <= 35) { // ~126 km/h ceiling — filters bad GPS jumps
+            busTrackSpeedMps = busTrackSpeedMps ? (busTrackSpeedMps * 0.6 + instSpeed * 0.4) : instSpeed;
+          }
+        }
+      }
+      busTrackPrevLoc = { lat: loc.lat, lng: loc.lng, ts: nowTs };
+      // Only advance "reached stop" progress once this trip is actually LIVE
+      // by schedule. Before that, the bus's live GPS reflects an earlier
+      // trip, not this one, so progress stays pinned at the start.
+      const trip = busTrackTripsData[busTrackCurrentTripId];
+      const info = trip ? computeTripStatus({ trips: busTrackTripsData }, trip, trackDateStr) : null;
+      if (!info || info.status === 'live') {
+        busTrackStopsCache.forEach((stop, i) => {
+          if (i <= busTrackReachedIndex) return;
+          const meters = haversineMeters(loc.lat, loc.lng, stop.lat, stop.lng);
+          if (meters <= ARRIVAL_RADIUS_METERS) busTrackReachedIndex = i;
+        });
+      }
+      renderBusTrackLine();
+      refreshTripStatus();
+    });
+  }
+
+  refreshTripStatus();
+  // The trip flips upcoming → live on its own once the clock passes its
+  // scheduled time, even with no new GPS update — so tick independently.
+  busTrackTickInterval = setInterval(refreshTripStatus, 20000);
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+document.getElementById('bus-list-back-btn').addEventListener('click', () => {
+  if (busListUnsub) { busListUnsub(); busListUnsub = null; }
+  if (busListTickInterval) { clearInterval(busListTickInterval); busListTickInterval = null; }
+  showScreen('category');
+});
+document.getElementById('bus-track-back-btn').addEventListener('click', () => {
+  if (busTrackUnsub) { busTrackUnsub(); busTrackUnsub = null; }
+  if (busTrackStopsUnsub) { busTrackStopsUnsub(); busTrackStopsUnsub = null; }
+  if (busTrackTripsUnsub) { busTrackTripsUnsub(); busTrackTripsUnsub = null; }
+  if (busTrackTickInterval) { clearInterval(busTrackTickInterval); busTrackTickInterval = null; }
+  openBusList();
+});
+
+document.getElementById('bus-stop-request-btn').addEventListener('click', () => {
+  const nameInput = document.getElementById('bus-stop-request-input');
+  const hintEl = document.getElementById('bus-stop-request-hint');
+  const name = nameInput.value.trim();
+  if (!name) { hintEl.textContent = 'സ്ഥലത്തിന്റെ പേര് ആദ്യം ടൈപ്പ് ചെയ്യുക'; hintEl.style.color = 'var(--chili)'; return; }
+  if (!navigator.geolocation) { hintEl.textContent = 'GPS ലഭ്യമല്ല ഈ device-ൽ'; hintEl.style.color = 'var(--chili)'; return; }
+  if (!window.fb || !busTrackCurrentId) return;
+  hintEl.textContent = 'Location എടുക്കുന്നു…';
+  hintEl.style.color = 'var(--muted)';
+  navigator.geolocation.getCurrentPosition(pos => {
+    const { db, ref, push, set } = window.fb;
+    const reqRef = push(ref(db, 'buses/' + busTrackCurrentId + '/stopRequests'));
+    set(reqRef, { name, lat: pos.coords.latitude, lng: pos.coords.longitude, ts: Date.now() });
+    nameInput.value = '';
+    hintEl.textContent = 'Request അയച്ചു — ഡ്രൈവർ accept ചെയ്താൽ stop ലിസ്റ്റിൽ വരും.';
+    hintEl.style.color = 'var(--leaf)';
+  }, () => {
+    hintEl.textContent = 'Location കിട്ടിയില്ല, GPS ഓൺ ആണോ എന്ന് നോക്കുക';
+    hintEl.style.color = 'var(--chili)';
+  }, { enableHighAccuracy: true, timeout: 15000 });
+});
 
 function showTaxiBookingForm() {
   detachTaxiChatListener();
@@ -2647,6 +3691,7 @@ async function submitTaxiBooking() {
   const ride = {
     customerNumber: state.user?.number || '',
     customerName: state.user?.name || 'Customer',
+    customerDeviceId: NESH_DEVICE_ID,
     pickup: taxiPickup,
     drop: taxiDrop,
     vehicleType: rt.key,
@@ -3177,6 +4222,8 @@ if (typeof firebase !== 'undefined' && firebase.messaging) {
 // subscribes the device to "all_customers" so operator broadcasts
 // (offers/announcements) reach everyone, logged in or not.
 async function registerCustomerPush(phone) {
+  // Push notification permission requests disabled — feature turned off.
+  return;
   try {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
     if (typeof firebase === 'undefined' || !firebase.messaging) return;
@@ -3521,6 +4568,67 @@ function updateCatLocationLabel() {
   if (el) el.textContent = state.customerPos ? "Delivering to selected location" : "Select your location";
 }
 
+// ---------- Shop opening/closing time (set by the shop in the partner app)
+// ----------
+// Returns true if "now" falls inside the shop's daily open/close window.
+// Handles overnight windows (e.g. open 18:00, close 02:00) the same way
+// the partner app's own preview does.
+function isWithinShopHours(openTime, closeTime, now) {
+  if (!openTime || !closeTime || openTime === closeTime) return true;
+  const [oh, om] = openTime.split(':').map(Number);
+  const [ch, cm] = closeTime.split(':').map(Number);
+  const openMins = oh * 60 + om;
+  const closeMins = ch * 60 + cm;
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  if (openMins < closeMins) return nowMins >= openMins && nowMins < closeMins;
+  return nowMins >= openMins || nowMins < closeMins; // overnight window
+}
+function formatTime12(hhmm) {
+  if (!hhmm || hhmm.indexOf(':') === -1) return hhmm || '';
+  const [h, m] = hhmm.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = ((h % 12) || 12);
+  return h12 + ':' + String(m).padStart(2, '0') + ' ' + period;
+}
+// Single source of truth for whether a shop is closed right now, combining
+// the manual "shop unavailable" toggle with the scheduled opening/closing
+// time. Used to hide stock, block ordering, and show the "Closed" mark
+// across the whole app — a shop is closed if EITHER is true.
+function getShopClosedInfo(r) {
+  if (r.shopUnavailable) {
+    return { closed: true, message: r.shopUnavailableMessage || "Please check back soon." };
+  }
+  if (r.hoursEnabled && r.openTime && r.closeTime && !isWithinShopHours(r.openTime, r.closeTime, new Date())) {
+    return { closed: true, message: "Closed now. Opens at " + formatTime12(r.openTime) + "." };
+  }
+  return { closed: false, message: "" };
+}
+
+// Re-checks every shop's open/closed status periodically (opening/closing
+// time is a live clock condition, not an event) and only re-renders
+// screens whose shown state actually changed, so the shop flips to
+// "Closed"/back to open on its own without the customer refreshing —
+// without disrupting scrolling/search on every tick.
+const shopClosedStateCache = {};
+function refreshShopHoursState() {
+  if (!Array.isArray(window.RESTAURANTS)) return;
+  let listNeedsRerender = false;
+  let menuNeedsRerender = false;
+  window.RESTAURANTS.forEach(r => {
+    const closed = getShopClosedInfo(r).closed;
+    if (shopClosedStateCache[r.id] !== closed) {
+      shopClosedStateCache[r.id] = closed;
+      listNeedsRerender = true;
+      if (state.selectedRestaurant && state.selectedRestaurant.id === r.id) menuNeedsRerender = true;
+    }
+  });
+  const activeScreen = document.querySelector('.screen.active');
+  const activeId = activeScreen ? activeScreen.id : '';
+  if (listNeedsRerender && activeId === 'screen-home') renderRestaurantList();
+  if (menuNeedsRerender && activeId === 'screen-menu') renderMenu();
+}
+setInterval(refreshShopHoursState, 30000);
+
 function renderHome() {
   updateHomeLocationLabel();
   const firstName = (state.user?.name || "friend").split(' ')[0];
@@ -3606,11 +4714,12 @@ function renderRestaurantList() {
       ? (haversineMeters(state.customerPos.lat, state.customerPos.lng, restPos.lat, restPos.lng) / 1000).toFixed(1)
       : null;
     const distanceLabel = distanceKm !== null ? `, ${distanceKm} km` : "";
+    const shopClosed = getShopClosedInfo(r).closed;
     card.innerHTML = `
-      <div class="rest-img-wrap">
+      <div class="rest-img-wrap${shopClosed ? ' is-shop-closed' : ''}">
         <img class="rest-img" src="${r.image}" alt="${r.name}" loading="lazy"
           onerror="this.style.background='${r.color}'; this.src='';" />
-        ${r.opCategory ? `<div class="rest-badge-category">${escapeHtml(r.opCategory)}</div>` : ''}
+        ${shopClosed ? `<div class="rest-badge-closed"><span>Closed</span></div>` : (r.opCategory ? `<div class="rest-badge-category">${escapeHtml(r.opCategory)}</div>` : '')}
         <div class="rest-dots"><span></span><span></span><span></span><span></span></div>
         <button class="rest-heart" aria-label="Save restaurant">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
@@ -3785,9 +4894,9 @@ function renderMenu() {
   const unavailablePanel = document.getElementById('shop-unavailable-panel');
   const searchWrap = document.getElementById('menu-search-wrap');
   const cartBar = document.getElementById('cart-bar');
-  if (r.shopUnavailable) {
-    document.getElementById('shop-unavailable-message-text').textContent =
-      r.shopUnavailableMessage || "Please check back soon.";
+  const closedInfo = getShopClosedInfo(r);
+  if (closedInfo.closed) {
+    document.getElementById('shop-unavailable-message-text').textContent = closedInfo.message;
     unavailablePanel.style.display = 'block';
     searchWrap.style.display = 'none';
     document.getElementById('item-list-label').style.display = 'none';
@@ -5110,6 +6219,13 @@ payConfirmBtn.addEventListener('click', async () => {
   const r = state.selectedRestaurant;
   const pc = state.pendingCheckout;
   if (!r || !pc) { closePaymentConfirm(); return; }
+  const closedInfo = getShopClosedInfo(r);
+  if (closedInfo.closed) {
+    alert(closedInfo.message);
+    closePaymentConfirm();
+    renderMenu();
+    return;
+  }
   if (selectedPaymentMethod === 'gpay' && !gpayPaidCheckbox.checked) {
     alert("Please complete the GPay payment and tick \"I've completed the payment\" before placing the order.");
     return;
@@ -5172,6 +6288,7 @@ payConfirmBtn.addEventListener('click', async () => {
       customerLocation: pc.text,
       customerPlace: pc.place,
       customerLandmark: pc.landmark,
+      customerDeviceId: NESH_DEVICE_ID,
       items: orderItems,
       total,
       platformFee,
