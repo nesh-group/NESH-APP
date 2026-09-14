@@ -1302,7 +1302,7 @@
   <!-- MENU -->
   <section class="screen" id="screen-menu">
     <div class="menu-header">
-      <button class="btn-back" onclick="showScreen('home'); persistScreen('home', { category: state.category });">
+      <button class="btn-back" onclick="renderHome(); showScreen('home'); persistScreen('home', { category: state.category });">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
       </button>
       <img class="menu-header-logo" id="menu-rest-logo" src="" alt="" />
@@ -1375,7 +1375,7 @@
       </div>
       <div class="confirm-btn-wrap stack">
         <button class="btn-primary" id="confirm-track-btn" style="background:var(--leaf); color:var(--cloud);">🛵 Track your Order</button>
-        <button class="btn-primary" onclick="showScreen('home'); persistScreen('home', { category: state.category });">Back to restaurants</button>
+        <button class="btn-primary" onclick="renderHome(); showScreen('home'); persistScreen('home', { category: state.category });">Back to restaurants</button>
       </div>
     </div>
   </section>
@@ -3991,7 +3991,7 @@ document.getElementById('taxi-chat-input').addEventListener('keydown', (e) => {
 (function () {
   if (!window.Capacitor || !window.Capacitor.Plugins || !window.Capacitor.Plugins.App) return;
   const CapApp = window.Capacitor.Plugins.App;
-  CapApp.addListener('backButton', ({ canGoBack }) => {
+  CapApp.addListener('backButton', () => {
     const activeScreen = document.querySelector('.screen.active');
     const activeId = activeScreen ? activeScreen.id.replace('screen-', '') : '';
     const rideActive = !!currentRideKey && !['completed', 'cancelled'].includes(taxiTrackLastStatus);
@@ -4002,7 +4002,28 @@ document.getElementById('taxi-chat-input').addEventListener('keydown', (e) => {
     }
     if (activeId === 'taxi-chat') { closeTaxiChat(); return; }
     if (activeId === 'taxi-track') { leaveTaxiTrack(); return; }
-    if (canGoBack) { window.history.back(); return; }
+
+    // Everything else defers to our own screen stack — the single source
+    // of truth for whether there's still somewhere to go back to — instead
+    // of the native `canGoBack` flag. That flag reflects the raw WebView
+    // history length, which the popstate handler above constantly re-arms,
+    // so it doesn't reliably agree with which screen is actually on
+    // screen. Relying on it let a single back press exit/minimize the app
+    // from screens other than the true root (Category/Home), and even
+    // there, without ever requiring the confirming second press.
+    if (neshScreenStack.length > 1) {
+      window.history.back(); // triggers the popstate handler above, which pops one screen
+      return;
+    }
+    // Already at the root screen — require the same "tap back again to
+    // exit" confirmation the web back button uses, instead of exiting on
+    // the very first press.
+    if (!neshExitArmed) {
+      neshExitArmed = true;
+      neshShowExitToast();
+      setTimeout(() => { neshExitArmed = false; }, 1600);
+      return;
+    }
     if (CapApp.minimizeApp) CapApp.minimizeApp();
     else if (CapApp.exitApp) CapApp.exitApp();
   });
@@ -6663,6 +6684,7 @@ function openOrdersScreen() {
 
 function leaveOrdersScreen() {
   if (ordersUnsub) { ordersUnsub(); ordersUnsub = null; }
+  renderHome();
   showScreen('home');
   persistScreen('home', { category: state.category });
 }
@@ -6757,7 +6779,7 @@ autoDetectLocation();
 // on (home, category, a restaurant's menu with their cart, order tracking,
 // or their orders list) instead of always dropping them back at the top,
 // so minimizing the app or refreshing the page keeps their place. ----------
-renderHome();
+if (state.category) renderHome();
 try {
   const savedOrder = JSON.parse(localStorage.getItem('asfood_last_order') || 'null');
   if (savedOrder && savedOrder.orderKey) state.lastOrder = savedOrder;
