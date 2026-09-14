@@ -4003,21 +4003,43 @@ document.getElementById('taxi-chat-input').addEventListener('keydown', (e) => {
     if (activeId === 'taxi-chat') { closeTaxiChat(); return; }
     if (activeId === 'taxi-track') { leaveTaxiTrack(); return; }
 
-    // Everything else defers to our own screen stack — the single source
-    // of truth for whether there's still somewhere to go back to — instead
-    // of the native `canGoBack` flag. That flag reflects the raw WebView
-    // history length, which the popstate handler above constantly re-arms,
-    // so it doesn't reliably agree with which screen is actually on
-    // screen. Relying on it let a single back press exit/minimize the app
-    // from screens other than the true root (Category/Home), and even
-    // there, without ever requiring the confirming second press.
+    // 1) An open sheet/dropdown/modal should close first — mirrors the
+    // web popstate handler above.
+    const overlays = [
+      { id: 'install-overlay', close: null },
+      { id: 'scratch-modal-overlay', close: () => closeScratchModal() },
+      { id: 'account-dropdown', close: () => closeAccountDropdown() },
+      { id: 'order-summary-overlay', close: () => closeOrderSummary() },
+      { id: 'payment-overlay', close: () => document.getElementById('pay-cancel-btn').click() },
+      { id: 'browse-loc-overlay', close: () => document.getElementById('browse-loc-cancel-btn').click() },
+      { id: 'loc-overlay', close: () => document.getElementById('loc-cancel-btn').click() },
+    ];
+    for (const o of overlays) {
+      const el = document.getElementById(o.id);
+      if (el && el.classList.contains('show')) {
+        if (o.close) o.close();
+        return;
+      }
+    }
+
+    // 2) Step back to the previous in-app screen using our own stack
+    // DIRECTLY — deliberately never calling window.history.back()/going
+    // through the browser's real history here. That would re-trigger the
+    // popstate handler above, so a single hardware press could end up
+    // popping two screens at once (this call's own pop, plus the browser's
+    // own back navigation) instead of exactly one — which is what let the
+    // exit confirmation get reached, and then consumed, before the
+    // customer had actually stepped back to the root screen.
     if (neshScreenStack.length > 1) {
-      window.history.back(); // triggers the popstate handler above, which pops one screen
+      neshScreenStack.pop();
+      const prevId = neshScreenStack[neshScreenStack.length - 1];
+      neshSkipHistoryPush = true;
+      showScreen(prevId);
       return;
     }
-    // Already at the root screen — require the same "tap back again to
-    // exit" confirmation the web back button uses, instead of exiting on
-    // the very first press.
+
+    // 3) Already at the root screen — require a second press (within
+    // ~1.6s) before actually letting the app exit.
     if (!neshExitArmed) {
       neshExitArmed = true;
       neshShowExitToast();
