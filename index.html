@@ -6208,6 +6208,18 @@ locProceedBtn.addEventListener('click', () => {
     locCurrentValue.textContent = "Please set a delivery location first";
     return;
   }
+  // Block checkout if the picked delivery point falls outside this shop's
+  // drawn delivery zone. Only enforced when we actually have coordinates
+  // (a pinned map location) and the shop has drawn a zone — a typed-only
+  // location with no lat/lng can't be checked, so it's allowed through as
+  // before rather than blocking on something we can't verify.
+  if (r.zone && typeof pendingLocation.lat === 'number' && typeof pendingLocation.lng === 'number') {
+    const inZone = isPointInZone({ lat: pendingLocation.lat, lng: pendingLocation.lng }, r.zone);
+    if (!inZone) {
+      alert((r.name || "This shop") + " doesn't deliver to this location. Please pick a location inside their delivery area.");
+      return;
+    }
+  }
   const contactNumber = locContactInput.value.trim();
   if (contactNumber.length !== 10) {
     locContactInput.focus();
