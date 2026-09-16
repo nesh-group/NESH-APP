@@ -229,11 +229,15 @@
   }
   .home-back-btn{ background:none; border:none; color:var(--ink); cursor:pointer; padding:0 8px 0 0; display:flex; align-items:center; }
   .top-row{ padding:40px 24px 16px; display:flex; align-items:flex-start; justify-content:space-between; }
-  .loc-row{ display:flex; align-items:center; gap:6px; margin-top:4px; }
-  .greeting{ padding:0 24px; color:var(--ink); font-family:'Fraunces',serif; font-size:26px; font-weight:700; margin:0; }
+  .loc-row{
+    display:inline-flex; align-items:center; gap:6px; margin-top:6px; cursor:pointer;
+    background:var(--field-bg); border:1.5px solid var(--field-border); border-radius:20px;
+    padding:7px 12px 7px 10px;
+  }
+  .greeting{ padding:6px 24px 0; color:var(--ink); font-family:'Fraunces',serif; font-size:27px; font-weight:700; margin:0; }
 
   .search-wrap{ padding:16px 24px 0; }
-  .search-wrap .field{ background:var(--cloud); border-color:var(--cloud); }
+  .search-wrap .field{ background:var(--cloud); border-color:var(--cloud); box-shadow:0 3px 10px rgba(43,36,16,.05); }
 
   .rest-list{ padding:24px 24px 0; display:flex; flex-direction:column; gap:16px; }
   .rest-card{ cursor:pointer; padding:0; border:none; width:100%; text-align:left; background:none; }
@@ -254,12 +258,14 @@
   .empty-text{ color:var(--muted); font-size:14px; }
 
   .menu-header{
-    padding:36px 24px 16px; display:flex; align-items:center; gap:12px;
-    background:var(--bg); position:relative; z-index:1;
+    padding:38px 24px 20px; display:flex; align-items:center; gap:14px;
+    background:linear-gradient(180deg, var(--field-bg) 0%, var(--bg) 100%);
+    border-radius:0 0 26px 26px; position:relative; z-index:1;
+    box-shadow:0 6px 16px rgba(43,36,16,.06);
   }
   .menu-header-logo{
-    width:48px; height:48px; border-radius:14px; object-fit:cover; flex-shrink:0;
-    background:var(--field-bg); border:1px solid var(--field-border);
+    width:56px; height:56px; border-radius:16px; object-fit:cover; flex-shrink:0;
+    background:var(--field-bg); border:2.5px solid #fff; box-shadow:0 4px 12px rgba(43,36,16,.18);
   }
   .menu-header-text{ min-width:0; }
   .menu-rest-name{
@@ -521,35 +527,86 @@
   .bus-line-eta-dist{ color:var(--muted-2); font-weight:600; }
 
   /* ---- TAXI ---- */
-  .taxi-header{ padding:40px 24px 8px; display:flex; align-items:center; gap:14px; }
-  .taxi-title{ color:var(--ink); font-family:'Fraunces',serif; font-size:22px; font-weight:700; margin:2px 0 0; }
-  .taxi-body{ padding:20px 24px 40px; }
-  .taxi-pin-row{ display:flex; align-items:center; gap:10px; padding:13px 14px; border-radius:12px; background:var(--field-bg); border:1.5px solid var(--field-border); cursor:pointer; }
-  .taxi-pin-row.active{ border-color:var(--marigold-dark); }
-  .taxi-pin-dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; }
-  .taxi-pin-dot.pickup{ background:var(--leaf); }
-  .taxi-pin-dot.drop{ background:var(--chili); }
-  .taxi-pin-row input{ background:transparent; border:none; outline:none; width:100%; font-size:14px; color:var(--ink); font-family:'Inter',sans-serif; cursor:pointer; }
-  .taxi-pin-row input::placeholder{ color:var(--muted); }
-  .taxi-gps-btn{ flex-shrink:0; background:none; border:none; color:var(--chili); font-size:11px; font-weight:700; cursor:pointer; padding:0; white-space:nowrap; }
-  .taxi-map-wrap{ position:relative; margin:14px 0 4px; }
-  .taxi-map{ width:100%; height:200px; border-radius:14px; overflow:hidden; background:var(--cloud); }
-  .taxi-map-hint{ color:var(--muted); font-size:11px; text-align:center; margin:6px 0 0; }
+  .taxi-header{
+    padding:44px 24px 26px; display:flex; align-items:center; gap:14px;
+    background:linear-gradient(135deg, var(--marigold) 0%, var(--marigold-dark) 100%);
+    border-radius:0 0 28px 28px;
+    box-shadow:0 10px 24px rgba(214,158,0,.28);
+    position:relative; overflow:hidden;
+  }
+  .taxi-header::after{
+    content:'🚕'; position:absolute; right:-14px; bottom:-22px; font-size:96px;
+    opacity:.16; transform:rotate(-8deg); pointer-events:none;
+  }
+  .taxi-header .btn-back{
+    width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,.55);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0; z-index:1;
+  }
+  .taxi-header .btn-back svg{ stroke:var(--ink); }
+  .taxi-header .eyebrow{ color:rgba(43,36,16,.65); z-index:1; position:relative; }
+  .taxi-title{ color:var(--ink); font-family:'Fraunces',serif; font-size:24px; font-weight:700; margin:2px 0 0; z-index:1; position:relative; }
+  .taxi-body{ padding:22px 24px 40px; }
+
+  .taxi-route-card{
+    position:relative; background:#fff; border-radius:16px; padding:6px 14px;
+    box-shadow:0 6px 18px rgba(43,36,16,.10); border:1px solid var(--field-border);
+  }
+  .taxi-route-line{
+    position:absolute; left:23px; top:34px; bottom:34px; width:2px;
+    background-image:linear-gradient(var(--field-border) 60%, transparent 0%);
+    background-position:left; background-size:2px 8px; background-repeat:repeat-y;
+  }
+  .taxi-pin-row{ display:flex; align-items:center; gap:12px; padding:13px 0; cursor:pointer; position:relative; z-index:1; }
+  .taxi-pin-row + .taxi-pin-row{ border-top:1px solid var(--field-border); }
+  .taxi-pin-row.active .taxi-pin-dot{ box-shadow:0 0 0 4px rgba(242,183,5,.25); }
+  .taxi-pin-dot{ width:11px; height:11px; border-radius:50%; flex-shrink:0; background:#fff; border:2.5px solid; }
+  .taxi-pin-dot.pickup{ border-color:var(--leaf); }
+  .taxi-pin-dot.drop{ border-color:var(--chili); border-radius:3px; }
+  .taxi-pin-row input{ background:transparent; border:none; outline:none; width:100%; font-size:14.5px; font-weight:600; color:var(--ink); font-family:'Inter',sans-serif; cursor:pointer; }
+  .taxi-pin-row input::placeholder{ color:var(--muted); font-weight:500; }
+  .taxi-gps-btn{
+    flex-shrink:0; display:flex; align-items:center; gap:4px; background:rgba(27,166,114,.1);
+    border:none; color:var(--leaf); font-size:11px; font-weight:700; cursor:pointer;
+    padding:6px 10px; border-radius:20px; white-space:nowrap;
+  }
+  .taxi-map-wrap{ position:relative; margin:16px 0 4px; border-radius:18px; overflow:hidden; box-shadow:0 8px 22px rgba(43,36,16,.14); }
+  .taxi-map{ width:100%; height:200px; overflow:hidden; background:var(--cloud); }
+  .taxi-map-hint{
+    color:var(--muted-2); font-size:11px; text-align:center; font-weight:600;
+    margin:0; padding:8px 6px; background:#fff;
+  }
 
   /* Live driver-tracking map — shown on the ride/order status screens once
      a driver has been assigned, so the customer can watch them approach. */
   .track-map-wrap{ margin:0 24px 0; }
   .track-map-wrap.hidden{ display:none; }
   .track-map{ width:100%; height:180px; border-radius:14px; overflow:hidden; background:var(--cloud); }
-  .taxi-distance-text{ color:var(--muted-2); font-size:12px; text-align:center; margin:8px 0 0; font-weight:600; }
-  .ride-options{ display:flex; flex-direction:column; gap:10px; margin-top:16px; }
-  .ride-option{ display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:14px; background:#fff; border:1.5px solid var(--field-border); cursor:pointer; }
-  .ride-option.selected{ border-color:var(--marigold); background:rgba(242,183,5,.08); }
-  .ride-option-icon{ font-size:26px; width:36px; text-align:center; flex-shrink:0; }
+  .taxi-distance-text{
+    color:var(--chili); font-size:12px; text-align:center; margin:10px 0 0; font-weight:700;
+    background:rgba(201,127,0,.08); display:inline-block; padding:5px 12px; border-radius:20px;
+    width:100%;
+  }
+  .ride-options{ display:flex; flex-direction:column; gap:10px; margin-top:18px; }
+  .ride-option{
+    display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:16px;
+    background:#fff; border:1.5px solid var(--field-border); cursor:pointer;
+    transition:transform .1s, box-shadow .15s;
+  }
+  .ride-option:active{ transform:scale(0.98); }
+  .ride-option.selected{
+    border-color:var(--marigold-dark); background:linear-gradient(90deg, rgba(242,183,5,.14), rgba(242,183,5,.04));
+    box-shadow:0 4px 14px rgba(214,158,0,.18);
+  }
+  .ride-option-icon{
+    font-size:22px; width:44px; height:44px; text-align:center; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; border-radius:50%;
+    background:var(--field-bg);
+  }
+  .ride-option.selected .ride-option-icon{ background:var(--marigold); }
   .ride-option-mid{ flex:1; }
   .ride-option-name{ color:var(--ink); font-weight:700; font-family:'Poppins',sans-serif; font-size:14px; margin:0; }
   .ride-option-eta{ color:var(--muted-2); font-size:12px; margin:2px 0 0; }
-  .ride-option-fare{ color:var(--ink); font-weight:700; font-size:15px; font-family:'Poppins',sans-serif; flex-shrink:0; }
+  .ride-option-fare{ color:var(--ink); font-weight:800; font-size:15.5px; font-family:'Poppins',sans-serif; flex-shrink:0; }
   .taxi-driver-card{ display:flex; align-items:center; gap:12px; margin-top:16px; padding:14px; border-radius:14px; background:#fff; border:1px solid var(--field-border); }
   .taxi-driver-card.hidden{ display:none; }
 
@@ -779,8 +836,12 @@
   .order-status-chip.cancelled{ background:#F0EEEA; color:var(--muted-2); }
 
   /* ---------- Restaurant list (photo-card style) ---------- */
-  .rest-card2{ padding:0; overflow:hidden; cursor:pointer; }
-  .rest-img-wrap{ position:relative; width:100%; height:180px; background:var(--cloud); }
+  .rest-card2{ padding:0; overflow:hidden; cursor:pointer; border-radius:20px; box-shadow:0 6px 20px rgba(43,36,16,.10); }
+  .rest-img-wrap{ position:relative; width:100%; height:190px; background:var(--cloud); }
+  .rest-img-wrap::after{
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(180deg, rgba(0,0,0,.12) 0%, transparent 22%, transparent 78%, rgba(0,0,0,.28) 100%);
+  }
   .rest-img{ width:100%; height:100%; object-fit:cover; display:block; }
   .rest-dots{
     position:absolute; top:10px; left:0; right:0; display:flex; justify-content:center; gap:4px;
@@ -816,7 +877,7 @@
     letter-spacing:1px; text-transform:uppercase; padding:7px 16px; border-radius:8px;
   }
   .rest-info2{ padding:14px 16px 16px; }
-  .rest-name2{ color:var(--ink); font-weight:800; font-family:'Poppins',sans-serif; font-size:17px; margin:0; }
+  .rest-name2{ color:var(--ink); font-weight:800; font-family:'Poppins',sans-serif; font-size:17px; margin:0; letter-spacing:.1px; }
   .rest-meta2{ display:flex; align-items:center; gap:6px; margin-top:8px; font-size:13px; color:var(--muted-2); flex-wrap:wrap; }
   .rest-rating2{
     display:flex; align-items:center; gap:3px; color:var(--leaf); font-weight:700;
@@ -832,28 +893,39 @@
     background:#fff; color:var(--ink); font-size:12px; font-weight:600; font-family:'Inter',sans-serif;
     white-space:nowrap;
   }
-  .item-list-label{ padding:18px 24px 0; color:var(--ink); font-weight:700; font-family:'Poppins',sans-serif; font-size:14px; margin:0; }
-  .item-grid{ padding:14px 24px 110px; display:grid; grid-template-columns:1fr 1fr; gap:20px 14px; }
-  .item-card2{ display:flex; flex-direction:column; }
+  .item-list-label{
+    padding:20px 24px 0; color:var(--ink); font-weight:800; font-family:'Poppins',sans-serif;
+    font-size:15px; margin:0; display:flex; align-items:center; gap:8px;
+  }
+  .item-list-label::before{ content:''; width:4px; height:16px; border-radius:3px; background:var(--marigold-dark); display:inline-block; }
+  .item-grid{ padding:16px 24px 110px; display:grid; grid-template-columns:1fr 1fr; gap:16px 14px; }
+  .item-card2{
+    display:flex; flex-direction:column; background:#fff; border-radius:18px; padding:10px 10px 12px;
+    box-shadow:0 4px 14px rgba(43,36,16,.08); border:1px solid var(--field-border);
+    transition:transform .1s;
+  }
+  .item-card2:active{ transform:scale(0.98); }
   .item-img-wrap{ position:relative; width:100%; height:120px; border-radius:14px; overflow:hidden; background:var(--cloud); }
   .item-img{ width:100%; height:100%; object-fit:cover; display:block; }
   .item-veg{
     position:absolute; top:8px; left:8px; width:16px; height:16px; border-radius:3px;
     background:#fff; border:1.5px solid var(--leaf); display:flex; align-items:center; justify-content:center;
+    box-shadow:0 2px 4px rgba(0,0,0,.15);
   }
   .item-veg span{ width:7px; height:7px; border-radius:50%; background:var(--leaf); }
   .item-rating2{
     position:absolute; top:8px; right:8px; display:flex; align-items:center; gap:3px;
     background:rgba(27,166,114,.95); color:#fff; font-size:11px; font-weight:700;
     font-family:'Inter',sans-serif; padding:3px 7px; border-radius:6px;
+    box-shadow:0 2px 6px rgba(0,0,0,.15);
   }
   .item-name2{
     color:var(--ink); font-weight:700; font-family:'Poppins',sans-serif; font-size:12.5px;
-    letter-spacing:.2px; text-transform:uppercase; margin:10px 0 0;
+    letter-spacing:.2px; text-transform:uppercase; margin:10px 2px 0;
   }
-  .item-row2{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:10px; }
+  .item-row2{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:10px; padding:0 2px; }
   .item-price2{ color:var(--ink); font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:14px; }
-  .item-row2 .add-btn{ padding:8px 14px; font-size:12px; }
+  .item-row2 .add-btn{ padding:8px 14px; font-size:12px; box-shadow:0 4px 10px rgba(242,183,5,.25); }
   .item-row2 .qty-wrap{ padding:6px 8px; gap:8px; }
   .item-img-wrap{ cursor:pointer; }
 
@@ -1068,6 +1140,16 @@
     </div>
   </div>
 
+  <!-- Generic in-app message modal (replaces native alert() for a styled,
+       on-brand popup instead of the browser's "site says" dialog) -->
+  <div class="loc-overlay" id="info-modal-overlay" style="align-items:center; z-index:3000;">
+    <div class="loc-sheet" style="border-radius:20px; max-width:320px; animation:locUp .2s ease-out; padding:22px;">
+      <p class="loc-title" id="info-modal-title" style="margin:0 0 8px; font-size:18px;"></p>
+      <p id="info-modal-message" style="color:var(--muted-2); font-size:14px; line-height:1.5; margin:0 0 20px;"></p>
+      <button type="button" class="loc-gps-btn" id="info-modal-ok-btn" style="background:var(--marigold); margin-bottom:0;">OK</button>
+    </div>
+  </div>
+
   <!-- SELECT YOUR LOCATION (filters restaurant list) -->
   <div class="loc-overlay" id="browse-loc-overlay">
     <div class="loc-sheet">
@@ -1150,7 +1232,7 @@
     <div class="header" style="padding-bottom:8px;">
       <div class="cat-header-eyebrow">
         <p class="eyebrow" id="cat-greeting-eyebrow">HELLO</p>
-        <div class="cat-badge-verified">
+        <div class="cat-badge-verified" id="cat-badge-verified">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1BA672" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
           VERIFIED
         </div>
@@ -1254,7 +1336,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           </button>
           <div class="account-dropdown" id="account-dropdown">
-            <div class="stamp">
+            <div class="stamp" id="account-verified-stamp">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1BA672" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
               VERIFIED
             </div>
@@ -1442,7 +1524,8 @@
       </div>
     </div>
     <div class="taxi-body">
-      <div class="stack">
+      <div class="taxi-route-card">
+        <div class="taxi-route-line"></div>
         <div class="taxi-pin-row active" id="taxi-pickup-row">
           <div class="taxi-pin-dot pickup"></div>
           <input id="taxi-pickup-input" type="text" placeholder="Search pickup location" autocomplete="off" />
@@ -2329,6 +2412,16 @@ function saveUserSession(user) {
   try { localStorage.setItem('asfood_customer_user', JSON.stringify(user)); } catch (e) {}
   neshAttachUserBlockListener(user && user.number);
 }
+// The "VERIFIED" badge (category screen eyebrow + account dropdown) should
+// only ever be visible once the customer has actually logged in with a
+// number Firebase recognizes — not to guests who are just browsing.
+function updateVerifiedBadges() {
+  const show = !!(state.user && state.user.number);
+  const catBadge = document.getElementById('cat-badge-verified');
+  if (catBadge) catBadge.style.display = show ? '' : 'none';
+  const acctBadge = document.getElementById('account-verified-stamp');
+  if (acctBadge) acctBadge.style.display = show ? '' : 'none';
+}
 try {
   const savedUser = JSON.parse(localStorage.getItem('asfood_customer_user') || 'null');
   if (savedUser && savedUser.number) {
@@ -2345,6 +2438,7 @@ try {
     registerCustomerPush();
   }
 } catch (e) {}
+updateVerifiedBadges();
 
 // ---------- Registered users: stored centrally in Firebase under
 // customers/{mobileNumber}, so accounts survive cache clears / new devices
@@ -2434,6 +2528,7 @@ window.addEventListener('popstate', () => {
   // back press behaves on any app with something layered on top.
   const overlays = [
     { id: 'install-overlay', close: null }, // intentionally not dismissable (see openSheet()) — just swallow back
+    { id: 'info-modal-overlay', close: () => document.getElementById('info-modal-ok-btn').click() },
     { id: 'scratch-modal-overlay', close: () => closeScratchModal() },
     { id: 'account-dropdown', close: () => closeAccountDropdown() },
     { id: 'order-summary-overlay', close: () => closeOrderSummary() },
@@ -2485,6 +2580,7 @@ function openCategory(cat) {
 function goToCategoryScreen() {
   const firstName = (state.user?.name || "friend").split(' ')[0];
   document.getElementById('cat-greeting-eyebrow').textContent = "HI, " + firstName.toUpperCase();
+  updateVerifiedBadges();
   updateCatLocationLabel();
   showScreen('category');
   persistScreen('category');
@@ -4007,6 +4103,7 @@ document.getElementById('taxi-chat-input').addEventListener('keydown', (e) => {
     // web popstate handler above.
     const overlays = [
       { id: 'install-overlay', close: null },
+      { id: 'info-modal-overlay', close: () => document.getElementById('info-modal-ok-btn').click() },
       { id: 'scratch-modal-overlay', close: () => closeScratchModal() },
       { id: 'account-dropdown', close: () => closeAccountDropdown() },
       { id: 'order-summary-overlay', close: () => closeOrderSummary() },
@@ -4166,6 +4263,7 @@ regSendOtpBtn.addEventListener('click', async () => {
 // flow, resume straight into it instead of dropping them on the category
 // screen — their cart / pickup+drop+vehicle choice is still intact.
 function finishAuthFlow() {
+  updateVerifiedBadges();
   if (state.authReturnTo === "checkout") {
     state.authReturnTo = null;
     openLocationConfirm();
@@ -4689,6 +4787,18 @@ function renderHome() {
   updateHomeTrackBtn();
   renderRestaurantList();
 }
+
+// Generic in-app message modal — a styled white popup, used instead of the
+// browser's native alert() (which shows an ugly "yoursite.com says" box)
+// for messages we want to look like part of the app.
+function showInfoModal(title, message) {
+  document.getElementById('info-modal-title').textContent = title;
+  document.getElementById('info-modal-message').textContent = message;
+  document.getElementById('info-modal-overlay').classList.add('show');
+}
+document.getElementById('info-modal-ok-btn').addEventListener('click', () => {
+  document.getElementById('info-modal-overlay').classList.remove('show');
+});
 
 // Ray-casting point-in-polygon check. poly is an array of {lat, lng}.
 function isPointInZone(pt, poly) {
@@ -6216,7 +6326,7 @@ locProceedBtn.addEventListener('click', () => {
   if (r.zone && typeof pendingLocation.lat === 'number' && typeof pendingLocation.lng === 'number') {
     const inZone = isPointInZone({ lat: pendingLocation.lat, lng: pendingLocation.lng }, r.zone);
     if (!inZone) {
-      alert((r.name || "This shop") + " doesn't deliver to this location. Please pick a location inside their delivery area.");
+      showInfoModal("Out of delivery area", (r.name || "This shop") + " doesn't deliver to this location. Please pick a location inside their delivery area.");
       return;
     }
   }
@@ -6729,6 +6839,7 @@ ordersBackBtn.addEventListener('click', leaveOrdersScreen);
 // ---------- LOGOUT ----------
 function logoutUser() {
   state.user = null;
+  updateVerifiedBadges();
   state.cart = {};
   state.cartGrams = {};
   state.cartSizes = {};
