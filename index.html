@@ -3977,7 +3977,13 @@ function hideTaxiCandidateCard() {
   taxiCandidateCard.classList.add('hidden');
 }
 
-// Finds the next candidate and, if one exists, shows the approval card.
+// Finds the next candidate and, if one exists, routes the ride straight to
+// their app — no customer-side approval step or countdown. driver.html
+// treats candidateDriverId as an exclusive routing (same as an operator
+// assignment), so only this driver's app sees the ride from here on, with
+// its own Accept/Skip. If that driver later declines, renderTaxiTimeline
+// notices candidateDriverId cleared and declinedDriverIds grown, and calls
+// this again to move to the next-nearest driver.
 // If nobody's available right now, quietly steps back — the ride stays
 // 'searching' with no candidateDriverId, which is exactly what
 // driver.html's own nearest-first rotation already knows how to pick up,
@@ -3986,8 +3992,10 @@ async function advanceTaxiCandidateFlow(rideKey, pickup, excludeIds) {
   const myToken = ++taxiCandidateSearchToken;
   const candidate = await findNearestTaxiCandidate(pickup, excludeIds);
   if (myToken !== taxiCandidateSearchToken || currentRideKey !== rideKey) return; // superseded while we were awaiting Firebase
-  if (!candidate) { hideTaxiCandidateCard(); return; }
-  showTaxiCandidateCard(rideKey, pickup, candidate, excludeIds);
+  if (!candidate) return;
+  if (!window.fb) return;
+  const { db, ref, update } = window.fb;
+  try { await update(ref(db, 'rides/' + rideKey), { candidateDriverId: candidate.id }); } catch (e) {}
 }
 
 function showTaxiCandidateCard(rideKey, pickup, candidate, excludeIds) {
@@ -4120,6 +4128,7 @@ function renderTaxiTimeline(ride) {
       taxiTrackMap.watchDriver(ride.driverId);
       taxiTrackMapDriverId = ride.driverId;
     }
+    taxiTrackMap.setPhase(status === 'ontrip' ? 'ontrip' : 'toPickup');
   } else {
     taxiTrackMap.hide();
     taxiTrackMapDriverId = null;
@@ -5718,7 +5727,19 @@ function haversineMeters(lat1, lng1, lat2, lng2) {
 // hides itself depending on whether a driver has actually been assigned yet.
 function createDriverTrackMap(wrapId, mapId) {
   let map = null, driverMarker = null, pickupMarker = null, dropMarker = null, unsub = null, mounted = false;
+  let pickupPt = null, dropPt = null;
   const wrapEl = document.getElementById(wrapId);
+
+  // ---- Route line: driver → pickup while approaching, pickup → drop once
+  // the trip is on — same OSRM road-route lookup already used to draw the
+  // green line on the booking screen (drawTaxiRouteLine), just re-targeted
+  // per phase. 'toPickup' redraws as the driver's live location moves in
+  // (throttled so it isn't refetching OSRM on every GPS ping); 'ontrip' is
+  // a single static fetch since pickup/drop don't move.
+  let phase = null; // null | 'toPickup' | 'ontrip'
+  let routeLine = null;
+  let approachAbort = null, approachKey = null, approachAt = 0;
+  let tripAbort = null, tripFetched = false;
 
   function ensureMap() {
     if (map) return;
@@ -5733,10 +5754,67 @@ function createDriverTrackMap(wrapId, mapId) {
     else map.fitBounds(L.latLngBounds(pts), { padding: [24, 24] });
   }
 
+  async function fetchRouteCoords(fromPt, toPt, signal) {
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${fromPt.lng},${fromPt.lat};${toPt.lng},${toPt.lat}?overview=full&geometries=geojson`;
+      const res = await fetch(url, { signal });
+      const data = await res.json();
+      const route = data && data.routes && data.routes[0];
+      return route && route.geometry && route.geometry.coordinates; // [lng,lat] pairs
+    } catch (e) { return null; }
+  }
+
+  function paintRouteLine(coords, color, dashed) {
+    if (!coords || !map) return;
+    const latlngs = coords.map(c => [c[1], c[0]]); // GeoJSON [lng,lat] -> Leaflet [lat,lng]
+    if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+    routeLine = L.polyline(latlngs, {
+      color, weight: 5, opacity: 0.85, lineJoin: 'round', dashArray: dashed ? '9 8' : null
+    }).addTo(map);
+    routeLine.bringToBack();
+  }
+
+  function clearRouteLine() {
+    if (routeLine && map) map.removeLayer(routeLine);
+    routeLine = null;
+  }
+
+  // Redraws the driver→pickup line as the driver's live location comes in.
+  // Skipped unless we're actually in the 'toPickup' phase, and throttled to
+  // roughly every ~11m of movement / 8s, whichever is later.
+  function updateApproachRoute(driverPt) {
+    if (phase !== 'toPickup' || !pickupPt) return;
+    const key = driverPt.lat.toFixed(4) + ',' + driverPt.lng.toFixed(4);
+    const now = Date.now();
+    if (key === approachKey || now - approachAt < 8000) return;
+    approachKey = key; approachAt = now;
+    if (approachAbort) approachAbort.abort();
+    approachAbort = new AbortController();
+    fetchRouteCoords(driverPt, pickupPt, approachAbort.signal).then(coords => {
+      if (phase !== 'toPickup') return; // phase moved on while this was in flight
+      paintRouteLine(coords, '#2F80ED', true); // blue dashed — driver approaching pickup
+    });
+  }
+
+  // One-off fetch of the pickup→drop road route, drawn as the same solid
+  // green "trip" line used on the booking screen.
+  function updateTripRoute() {
+    if (!pickupPt || !dropPt || tripFetched) return;
+    tripFetched = true;
+    if (tripAbort) tripAbort.abort();
+    tripAbort = new AbortController();
+    fetchRouteCoords(pickupPt, dropPt, tripAbort.signal).then(coords => {
+      if (phase !== 'ontrip') return;
+      paintRouteLine(coords, '#1BA672', false); // solid green — trip in progress
+    });
+  }
+
   return {
     // pickup/drop: { lat, lng } or null. Shows the map with static pins for
     // whichever of those are known, even before a driver has been assigned.
     show(pickup, drop) {
+      pickupPt = pickup || null;
+      dropPt = drop || null;
       wrapEl.classList.remove('hidden');
       mounted = true;
       setTimeout(() => {
@@ -5760,15 +5838,34 @@ function createDriverTrackMap(wrapId, mapId) {
         if (driverMarker) driverMarker.setLatLng([loc.lat, loc.lng]);
         else driverMarker = L.marker([loc.lat, loc.lng], { icon: taxiMarkerIcon('#2F80ED') }).addTo(map);
         fitToMarkers();
+        updateApproachRoute({ lat: loc.lat, lng: loc.lng });
       });
     },
     stopWatchingDriver() {
       if (unsub) { unsub(); unsub = null; }
       if (driverMarker && map) { map.removeLayer(driverMarker); driverMarker = null; }
     },
+    // 'toPickup' (accepted/arriving) draws driver→pickup, refreshed as the
+    // driver moves; 'ontrip' switches to the static pickup→drop trip line;
+    // anything else (e.g. searching, completed) clears the line.
+    setPhase(nextPhase) {
+      if (nextPhase === phase) { if (phase === 'ontrip') updateTripRoute(); return; }
+      phase = nextPhase;
+      if (phase === 'ontrip') {
+        tripFetched = false;
+        updateTripRoute();
+      } else if (phase !== 'toPickup') {
+        clearRouteLine();
+      }
+      // 'toPickup': line (re)draws itself off the next driver-location update.
+    },
     hide() {
       wrapEl.classList.add('hidden');
       if (unsub) { unsub(); unsub = null; }
+      if (approachAbort) { approachAbort.abort(); approachAbort = null; }
+      if (tripAbort) { tripAbort.abort(); tripAbort = null; }
+      clearRouteLine();
+      phase = null; approachKey = null; tripFetched = false;
       mounted = false;
     },
     isMounted() { return mounted; },
