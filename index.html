@@ -633,6 +633,31 @@
   .taxi-action-btn.call{ background:var(--leaf); }
   .taxi-action-btn.chat{ background:var(--marigold); }
   .taxi-action-btn:active{ transform:scale(0.94); }
+
+  /* Customer approval card — shown while a nearby driver is proposed and
+     waiting for Accept/Skip (or the 10s auto-accept) before the ride is
+     actually offered to that driver's app. */
+  .taxi-candidate-card{ margin-top:16px; padding:16px; border-radius:14px; background:#fff; border:1px solid var(--field-border); }
+  .taxi-candidate-card.hidden{ display:none; }
+  .taxi-candidate-label{ color:var(--muted-2); font-size:11px; font-weight:700; letter-spacing:.4px; margin:0 0 4px; }
+  .taxi-candidate-top{ display:flex; align-items:center; gap:12px; }
+  .taxi-candidate-avatar{
+    width:48px; height:48px; border-radius:50%; flex-shrink:0; overflow:hidden;
+    background:var(--field-bg); border:1.5px solid var(--field-border);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .taxi-candidate-avatar img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .taxi-candidate-name{ color:var(--ink); font-weight:700; font-family:'Poppins',sans-serif; font-size:16px; margin:0; }
+  .taxi-candidate-meta{ color:var(--muted-2); font-size:13px; margin:2px 0 0; }
+  .taxi-candidate-timer{ color:var(--chili); font-size:12px; font-weight:700; margin:8px 0 0; }
+  .taxi-candidate-actions{ display:flex; gap:10px; margin-top:12px; }
+  .taxi-candidate-actions .btn-primary{ padding:12px; font-size:14px; }
+  .btn-outline{
+    flex:1; padding:12px; border-radius:12px; border:1px solid var(--field-border);
+    background:#fff; color:var(--ink); font-weight:700; font-size:14px;
+    font-family:'Inter',sans-serif; cursor:pointer;
+  }
+  .btn-outline:active{ transform:scale(0.98); }
   .taxi-chat-badge{
     position:absolute; top:-3px; right:-3px; min-width:16px; height:16px; padding:0 3px;
     border-radius:8px; background:#C0392B; color:#fff; font-size:10px; font-weight:700;
@@ -1570,6 +1595,23 @@
         <p class="ticket-num" id="taxi-track-status-text">Finding a nearby driver</p>
         <div class="ticket-divider">
           <p class="ticket-eta" id="taxi-track-eta-text">This usually takes a minute or two</p>
+        </div>
+      </div>
+      <div class="taxi-candidate-card hidden" id="taxi-candidate-card">
+        <p class="taxi-candidate-label">NEARBY AUTO DRIVER</p>
+        <div class="taxi-candidate-top">
+          <div class="taxi-candidate-avatar" id="taxi-candidate-avatar">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--muted-2)" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg>
+          </div>
+          <div>
+            <p class="taxi-candidate-name" id="taxi-candidate-name"></p>
+            <p class="taxi-candidate-meta" id="taxi-candidate-meta"></p>
+          </div>
+        </div>
+        <p class="taxi-candidate-timer" id="taxi-candidate-timer"></p>
+        <div class="taxi-candidate-actions">
+          <button class="btn-outline" id="taxi-candidate-skip-btn" type="button">Skip</button>
+          <button class="btn-primary" id="taxi-candidate-accept-btn" type="button">Accept this driver</button>
         </div>
       </div>
       <div class="taxi-driver-card hidden" id="taxi-driver-card">
@@ -2629,7 +2671,7 @@ const TAXI_STEPS = [
   { key: 'completed', label: 'Trip completed' },
 ];
 
-let taxiMap = null, taxiPickupMarker = null, taxiDropMarker = null;
+let taxiMap = null, taxiPickupMarker = null, taxiDropMarker = null, taxiRouteLine = null;
 let taxiPickup = null;         // { lat, lng, text }
 let taxiDrop = null;           // { lat, lng, text }
 let taxiActivePin = 'pickup';  // which pin the next map tap / drag sets
@@ -2676,6 +2718,23 @@ let taxiTrackLastRide = null;   // most recent ride payload for the screen curre
 let taxiTrackLastStatus = 'searching';
 const taxiCancelBtn = document.getElementById('taxi-cancel-ride-btn');
 let taxiTrackMap = null; // live-driver map on the ride tracking screen — created lazily, see renderTaxiTimeline
+
+// ---------- Customer-side driver candidate approval ----------
+const taxiCandidateCard = document.getElementById('taxi-candidate-card');
+const taxiCandidateNameEl = document.getElementById('taxi-candidate-name');
+const taxiCandidateMetaEl = document.getElementById('taxi-candidate-meta');
+const taxiCandidateTimerEl = document.getElementById('taxi-candidate-timer');
+const taxiCandidateSkipBtn = document.getElementById('taxi-candidate-skip-btn');
+const taxiCandidateAcceptBtn = document.getElementById('taxi-candidate-accept-btn');
+const TAXI_CANDIDATE_WINDOW_MS = 10 * 1000;
+const TAXI_CANDIDATE_MAX_RADIUS_KM = 12;
+const TAXI_CANDIDATE_CLUSTER_KM = 0.5; // ties within this distance keep pure nearest-first order
+const TAXI_CANDIDATE_STALE_MS = 3 * 60 * 1000;
+let taxiCandidateActiveRideKey = null;   // which ride the current candidate session belongs to
+let taxiCandidateLastDeclinedCount = -1; // re-run the search only when the declined list actually grows
+let taxiCandidateSearchToken = 0;        // invalidates an in-flight search if the ride/screen moves on
+let taxiCandidateCountdownInterval = null;
+let taxiCandidateAutoAcceptTimeout = null;
 let taxiTrackMapDriverId = null; // which driver we're currently watching, so we don't re-subscribe every snapshot
 
 // ---------- BUS TRACKING (customer side) ----------
@@ -3694,25 +3753,52 @@ function currentTaxiKm() {
   if (taxiRoadKey === key && taxiRoadKm != null) return taxiRoadKm;
   return (haversineMeters(taxiPickup.lat, taxiPickup.lng, taxiDrop.lat, taxiDrop.lng) / 1000) * 1.3;
 }
+// Draws (or updates) the turn-by-turn road-route line between the pickup and
+// drop pins — the same "blue line" Google Maps shows once both ends of a
+// trip are set — and zooms/pans the map so the whole route is in view.
+function drawTaxiRouteLine(coords) {
+  if (!taxiMap) return;
+  const latlngs = coords.map(c => [c[1], c[0]]); // GeoJSON is [lng,lat] -> Leaflet wants [lat,lng]
+  if (taxiRouteLine) {
+    taxiRouteLine.setLatLngs(latlngs);
+  } else {
+    taxiRouteLine = L.polyline(latlngs, {
+      color: '#1BA672', weight: 5, opacity: 0.85, lineJoin: 'round'
+    }).addTo(taxiMap);
+    // Keep the route beneath the pickup/drop pins.
+    taxiRouteLine.bringToBack();
+  }
+  taxiMap.fitBounds(taxiRouteLine.getBounds(), { padding: [32, 32] });
+}
+
+function clearTaxiRouteLine() {
+  if (taxiRouteLine && taxiMap) taxiMap.removeLayer(taxiRouteLine);
+  taxiRouteLine = null;
+}
+
 async function ensureTaxiRoadDistance() {
-  if (!taxiPickup || !taxiDrop) return;
+  if (!taxiPickup || !taxiDrop) { clearTaxiRouteLine(); return; }
   const key = taxiDistanceKey();
   if (taxiRoadKey === key && taxiRoadKm != null) return;
   if (taxiRouteAbort) taxiRouteAbort.abort();
   taxiRouteAbort = new AbortController();
   try {
-    const url = `https://router.project-osrm.org/route/v1/driving/${taxiPickup.lng},${taxiPickup.lat};${taxiDrop.lng},${taxiDrop.lat}?overview=false`;
+    const url = `https://router.project-osrm.org/route/v1/driving/${taxiPickup.lng},${taxiPickup.lat};${taxiDrop.lng},${taxiDrop.lat}?overview=full&geometries=geojson`;
     const res = await fetch(url, { signal: taxiRouteAbort.signal });
     const data = await res.json();
-    const meters = data && data.routes && data.routes[0] && data.routes[0].distance;
+    const route = data && data.routes && data.routes[0];
+    const meters = route && route.distance;
     if (typeof meters === 'number' && taxiDistanceKey() === key) {
       taxiRoadKm = meters / 1000;
       taxiRoadKey = key;
       renderRideOptions();
       updateTaxiBookBtn();
     }
+    if (route && route.geometry && route.geometry.coordinates && taxiDistanceKey() === key) {
+      drawTaxiRouteLine(route.geometry.coordinates);
+    }
   } catch (e) {
-    // Aborted or offline — the straight-line estimate above already covers it.
+    // Aborted or offline — the straight-line estimate (and pins alone) already cover it.
   }
 }
 
@@ -3845,7 +3931,112 @@ function normalizeRideStatus(raw) {
   return 'searching';
 }
 
+// Looks at every online 'auto' driver in taxi_drivers and returns the
+// single nearest free one (falling back to busy ones only if nobody free
+// is around), excluding any id in excludeIds (drivers already skipped by
+// the customer or who've already declined this exact ride). Ties within
+// TAXI_CANDIDATE_CLUSTER_KM of the nearest still resolve to the nearest —
+// this is a simpler, customer-facing version of driver.html's own ranking
+// (no order-count fairness weighting, since here a human is reviewing and
+// can skip, rather than it being an unattended rotation).
+async function findNearestTaxiCandidate(pickup, excludeIds) {
+  if (!window.fb || !pickup) return null;
+  const { db, ref, get } = window.fb;
+  let snap;
+  try { snap = await get(ref(db, 'taxi_drivers')); } catch (e) { return null; }
+  const drivers = snap.val() || {};
+  const candidates = [];
+  Object.keys(drivers).forEach(id => {
+    if (excludeIds.has(id)) return;
+    const d = drivers[id];
+    if (!d || d.isOnline !== true) return;
+    if (d.vehicleType && d.vehicleType !== 'auto') return;
+    if (d.services && d.services.taxi === false) return;
+    const loc = d.location;
+    if (!loc || typeof loc.lat !== 'number' || !loc.updatedAt) return;
+    if (Date.now() - loc.updatedAt > TAXI_CANDIDATE_STALE_MS) return;
+    const distanceKm = haversineMeters(pickup.lat, pickup.lng, loc.lat, loc.lng) / 1000;
+    if (distanceKm > TAXI_CANDIDATE_MAX_RADIUS_KM) return;
+    candidates.push({ id, distanceKm, isBusy: !!d.isBusy, name: d.name || 'Driver', vehicleNumber: d.vehicleNumber || '', photo: d.photo || '' });
+  });
+  if (!candidates.length) return null;
+  const free = candidates.filter(c => !c.isBusy);
+  const pool = (free.length ? free : candidates).sort((a, b) => a.distanceKm - b.distanceKm);
+  return pool[0];
+}
+
+function stopTaxiCandidateTimers() {
+  if (taxiCandidateCountdownInterval) { clearInterval(taxiCandidateCountdownInterval); taxiCandidateCountdownInterval = null; }
+  if (taxiCandidateAutoAcceptTimeout) { clearTimeout(taxiCandidateAutoAcceptTimeout); taxiCandidateAutoAcceptTimeout = null; }
+}
+
+function hideTaxiCandidateCard() {
+  stopTaxiCandidateTimers();
+  taxiCandidateSkipBtn.onclick = null;
+  taxiCandidateAcceptBtn.onclick = null;
+  taxiCandidateCard.classList.add('hidden');
+}
+
+// Finds the next candidate and, if one exists, shows the approval card.
+// If nobody's available right now, quietly steps back — the ride stays
+// 'searching' with no candidateDriverId, which is exactly what
+// driver.html's own nearest-first rotation already knows how to pick up,
+// so the ride is never left completely unoffered.
+async function advanceTaxiCandidateFlow(rideKey, pickup, excludeIds) {
+  const myToken = ++taxiCandidateSearchToken;
+  const candidate = await findNearestTaxiCandidate(pickup, excludeIds);
+  if (myToken !== taxiCandidateSearchToken || currentRideKey !== rideKey) return; // superseded while we were awaiting Firebase
+  if (!candidate) { hideTaxiCandidateCard(); return; }
+  showTaxiCandidateCard(rideKey, pickup, candidate, excludeIds);
+}
+
+function showTaxiCandidateCard(rideKey, pickup, candidate, excludeIds) {
+  stopTaxiCandidateTimers();
+  taxiCandidateCard.classList.remove('hidden');
+  taxiCandidateNameEl.textContent = candidate.name;
+  taxiCandidateMetaEl.textContent = [candidate.vehicleNumber, candidate.distanceKm.toFixed(1) + ' km away'].filter(Boolean).join(' · ');
+  document.getElementById('taxi-candidate-avatar').innerHTML = candidate.photo
+    ? `<img src="${candidate.photo}" alt="${candidate.name}" />`
+    : `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--muted-2)" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg>`;
+
+  let secondsLeft = Math.ceil(TAXI_CANDIDATE_WINDOW_MS / 1000);
+  const renderCountdown = () => { taxiCandidateTimerEl.textContent = `Auto-accepts in ${secondsLeft}s if you don't respond`; };
+  renderCountdown();
+  taxiCandidateCountdownInterval = setInterval(() => {
+    secondsLeft -= 1;
+    if (secondsLeft > 0) renderCountdown();
+  }, 1000);
+
+  const approve = async () => {
+    hideTaxiCandidateCard();
+    if (!window.fb) return;
+    const { db, ref, update } = window.fb;
+    // Promotes this driver from "proposed" to "offered" — driver.html
+    // treats candidateDriverId as an exclusive routing, same as an
+    // operator assignment, so only this driver's app will see the ride
+    // (with its own Accept/Skip) from here on.
+    try { await update(ref(db, 'rides/' + rideKey), { candidateDriverId: candidate.id }); } catch (e) {}
+  };
+  const skip = async () => {
+    hideTaxiCandidateCard();
+    const nextExclude = new Set(excludeIds);
+    nextExclude.add(candidate.id);
+    taxiCandidateLastDeclinedCount = nextExclude.size;
+    if (window.fb) {
+      const { db, ref, update } = window.fb;
+      update(ref(db, 'rides/' + rideKey), { ['declinedDriverIds/' + candidate.id]: true }).catch(() => {});
+    }
+    advanceTaxiCandidateFlow(rideKey, pickup, nextExclude);
+  };
+
+  taxiCandidateAcceptBtn.onclick = approve;
+  taxiCandidateSkipBtn.onclick = skip;
+  taxiCandidateAutoAcceptTimeout = setTimeout(approve, TAXI_CANDIDATE_WINDOW_MS);
+}
+
 function renderTaxiTimeline(ride) {
+
+
   const status = normalizeRideStatus(ride.status);
   if (status === 'completed' || status === 'cancelled') {
     // Ride is over — free up booking so the customer can request a new one.
@@ -3853,6 +4044,31 @@ function renderTaxiTimeline(ride) {
   }
   taxiTrackLastRide = ride;
   taxiTrackLastStatus = status;
+
+  // ---- Driver-candidate approval (searching stage only) ----
+  if (status !== 'searching') {
+    hideTaxiCandidateCard();
+    taxiCandidateActiveRideKey = null;
+    taxiCandidateLastDeclinedCount = -1;
+  } else if (ride.candidateDriverId) {
+    // Already approved (by the customer or the 10s auto-accept) and now
+    // waiting on that driver's own Accept/Skip in their app — don't show
+    // our card while that's pending.
+    hideTaxiCandidateCard();
+  } else {
+    // No candidate currently proposed — either this is a brand-new ride,
+    // or the proposed driver just declined (which clears candidateDriverId
+    // and grows declinedDriverIds). Only kick off a new search when one of
+    // those actually changed, so an unrelated field update on the ride
+    // doesn't restart an already-running countdown.
+    const declinedIds = Object.keys(ride.declinedDriverIds || {});
+    if (currentRideKey && (taxiCandidateActiveRideKey !== currentRideKey || declinedIds.length !== taxiCandidateLastDeclinedCount)) {
+      taxiCandidateActiveRideKey = currentRideKey;
+      taxiCandidateLastDeclinedCount = declinedIds.length;
+      advanceTaxiCandidateFlow(currentRideKey, ride.pickup, new Set(declinedIds));
+    }
+  }
+
   if (status === 'cancelled') {
     taxiTrackStatusText.textContent = 'Ride cancelled';
     taxiTrackEtaText.textContent = 'This ride was cancelled.';
@@ -3864,7 +4080,9 @@ function renderTaxiTimeline(ride) {
   }
 
   const currentIdx = TAXI_STEPS.findIndex(s => s.key === status);
-  taxiTrackStatusText.textContent = TAXI_STEPS[currentIdx].label;
+  taxiTrackStatusText.textContent = (status === 'searching' && ride.candidateDriverId && !ride.driverName)
+    ? 'Waiting for the driver to confirm'
+    : TAXI_STEPS[currentIdx].label;
   const rideFareOff = !ride.fare;
   taxiTrackEtaText.textContent = status === 'completed'
     ? (rideFareOff ? `Trip complete — ${ride.distanceKm} km` : `Trip complete — ₹${ride.fare} · ${ride.distanceKm} km`)
@@ -3961,6 +4179,9 @@ function openTaxiTrack(rideKey, initialRide) {
 function leaveTaxiTrack() {
   if (taxiTrackUnsub) { taxiTrackUnsub(); taxiTrackUnsub = null; }
   if (taxiTrackMap) { taxiTrackMap.hide(); taxiTrackMapDriverId = null; }
+  hideTaxiCandidateCard();
+  taxiCandidateActiveRideKey = null;
+  taxiCandidateLastDeclinedCount = -1;
   // Re-checks whether this ride is still active — if so it sends the
   // customer straight back to tracking instead of a fresh booking form.
   goToTaxiBooking();
@@ -4158,6 +4379,7 @@ taxiCancelBtn.addEventListener('click', async () => {
     return;
   }
   if (!confirm('Cancel this ride?')) return;
+  hideTaxiCandidateCard();
   const { db, ref, update } = window.fb;
   try { await update(ref(db, 'rides/' + currentRideKey), { status: 'cancelled' }); } catch (e) {}
 });
