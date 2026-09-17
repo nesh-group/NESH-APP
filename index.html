@@ -621,6 +621,32 @@
     letter-spacing:10px; margin:6px 0; padding-left:10px;
   }
   .taxi-otp-hint{ color:var(--muted-2); font-size:12px; margin:0; }
+  .taxi-rating-card{
+    margin-top:16px; padding:18px; border-radius:14px; text-align:center;
+    background:#fff; border:1px solid var(--field-border); box-shadow:var(--card-shadow);
+  }
+  .taxi-rating-card.hidden{ display:none; }
+  .taxi-rating-title{ color:var(--ink); font-family:'Fraunces',serif; font-weight:700; font-size:17px; margin:0 0 4px; }
+  .taxi-rating-sub{ color:var(--muted-2); font-size:13px; margin:0 0 14px; }
+  .taxi-rating-stars{ display:flex; justify-content:center; gap:6px; margin-bottom:14px; }
+  .taxi-star-btn{
+    background:none; border:none; cursor:pointer; padding:2px; font-size:34px; line-height:1;
+    color:var(--field-border); transition:transform .08s;
+  }
+  .taxi-star-btn.active{ color:var(--marigold); }
+  .taxi-star-btn:active{ transform:scale(0.9); }
+  .taxi-rating-comment{
+    width:100%; min-height:64px; padding:12px 14px; border-radius:12px; resize:none;
+    background:var(--field-bg); border:1.5px solid var(--field-border); outline:none;
+    font-family:'Inter',sans-serif; font-size:13.5px; color:var(--ink); box-sizing:border-box;
+  }
+  .taxi-rating-comment::placeholder{ color:var(--muted); }
+  .taxi-rating-thanks-card{
+    margin-top:16px; padding:18px; border-radius:14px; text-align:center;
+    background:rgba(27,166,114,.08); border:1.5px solid var(--leaf);
+  }
+  .taxi-rating-thanks-card.hidden{ display:none; }
+  .taxi-rating-thanks-card p{ margin:0; color:var(--ink); font-family:'Inter',sans-serif; font-size:14px; font-weight:600; }
   .taxi-driver-avatar{ width:44px; height:44px; border-radius:50%; background:var(--marigold); display:flex; align-items:center; justify-content:center; font-weight:700; font-family:'Poppins',sans-serif; color:var(--ink); font-size:18px; flex-shrink:0; }
   .taxi-driver-info{ flex:1; min-width:0; }
   .taxi-driver-name{ color:var(--ink); font-weight:700; font-family:'Poppins',sans-serif; font-size:14px; margin:0; }
@@ -997,6 +1023,25 @@
   }
   .order-summary-overlay.show{ display:flex; }
   .order-summary-sheet{ width:100%; max-width:420px; position:relative; animation:locUp .25s ease-out; }
+  /* Bus feature promo video overlay — set from the operator panel
+     (App Videos → Bus feature videos). See checkAndShowBusVideos(). */
+  .bus-video-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:99999;
+    display:none; align-items:center; justify-content:center; flex-direction:column;
+  }
+  .bus-video-overlay.show{ display:flex; }
+  .bus-video-overlay video{ width:100%; max-width:480px; max-height:78vh; background:#000; }
+  .bus-video-skip-btn{
+    position:absolute; top:18px; right:18px; background:rgba(255,255,255,.15); border:none;
+    color:#fff; min-width:34px; height:34px; padding:0 10px; border-radius:17px; font-size:14px;
+    font-weight:700; cursor:pointer; z-index:1; font-family:'IBM Plex Mono',monospace;
+    display:flex; align-items:center; justify-content:center; transition:opacity .2s;
+  }
+  .bus-video-skip-btn[disabled]{ opacity:.55; cursor:default; }
+  .bus-video-close-btn{
+    margin-top:16px; padding:10px 28px; border-radius:999px; border:none; background:var(--marigold, #ffb703);
+    color:var(--ink, #241f1b); font-weight:700; font-size:14px; cursor:pointer; display:none; font-family:'Inter',sans-serif;
+  }
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
@@ -1026,6 +1071,16 @@
     <div id="nesh-blocked-icon">🚫</div>
     <h2>Access blocked</h2>
     <p id="nesh-blocked-message">Your access has been blocked. Please contact support.</p>
+  </div>
+
+  <!-- Bus feature promo video(s) — content set from the Operator Panel
+       (App Videos -> Bus feature videos). Shown once per device per video
+       playlist, a configurable delay after the Bus screen opens; each
+       video in the list plays in order; see checkAndShowBusVideos(). -->
+  <div class="bus-video-overlay" id="bus-video-overlay">
+    <button type="button" class="bus-video-skip-btn" id="bus-video-skip-btn" disabled>✕</button>
+    <video id="bus-video-player" playsinline webkit-playsinline></video>
+    <button type="button" class="bus-video-close-btn" id="bus-video-close-btn">Close</button>
   </div>
 
   <!-- In-app "push" notification banner — shown when a placed order gets accepted -->
@@ -1573,7 +1628,42 @@
 
       <div class="stack" style="margin-top:24px;">
         <button class="btn-primary" id="taxi-book-btn" disabled>Set pickup &amp; drop to continue</button>
+        <button class="btn-outline" id="taxi-choice-driver-open-btn" style="margin-top:10px;" disabled>👤 Choose your own driver</button>
       </div>
+    </div>
+  </section>
+
+  <!-- TAXI CHOICE DRIVER — ZONE PICK -->
+  <section class="screen" id="screen-taxi-choice-zone">
+    <div class="taxi-header">
+      <button class="btn-back" id="taxi-choice-zone-back-btn">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div>
+        <p class="eyebrow">CHOOSE YOUR OWN DRIVER</p>
+        <h1 class="taxi-title">Pick a zone</h1>
+      </div>
+    </div>
+    <div class="taxi-body">
+      <p class="hint-text" id="taxi-choice-zone-hint" style="margin-bottom:10px;">Loading zones near your pickup point…</p>
+      <div id="taxi-choice-zone-list"></div>
+    </div>
+  </section>
+
+  <!-- TAXI CHOICE DRIVER — DRIVER PICK -->
+  <section class="screen" id="screen-taxi-choice-driver">
+    <div class="taxi-header">
+      <button class="btn-back" id="taxi-choice-driver-back-btn">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div>
+        <p class="eyebrow" id="taxi-choice-driver-zone-name">ZONE</p>
+        <h1 class="taxi-title">Pick a driver</h1>
+      </div>
+    </div>
+    <div class="taxi-body">
+      <p class="hint-text" id="taxi-choice-driver-hint" style="margin-bottom:10px;">Loading drivers in this zone…</p>
+      <div id="taxi-choice-driver-list"></div>
     </div>
   </section>
 
@@ -1614,6 +1704,19 @@
           <button class="btn-primary" id="taxi-candidate-accept-btn" type="button">Accept this driver</button>
         </div>
       </div>
+      <div class="taxi-candidate-card hidden" id="taxi-choice-stopped-card">
+        <p class="taxi-candidate-label">CHOICE DRIVER</p>
+        <p style="font-family:'Inter',sans-serif; font-size:14px; color:var(--ink); margin:6px 0 12px;">That driver didn't respond, so the ride stopped there — it wasn't sent to anyone else. Pick another driver to try again.</p>
+        <button class="btn-primary" id="taxi-choice-retry-btn" type="button">Pick another driver</button>
+      </div>
+      <div class="taxi-candidate-card hidden" id="taxi-search-timeout-card">
+        <p class="taxi-candidate-label">STILL SEARCHING</p>
+        <p style="font-family:'Inter',sans-serif; font-size:14px; color:var(--ink); margin:6px 0 12px;">We haven't found a nearby driver yet. You can keep waiting, or stop the search now.</p>
+        <div class="taxi-candidate-actions">
+          <button class="btn-outline" id="taxi-search-timeout-keep-btn" type="button">Keep waiting</button>
+          <button class="btn-primary" id="taxi-search-timeout-stop-btn" type="button">Stop searching</button>
+        </div>
+      </div>
       <div class="taxi-driver-card hidden" id="taxi-driver-card">
         <div class="taxi-driver-avatar" id="taxi-driver-avatar">🧑</div>
         <div class="taxi-driver-info">
@@ -1639,6 +1742,22 @@
         <div class="track-map" id="taxi-track-map"></div>
       </div>
       <div class="timeline" id="taxi-track-timeline" style="margin-top:20px;"></div>
+      <div class="taxi-rating-card hidden" id="taxi-rating-card">
+        <p class="taxi-rating-title">How was your trip?</p>
+        <p class="taxi-rating-sub" id="taxi-rating-driver-name">Rate your driver</p>
+        <div class="taxi-rating-stars" id="taxi-rating-stars">
+          <button type="button" class="taxi-star-btn" data-star="1">★</button>
+          <button type="button" class="taxi-star-btn" data-star="2">★</button>
+          <button type="button" class="taxi-star-btn" data-star="3">★</button>
+          <button type="button" class="taxi-star-btn" data-star="4">★</button>
+          <button type="button" class="taxi-star-btn" data-star="5">★</button>
+        </div>
+        <textarea class="taxi-rating-comment" id="taxi-rating-comment" placeholder="Anything you'd like to add? (optional)" maxlength="300"></textarea>
+        <button class="btn-primary" id="taxi-rating-submit-btn" type="button" style="margin-top:12px;" disabled>Submit rating</button>
+      </div>
+      <div class="taxi-rating-thanks-card hidden" id="taxi-rating-thanks-card">
+        <p id="taxi-rating-thanks-text">Thanks for rating your trip!</p>
+      </div>
       <button class="btn-link" id="taxi-cancel-ride-btn" style="margin-top:8px;">Cancel ride</button>
     </div>
   </section>
@@ -1839,7 +1958,7 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getDatabase, ref, onValue, push, set, get, update, remove, goOffline, goOnline } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  import { getDatabase, ref, onValue, push, set, get, update, remove, runTransaction, goOffline, goOnline } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCrM5wKwsnGtIc7HSTk_5R1d3dXEcYyd7o",
@@ -1950,7 +2069,7 @@
   // this same path and pops up an alert the moment a new order lands here.
   // onValue is also used by the order-tracking screen to live-watch an
   // order's status as the restaurant partner app updates it.
-  window.fb = { db, ref, push, set, get, update, remove, onValue };
+  window.fb = { db, ref, push, set, get, update, remove, onValue, runTransaction };
 
   // Operator-set flat amount (₹) added on top of every restaurant's own item
   // price before it's shown to customers. Set/edited from the Operator Panel
@@ -2714,10 +2833,150 @@ const taxiDriverMeta = document.getElementById('taxi-driver-meta');
 const taxiOtpCard = document.getElementById('taxi-otp-card');
 const taxiOtpValue = document.getElementById('taxi-otp-value');
 const taxiCallBtn = document.getElementById('taxi-call-btn');
+
+// ---------- Post-trip driver rating ----------
+// Shown once a ride reaches 'completed' and hasn't been rated yet
+// (rides/{key}.rating unset). Submitting writes the rating onto the ride
+// itself (so it never shows again for this ride) AND drops a one-time
+// notification into taxi_drivers/{driverId}/pendingRatings/{rideKey} —
+// driver.html shows that once and then deletes it, per the "driver sees
+// it once, then it's gone" requirement. A running ratingSum/ratingCount
+// on the driver's own record (updated via transaction, so concurrent
+// ratings from different customers never clobber each other) is what
+// lets the driver's average rating be shown elsewhere later.
+const taxiRatingCard = document.getElementById('taxi-rating-card');
+const taxiRatingDriverNameEl = document.getElementById('taxi-rating-driver-name');
+const taxiRatingStarsEl = document.getElementById('taxi-rating-stars');
+const taxiRatingStarBtns = Array.from(taxiRatingStarsEl.querySelectorAll('.taxi-star-btn'));
+const taxiRatingCommentEl = document.getElementById('taxi-rating-comment');
+const taxiRatingSubmitBtn = document.getElementById('taxi-rating-submit-btn');
+const taxiRatingThanksCard = document.getElementById('taxi-rating-thanks-card');
+const taxiRatingThanksTextEl = document.getElementById('taxi-rating-thanks-text');
+let taxiRatingSelectedStars = 0;
+let taxiRatingShownForRideKey = null; // which ride the star selector currently reflects — reset when a different completed ride is opened
+let taxiRatingSubmitting = false;
+
+function renderTaxiRatingStars(count) {
+  taxiRatingStarBtns.forEach(btn => {
+    btn.classList.toggle('active', Number(btn.dataset.star) <= count);
+  });
+}
+
+function resetTaxiRatingForm() {
+  taxiRatingSelectedStars = 0;
+  taxiRatingCommentEl.value = '';
+  renderTaxiRatingStars(0);
+  taxiRatingSubmitBtn.disabled = true;
+  taxiRatingSubmitBtn.textContent = 'Submit rating';
+}
+
+taxiRatingStarBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    taxiRatingSelectedStars = Number(btn.dataset.star);
+    renderTaxiRatingStars(taxiRatingSelectedStars);
+    taxiRatingSubmitBtn.disabled = false;
+  });
+});
+
+taxiRatingSubmitBtn.addEventListener('click', async () => {
+  if (!currentRideKey || !taxiRatingSelectedStars || taxiRatingSubmitting) return;
+  const ride = taxiTrackLastRide;
+  if (!ride) return;
+  taxiRatingSubmitting = true;
+  taxiRatingSubmitBtn.disabled = true;
+  taxiRatingSubmitBtn.textContent = 'Submitting…';
+  const stars = taxiRatingSelectedStars;
+  const comment = taxiRatingCommentEl.value.trim();
+  const { db, ref, update, set, runTransaction } = window.fb;
+  try {
+    await update(ref(db, 'rides/' + currentRideKey), {
+      rating: { stars, comment, ratedAt: Date.now() },
+    });
+    if (ride.driverId) {
+      // One-time notification for the driver — driver.html renders it
+      // once, then deletes this exact node itself.
+      await set(ref(db, 'taxi_drivers/' + ride.driverId + '/pendingRatings/' + currentRideKey), {
+        stars,
+        comment,
+        customerName: ride.customerName || 'Customer',
+        rideKey: currentRideKey,
+        createdAt: Date.now(),
+      });
+      // Best-effort running average — never blocks showing the "thanks"
+      // state even if this part fails.
+      runTransaction(ref(db, 'taxi_drivers/' + ride.driverId + '/ratingSum'), v => (v || 0) + stars).catch(() => {});
+      runTransaction(ref(db, 'taxi_drivers/' + ride.driverId + '/ratingCount'), v => (v || 0) + 1).catch(() => {});
+    }
+  } catch (e) {
+    alert("Couldn't submit your rating. Please check your connection and try again.");
+    taxiRatingSubmitting = false;
+    taxiRatingSubmitBtn.disabled = false;
+    taxiRatingSubmitBtn.textContent = 'Submit rating';
+    return;
+  }
+  taxiRatingSubmitting = false;
+  // renderTaxiTimeline's next tick (the onValue listener firing right
+  // after this write lands) will swap the card for the thanks state.
+});
+
 let taxiTrackLastRide = null;   // most recent ride payload for the screen currently open — used by the call/chat buttons and the hardware back-button guard
 let taxiTrackLastStatus = 'searching';
 const taxiCancelBtn = document.getElementById('taxi-cancel-ride-btn');
 let taxiTrackMap = null; // live-driver map on the ride tracking screen — created lazily, see renderTaxiTimeline
+
+// ---------- Customer-side "still searching" prompt ----------
+// If we've been on the 'searching' step (no driver assigned yet) for a
+// while with nobody accepting, proactively offer the customer a way out
+// instead of just leaving the quiet "Cancel ride" link at the bottom to be
+// discovered on its own. Cancelling here goes through the same
+// taxiCancelBtn flow, which already flips the ride to 'cancelled' —
+// driver.html's notifyOfferCancelled() then cuts the ring short on the
+// driver's side the moment that status change lands.
+const TAXI_SEARCH_TIMEOUT_MS = 7 * 60 * 1000; // 7 minutes
+const taxiSearchTimeoutCard = document.getElementById('taxi-search-timeout-card');
+const taxiSearchTimeoutKeepBtn = document.getElementById('taxi-search-timeout-keep-btn');
+const taxiSearchTimeoutStopBtn = document.getElementById('taxi-search-timeout-stop-btn');
+let taxiSearchTimeoutInterval = null;
+let taxiSearchTimeoutSnoozeUntil = 0; // re-prompt after this timestamp if still searching
+
+function hideTaxiSearchTimeoutCard() {
+  taxiSearchTimeoutCard.classList.add('hidden');
+}
+
+function stopTaxiSearchTimeoutWatch() {
+  if (taxiSearchTimeoutInterval) { clearInterval(taxiSearchTimeoutInterval); taxiSearchTimeoutInterval = null; }
+  hideTaxiSearchTimeoutCard();
+}
+
+// Called on every renderTaxiTimeline tick while the ride is still
+// 'searching' with no driver assigned yet — (re)arms a lightweight
+// interval that checks elapsed wait time against ride.createdAt, so it
+// keeps working correctly even if the app was closed and reopened
+// mid-search rather than relying on a timer started fresh each time.
+function watchTaxiSearchTimeout(rideKey, createdAt) {
+  if (taxiSearchTimeoutInterval) return; // already watching this search
+  const check = () => {
+    const elapsed = Date.now() - (createdAt || Date.now());
+    if (elapsed >= TAXI_SEARCH_TIMEOUT_MS && Date.now() >= taxiSearchTimeoutSnoozeUntil) {
+      taxiSearchTimeoutCard.classList.remove('hidden');
+    }
+  };
+  check();
+  taxiSearchTimeoutInterval = setInterval(check, 5000);
+}
+
+taxiSearchTimeoutKeepBtn.addEventListener('click', () => {
+  taxiSearchTimeoutSnoozeUntil = Date.now() + TAXI_SEARCH_TIMEOUT_MS;
+  hideTaxiSearchTimeoutCard();
+});
+
+// "Stop searching" just triggers the same Cancel ride flow (confirm +
+// status: 'cancelled') that the link at the bottom already uses, so there
+// is exactly one code path that stops the request and, via that status
+// change, stops the driver-side ringing too.
+taxiSearchTimeoutStopBtn.addEventListener('click', () => {
+  taxiCancelBtn.click();
+});
 
 // ---------- Customer-side driver candidate approval ----------
 const taxiCandidateCard = document.getElementById('taxi-candidate-card');
@@ -2726,8 +2985,23 @@ const taxiCandidateMetaEl = document.getElementById('taxi-candidate-meta');
 const taxiCandidateTimerEl = document.getElementById('taxi-candidate-timer');
 const taxiCandidateSkipBtn = document.getElementById('taxi-candidate-skip-btn');
 const taxiCandidateAcceptBtn = document.getElementById('taxi-candidate-accept-btn');
-const TAXI_CANDIDATE_WINDOW_MS = 10 * 1000;
+const TAXI_CANDIDATE_WINDOW_MS = 25 * 1000;
 const TAXI_CANDIDATE_MAX_RADIUS_KM = 12;
+// ---------- Choice Driver — customer picks a zone, then a specific
+// driver in that zone, and the ride goes straight to that one driver
+// only (rides/{key}.chosenDriverId). Unlike the auto candidate flow
+// above, if that driver skips or doesn't respond within
+// TAXI_CHOICE_WINDOW_MS the ride is NOT rotated to anyone else — it just
+// stops, and the customer is sent back to pick again. See driver.html's
+// handling of chosenDriverId for the matching skip/timeout logic.
+const taxiChoiceDriverOpenBtn = document.getElementById('taxi-choice-driver-open-btn');
+const taxiChoiceZoneListEl = document.getElementById('taxi-choice-zone-list');
+const taxiChoiceZoneHintEl = document.getElementById('taxi-choice-zone-hint');
+const taxiChoiceDriverListEl = document.getElementById('taxi-choice-driver-list');
+const taxiChoiceDriverHintEl = document.getElementById('taxi-choice-driver-hint');
+const taxiChoiceDriverZoneNameEl = document.getElementById('taxi-choice-driver-zone-name');
+let taxiChoiceSelectedZoneId = null;
+let taxiChoiceSelectedZoneName = '';
 const TAXI_CANDIDATE_CLUSTER_KM = 0.5; // ties within this distance keep pure nearest-first order
 const TAXI_CANDIDATE_STALE_MS = 3 * 60 * 1000;
 let taxiCandidateActiveRideKey = null;   // which ride the current candidate session belongs to
@@ -2784,6 +3058,113 @@ let busTrackTickInterval = null;     // same, for the single trip's status banne
 let busTrackStopsCache = [];     // full ordered list [start, ...stops, end] for the bus
                                   // currently open — rebuilt whenever start/end/stops change
 let busTrackLastLoc = null;      // last known bus location
+
+// ---------- Bus feature promo video(s) (set from Operator Panel -> App
+// Videos -> Bus feature videos). Stored at app_config/busVideos:
+//   { delaySeconds, skipDelaySeconds, videos: [{url}, ...], updatedAt }
+// - delaySeconds: how long after opening the Bus screen before the first
+//   video starts.
+// - skipDelaySeconds: how many seconds into EACH video before the ✕ skip
+//   button becomes usable (forced minimum watch time).
+// - videos plays in order; when one ends the next starts automatically;
+//   skipping (once allowed) also advances to the next one.
+// Seen once per device per playlist, keyed to updatedAt so re-saving a
+// new list in the operator panel makes it play again for everyone.
+let busVideoOpenTimeout = null;
+let busVideoSkipTimer = null;
+function scheduleBusVideoCheck() {
+  if (busVideoOpenTimeout) { clearTimeout(busVideoOpenTimeout); busVideoOpenTimeout = null; }
+  if (!window.fb) return;
+  const { db, ref, get } = window.fb;
+  get(ref(db, 'app_config/busVideos')).then(snap => {
+    const data = snap.val();
+    const videos = (data && Array.isArray(data.videos)) ? data.videos.filter(v => v && v.url) : [];
+    if (!videos.length || (data && data.enabled === false)) return;
+    const seenKey = 'nesh_bus_video_seen_' + (data.updatedAt || videos.map(v => v.url).join('|'));
+    let seen = false;
+    try { seen = localStorage.getItem(seenKey) === '1'; } catch (e) {}
+    if (seen) return;
+    const delayMs = Math.max(0, Number(data.delaySeconds) || 0) * 1000;
+    const skipDelaySeconds = Math.max(0, Number(data.skipDelaySeconds) || 0);
+    busVideoOpenTimeout = setTimeout(() => {
+      playBusVideoQueue(videos, 0, skipDelaySeconds, seenKey);
+    }, delayMs);
+  }).catch(() => {});
+}
+function cancelBusVideoCheck() {
+  if (busVideoOpenTimeout) { clearTimeout(busVideoOpenTimeout); busVideoOpenTimeout = null; }
+  if (busVideoSkipTimer) { clearInterval(busVideoSkipTimer); busVideoSkipTimer = null; }
+  const overlay = document.getElementById('bus-video-overlay');
+  const video = document.getElementById('bus-video-player');
+  if (overlay) overlay.classList.remove('show');
+  if (video) { video.pause(); video.removeAttribute('src'); video.load(); }
+}
+function playBusVideoQueue(videos, index, skipDelaySeconds, seenKey) {
+  const overlay = document.getElementById('bus-video-overlay');
+  const video = document.getElementById('bus-video-player');
+  const closeBtn = document.getElementById('bus-video-close-btn');
+  const skipBtn = document.getElementById('bus-video-skip-btn');
+  if (!overlay || !video || index >= videos.length) {
+    try { localStorage.setItem(seenKey, '1'); } catch (e) {}
+    if (overlay) overlay.classList.remove('show');
+    return;
+  }
+  if (busVideoSkipTimer) { clearInterval(busVideoSkipTimer); busVideoSkipTimer = null; }
+  video.src = videos[index].url;
+  video.controls = false;
+  video.autoplay = true;
+  closeBtn.style.display = 'none';
+  overlay.classList.add('show');
+  const advance = () => {
+    if (busVideoSkipTimer) { clearInterval(busVideoSkipTimer); busVideoSkipTimer = null; }
+    playBusVideoQueue(videos, index + 1, skipDelaySeconds, seenKey);
+  };
+  video.onended = () => {
+    if (index + 1 >= videos.length) {
+      try { localStorage.setItem(seenKey, '1'); } catch (e) {}
+      closeBtn.style.display = 'inline-block';
+    } else {
+      advance();
+    }
+  };
+  closeBtn.onclick = () => {
+    try { localStorage.setItem(seenKey, '1'); } catch (e) {}
+    overlay.classList.remove('show');
+    video.pause(); video.removeAttribute('src'); video.load();
+  };
+  // Skip button: disabled for skipDelaySeconds into THIS video, with a
+  // live countdown; once unlocked, tapping it jumps to the next video (or
+  // closes, marking the whole playlist seen, if this was the last one).
+  let remaining = skipDelaySeconds;
+  const renderSkip = () => {
+    if (remaining > 0) {
+      skipBtn.disabled = true;
+      skipBtn.textContent = remaining + 's';
+    } else {
+      skipBtn.disabled = false;
+      skipBtn.textContent = '✕';
+    }
+  };
+  renderSkip();
+  if (remaining > 0) {
+    busVideoSkipTimer = setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) { clearInterval(busVideoSkipTimer); busVideoSkipTimer = null; remaining = 0; }
+      renderSkip();
+    }, 1000);
+  }
+  skipBtn.onclick = () => {
+    if (skipBtn.disabled) return;
+    if (index + 1 >= videos.length) {
+      try { localStorage.setItem(seenKey, '1'); } catch (e) {}
+      overlay.classList.remove('show');
+      video.pause(); video.removeAttribute('src'); video.load();
+    } else {
+      advance();
+    }
+  };
+  video.play().catch(() => { /* autoplay blocked — skip button (once unlocked) still works */ });
+}
 let busTrackReachedIndex = -1;   // highest index in busTrackStopsCache the bus has actually
                                   // arrived at (GPS within ARRIVAL_RADIUS_METERS) this session —
                                   // monotonically increasing, like a real train app: a station
@@ -3121,6 +3502,7 @@ function openBusList() {
   if (busListTickInterval) { clearInterval(busListTickInterval); busListTickInterval = null; }
   if (!busFilterDateStr) busFilterDateStr = todayDateStr();
   syncBusDateUi();
+  scheduleBusVideoCheck();
   if (!window.fb) return;
   const { db, ref, onValue } = window.fb;
   busListUnsub = onValue(ref(db, 'buses'), snap => {
@@ -3471,6 +3853,7 @@ function escapeHtml(s) {
 document.getElementById('bus-list-back-btn').addEventListener('click', () => {
   if (busListUnsub) { busListUnsub(); busListUnsub = null; }
   if (busListTickInterval) { clearInterval(busListTickInterval); busListTickInterval = null; }
+  cancelBusVideoCheck();
   showScreen('category');
 });
 document.getElementById('bus-track-back-btn').addEventListener('click', () => {
@@ -3831,11 +4214,13 @@ function updateTaxiBookBtn() {
   if (km == null) {
     taxiBookBtn.disabled = true;
     taxiBookBtn.textContent = 'Set pickup & drop to continue';
+    taxiChoiceDriverOpenBtn.disabled = true;
     return;
   }
   const rt = RIDE_TYPES.find(r => r.key === taxiSelectedType);
   taxiBookBtn.disabled = false;
   taxiBookBtn.textContent = taxiFareIsOff() ? `Book ${rt.label}` : `Book ${rt.label} · ₹${Math.round(effectiveBaseFare(rt) + effectivePerKm(rt) * km)}`;
+  taxiChoiceDriverOpenBtn.disabled = false;
 }
 
 document.getElementById('taxi-book-back-btn').addEventListener('click', () => {
@@ -3931,38 +4316,326 @@ function normalizeRideStatus(raw) {
   return 'searching';
 }
 
-// Looks at every online 'auto' driver in taxi_drivers and returns the
-// single nearest free one (falling back to busy ones only if nobody free
-// is around), excluding any id in excludeIds (drivers already skipped by
-// the customer or who've already declined this exact ride). Ties within
-// TAXI_CANDIDATE_CLUSTER_KM of the nearest still resolve to the nearest —
-// this is a simpler, customer-facing version of driver.html's own ranking
-// (no order-count fairness weighting, since here a human is reviewing and
-// can skip, rather than it being an unattended rotation).
-async function findNearestTaxiCandidate(pickup, excludeIds) {
+// Same point-in-polygon test as driver.html's isPointInZoneBounds — kept
+// in sync with that copy. Used to find which drawn driver_zones boundary a
+// pickup point actually falls inside.
+function taxiPointInZoneBounds(pt, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].lng, yi = poly[i].lat;
+    const xj = poly[j].lng, yj = poly[j].lat;
+    const intersect = ((yi > pt.lat) !== (yj > pt.lat)) &&
+      (pt.lng < (xj - xi) * (pt.lat - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+// Same stable, non-random tiebreak as driver.html's stableTieBreakKey —
+// must give the identical answer here and in every driver's app for the
+// same ride, so kept byte-for-byte in sync with that copy.
+function taxiStableTieBreakKey(createdAt, driverId) {
+  const str = String(createdAt || 0) + '|' + String(driverId || '');
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
+  }
+  return h;
+}
+
+/* ==================================================================
+   CHOICE DRIVER — customer explicitly picks their own driver, instead
+   of the app auto-matching one. Flow:
+     1. taxiChoiceDriverOpenBtn opens screen-taxi-choice-zone, which
+        figures out which driver_zones zone the pickup point falls
+        inside, then lists every zone that shares that zone's
+        zone_groups group (so a customer can also order a driver from a
+        neighbouring zone in the same group, not just their own).
+     2. Picking a zone opens screen-taxi-choice-driver, listing every
+        online driver assigned to that zone — not-busy drivers first,
+        then nearest first within each group.
+     3. Picking a driver books the ride straight to that one driver via
+        rides/{key}.chosenDriverId — see driver.html, which treats this
+        exactly like an operator assignment (only that driver's app
+        ever sees it) but additionally auto-stops after
+        TAXI_CHOICE_WINDOW_MS if they don't respond. Either an explicit
+        skip or that timeout clears chosenDriverId and sets
+        chosenDriverStatus — never rotates to another driver — and
+        renderTaxiTimeline below sends the customer back to the driver
+        list to pick again.
+   ================================================================== */
+const TAXI_CHOICE_WINDOW_MS = 25 * 1000; // must match driver.html's own auto-stop timer for this flow
+async function taxiChoiceFetchZonesAndGroups() {
+  const { db, ref, get } = window.fb;
+  const [zonesSnap, groupsSnap] = await Promise.all([get(ref(db, 'driver_zones')), get(ref(db, 'zone_groups'))]);
+  const zonesVal = zonesSnap.val() || {};
+  const groupsVal = groupsSnap.val() || {};
+  const zones = Object.keys(zonesVal).map(id => Object.assign({ _id: id }, zonesVal[id]));
+  const groups = Object.keys(groupsVal).map(id => Object.assign({ _id: id }, groupsVal[id]));
+  return { zones, groups };
+}
+function taxiChoiceZoneForPickup(pickup, zones) {
+  const drawn = zones.filter(z => z.bounds && z.bounds.length >= 3);
+  const containing = drawn.find(z => taxiPointInZoneBounds(pickup, z.bounds));
+  return containing || null;
+}
+async function openTaxiChoiceZoneScreen() {
+  if (!taxiPickup) return;
+  showScreen('taxi-choice-zone');
+  taxiChoiceZoneListEl.innerHTML = '';
+  taxiChoiceZoneHintEl.textContent = 'Loading zones near your pickup point…';
+  let zones, groups;
+  try {
+    ({ zones, groups } = await taxiChoiceFetchZonesAndGroups());
+  } catch (e) {
+    taxiChoiceZoneHintEl.textContent = "Couldn't load zones — check your connection and try again.";
+    return;
+  }
+  const myZone = taxiChoiceZoneForPickup(taxiPickup, zones);
+  // No drawn zone contains the pickup point, or that zone isn't in any
+  // group — fall back to listing every zone so the flow still works,
+  // rather than a dead end.
+  const list = (myZone && myZone.groupId)
+    ? zones.filter(z => z.groupId === myZone.groupId)
+    : zones;
+  if (!list.length) {
+    taxiChoiceZoneHintEl.textContent = 'No zones have been set up yet — ask the operator to add one.';
+    return;
+  }
+  taxiChoiceZoneHintEl.textContent = myZone
+    ? `You're in ${myZone.name} — pick any zone in its group to see drivers there.`
+    : 'Pick a zone to see drivers there.';
+  taxiChoiceZoneListEl.innerHTML = list.map(z => `
+    <div class="loc-search-item" data-zone-id="${z._id}">
+      <div>${escapeHtmlTaxi(z.name || 'Zone')}</div>
+      ${z._id === (myZone && myZone._id) ? '<div class="loc-search-item-sub">Your current zone</div>' : ''}
+    </div>
+  `).join('');
+  taxiChoiceZoneListEl.querySelectorAll('[data-zone-id]').forEach(el => {
+    el.addEventListener('click', () => {
+      const z = list.find(x => x._id === el.getAttribute('data-zone-id'));
+      if (z) openTaxiChoiceDriverScreen(z);
+    });
+  });
+}
+// Minimal HTML-escape for the small bits of Firebase text (zone/driver
+// names) rendered into innerHTML in this flow.
+function escapeHtmlTaxi(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+async function openTaxiChoiceDriverScreen(zone) {
+  taxiChoiceSelectedZoneId = zone._id;
+  taxiChoiceSelectedZoneName = zone.name || 'Zone';
+  taxiChoiceDriverZoneNameEl.textContent = taxiChoiceSelectedZoneName.toUpperCase();
+  showScreen('taxi-choice-driver');
+  taxiChoiceDriverListEl.innerHTML = '';
+  taxiChoiceDriverHintEl.textContent = 'Loading drivers in this zone…';
+  const { db, ref, get } = window.fb;
+  let driversSnap;
+  try {
+    driversSnap = await get(ref(db, 'taxi_drivers'));
+  } catch (e) {
+    taxiChoiceDriverHintEl.textContent = "Couldn't load drivers — check your connection and try again.";
+    return;
+  }
+  const drivers = driversSnap.val() || {};
+  const list = Object.keys(drivers).map(id => {
+    const d = drivers[id];
+    const loc = d.location;
+    let distanceKm = null;
+    if (loc && typeof loc.lat === 'number' && taxiPickup) {
+      distanceKm = haversineMeters(taxiPickup.lat, taxiPickup.lng, loc.lat, loc.lng) / 1000;
+    }
+    return { id, d, distanceKm };
+  }).filter(x => x.d && x.d.isOnline === true && x.d.zone === zone._id && (!x.d.services || x.d.services.taxi !== false));
+  // Not-busy drivers first, then nearest-first within each group; drivers
+  // with no location fix yet sort to the end of their group.
+  list.sort((a, b) => {
+    const busyDiff = (a.d.isBusy ? 1 : 0) - (b.d.isBusy ? 1 : 0);
+    if (busyDiff !== 0) return busyDiff;
+    const da = a.distanceKm == null ? Infinity : a.distanceKm;
+    const db_ = b.distanceKm == null ? Infinity : b.distanceKm;
+    return da - db_;
+  });
+  if (!list.length) {
+    taxiChoiceDriverHintEl.textContent = 'No online drivers in this zone right now — try another zone.';
+    return;
+  }
+  taxiChoiceDriverHintEl.textContent = 'Not-busy drivers, nearest first. Tap a driver to send them your ride directly.';
+  taxiChoiceDriverListEl.innerHTML = list.map(x => `
+    <div class="loc-search-item" data-driver-id="${x.id}">
+      <div>${escapeHtmlTaxi(x.d.name || 'Driver')} ${x.d.isBusy ? '· <span style="color:var(--muted-2);">busy</span>' : ''}</div>
+      <div class="loc-search-item-sub">${[x.d.vehicleNumber, x.distanceKm != null ? x.distanceKm.toFixed(1) + ' km away' : null].filter(Boolean).join(' · ')}</div>
+    </div>
+  `).join('');
+  taxiChoiceDriverListEl.querySelectorAll('[data-driver-id]').forEach(el => {
+    el.addEventListener('click', () => {
+      const driverId = el.getAttribute('data-driver-id');
+      const match = list.find(x => x.id === driverId);
+      if (match) submitChoiceDriverBooking(driverId, match.d);
+    });
+  });
+}
+// Set when the customer reaches the zone/driver pickers via "Pick another
+// driver" on an already-stopped choice-driver ride (see
+// retryChoiceDriverPick below), so submitChoiceDriverBooking updates that
+// same ride instead of creating a brand-new one.
+let taxiChoiceRetryRideKey = null;
+async function submitChoiceDriverBooking(driverId) {
+  const { db, ref, push, set, update } = window.fb;
+  if (taxiChoiceRetryRideKey) {
+    const rideKey = taxiChoiceRetryRideKey;
+    taxiChoiceRetryRideKey = null;
+    try {
+      await update(ref(db, 'rides/' + rideKey), {
+        chosenDriverId: driverId,
+        chosenDriverStatus: null,
+        chosenZoneName: taxiChoiceSelectedZoneName,
+      });
+      showScreen('taxi-track');
+    } catch (e) {
+      alert("Couldn't send this ride to the driver — check your connection and try again.");
+    }
+    return;
+  }
+  const km = currentTaxiKm();
+  if (km == null) return;
+  const rt = RIDE_TYPES.find(r => r.key === taxiSelectedType);
+  const fare = Math.round(effectiveBaseFare(rt) + effectivePerKm(rt) * km);
+  const rideRef = push(ref(db, 'rides'));
+  const ride = {
+    customerNumber: state.user?.number || '',
+    customerName: state.user?.name || 'Customer',
+    customerDeviceId: NESH_DEVICE_ID,
+    pickup: taxiPickup,
+    drop: taxiDrop,
+    vehicleType: rt.key,
+    vehicleLabel: rt.label,
+    distanceKm: Number(km.toFixed(2)),
+    fare,
+    platformFee: currentTaxiPlatformFee(),
+    status: 'searching',
+    createdAt: Date.now(),
+    otp: String(Math.floor(1000 + Math.random() * 9000)),
+    chosenDriverId: driverId,
+    chosenZoneName: taxiChoiceSelectedZoneName,
+  };
+  try {
+    await set(rideRef, ride);
+    setStoredActiveRideKey(rideRef.key);
+    openTaxiTrack(rideRef.key, ride);
+  } catch (e) {
+    alert("Couldn't send this ride to the driver — check your connection and try again.");
+  }
+}
+// "Pick another driver" button on a stopped choice-driver ride (see
+// renderTaxiTimeline) — restores the ride's own pickup point as
+// taxiPickup so the zone/driver lists and distance sorting use the
+// right location, then reopens the zone picker in "retry" mode.
+function retryChoiceDriverPick() {
+  if (!taxiTrackLastRide || !currentRideKey) return;
+  taxiPickup = taxiTrackLastRide.pickup || taxiPickup;
+  taxiChoiceRetryRideKey = currentRideKey;
+  openTaxiChoiceZoneScreen();
+}
+document.getElementById('taxi-choice-retry-btn').addEventListener('click', retryChoiceDriverPick);
+document.getElementById('taxi-choice-zone-back-btn').addEventListener('click', () => {
+  if (taxiChoiceRetryRideKey) {
+    taxiChoiceRetryRideKey = null;
+    showScreen('taxi-track');
+    return;
+  }
+  showScreen('taxi-book');
+  persistScreen('taxi-book');
+});
+document.getElementById('taxi-choice-driver-back-btn').addEventListener('click', () => {
+  showScreen('taxi-choice-zone');
+});
+taxiChoiceDriverOpenBtn.addEventListener('click', async () => {
+  if (!state.user) {
+    state.authReturnTo = "taxi";
+    loginNumberInput.value = "";
+    loginErrorEl.style.display = "none";
+    loginSubmitBtn.disabled = true;
+    showScreen('login');
+    return;
+  }
+  openTaxiChoiceZoneScreen();
+});
+
+// Looks at every online driver in taxi_drivers matching the ride's own
+// vehicleType and returns the single best one, following the exact same
+// rule driver.html's own rotation uses (so the customer-side approval step
+// and driver.html's unattended rotation always agree on who's next):
+//  1. Zone-restricted — only drivers assigned to the zone the pickup point
+//     actually falls inside (by driver_zones boundary). If the pickup
+//     isn't inside any drawn zone, falls back to plain radius matching
+//     across all zones. If it IS inside a drawn zone but nobody there
+//     matches, returns null — never leaks to a neighbouring zone.
+//  2. Free drivers first; only widens to busy drivers in that SAME zone
+//     if no free driver is there.
+//  3. Nearest first; ties within TAXI_CANDIDATE_CLUSTER_KM are broken by
+//     fewest rides so far, then longest current online session, then a
+//     stable (non-random) tiebreak — never a coin flip that could disagree
+//     between this app and the driver's own app.
+// excludeIds are drivers already skipped by the customer or who've already
+// declined this exact ride.
+async function findNearestTaxiCandidate(pickup, excludeIds, vehicleType, createdAt) {
   if (!window.fb || !pickup) return null;
   const { db, ref, get } = window.fb;
-  let snap;
-  try { snap = await get(ref(db, 'taxi_drivers')); } catch (e) { return null; }
-  const drivers = snap.val() || {};
-  const candidates = [];
-  Object.keys(drivers).forEach(id => {
-    if (excludeIds.has(id)) return;
-    const d = drivers[id];
-    if (!d || d.isOnline !== true) return;
-    if (d.vehicleType && d.vehicleType !== 'auto') return;
-    if (d.services && d.services.taxi === false) return;
-    const loc = d.location;
-    if (!loc || typeof loc.lat !== 'number' || !loc.updatedAt) return;
-    if (Date.now() - loc.updatedAt > TAXI_CANDIDATE_STALE_MS) return;
-    const distanceKm = haversineMeters(pickup.lat, pickup.lng, loc.lat, loc.lng) / 1000;
-    if (distanceKm > TAXI_CANDIDATE_MAX_RADIUS_KM) return;
-    candidates.push({ id, distanceKm, isBusy: !!d.isBusy, name: d.name || 'Driver', vehicleNumber: d.vehicleNumber || '', photo: d.photo || '' });
+  let driversSnap, zonesSnap, ridesSnap;
+  try {
+    [driversSnap, zonesSnap, ridesSnap] = await Promise.all([
+      get(ref(db, 'taxi_drivers')),
+      get(ref(db, 'driver_zones')),
+      get(ref(db, 'rides')),
+    ]);
+  } catch (e) { return null; }
+  const drivers = driversSnap.val() || {};
+  const zonesVal = zonesSnap.val() || {};
+  const zones = Object.keys(zonesVal).map(id => Object.assign({ _id: id }, zonesVal[id]));
+  const ridesVal = ridesSnap.val() || {};
+
+  const drawn = zones.filter(z => z.bounds && z.bounds.length >= 3);
+  const containing = drawn.find(z => taxiPointInZoneBounds(pickup, z.bounds));
+  const zoneId = containing ? containing._id : null; // null = pickup outside every drawn zone -> radius fallback
+
+  const orderCountFor = driverId => Object.values(ridesVal).filter(r => r && r.driverId === driverId).length;
+
+  const buildPool = includeBusy => {
+    const candidates = [];
+    Object.keys(drivers).forEach(id => {
+      if (excludeIds.has(id)) return;
+      const d = drivers[id];
+      if (!d || d.isOnline !== true) return;
+      if (d.vehicleType !== vehicleType) return;
+      if (d.services && d.services.taxi === false) return;
+      if (d.isBusy && !includeBusy) return;
+      if (zoneId && d.zone !== zoneId) return;
+      const loc = d.location;
+      if (!loc || typeof loc.lat !== 'number' || !loc.updatedAt) return;
+      if (Date.now() - loc.updatedAt > TAXI_CANDIDATE_STALE_MS) return;
+      const distanceKm = haversineMeters(pickup.lat, pickup.lng, loc.lat, loc.lng) / 1000;
+      if (distanceKm > TAXI_CANDIDATE_MAX_RADIUS_KM) return;
+      candidates.push({ id, distanceKm, name: d.name || 'Driver', vehicleNumber: d.vehicleNumber || '', photo: d.photo || '', onlineSince: d.onlineSince || Infinity });
+    });
+    return candidates;
+  };
+
+  let pool = buildPool(false);
+  if (!pool.length) pool = buildPool(true); // nobody free in this zone -> widen to busy, same zone only
+  if (!pool.length) return null;
+
+  pool.sort((a, b) => a.distanceKm - b.distanceKm);
+  const minDistanceKm = pool[0].distanceKm;
+  const cluster = pool.filter(c => c.distanceKm - minDistanceKm <= TAXI_CANDIDATE_CLUSTER_KM);
+  cluster.sort((a, b) => {
+    const countDiff = orderCountFor(a.id) - orderCountFor(b.id);
+    if (countDiff !== 0) return countDiff;
+    const onlineDiff = a.onlineSince - b.onlineSince;
+    if (onlineDiff !== 0) return onlineDiff;
+    return taxiStableTieBreakKey(createdAt, a.id) - taxiStableTieBreakKey(createdAt, b.id);
   });
-  if (!candidates.length) return null;
-  const free = candidates.filter(c => !c.isBusy);
-  const pool = (free.length ? free : candidates).sort((a, b) => a.distanceKm - b.distanceKm);
-  return pool[0];
+  return cluster[0];
 }
 
 function stopTaxiCandidateTimers() {
@@ -3988,9 +4661,9 @@ function hideTaxiCandidateCard() {
 // 'searching' with no candidateDriverId, which is exactly what
 // driver.html's own nearest-first rotation already knows how to pick up,
 // so the ride is never left completely unoffered.
-async function advanceTaxiCandidateFlow(rideKey, pickup, excludeIds) {
+async function advanceTaxiCandidateFlow(rideKey, pickup, excludeIds, vehicleType, createdAt) {
   const myToken = ++taxiCandidateSearchToken;
-  const candidate = await findNearestTaxiCandidate(pickup, excludeIds);
+  const candidate = await findNearestTaxiCandidate(pickup, excludeIds, vehicleType, createdAt);
   if (myToken !== taxiCandidateSearchToken || currentRideKey !== rideKey) return; // superseded while we were awaiting Firebase
   if (!candidate) return;
   if (!window.fb) return;
@@ -4053,8 +4726,14 @@ function renderTaxiTimeline(ride) {
   taxiTrackLastRide = ride;
   taxiTrackLastStatus = status;
 
-  // ---- Driver-candidate approval (searching stage only) ----
-  if (status !== 'searching') {
+  // A Choice Driver ride (rides/{key}.chosenDriverId, or one that was and
+  // has since stopped — see below) never engages the auto-candidate flow:
+  // the customer picked this driver explicitly, so it must never silently
+  // get routed to someone else the way the plain-booking flow does.
+  const isChoiceDriverRide = !!(ride.chosenDriverId || ride.chosenDriverStatus);
+
+  // ---- Driver-candidate approval (searching stage only, plain-booking rides only) ----
+  if (isChoiceDriverRide || status !== 'searching') {
     hideTaxiCandidateCard();
     taxiCandidateActiveRideKey = null;
     taxiCandidateLastDeclinedCount = -1;
@@ -4073,23 +4752,47 @@ function renderTaxiTimeline(ride) {
     if (currentRideKey && (taxiCandidateActiveRideKey !== currentRideKey || declinedIds.length !== taxiCandidateLastDeclinedCount)) {
       taxiCandidateActiveRideKey = currentRideKey;
       taxiCandidateLastDeclinedCount = declinedIds.length;
-      advanceTaxiCandidateFlow(currentRideKey, ride.pickup, new Set(declinedIds));
+      advanceTaxiCandidateFlow(currentRideKey, ride.pickup, new Set(declinedIds), ride.vehicleType, ride.createdAt);
     }
   }
 
+  // ---- Choice Driver: stopped (declined or timed out) — never auto-
+  // rotates to another driver. Show a plain message and let the customer
+  // manually pick again via retryChoiceDriverPick(). ----
+  const choiceStoppedEl = document.getElementById('taxi-choice-stopped-card');
+  if (status === 'searching' && ride.chosenDriverStatus && !ride.chosenDriverId && !ride.driverName) {
+    choiceStoppedEl.classList.remove('hidden');
+  } else {
+    choiceStoppedEl.classList.add('hidden');
+  }
+
   if (status === 'cancelled') {
+    stopTaxiSearchTimeoutWatch();
     taxiTrackStatusText.textContent = 'Ride cancelled';
     taxiTrackEtaText.textContent = 'This ride was cancelled.';
     taxiTrackTimelineEl.innerHTML = '';
     taxiDriverCard.classList.add('hidden');
     taxiOtpCard.classList.add('hidden');
     taxiCancelBtn.style.display = 'none';
+    taxiRatingCard.classList.add('hidden');
+    taxiRatingThanksCard.classList.add('hidden');
     return;
   }
 
+  // "Still searching?" prompt: only while genuinely still looking (no
+  // driver assigned yet) — stop watching the instant a driver is on board
+  // or the ride wraps up, so the card can never linger past that point.
+  if (status === 'searching' && !ride.driverName) {
+    watchTaxiSearchTimeout(currentRideKey, ride.createdAt);
+  } else {
+    stopTaxiSearchTimeoutWatch();
+  }
+
   const currentIdx = TAXI_STEPS.findIndex(s => s.key === status);
-  taxiTrackStatusText.textContent = (status === 'searching' && ride.candidateDriverId && !ride.driverName)
-    ? 'Waiting for the driver to confirm'
+  taxiTrackStatusText.textContent =
+    (status === 'searching' && ride.chosenDriverId && !ride.driverName) ? 'Waiting for your chosen driver to accept'
+    : (status === 'searching' && ride.chosenDriverStatus && !ride.chosenDriverId && !ride.driverName) ? "Driver didn't respond"
+    : (status === 'searching' && ride.candidateDriverId && !ride.driverName) ? 'Waiting for the driver to confirm'
     : TAXI_STEPS[currentIdx].label;
   const rideFareOff = !ride.fare;
   taxiTrackEtaText.textContent = status === 'completed'
@@ -4138,6 +4841,31 @@ function renderTaxiTimeline(ride) {
   // their side — only while still searching for a driver.
   taxiCancelBtn.style.display = (status === 'searching') ? 'block' : 'none';
 
+  // ---- Post-trip rating ----
+  if (status === 'completed') {
+    if (ride.rating) {
+      // Already rated (possibly from another tab/session) — show thanks,
+      // not the form.
+      taxiRatingCard.classList.add('hidden');
+      taxiRatingThanksTextEl.textContent = 'Thanks for rating your trip! ' + '★'.repeat(ride.rating.stars) + '☆'.repeat(5 - ride.rating.stars);
+      taxiRatingThanksCard.classList.remove('hidden');
+    } else {
+      taxiRatingThanksCard.classList.add('hidden');
+      if (taxiRatingShownForRideKey !== currentRideKey) {
+        // First time showing the form for THIS ride — reset any leftover
+        // star selection from a previous trip's form.
+        taxiRatingShownForRideKey = currentRideKey;
+        resetTaxiRatingForm();
+      }
+      taxiRatingDriverNameEl.textContent = ride.driverName ? ('Rate your trip with ' + ride.driverName) : 'Rate your driver';
+      taxiRatingCard.classList.remove('hidden');
+    }
+  } else {
+    taxiRatingCard.classList.add('hidden');
+    taxiRatingThanksCard.classList.add('hidden');
+    taxiRatingShownForRideKey = null;
+  }
+
   taxiTrackTimelineEl.innerHTML = '';
   TAXI_STEPS.forEach((step, idx) => {
     const stepState = idx < currentIdx ? 'done' : idx === currentIdx ? 'current' : 'pending';
@@ -4158,6 +4886,8 @@ function renderTaxiTimeline(ride) {
 
 function openTaxiTrack(rideKey, initialRide) {
   currentRideKey = rideKey;
+  taxiSearchTimeoutSnoozeUntil = 0; // fresh ride — don't inherit a snooze from a previous search
+  stopTaxiSearchTimeoutWatch();
   document.getElementById('taxi-track-ride-num').textContent = 'Ride ' + rideKey.slice(-6).toUpperCase();
   if (initialRide) {
     renderTaxiTimeline(initialRide);
@@ -4172,6 +4902,8 @@ function openTaxiTrack(rideKey, initialRide) {
     taxiTrackTimelineEl.innerHTML = '';
     taxiDriverCard.classList.add('hidden');
     taxiCancelBtn.style.display = 'none';
+    taxiRatingCard.classList.add('hidden');
+    taxiRatingThanksCard.classList.add('hidden');
   }
   showScreen('taxi-track');
   persistScreen('taxi-track', { rideKey });
@@ -4188,6 +4920,7 @@ function openTaxiTrack(rideKey, initialRide) {
 function leaveTaxiTrack() {
   if (taxiTrackUnsub) { taxiTrackUnsub(); taxiTrackUnsub = null; }
   if (taxiTrackMap) { taxiTrackMap.hide(); taxiTrackMapDriverId = null; }
+  stopTaxiSearchTimeoutWatch();
   hideTaxiCandidateCard();
   taxiCandidateActiveRideKey = null;
   taxiCandidateLastDeclinedCount = -1;
@@ -4391,6 +5124,16 @@ taxiCancelBtn.addEventListener('click', async () => {
   hideTaxiCandidateCard();
   const { db, ref, update } = window.fb;
   try { await update(ref(db, 'rides/' + currentRideKey), { status: 'cancelled' }); } catch (e) {}
+  // Fire-and-forget: also tell the Cloudflare Worker to send a stop-ring
+  // push to whichever driver(s) this ride was last offered to, so the
+  // native full-screen ringing screen goes away right away even if that
+  // driver's app is fully closed — same cancel_ring pattern already used
+  // for restaurant order cancellation above.
+  fetch('https://broad-paper-6445.raise3715.workers.dev', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'cancel_ring', kind: 'ride', rideId: currentRideKey }),
+  }).catch(() => {});
 });
 
 // ---------- LOGIN ----------
@@ -7021,6 +7764,7 @@ trackCancelOrderBtn.addEventListener('click', async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         type: 'cancel_ring',
+        kind: 'order',
         restId: trackCurrentRestId,
         orderId: trackCurrentOrderKey,
       }),
