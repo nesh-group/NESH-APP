@@ -471,6 +471,31 @@
     padding:12px 14px; font-size:12px; color:var(--muted-2); font-family:'Inter',sans-serif;
   }
 
+  /* "Choose your own driver" — zone & driver pick screens. A proper card
+     list (instead of a flat divider list) so the plain white body has
+     something to look at. */
+  .zone-pick-list{ display:flex; flex-direction:column; gap:10px; }
+  .zone-pick-item{
+    display:flex; align-items:center; gap:12px;
+    padding:15px 16px; border-radius:16px; cursor:pointer;
+    background:#fff; border:1.5px solid var(--field-border);
+    box-shadow:var(--card-shadow);
+    transition:transform .1s, border-color .15s, background .15s;
+  }
+  .zone-pick-item:active{ transform:scale(0.98); background:var(--field-bg); }
+  .zone-pick-item.current{ border-color:var(--marigold); background:var(--field-bg); }
+  .zone-pick-item-icon{
+    flex-shrink:0; width:38px; height:38px; border-radius:11px;
+    display:flex; align-items:center; justify-content:center; font-size:17px;
+    background:var(--field-bg); border:1px solid var(--field-border);
+  }
+  .zone-pick-item.current .zone-pick-item-icon{ background:var(--marigold); border-color:var(--marigold); }
+  .zone-pick-item.busy{ opacity:.6; }
+  .zone-pick-item-body{ flex:1; min-width:0; }
+  .zone-pick-item-title{ font-size:14.5px; font-weight:700; color:var(--ink); font-family:'Inter',sans-serif; }
+  .zone-pick-item-sub{ color:var(--muted-2); font-size:11.5px; margin-top:2px; }
+  .zone-pick-item-arrow{ flex-shrink:0; color:var(--muted); }
+
   /* Track order */
   .track-header{ padding:40px 24px 8px; display:flex; align-items:center; gap:14px; }
   .track-title{ color:var(--ink); font-family:'Poppins',sans-serif; font-size:19px; font-weight:700; margin:2px 0 0; }
@@ -1220,13 +1245,16 @@
     </div>
   </div>
 
-  <!-- Generic in-app message modal (replaces native alert() for a styled,
-       on-brand popup instead of the browser's "site says" dialog) -->
+  <!-- Generic in-app message modal (replaces native alert()/confirm() for a
+       styled, on-brand popup instead of the browser's "site says" dialog) -->
   <div class="loc-overlay" id="info-modal-overlay" style="align-items:center; z-index:3000;">
     <div class="loc-sheet" style="border-radius:20px; max-width:320px; animation:locUp .2s ease-out; padding:22px;">
       <p class="loc-title" id="info-modal-title" style="margin:0 0 8px; font-size:18px;"></p>
       <p id="info-modal-message" style="color:var(--muted-2); font-size:14px; line-height:1.5; margin:0 0 20px;"></p>
-      <button type="button" class="loc-gps-btn" id="info-modal-ok-btn" style="background:var(--marigold); margin-bottom:0;">OK</button>
+      <div id="info-modal-btn-row" style="display:flex; gap:10px;">
+        <button type="button" class="loc-gps-btn" id="info-modal-cancel-btn" style="display:none; background:var(--field-bg); color:var(--ink); border:1.5px solid var(--field-border); margin-bottom:0; flex:1;">Cancel</button>
+        <button type="button" class="loc-gps-btn" id="info-modal-ok-btn" style="background:var(--marigold); margin-bottom:0; flex:1;">OK</button>
+      </div>
     </div>
   </div>
 
@@ -2908,7 +2936,7 @@ taxiRatingSubmitBtn.addEventListener('click', async () => {
       runTransaction(ref(db, 'taxi_drivers/' + ride.driverId + '/ratingCount'), v => (v || 0) + 1).catch(() => {});
     }
   } catch (e) {
-    alert("Couldn't submit your rating. Please check your connection and try again.");
+    showInfoModal('Oops', "Couldn't submit your rating. Please check your connection and try again.");
     taxiRatingSubmitting = false;
     taxiRatingSubmitBtn.disabled = false;
     taxiRatingSubmitBtn.textContent = 'Submit rating';
@@ -4298,7 +4326,7 @@ async function submitTaxiBooking() {
   } catch (e) {
     taxiBookBtn.disabled = false;
     updateTaxiBookBtn();
-    alert("Couldn't book your ride — check your connection and try again.");
+    showInfoModal('Oops', "Couldn't book your ride — check your connection and try again.");
   }
 }
 
@@ -4404,12 +4432,19 @@ async function openTaxiChoiceZoneScreen() {
   taxiChoiceZoneHintEl.textContent = myZone
     ? `You're in ${myZone.name} — pick any zone in its group to see drivers there.`
     : 'Pick a zone to see drivers there.';
-  taxiChoiceZoneListEl.innerHTML = list.map(z => `
-    <div class="loc-search-item" data-zone-id="${z._id}">
-      <div>${escapeHtmlTaxi(z.name || 'Zone')}</div>
-      ${z._id === (myZone && myZone._id) ? '<div class="loc-search-item-sub">Your current zone</div>' : ''}
+  taxiChoiceZoneListEl.className = 'zone-pick-list';
+  taxiChoiceZoneListEl.innerHTML = list.map(z => {
+    const isCurrent = z._id === (myZone && myZone._id);
+    return `
+    <div class="zone-pick-item${isCurrent ? ' current' : ''}" data-zone-id="${z._id}">
+      <div class="zone-pick-item-icon">📍</div>
+      <div class="zone-pick-item-body">
+        <div class="zone-pick-item-title">${escapeHtmlTaxi(z.name || 'Zone')}</div>
+        ${isCurrent ? '<div class="zone-pick-item-sub">Your current zone</div>' : ''}
+      </div>
+      <svg class="zone-pick-item-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
     </div>
-  `).join('');
+  `; }).join('');
   taxiChoiceZoneListEl.querySelectorAll('[data-zone-id]').forEach(el => {
     el.addEventListener('click', () => {
       const z = list.find(x => x._id === el.getAttribute('data-zone-id'));
@@ -4461,10 +4496,15 @@ async function openTaxiChoiceDriverScreen(zone) {
     return;
   }
   taxiChoiceDriverHintEl.textContent = 'Not-busy drivers, nearest first. Tap a driver to send them your ride directly.';
+  taxiChoiceDriverListEl.className = 'zone-pick-list';
   taxiChoiceDriverListEl.innerHTML = list.map(x => `
-    <div class="loc-search-item" data-driver-id="${x.id}">
-      <div>${escapeHtmlTaxi(x.d.name || 'Driver')} ${x.d.isBusy ? '· <span style="color:var(--muted-2);">busy</span>' : ''}</div>
-      <div class="loc-search-item-sub">${[x.d.vehicleNumber, x.distanceKm != null ? x.distanceKm.toFixed(1) + ' km away' : null].filter(Boolean).join(' · ')}</div>
+    <div class="zone-pick-item${x.d.isBusy ? ' busy' : ''}" data-driver-id="${x.id}">
+      <div class="zone-pick-item-icon">🚗</div>
+      <div class="zone-pick-item-body">
+        <div class="zone-pick-item-title">${escapeHtmlTaxi(x.d.name || 'Driver')}${x.d.isBusy ? ' · <span style="color:var(--muted-2); font-weight:600;">busy</span>' : ''}</div>
+        <div class="zone-pick-item-sub">${[x.d.vehicleNumber, x.distanceKm != null ? x.distanceKm.toFixed(1) + ' km away' : null].filter(Boolean).join(' · ')}</div>
+      </div>
+      <svg class="zone-pick-item-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
     </div>
   `).join('');
   taxiChoiceDriverListEl.querySelectorAll('[data-driver-id]').forEach(el => {
@@ -4493,7 +4533,7 @@ async function submitChoiceDriverBooking(driverId) {
       });
       showScreen('taxi-track');
     } catch (e) {
-      alert("Couldn't send this ride to the driver — check your connection and try again.");
+      showInfoModal('Oops', "Couldn't send this ride to the driver — check your connection and try again.");
     }
     return;
   }
@@ -4524,7 +4564,7 @@ async function submitChoiceDriverBooking(driverId) {
     setStoredActiveRideKey(rideRef.key);
     openTaxiTrack(rideRef.key, ride);
   } catch (e) {
-    alert("Couldn't send this ride to the driver — check your connection and try again.");
+    showInfoModal('Oops', "Couldn't send this ride to the driver — check your connection and try again.");
   }
 }
 // "Pick another driver" button on a stopped choice-driver ride (see
@@ -5024,7 +5064,7 @@ async function sendTaxiChatMessage() {
     await set(msgRef, { from: 'customer', text, ts: Date.now() });
     setTaxiChatLastRead(currentRideKey, Date.now());
   } catch (e) {
-    alert("Couldn't send — check your connection and try again.");
+    showInfoModal('Oops', "Couldn't send — check your connection and try again.");
   } finally {
     sendBtn.disabled = false;
     input.focus();
@@ -5117,10 +5157,10 @@ taxiCancelBtn.addEventListener('click', async () => {
   // before this click landed, so re-verify status (not just the button's
   // visibility) before allowing the cancel.
   if (taxiTrackLastStatus !== 'searching') {
-    alert("A driver has already accepted this ride — it can no longer be cancelled from here.");
+    showInfoModal('Too late', "A driver has already accepted this ride — it can no longer be cancelled from here.");
     return;
   }
-  if (!confirm('Cancel this ride?')) return;
+  if (!(await showConfirmModal('Cancel this ride?', 'Are you sure you want to cancel this ride request?', 'Yes, cancel', 'No, keep it'))) return;
   hideTaxiCandidateCard();
   const { db, ref, update } = window.fb;
   try { await update(ref(db, 'rides/' + currentRideKey), { status: 'cancelled' }); } catch (e) {}
@@ -5368,7 +5408,7 @@ async function registerCustomerPush(phone) {
     // TEMP DIAGNOSTIC — remove this alert() line once push is confirmed
     // working. Shows the exact error on-screen so it's visible without a
     // computer/devtools attached.
-    alert('Push registration error: ' + (e && e.message ? e.message : e));
+    showInfoModal('Debug', 'Push registration error: ' + (e && e.message ? e.message : e));
   }
 }
 
@@ -5763,14 +5803,49 @@ function renderHome() {
 }
 
 // Generic in-app message modal — a styled white popup, used instead of the
-// browser's native alert() (which shows an ugly "yoursite.com says" box)
-// for messages we want to look like part of the app.
+// browser's native alert()/confirm() (which shows an ugly "yoursite.com
+// says" box) for messages we want to look like part of the app.
 function showInfoModal(title, message) {
+  const cancelBtn = document.getElementById('info-modal-cancel-btn');
+  const okBtn = document.getElementById('info-modal-ok-btn');
+  cancelBtn.style.display = 'none';
+  okBtn.textContent = 'OK';
   document.getElementById('info-modal-title').textContent = title;
   document.getElementById('info-modal-message').textContent = message;
   document.getElementById('info-modal-overlay').classList.add('show');
 }
+
+// Confirm variant — same on-brand popup, but with a Cancel/OK pair and a
+// Promise<boolean> result, so call sites can `await` it in place of the
+// browser's native confirm(). Resolves true only if OK is pressed.
+function showConfirmModal(title, message, okLabel, cancelLabel) {
+  const overlay = document.getElementById('info-modal-overlay');
+  const cancelBtn = document.getElementById('info-modal-cancel-btn');
+  const okBtn = document.getElementById('info-modal-ok-btn');
+  document.getElementById('info-modal-title').textContent = title;
+  document.getElementById('info-modal-message').textContent = message;
+  okBtn.textContent = okLabel || 'Yes';
+  cancelBtn.textContent = cancelLabel || 'No';
+  cancelBtn.style.display = '';
+  overlay.classList.add('show');
+  return new Promise(resolve => {
+    function cleanup(result) {
+      overlay.classList.remove('show');
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      resolve(result);
+    }
+    function onOk() { cleanup(true); }
+    function onCancel() { cleanup(false); }
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+  });
+}
+
 document.getElementById('info-modal-ok-btn').addEventListener('click', () => {
+  document.getElementById('info-modal-overlay').classList.remove('show');
+});
+document.getElementById('info-modal-cancel-btn').addEventListener('click', () => {
   document.getElementById('info-modal-overlay').classList.remove('show');
 });
 
@@ -7396,13 +7471,13 @@ locProceedBtn.addEventListener('click', () => {
   if (contactNumber.length !== 10) {
     locContactInput.focus();
     locCurrentValue.textContent = pendingLocation.text; // keep location text as-is
-    alert("Please enter a valid 10-digit contact number for this order.");
+    showInfoModal('Check your details', "Please enter a valid 10-digit contact number for this order.");
     return;
   }
   const landmark = locLandmarkInput.value.trim();
   if (!landmark) {
     locLandmarkInput.focus();
-    alert("Please enter a landmark near your delivery location.");
+    showInfoModal('Check your details', "Please enter a landmark near your delivery location.");
     return;
   }
   const placeArea = locPlaceInput.value.trim();
@@ -7448,13 +7523,13 @@ payConfirmBtn.addEventListener('click', async () => {
   if (!r || !pc) { closePaymentConfirm(); return; }
   const closedInfo = getShopClosedInfo(r);
   if (closedInfo.closed) {
-    alert(closedInfo.message);
+    showInfoModal('Shop closed', closedInfo.message);
     closePaymentConfirm();
     renderMenu();
     return;
   }
   if (selectedPaymentMethod === 'gpay' && !gpayPaidCheckbox.checked) {
-    alert("Please complete the GPay payment and tick \"I've completed the payment\" before placing the order.");
+    showInfoModal('One more step', "Please complete the GPay payment and tick \"I've completed the payment\" before placing the order.");
     return;
   }
 
@@ -7573,7 +7648,7 @@ payConfirmBtn.addEventListener('click', async () => {
     persistScreen('track', { trackReturnScreen: 'home' });
   } catch (err) {
     console.error("Failed to place order:", err);
-    alert("Couldn't place the order. Please check your connection and try again.");
+    showInfoModal('Oops', "Couldn't place the order. Please check your connection and try again.");
   } finally {
     payConfirmBtn.disabled = false;
     payConfirmBtn.textContent = "Confirm & place order";
@@ -7747,7 +7822,7 @@ trackBackBtn.addEventListener('click', leaveTrackScreen);
 
 trackCancelOrderBtn.addEventListener('click', async () => {
   if (!trackCurrentRestId || !trackCurrentOrderKey) return;
-  if (!confirm('Cancel this order?')) return;
+  if (!(await showConfirmModal('Cancel this order?', 'Are you sure you want to cancel this order?', 'Yes, cancel', 'No, keep it'))) return;
   trackCancelOrderBtn.disabled = true;
   try {
     const { db, ref, update } = window.fb;
@@ -7770,7 +7845,7 @@ trackCancelOrderBtn.addEventListener('click', async () => {
       }),
     }).catch(() => {});
   } catch (e) {
-    alert("Couldn't cancel the order. Please check your connection and try again.");
+    showInfoModal('Oops', "Couldn't cancel the order. Please check your connection and try again.");
   } finally {
     trackCancelOrderBtn.disabled = false;
   }
