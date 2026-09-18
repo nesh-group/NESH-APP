@@ -45,6 +45,7 @@ jobs:
           npm install @capacitor/core @capacitor/android @capacitor/cli
           npm install @capacitor/geolocation
           npm install @capacitor/push-notifications
+          npm install @capacitor/local-notifications
           npm install @capacitor/assets --save-dev
 
       # IMPORTANT: appId must stay exactly the same as the package name
