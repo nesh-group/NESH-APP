@@ -104,16 +104,38 @@ jobs:
       # outputs an already-signed AAB, matching the existing app's signature.
       - name: Add signing config to build.gradle
         run: |
-          sed -i '/^android {/a\
-              signingConfigs {\
-                  release {\
-                      storeFile file("signing.keystore")\
-                      storePassword System.getenv("KEYSTORE_PASSWORD")\
-                      keyAlias System.getenv("KEY_ALIAS")\
-                      keyPassword System.getenv("KEY_PASSWORD")\
-                  }\
-              }' android/app/build.gradle
-          sed -i '0,/release {/s//release {\n            signingConfig signingConfigs.release/' android/app/build.gradle
+          python3 - << 'PYEOF'
+          import re
+
+          path = "android/app/build.gradle"
+          with open(path) as f:
+              content = f.read()
+
+          signing_block = '''
+              signingConfigs {
+                  release {
+                      storeFile file("signing.keystore")
+                      storePassword System.getenv("KEYSTORE_PASSWORD")
+                      keyAlias System.getenv("KEY_ALIAS")
+                      keyPassword System.getenv("KEY_PASSWORD")
+                  }
+              }
+          '''
+          content = content.replace("android {", "android {\n" + signing_block, 1)
+
+          # Insert a fresh release{} block right after buildTypes { rather
+          # than editing the existing one — Gradle merges repeated blocks
+          # for the same build type, so this avoids fragile text matching.
+          content = re.sub(
+              r"(buildTypes\s*\{)",
+              r"\1\n        release {\n            signingConfig signingConfigs.release\n        }",
+              content,
+              count=1,
+          )
+
+          with open(path, "w") as f:
+              f.write(content)
+          PYEOF
           cat android/app/build.gradle
 
       - name: Build signed release AAB
