@@ -1,4 +1,4 @@
-name: Build Customer App APK
+name: Build Customer App AAB (Signed Release)
 
 on:
   workflow_dispatch:
@@ -45,11 +45,14 @@ jobs:
           npm install @capacitor/geolocation
           npm install @capacitor/assets --save-dev
 
+      # IMPORTANT: appId must stay exactly the same as the package name
+      # already live on Play Store (com.neshgroup.nesh), otherwise Play
+      # Console will treat this as a brand-new app instead of an update.
       - name: Create capacitor.config.json
         run: |
           cat > capacitor.config.json << 'EOF'
           {
-            "appId": "com.neshgroup.customer",
+            "appId": "com.neshgroup.nesh",
             "appName": "NESH",
             "webDir": "www"
           }
@@ -67,10 +70,18 @@ jobs:
       - name: Add location permissions to AndroidManifest.xml
         run: |
           sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />#' android/app/src/main/AndroidManifest.xml
-          cat android/app/src/main/AndroidManifest.xml
 
       - name: Sync web assets into Android project
         run: npx cap sync android
+
+      # Play Store's current live versionCode is 1 (the closed-testing TWA
+      # build). Every new upload must have a strictly higher versionCode,
+      # so this is bumped to 2 here.
+      - name: Set version code and name
+        run: |
+          sed -i "s/versionCode 1/versionCode 2/" android/app/build.gradle
+          sed -i 's/versionName "1.0"/versionName "1.0.1"/' android/app/build.gradle
+          grep -E "versionCode|versionName" android/app/build.gradle
 
       - name: Fix Kotlin stdlib duplicate class conflict
         run: |
@@ -82,12 +93,39 @@ jobs:
           }
           EOF
 
-      - name: Build debug APK
-        working-directory: android
-        run: ./gradlew assembleDebug
+      # Restore the SAME keystore used for the app currently live on
+      # Play Store. It is stored as a base64 GitHub secret so the raw
+      # file never sits in the repo.
+      - name: Decode signing keystore
+        run: |
+          echo "${{ secrets.NESH_KEYSTORE_BASE64 }}" | base64 -d > android/app/signing.keystore
 
-      - name: Upload APK artifact
+      # Wire the keystore into the release build type so `bundleRelease`
+      # outputs an already-signed AAB, matching the existing app's signature.
+      - name: Add signing config to build.gradle
+        run: |
+          sed -i '/^android {/a\
+              signingConfigs {\
+                  release {\
+                      storeFile file("signing.keystore")\
+                      storePassword System.getenv("KEYSTORE_PASSWORD")\
+                      keyAlias System.getenv("KEY_ALIAS")\
+                      keyPassword System.getenv("KEY_PASSWORD")\
+                  }\
+              }' android/app/build.gradle
+          sed -i '0,/release {/s//release {\n            signingConfig signingConfigs.release/' android/app/build.gradle
+          cat android/app/build.gradle
+
+      - name: Build signed release AAB
+        working-directory: android
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.NESH_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.NESH_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.NESH_KEY_PASSWORD }}
+        run: ./gradlew bundleRelease
+
+      - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nesh-customer-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: nesh-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
