@@ -5415,40 +5415,43 @@ if (typeof firebase !== 'undefined' && firebase.messaging) {
 // subscribes the device to "all_customers" so operator broadcasts
 // (offers/announcements) reach everyone, logged in or not.
 async function registerCustomerPush(phone) {
-  // Push notification permission requests disabled — feature turned off.
-  return;
+  if (!window.Capacitor || !window.Capacitor.Plugins || !window.Capacitor.Plugins.PushNotifications) return;
   try {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-    if (typeof firebase === 'undefined' || !firebase.messaging) return;
-    const messaging = firebase.messaging();
-    const perm = await Notification.requestPermission();
-    if (perm !== 'granted') return;
-    const swReg = await navigator.serviceWorker.getRegistration('./sw.js') || await navigator.serviceWorker.ready;
-    const token = await messaging.getToken({
-      vapidKey: 'BJy2vLBreoMThId_Nm1pQlJWpAlcYdG4U2XW0eEW8_98xoA8ajBjwPGVlKNZSAgj9QBubFO3D5BkkqVYJvDHL3Q',
-      serviceWorkerRegistration: swReg
-    });
+    const { PushNotifications } = window.Capacitor.Plugins;
+    const permStatus = await PushNotifications.checkPermissions();
+    // Don't request permission here — this runs on every app load/login,
+    // which is exactly the "ask with no context" pattern we're avoiding.
+    // The soft-ask modal (maybePromptNotificationPermission, called right
+    // after an order is placed) is the only place that requests it.
+    if (permStatus.receive !== 'granted') return;
+    await PushNotifications.register();
+  } catch (e) {}
+}
+
+// One-time listener: whenever the native side hands us a device token
+// (after register() succeeds, from either registerCustomerPush or the
+// soft-ask flow), subscribe it to the broadcast topic and, if a customer
+// is logged in, save it so single-order status pushes can reach this
+// device too.
+if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications) {
+  window.Capacitor.Plugins.PushNotifications.addListener('registration', async (tokenResult) => {
+    const token = tokenResult && tokenResult.value;
     if (!token) return;
-    // Subscribe this device to the "all_customers" topic so operator
-    // broadcasts (offers/announcements) can reach everyone with one
-    // send, without the Worker needing every customer's token.
     fetch('https://broad-paper-6445.raise3715.workers.dev', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'subscribe_topic', token }),
     }).catch(() => {});
+    const phone = state.user && state.user.number;
     if (phone) {
-      const { db, ref, update } = window.fb;
-      await update(ref(db, 'customers/' + phone), { fcmToken: token });
+      try {
+        const { db, ref, update } = window.fb;
+        await update(ref(db, 'customers/' + phone), { fcmToken: token });
+      } catch (e) {}
     }
-  } catch (e) {
-    console.error('Push registration failed:', e);
-    // TEMP DIAGNOSTIC — remove this alert() line once push is confirmed
-    // working. Shows the exact error on-screen so it's visible without a
-    // computer/devtools attached.
-    showInfoModal('Debug', 'Push registration error: ' + (e && e.message ? e.message : e));
-  }
+  });
 }
+
 
 let orderNotifyUnsub = null;
 function attachOrderStatusWatcher(number) {
@@ -5886,6 +5889,37 @@ document.getElementById('info-modal-ok-btn').addEventListener('click', () => {
 document.getElementById('info-modal-cancel-btn').addEventListener('click', () => {
   document.getElementById('info-modal-overlay').classList.remove('show');
 });
+
+// ---------- PUSH NOTIFICATION SOFT-ASK ----------
+// Same pattern Swiggy/Zomato use: show our own on-brand prompt first, and
+// only trigger the real Android system permission dialog if the user taps
+// "Enable". The system dialog only gets ONE shot — if the user denies it
+// there, the app can never show it again (only Settings can re-enable it) —
+// so we don't want to burn that one shot on a user with no context yet.
+// Called right after an order is placed, when "I want updates on this"
+// is the most natural thing on the user's mind.
+async function maybePromptNotificationPermission() {
+  if (!window.Capacitor || !window.Capacitor.Plugins || !window.Capacitor.Plugins.PushNotifications) return;
+  const { PushNotifications } = window.Capacitor.Plugins;
+  let permStatus;
+  try { permStatus = await PushNotifications.checkPermissions(); } catch (e) { return; }
+  if (permStatus.receive === 'granted') {
+    try { await PushNotifications.register(); } catch (e) {}
+    return;
+  }
+  if (permStatus.receive === 'denied') return; // Android already said no once — asking again does nothing
+  const proceed = await showConfirmModal(
+    '🔔 Stay updated',
+    'Turn on notifications to get live order status, delivery alerts and offers.',
+    'Enable',
+    'Not now'
+  );
+  if (!proceed) return;
+  try {
+    const result = await PushNotifications.requestPermissions();
+    if (result.receive === 'granted') await PushNotifications.register();
+  } catch (e) {}
+}
 
 // Ray-casting point-in-polygon check. poly is an array of {lat, lng}.
 function isPointInZone(pt, poly) {
@@ -7684,6 +7718,7 @@ payConfirmBtn.addEventListener('click', async () => {
     closePaymentConfirm();
     showScreen('placed');
     persistScreen('track', { trackReturnScreen: 'home' });
+    maybePromptNotificationPermission();
   } catch (err) {
     console.error("Failed to place order:", err);
     showInfoModal('Oops', "Couldn't place the order. Please check your connection and try again.");
