@@ -10,6 +10,7 @@ on:
       - 'sw.js'
       - 'icon-192.png'
       - 'icon-512.png'
+      - 'google-services.json'
 
 jobs:
   build:
@@ -43,6 +44,7 @@ jobs:
           npm init -y
           npm install @capacitor/core @capacitor/android @capacitor/cli
           npm install @capacitor/geolocation
+          npm install @capacitor/push-notifications
           npm install @capacitor/assets --save-dev
 
       # IMPORTANT: appId must stay exactly the same as the package name
@@ -60,6 +62,17 @@ jobs:
 
       - name: Add Android platform
         run: npx cap add android
+
+      # Wires up Firebase Cloud Messaging (needed for push notifications).
+      # google-services.json is committed to the repo root — it's a
+      # client config file, not a secret, so it's fine to keep in git
+      # (Firebase does not treat it as sensitive).
+      - name: Add Firebase config for push notifications
+        run: |
+          cp google-services.json android/app/google-services.json
+          sed -i "s#classpath 'com.android.tools.build:gradle.*#&\n        classpath 'com.google.gms:google-services:4.4.2'#" android/build.gradle
+          echo "apply plugin: 'com.google.gms.google-services'" >> android/app/build.gradle
+          grep -n "google-services" android/build.gradle android/app/build.gradle
 
       - name: Generate app icon from icon-512.png
         run: |
@@ -138,16 +151,26 @@ jobs:
           PYEOF
           cat android/app/build.gradle
 
-      - name: Build signed release AAB
+      # AAB is what Play Store requires for the actual store listing.
+      # APK is built too so you (or testers) can sideload-install it
+      # directly on a phone without going through Play Console at all —
+      # both come from the same signed release config, same keystore.
+      - name: Build signed release AAB and APK
         working-directory: android
         env:
           KEYSTORE_PASSWORD: ${{ secrets.NESH_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.NESH_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.NESH_KEY_PASSWORD }}
-        run: ./gradlew bundleRelease
+        run: ./gradlew bundleRelease assembleRelease
 
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
         with:
           name: nesh-release-aab
           path: android/app/build/outputs/bundle/release/app-release.aab
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nesh-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
