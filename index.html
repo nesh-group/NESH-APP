@@ -4532,6 +4532,24 @@ async function submitChoiceDriverBooking(driverId) {
         chosenZoneName: taxiChoiceSelectedZoneName,
       });
       showScreen('taxi-track');
+      // Fire-and-forget: ring this exact driver's phone (full-screen alert,
+      // same as the ordinary nearest-driver ride push) so they don't have
+      // to have the app open to notice they were re-offered this ride.
+      const rideForPush = taxiTrackLastRide || {};
+      fetch('https://broad-paper-6445.raise3715.workers.dev', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'ride',
+          rideId: rideKey,
+          driverId,
+          pickupAddress: (rideForPush.pickup && rideForPush.pickup.text) || (taxiPickup && taxiPickup.text) || '',
+          dropAddress: (rideForPush.drop && rideForPush.drop.text) || (taxiDrop && taxiDrop.text) || '',
+          customerName: state.user?.name || 'Customer',
+          customerPhone: state.user?.number || '',
+          fare: rideForPush.fare,
+        }),
+      }).catch(() => {});
     } catch (e) {
       showInfoModal('Oops', "Couldn't send this ride to the driver — check your connection and try again.");
     }
@@ -4562,6 +4580,26 @@ async function submitChoiceDriverBooking(driverId) {
   try {
     await set(rideRef, ride);
     setStoredActiveRideKey(rideRef.key);
+
+    // Fire-and-forget: ring this exact driver's phone (full-screen alert,
+    // same treatment the ordinary nearest-driver ride push gets) — the
+    // worker skips its nearest-driver ranking entirely when driverId is
+    // present and just targets this one driver's saved FCM token.
+    fetch('https://broad-paper-6445.raise3715.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'ride',
+        rideId: rideRef.key,
+        driverId,
+        pickupAddress: taxiPickup.text,
+        dropAddress: taxiDrop.text,
+        customerName: state.user?.name || 'Customer',
+        customerPhone: state.user?.number || '',
+        fare,
+      }),
+    }).catch(() => {});
+
     openTaxiTrack(rideRef.key, ride);
   } catch (e) {
     showInfoModal('Oops', "Couldn't send this ride to the driver — check your connection and try again.");
