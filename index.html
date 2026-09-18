@@ -5424,6 +5424,29 @@ if (typeof firebase !== 'undefined' && firebase.messaging) {
   } catch (e) {}
 }
 
+// Android only auto-shows a push notification in the system tray when the
+// app is backgrounded or closed. While the app is OPEN (foreground), FCM
+// delivers the message silently to this listener instead — nothing shows
+// up unless we display it ourselves. This is the fix for "notification
+// worked when app was closed but not while testing with it open".
+if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications) {
+  window.Capacitor.Plugins.PushNotifications.addListener('pushNotificationReceived', async (notification) => {
+    try {
+      if (!window.Capacitor.Plugins.LocalNotifications) return;
+      try { await window.Capacitor.Plugins.LocalNotifications.requestPermissions(); } catch (e) {}
+      const title = (notification && notification.title) || (notification && notification.data && notification.data.title) || 'NESH';
+      const body = (notification && notification.body) || (notification && notification.data && notification.data.body) || '';
+      await window.Capacitor.Plugins.LocalNotifications.schedule({
+        notifications: [{
+          id: Math.floor(Math.random() * 100000),
+          title,
+          body,
+        }],
+      });
+    } catch (e) {}
+  });
+}
+
 // phone is optional — pass it for a logged-in customer (also saves the
 // token under customers/{phone}/fcmToken for single-order alerts); call
 // with no argument for a guest, which still asks permission and
