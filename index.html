@@ -1082,6 +1082,51 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
 <script>
+  // The rest of this file calls navigator.geolocation.getCurrentPosition /
+  // watchPosition everywhere (written for the web/PWA version). That
+  // browser API does NOT work inside the native Android app's WebView —
+  // real GPS access there has to go through the @capacitor/geolocation
+  // plugin instead. Rather than rewrite every call site, this shim
+  // transparently redirects navigator.geolocation to the native plugin
+  // when running in the app, and falls back to the real browser API
+  // otherwise (web/PWA) — so everything below keeps working unchanged.
+  (function () {
+    if (!navigator.geolocation) return;
+    const nativeGetCurrentPosition = navigator.geolocation.getCurrentPosition.bind(navigator.geolocation);
+    const nativeWatchPosition = navigator.geolocation.watchPosition.bind(navigator.geolocation);
+    const nativeClearWatch = navigator.geolocation.clearWatch.bind(navigator.geolocation);
+
+    navigator.geolocation.getCurrentPosition = function (success, error, options) {
+      const CapGeo = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation;
+      if (!CapGeo) { nativeGetCurrentPosition(success, error, options); return; }
+      CapGeo.requestPermissions()
+        .then(() => CapGeo.getCurrentPosition(options || {}))
+        .then(success)
+        .catch(err => { if (error) error(err); });
+    };
+
+    navigator.geolocation.watchPosition = function (success, error, options) {
+      const CapGeo = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation;
+      if (!CapGeo) return nativeWatchPosition(success, error, options);
+      let capWatchId = null;
+      CapGeo.requestPermissions()
+        .then(() => CapGeo.watchPosition(options || {}, (pos, err) => {
+          if (err) { if (error) error(err); return; }
+          if (pos) success(pos);
+        }))
+        .then(id => { capWatchId = id; })
+        .catch(err => { if (error) error(err); });
+      return capWatchId;
+    };
+
+    navigator.geolocation.clearWatch = function (id) {
+      const CapGeo = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation;
+      if (CapGeo && id != null) { CapGeo.clearWatch({ id }); return; }
+      nativeClearWatch(id);
+    };
+  })();
+</script>
+<script>
   // The compat SDK above (used for firebase.messaging()) is a separate
   // instance from the modular SDK used everywhere else in this file, so it
   // needs its own initializeApp() call with the same config — otherwise
@@ -6897,7 +6942,10 @@ function landmarkTypeFromProps(p) {
 
 function loadLocalLandmarks() {
   if (localLandmarksLoadPromise) return localLandmarksLoadPromise;
-  localLandmarksLoadPromise = fetch('export.geojson')
+  // Fetched from GitHub Pages (not bundled into the app) so that updating
+  // this file and pushing it is enough to update landmarks everywhere —
+  // no app rebuild/republish needed, unlike a file bundled into the AAB/APK.
+  localLandmarksLoadPromise = fetch('https://nesh-group.github.io/NESH-APP/export.geojson')
     .then(res => res.json())
     .then(geo => {
       LOCAL_LANDMARKS = [];
@@ -8245,6 +8293,10 @@ if ('serviceWorker' in navigator) {
 }
 
 // ---------- PWA: "Install App" prompt (Play Store style) ----------
+// Only relevant for people visiting the website in a browser — inside
+// the real native app (Play Store install), there's nothing to "install",
+// so skip this whole block.
+if (!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())) {
 (function () {
   const DISMISS_KEY = 'nesh_install_dismissed_at';
   const DISMISS_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000; // don't auto-popup for 3 days after "Not now"
@@ -8456,6 +8508,7 @@ if ('serviceWorker' in navigator) {
     }
   }
 })();
+}
 </script>
 </body>
 </html>
