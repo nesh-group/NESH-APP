@@ -6679,15 +6679,18 @@ function updateLocSummary() {
   const fee = currentPlatformFee();
   const dc = state.selectedRestaurant && state.selectedRestaurant.deliveryCharges;
   const deliveryFee = currentDeliveryFee();
+  // Platform fee is still tracked separately in the order data (for
+  // accounting), but shown to the customer merged into "Delivery charge"
+  // as one combined line, instead of two separate fee rows.
+  const displayedDeliveryFee = fee + deliveryFee;
   if (locSummaryItemsEl) locSummaryItemsEl.textContent = "₹" + itemsTotal;
-  if (locSummaryFeeEl) locSummaryFeeEl.textContent = "₹" + fee;
-  if (locSummaryFeeRowEl) locSummaryFeeRowEl.style.display = fee > 0 ? "flex" : "none";
+  if (locSummaryFeeRowEl) locSummaryFeeRowEl.style.display = "none";
   // While the real road distance is still loading, show "Calculating…"
   // instead of a number that's about to change — avoids the customer
   // seeing one total on screen and a slightly different one get charged.
   const showLoading = state.roadDistanceLoading && dc;
-  if (locSummaryDeliveryEl) locSummaryDeliveryEl.textContent = showLoading ? "Calculating…" : "₹" + deliveryFee;
-  if (locSummaryDeliveryRowEl) locSummaryDeliveryRowEl.style.display = (deliveryFee > 0 || showLoading) ? "flex" : "none";
+  if (locSummaryDeliveryEl) locSummaryDeliveryEl.textContent = showLoading ? "Calculating…" : "₹" + displayedDeliveryFee;
+  if (locSummaryDeliveryRowEl) locSummaryDeliveryRowEl.style.display = (displayedDeliveryFee > 0 || showLoading) ? "flex" : "none";
   const discount = showLoading ? 0 : currentOrderShopDiscount();
   if (locSummaryDiscountEl) locSummaryDiscountEl.textContent = "-₹" + discount;
   if (locSummaryDiscountRowEl) locSummaryDiscountRowEl.style.display = (discount > 0 && !showLoading) ? "flex" : "none";
