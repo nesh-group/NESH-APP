@@ -2286,6 +2286,19 @@
     if (window.onShopOrderUpdated) window.onShopOrderUpdated();
   });
 
+  // Live-listens to the operator-set Go Series delivery charge (Operator
+  // Panel → Go Series). Applies only to shops with restaurants/{id}.goSeries
+  // === true — see activeDeliveryCharge() below. Every other shop keeps
+  // using its own deliveryCharges, completely unaffected by this.
+  onValue(ref(db, 'app_config/goSeriesDelivery'), (snapshot) => {
+    const data = snapshot.val();
+    window.GO_SERIES_DELIVERY = {
+      baseFee: (data && Number(data.baseFee)) || 0,
+      perKmFee: (data && Number(data.perKmFee)) || 0,
+    };
+    if (window.onPlatformFeeUpdated) window.onPlatformFeeUpdated();
+  });
+
   // Live-listens to the operator-set taxi per-km rate and platform fee
   // (Operator Panel → Taxi Fare). Exposed on window so the taxi booking
   // code (plain <script> below) can read it — 0 on either field means
@@ -6615,13 +6628,26 @@ function currentDeliveryKm() {
 }
 
 let deliveryRouteAbort = null;
+
+// Returns the delivery-charge config to use for the currently selected
+// shop: the operator-set Go Series charge (Operator Panel → Go Series) for
+// any shop flagged restaurants/{id}.goSeries === true, otherwise that
+// shop's own deliveryCharges — untouched, exactly as before Go Series
+// existed.
+function activeDeliveryCharge() {
+  const r = state.selectedRestaurant;
+  if (!r) return null;
+  if (r.goSeries) return window.GO_SERIES_DELIVERY || { baseFee: 0, perKmFee: 0 };
+  return r.deliveryCharges || null;
+}
+
 // Asks OSRM's public routing server for the real cycling-route distance
 // between the restaurant and the customer's pinned delivery spot. Cheap,
 // no API key needed — same free-service pattern already used for landmark
 // lookups (Overpass) and address search (Nominatim) elsewhere in this app.
 async function ensureRoadDistance() {
   const r = state.selectedRestaurant;
-  const dc = r && r.deliveryCharges;
+  const dc = activeDeliveryCharge();
   const pc = state.pendingCheckout;
   const restPos = r ? parseLatLng(r.location) : null;
   if (!dc || !pc || typeof pc.lat !== 'number' || typeof pc.lng !== 'number' || !restPos) return;
@@ -6658,8 +6684,7 @@ async function ensureRoadDistance() {
 }
 
 function currentDeliveryFee() {
-  const r = state.selectedRestaurant;
-  const dc = r && r.deliveryCharges;
+  const dc = activeDeliveryCharge();
   if (!dc) return 0;
   const d = currentDeliveryKm();
   if (!d) return Number(dc.baseFee) || 0; // distance unknown — charge the flat base fee only
@@ -6677,20 +6702,21 @@ function currentCartItemsTotal() {
 function updateLocSummary() {
   const itemsTotal = currentCartItemsTotal();
   const fee = currentPlatformFee();
-  const dc = state.selectedRestaurant && state.selectedRestaurant.deliveryCharges;
+  const dc = activeDeliveryCharge();
   const deliveryFee = currentDeliveryFee();
-  // Platform fee is still tracked separately in the order data (for
-  // accounting), but shown to the customer merged into "Delivery charge"
-  // as one combined line, instead of two separate fee rows.
-  const displayedDeliveryFee = fee + deliveryFee;
+  // Platform fee and delivery charge are shown to the customer as two
+  // separate rows — "Platform fee" always shows the operator-set extra
+  // amount on its own, and "Delivery charge" shows only the restaurant's
+  // own delivery fee (not merged together).
   if (locSummaryItemsEl) locSummaryItemsEl.textContent = "₹" + itemsTotal;
-  if (locSummaryFeeRowEl) locSummaryFeeRowEl.style.display = "none";
+  if (locSummaryFeeEl) locSummaryFeeEl.textContent = "₹" + fee;
+  if (locSummaryFeeRowEl) locSummaryFeeRowEl.style.display = (fee > 0) ? "flex" : "none";
   // While the real road distance is still loading, show "Calculating…"
   // instead of a number that's about to change — avoids the customer
   // seeing one total on screen and a slightly different one get charged.
   const showLoading = state.roadDistanceLoading && dc;
-  if (locSummaryDeliveryEl) locSummaryDeliveryEl.textContent = showLoading ? "Calculating…" : "₹" + displayedDeliveryFee;
-  if (locSummaryDeliveryRowEl) locSummaryDeliveryRowEl.style.display = (displayedDeliveryFee > 0 || showLoading) ? "flex" : "none";
+  if (locSummaryDeliveryEl) locSummaryDeliveryEl.textContent = showLoading ? "Calculating…" : "₹" + deliveryFee;
+  if (locSummaryDeliveryRowEl) locSummaryDeliveryRowEl.style.display = (deliveryFee > 0 || showLoading) ? "flex" : "none";
   const discount = showLoading ? 0 : currentOrderShopDiscount();
   if (locSummaryDiscountEl) locSummaryDiscountEl.textContent = "-₹" + discount;
   if (locSummaryDiscountRowEl) locSummaryDiscountRowEl.style.display = (discount > 0 && !showLoading) ? "flex" : "none";
@@ -7364,7 +7390,7 @@ function setPaymentMethod(method) {
 
 function updateLocConfirmGate() {
   const needsPaymentConfirm = selectedPaymentMethod === 'gpay' && !gpayPaidCheckbox.checked;
-  const dc = state.selectedRestaurant && state.selectedRestaurant.deliveryCharges;
+  const dc = activeDeliveryCharge();
   const stillCalculating = state.roadDistanceLoading && dc;
   payConfirmBtn.disabled = needsPaymentConfirm || stillCalculating;
   payConfirmBtn.textContent = stillCalculating
@@ -7935,8 +7961,8 @@ function normalizeStatus(raw) {
   const s = String(raw || 'pending').toLowerCase().trim();
   if (['awaiting_payment', 'payment_pending', 'awaiting-payment'].includes(s)) return 'awaiting_payment';
   if (['pending', 'placed', 'received', 'new'].includes(s)) return 'pending';
-  if (['preparing', 'accepted', 'confirmed', 'cooking', 'in_progress'].includes(s)) return 'preparing';
-  if (['out_for_delivery', 'out-for-delivery', 'dispatched', 'on_the_way', 'on-the-way'].includes(s)) return 'out_for_delivery';
+  if (['preparing', 'accepted', 'confirmed', 'cooking', 'in_progress', 'ready'].includes(s)) return 'preparing';
+  if (['out_for_delivery', 'out-for-delivery', 'picked_up', 'picked-up', 'dispatched', 'on_the_way', 'on-the-way'].includes(s)) return 'out_for_delivery';
   if (['delivered', 'completed', 'done'].includes(s)) return 'delivered';
   if (['cancelled', 'canceled', 'rejected'].includes(s)) return 'cancelled';
   return 'pending';
