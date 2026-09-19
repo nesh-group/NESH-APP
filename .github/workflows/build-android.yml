@@ -10,6 +10,7 @@ on:
       - 'sw.js'
       - 'icon-192.png'
       - 'icon-512.png'
+      - 'splash.png'
       - 'google-services.json'
 
 jobs:
@@ -79,6 +80,7 @@ jobs:
         run: |
           mkdir -p assets
           cp icon-512.png assets/icon.png
+          cp splash.png assets/splash.png
           npx capacitor-assets generate --android
 
       - name: Add location permissions to AndroidManifest.xml
