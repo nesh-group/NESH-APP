@@ -238,6 +238,14 @@
 
   .search-wrap{ padding:16px 24px 0; }
   .search-wrap .field{ background:var(--cloud); border-color:var(--cloud); box-shadow:0 3px 10px rgba(43,36,16,.05); }
+  /* NESH Store category tabs (Vegetables, Fruits…) under the menu search box */
+  .nesh-cat-bar{ display:none; gap:8px; overflow-x:auto; padding:12px 24px 2px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+  .nesh-cat-bar::-webkit-scrollbar{ display:none; }
+  .nesh-cat-chip{
+    flex:0 0 auto; background:var(--field-bg); border:1.5px solid var(--field-border); border-radius:20px;
+    padding:8px 16px; font-size:13px; font-weight:600; color:var(--ink); font-family:'Inter',sans-serif; cursor:pointer; white-space:nowrap;
+  }
+  .nesh-cat-chip.active{ background:var(--marigold); border-color:var(--marigold); font-weight:700; }
 
   .rest-list{ padding:24px 24px 0; display:flex; flex-direction:column; gap:16px; }
   .rest-card{ cursor:pointer; padding:0; border:none; width:100%; text-align:left; background:none; }
@@ -1261,6 +1269,7 @@
         <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--ink); padding:2px 0;"><span>Item total</span><span id="loc-summary-items">₹0</span></div>
         <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--ink); padding:2px 0;" id="loc-summary-fee-row"><span>Platform fee</span><span id="loc-summary-fee">₹0</span></div>
         <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--ink); padding:2px 0;" id="loc-summary-delivery-row"><span>Delivery charge</span><span id="loc-summary-delivery">₹0</span></div>
+        <p id="loc-summary-free-hint" style="display:none; margin:2px 0 4px; font-size:12px; font-weight:600; color:var(--leaf);"></p>
         <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--leaf); font-weight:700; padding:2px 0;" id="loc-summary-discount-row"><span>Shop discount</span><span id="loc-summary-discount">-₹0</span></div>
         <div style="display:flex; justify-content:space-between; font-size:14px; font-weight:700; color:var(--ink); border-top:1px dashed var(--marigold-dark); margin-top:6px; padding-top:6px;"><span>Total</span><span id="loc-summary-total">₹0</span></div>
       </div>
@@ -1556,7 +1565,7 @@
   <!-- MENU -->
   <section class="screen" id="screen-menu">
     <div class="menu-header">
-      <button class="btn-back" onclick="renderHome(); showScreen('home'); persistScreen('home', { category: state.category });">
+      <button class="btn-back" onclick="menuBackClicked()">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
       </button>
       <img class="menu-header-logo" id="menu-rest-logo" src="" alt="" />
@@ -1571,6 +1580,7 @@
         <input id="menu-search-input" type="text" placeholder="Search items in this menu" />
       </div>
     </div>
+    <div class="nesh-cat-bar" id="nesh-cat-bar"></div>
     <div id="shop-unavailable-panel" style="display:none; text-align:center; padding:40px 24px;">
       <p style="font-size:40px; margin:0 0 12px;">🚫</p>
       <p style="font-family:'Fraunces',serif; font-weight:700; font-size:18px; margin:0 0 8px;">This shop isn't taking orders right now</p>
@@ -2192,7 +2202,12 @@
               .filter(k => !v.menu[k].unavailable)
               .map((k, di) => ({
                 id: k, name: v.menu[k].name, desc: v.menu[k].desc || '',
-                price: Number(v.menu[k].price) || 0,
+                // Go Series shops (Operator Panel → Go Series) get a flat
+                // per-item profit amount baked straight into the price the
+                // customer sees — it shows up as the item's price itself,
+                // not as a separate line anywhere in the app. Every other
+                // shop's price is untouched.
+                price: (Number(v.menu[k].price) || 0) + ((v.goSeries || businessType === 'groceries') ? (Number(window.GO_SERIES_ITEM_MARKUP) || 0) : 0),
                 unit: v.menu[k].unit || 'piece', // 'piece' | 'gram' | 'kg' — set by the shop; for gram/kg, `price` is the rate per gram/kg, not a flat price
                 sizes: Array.isArray(v.menu[k].sizes) ? v.menu[k].sizes.filter(Boolean) : [], // e.g. ['S','M','L','XL','2XL'] — only set on "Sports" shop items
                 image: v.menu[k].photo || itemPhotoSet[di % itemPhotoSet.length],
@@ -2220,6 +2235,12 @@
           gpayNumber: v.gpayNumber || "",
           zone: Array.isArray(v.deliveryZone) && v.deliveryZone.length >= 3 ? v.deliveryZone : null,
           deliveryCharges: v.deliveryCharges || null,
+          // Operator Panel → Go Series flag. When true, activeDeliveryCharge()
+          // uses the shared Go Series charge (and, below, the Go Series
+          // platform fee) instead of this shop's own settings.
+          // Every groceries shop is always in Go Series (Operator Panel → Go
+          // Series) — no shop-set delivery charge for groceries any more.
+          goSeries: !!v.goSeries || businessType === 'groceries',
           discountAmount: Number(v.discountAmount) || 0,
           discountCardImage: v.discountCardImage || null,
           shopUnavailable: !!v.shopUnavailable,
@@ -2286,16 +2307,89 @@
     if (window.onShopOrderUpdated) window.onShopOrderUpdated();
   });
 
-  // Live-listens to the operator-set Go Series delivery charge (Operator
-  // Panel → Go Series). Applies only to shops with restaurants/{id}.goSeries
-  // === true — see activeDeliveryCharge() below. Every other shop keeps
-  // using its own deliveryCharges, completely unaffected by this.
+  // Live-listens to the operator-set order for items *within* the merged
+  // NESH Store groceries catalog (Operator Panel → NESH Store Item Order)
+  // — an array of item keys (name+unit, lowercased — same key
+  // buildNeshStoreCatalog() groups items by), in the order they should
+  // show. Exposed on window so buildNeshStoreCatalog() can re-sort live.
+  onValue(ref(db, 'app_config/neshStoreItemOrder'), (snapshot) => {
+    window.NESH_ITEM_ORDER = Array.isArray(snapshot.val()) ? snapshot.val() : [];
+    if (window.onNeshItemOrderUpdated) window.onNeshItemOrderUpdated();
+  });
+
+  // Live-listens to the operator-set NESH Store CATEGORIES (Operator Panel →
+  // NESH Store Categories): each is { name, order, items: [itemKey, ...] },
+  // where itemKey is the same name+unit lowercased key buildNeshStoreCatalog()
+  // groups by. Shown as tabs at the top of the NESH Store menu screen.
+  onValue(ref(db, 'app_config/neshStoreCategories'), (snapshot) => {
+    const list = [];
+    snapshot.forEach(child => {
+      const v = child.val() || {};
+      const items = Object.values(v.items || {});
+      if (v.name && items.length) list.push({ id: child.key, name: String(v.name), order: Number(v.order) || 0, items });
+    });
+    list.sort((a, b) => (a.order - b.order) || a.name.localeCompare(b.name));
+    window.NESH_CATEGORIES = list;
+    if (window.onNeshCategoriesUpdated) window.onNeshCategoriesUpdated();
+  });
+
+  // Live-listens to operator-pinned NESH Store CUSTOMER PRICES (Operator Panel
+  // → Groceries Catalog → Set customer price): { encodedItemKey: price }.
+  // encodedItemKey = neshPriceKey(name+unit key). An item with an entry here
+  // is shown/charged at exactly that price instead of the automatic
+  // highest-shop-price one. See buildNeshStoreCatalog().
+  onValue(ref(db, 'app_config/neshStorePrices'), (snapshot) => {
+    const v = snapshot.val();
+    window.NESH_PRICES = (v && typeof v === 'object') ? v : {};
+    if (window.onNeshPricesUpdated) window.onNeshPricesUpdated();
+  });
+
+  // Live-listens to the operator-set SHOP ZONES (Operator Panel → Shop
+  // Zones): each is { name, bounds:[{lat,lng}...], shopIds:{shopId:true} }.
+  // When at least one zone exists, a customer can only order from shops
+  // that belong to the zone their location falls inside, and a location
+  // outside every zone gets "not available in your area".
+  onValue(ref(db, 'app_config/shopZones'), (snapshot) => {
+    const v = snapshot.val() || {};
+    window.SHOP_ZONES = Object.keys(v).map(id => {
+      const z = v[id] || {};
+      const shopIds = z.shopIds || {};
+      return {
+        id, name: z.name || '',
+        bounds: (Array.isArray(z.bounds) ? z.bounds : Object.values(z.bounds || {})).filter(pt => pt && typeof pt.lat === 'number' && typeof pt.lng === 'number'),
+        shopIds: Object.keys(shopIds).filter(k => shopIds[k])
+      };
+    }).filter(z => z.bounds.length >= 3);
+    if (window.onShopZonesUpdated) window.onShopZonesUpdated();
+  });
+
+  // Live-listens to the operator-set Go Series delivery charge + platform
+  // fee + per-item profit markup (Operator Panel → Go Series). Applies only
+  // to shops with restaurants/{id}.goSeries === true — see
+  // activeDeliveryCharge() and currentPlatformFee() below, and the menu-item
+  // price line in rebuildRestaurantsFromSnapshot() above. Every other shop
+  // keeps using its own deliveryCharges, the app-wide platform fee, and its
+  // own item prices, completely unaffected.
   onValue(ref(db, 'app_config/goSeriesDelivery'), (snapshot) => {
     const data = snapshot.val();
     window.GO_SERIES_DELIVERY = {
       baseFee: (data && Number(data.baseFee)) || 0,
       perKmFee: (data && Number(data.perKmFee)) || 0,
+      // Orders whose item total reaches this ₹ amount get free delivery
+      // (Operator Panel → Go Series → Free delivery). 0 = off.
+      freeAbove: (data && Number(data.freeDeliveryAbove)) || 0,
+      // Deliveries shorter than this many km are free (0 = off). Deliberately
+      // NOT named freeUnderKm — that's a shop's own delivery-charge field and
+      // currentDeliveryFee code zeroes the fee itself; here isFreeDelivery()
+      // handles it so the summary can still show the struck-out charge.
+      freeWithinKm: (data && Number(data.freeDeliveryWithinKm)) || 0,
     };
+    window.GO_SERIES_PLATFORM_FEE = (data && Number(data.platformFee)) || 0;
+    window.GO_SERIES_ITEM_MARKUP = (data && Number(data.itemMarkup)) || 0;
+    // Item prices are baked into window.RESTAURANTS at build time (unlike
+    // the delivery/platform fees, which are read live at checkout), so a
+    // markup change needs an explicit rebuild to show up right away.
+    rebuildRestaurantsFromSnapshot();
     if (window.onPlatformFeeUpdated) window.onPlatformFeeUpdated();
   });
 
@@ -2323,10 +2417,38 @@
 let RESTAURANTS = [];
 let restaurantsLoadedOnce = false; // true once the FIRST real snapshot has arrived from Firebase
 let SHOP_ORDER = {}; // operator-set per-category shop order, see app_config/shopOrder
+let NESH_ITEM_ORDER = []; // operator-set item order within the merged NESH Store catalog, see app_config/neshStoreItemOrder
 
 window.onShopOrderUpdated = () => {
   SHOP_ORDER = window.SHOP_ORDER || {};
   renderRestaurantList();
+};
+
+window.onNeshItemOrderUpdated = () => {
+  NESH_ITEM_ORDER = window.NESH_ITEM_ORDER || [];
+  // If the customer is currently looking at the merged NESH Store catalog,
+  // rebuild it (buildNeshStoreCatalog() re-reads the new order) and
+  // re-render so the new order shows without needing a refresh.
+  if (state.selectedRestaurant && state.selectedRestaurant.id === 'NESH_STORE') {
+    state.selectedRestaurant.items = buildNeshStoreCatalog();
+    try { renderMenu(); } catch (e) {}
+  }
+};
+
+// NESH Store category tabs — see renderNeshCategoryBar() / renderMenu().
+window.onNeshCategoriesUpdated = () => {
+  if (state.selectedRestaurant && state.selectedRestaurant.id === 'NESH_STORE') {
+    try { renderMenu(); } catch (e) {}
+  }
+};
+
+// An operator-pinned customer price changed — rebuild the merged catalog so
+// the new price shows without a refresh (same idea as the item-order update).
+window.onNeshPricesUpdated = () => {
+  if (state.selectedRestaurant && state.selectedRestaurant.id === 'NESH_STORE') {
+    state.selectedRestaurant.items = buildNeshStoreCatalog();
+    try { renderMenu(); } catch (e) {}
+  }
 };
 
 // Reorders the four home-screen category cards (Food, Groceries, Other
@@ -2352,7 +2474,7 @@ window.onRestaurantsUpdated = () => {
   restaurantsLoadedOnce = true;
   renderRestaurantList();
   if (state.selectedRestaurant) {
-    const updated = RESTAURANTS.find(r => r.id === state.selectedRestaurant.id);
+    const updated = resolveRestaurantById(state.selectedRestaurant.id);
     if (updated) {
       state.selectedRestaurant = updated;
       renderMenu();
@@ -2555,7 +2677,7 @@ let pendingScreenResume = null;
 // list and that list isn't loaded yet — signalling "try again later".
 function tryResumeScreen(saved) {
   if (saved.id === 'menu' && saved.restaurantId) {
-    const rest = RESTAURANTS.find(r => r.id === saved.restaurantId);
+    const rest = resolveRestaurantById(saved.restaurantId);
     if (!rest) return false;
     state.selectedRestaurant = rest;
     state.cart = saved.cart && typeof saved.cart === 'object' ? saved.cart : {};
@@ -2566,7 +2688,7 @@ function tryResumeScreen(saved) {
     resumed = true;
     return true;
   } else if (saved.id === 'item-detail' && saved.restaurantId && saved.itemId) {
-    const rest = RESTAURANTS.find(r => r.id === saved.restaurantId);
+    const rest = resolveRestaurantById(saved.restaurantId);
     if (!rest) return false;
     if (!rest.items.some(i => i.id === saved.itemId)) { resumed = true; return true; }
     state.selectedRestaurant = rest;
@@ -2582,7 +2704,7 @@ function tryResumeScreen(saved) {
     // delivery km/fee calc lives inside this flow) and was on payment when
     // the app refreshed or was closed — take them straight back to payment
     // instead of making them re-enter details and redo the km calculation.
-    const rest = RESTAURANTS.find(r => r.id === saved.restaurantId);
+    const rest = resolveRestaurantById(saved.restaurantId);
     if (!rest) return false;
     state.selectedRestaurant = rest;
     state.cart = saved.cart && typeof saved.cart === 'object' ? saved.cart : {};
@@ -2838,6 +2960,7 @@ function digitsOnly(v) { return v.replace(/\D/g, ''); }
 
 // ---------- CATEGORY (Food / Groceries) ----------
 function openCategory(cat) {
+  if (isAreaUnavailable(state.customerPos)) { showInfoModal(AREA_UNAVAILABLE_TITLE, AREA_UNAVAILABLE_MSG); return; }
   state.category = cat;
   renderHome();
   showScreen('home');
@@ -2852,7 +2975,7 @@ function goToCategoryScreen() {
   persistScreen('category');
 }
 document.getElementById('cat-card-food').addEventListener('click', () => openCategory('hotel'));
-document.getElementById('cat-card-groceries').addEventListener('click', () => openCategory('groceries'));
+document.getElementById('cat-card-groceries').addEventListener('click', () => openNeshStore());
 document.getElementById('cat-card-online-shop').addEventListener('click', () => openCategory('online_shop'));
 document.getElementById('home-cat-back-btn').addEventListener('click', goToCategoryScreen);
 document.getElementById('cat-card-taxi').addEventListener('click', () => goToTaxiBooking());
@@ -4517,6 +4640,11 @@ async function openTaxiChoiceZoneScreen() {
   const list = (myZone && myZone.groupId)
     ? zones.filter(z => z.groupId === myZone.groupId)
     : zones;
+  // Show the customer's own current zone first in the list — everything
+  // else keeps its existing relative order (stable sort).
+  if (myZone) {
+    list.sort((a, b) => (a._id === myZone._id ? -1 : b._id === myZone._id ? 1 : 0));
+  }
   if (!list.length) {
     taxiChoiceZoneHintEl.textContent = 'No zones have been set up yet — ask the operator to add one.';
     return;
@@ -4573,7 +4701,7 @@ async function openTaxiChoiceDriverScreen(zone) {
       distanceKm = haversineMeters(taxiPickup.lat, taxiPickup.lng, loc.lat, loc.lng) / 1000;
     }
     return { id, d, distanceKm };
-  }).filter(x => x.d && x.d.isOnline === true && x.d.zone === zone._id && (!x.d.services || x.d.services.taxi !== false));
+  }).filter(x => x.d && x.d.isOnline === true && x.d.zone === zone._id && x.d.vehicleType === taxiSelectedType && (!x.d.services || x.d.services.taxi !== false));
   // Not-busy drivers first, then nearest-first within each group; drivers
   // with no location fix yet sort to the end of their group.
   list.sort((a, b) => {
@@ -4603,7 +4731,16 @@ async function openTaxiChoiceDriverScreen(zone) {
     el.addEventListener('click', () => {
       const driverId = el.getAttribute('data-driver-id');
       const match = list.find(x => x.id === driverId);
-      if (match) submitChoiceDriverBooking(driverId, match.d);
+      if (!match) return;
+      // A busy driver is still shown (so the customer can see who's around
+      // and how far), but they're already on another ride and can't be
+      // sent a new one — tapping just explains why instead of silently
+      // doing nothing or sending a ride they can't take.
+      if (match.d.isBusy) {
+        showInfoModal('Driver busy', (match.d.name || 'This driver') + ' is currently on another ride. Please pick a different driver, or wait for them to become free.');
+        return;
+      }
+      submitChoiceDriverBooking(driverId, match.d);
     });
   });
 }
@@ -6096,6 +6233,26 @@ function isPointInZone(pt, poly) {
   return inside;
 }
 
+// ---------- Operator-set Shop Zones (app_config/shopZones) ----------
+// No zones configured at all = old behaviour (nothing is restricted). Once
+// the operator has drawn at least one zone: a point outside every zone is
+// "not available in this area", and a point inside a zone only sees/orders
+// from the shops the operator added to that zone.
+const AREA_UNAVAILABLE_TITLE = 'Not available in your area';
+const AREA_UNAVAILABLE_MSG = "Sorry, NESH isn't available at this location yet. Please pick a different location.";
+function shopZonesConfigured() { return (window.SHOP_ZONES || []).length > 0; }
+function zonesAtPoint(pt) { return (window.SHOP_ZONES || []).filter(z => isPointInZone(pt, z.bounds)); }
+function isAreaUnavailable(pt) {
+  return !!(pt && typeof pt.lat === 'number' && typeof pt.lng === 'number') && shopZonesConfigured() && zonesAtPoint(pt).length === 0;
+}
+function shopAllowedAtPoint(shopId, pt) {
+  if (!shopZonesConfigured() || !pt || typeof pt.lat !== 'number' || typeof pt.lng !== 'number') return true;
+  return zonesAtPoint(pt).some(z => z.shopIds.includes(shopId));
+}
+window.onShopZonesUpdated = () => {
+  try { renderRestaurantList(); } catch (e) {}
+};
+
 function renderRestaurantList() {
   const q = searchInput.value.toLowerCase();
   const categoryFiltered = state.category
@@ -6128,7 +6285,7 @@ function renderRestaurantList() {
   // yet are still shown, so nothing disappears just because a restaurant
   // hasn't set one up yet.
   const filtered = state.customerPos
-    ? searchFiltered.filter(r => !r.zone || isPointInZone(state.customerPos, r.zone))
+    ? searchFiltered.filter(r => shopAllowedAtPoint(r.id, state.customerPos) && (!r.zone || isPointInZone(state.customerPos, r.zone)))
     : searchFiltered;
 
   restListEl.innerHTML = "";
@@ -6136,7 +6293,9 @@ function renderRestaurantList() {
     const p = document.createElement('p');
     p.className = "empty-text";
     const noun = state.category === 'groceries' ? 'stores' : state.category === 'online_shop' ? 'shops' : 'restaurants';
-    p.textContent = state.customerPos && searchFiltered.length > 0
+    p.textContent = isAreaUnavailable(state.customerPos)
+      ? AREA_UNAVAILABLE_MSG
+      : state.customerPos && searchFiltered.length > 0
       ? "No " + noun + " deliver to your selected location yet."
       : 'No ' + noun + ' match "' + searchInput.value + '".';
     restListEl.appendChild(p);
@@ -6204,7 +6363,7 @@ function renderProductResults(q, categoryFiltered) {
   // Respect the same delivery-zone filter as the shop list, so a product
   // from a shop that doesn't deliver here doesn't show up as tappable.
   const deliverable = state.customerPos
-    ? categoryFiltered.filter(r => !r.zone || isPointInZone(state.customerPos, r.zone))
+    ? categoryFiltered.filter(r => shopAllowedAtPoint(r.id, state.customerPos) && (!r.zone || isPointInZone(state.customerPos, r.zone)))
     : categoryFiltered;
 
   const products = [];
@@ -6250,7 +6409,137 @@ const cartCountText = document.getElementById('cart-count-text');
 const cartTotalText = document.getElementById('cart-total-text');
 const cartBtn = document.getElementById('cart-btn');
 
+// ---------- NESH Store (merged groceries catalog) ----------
+// Tapping "Groceries" skips the usual shop-list screen entirely and drops
+// the customer straight into one combined catalog — every item from every
+// groceries shop, shown as if it all came from one "NESH Store". Which
+// real shop actually fulfills an order is decided by the operator AFTER
+// checkout (see opAssignGroceryOrder in partner.html) — the customer never
+// picks or even sees a shop name here.
+//
+// Items are grouped by name+unit across shops. The price shown/charged is
+// the HIGHEST price any shop carrying that item charges; each merged item
+// also carries a hidden _shopOptions list (every shop stocking it + that
+// shop's own price) that rides along on the order, purely so the operator
+// can see the price/profit picture when assigning it later.
+function buildNeshStoreCatalog() {
+  const groceryShops = (window.RESTAURANTS || []).filter(r =>
+    r.businessType === 'groceries' && !r.shopUnavailable &&
+    shopAllowedAtPoint(r.id, state.customerPos) &&
+    (!r.zone || isPointInZone(state.customerPos, r.zone))
+  );
+  const groups = {};
+  const order = [];
+  groceryShops.forEach(shop => {
+    (shop.items || []).forEach(it => {
+      const key = (it.name || '').trim().toLowerCase() + '|' + (it.unit || 'piece');
+      if (!groups[key]) {
+        groups[key] = {
+          id: 'nesh_' + order.length,
+          name: it.name, desc: it.desc || '', unit: it.unit || 'piece',
+          sizes: [], image: it.image, rating: it.rating, ratingCount: it.ratingCount,
+          price: -Infinity,
+          _shopOptions: []
+        };
+        order.push(key);
+      }
+      const g = groups[key];
+      g._shopOptions.push({ shopId: shop.id, shopName: shop.name, price: it.price, itemId: it.id });
+      if (it.price > g.price) {
+        g.price = it.price;
+        // Display metadata (photo/description) follows whichever shop is
+        // currently the priciest for this item — arbitrary but consistent
+        // for as long as that stays the highest price.
+        g.desc = it.desc || g.desc;
+        g.image = it.image || g.image;
+      }
+    });
+  });
+  const catalog = order.map(key => groups[key]);
+  // Operator-pinned customer prices (Operator Panel → Groceries Catalog → Set
+  // customer price). The pinned price is what the customer sees and pays, in
+  // full — the Go Series item markup is NOT added on top. The hidden shop
+  // options drop that baked-in markup so the operator's profit figure on the
+  // assign screen is the true customer price minus what the shop charges.
+  const pinned = window.NESH_PRICES || {};
+  const itemMarkup = Number(window.GO_SERIES_ITEM_MARKUP) || 0;
+  catalog.forEach(g => {
+    const ov = Number(pinned[neshPriceKey(g)]);
+    if (ov > 0) {
+      g.price = ov;
+      g._shopOptions.forEach(o => { o.price = Math.max(0, o.price - itemMarkup); });
+    }
+  });
+  // Apply the operator-set item order (Operator Panel → NESH Store Item
+  // Order), if one has been saved. Items in the saved order come first,
+  // in that order; any item not yet in it (brand new, or never touched)
+  // keeps its original relative order and is appended after — so nothing
+  // disappears just because it hasn't been placed yet.
+  if (Array.isArray(NESH_ITEM_ORDER) && NESH_ITEM_ORDER.length) {
+    const rank = new Map(NESH_ITEM_ORDER.map((key, i) => [key, i]));
+    const keyOf = g => (g.name || '').trim().toLowerCase() + '|' + (g.unit || 'piece');
+    catalog.sort((a, b) => {
+      const ra = rank.has(keyOf(a)) ? rank.get(keyOf(a)) : Infinity;
+      const rb = rank.has(keyOf(b)) ? rank.get(keyOf(b)) : Infinity;
+      return ra - rb; // stable sort keeps original order among untouched items
+    });
+  }
+  return catalog;
+}
+// Looks up a restaurant by id for screens/resume-state that only have the
+// id on hand — RESTAURANTS.find for a real shop, or a freshly-rebuilt
+// synthetic NESH Store object for 'NESH_STORE'. Returns null (not an
+// empty NESH Store) if RESTAURANTS hasn't loaded yet, so callers doing a
+// resume-on-refresh know to wait and retry rather than showing an
+// incorrectly-empty catalog.
+function resolveRestaurantById(id) {
+  if (id !== 'NESH_STORE') return (window.RESTAURANTS || []).find(r => r.id === id);
+  if (!window.RESTAURANTS || !window.RESTAURANTS.length) return null;
+  return {
+    id: 'NESH_STORE', name: 'NESH Store', cuisine: 'Groceries from every NESH Store partner shop',
+    rating: 4.5, ratingCount: 0, location: null, priceForTwo: 0,
+    image: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&q=80", color: "#1BA672",
+    businessType: 'groceries', opCategory: '', items: buildNeshStoreCatalog(),
+    gpayNumber: '', zone: null, deliveryCharges: null, goSeries: true,
+    discountAmount: 0, discountCardImage: null, shopUnavailable: false, shopUnavailableMessage: '',
+    hoursEnabled: false, openTime: '', closeTime: ''
+  };
+}
+function openNeshStore() {
+  if (isAreaUnavailable(state.customerPos)) { showInfoModal(AREA_UNAVAILABLE_TITLE, AREA_UNAVAILABLE_MSG); return; }
+  state.category = 'groceries';
+  const store = resolveRestaurantById('NESH_STORE');
+  if (!store) { openCategory('groceries'); return; } // RESTAURANTS hasn't loaded yet — fall back to the normal shop-list screen just this once
+  state.selectedRestaurant = store;
+  state.cart = {};
+  state.cartGrams = {};
+  state.cartSizes = {};
+  state.menuSearch = '';
+  state.discountReveal = null;
+  state.neshCategory = null; // fresh visit starts on "All"
+  menuSearchInput.value = '';
+  renderMenu();
+  showScreen('menu');
+  persistScreen('menu', { restaurantId: 'NESH_STORE', cart: state.cart });
+}
+
+// Menu screen's back button: for a real shop, back to that category's
+// shop list, same as always. NESH Store has no shop-list screen to go
+// back to (the whole point is that it's skipped) — back from it goes to
+// the category-picker screen instead.
+function menuBackClicked() {
+  const r = state.selectedRestaurant;
+  if (r && r.id === 'NESH_STORE') {
+    goToCategoryScreen();
+    return;
+  }
+  renderHome();
+  showScreen('home');
+  persistScreen('home', { category: state.category });
+}
 function openRestaurant(id) {
+  if (isAreaUnavailable(state.customerPos)) { showInfoModal(AREA_UNAVAILABLE_TITLE, AREA_UNAVAILABLE_MSG); return; }
+  if (!shopAllowedAtPoint(id, state.customerPos)) { showInfoModal('Out of delivery area', "This shop doesn't deliver to your selected location."); return; }
   state.selectedRestaurant = RESTAURANTS.find(r => r.id === id);
   state.cart = {};
   state.cartGrams = {};
@@ -6321,6 +6610,58 @@ function setSelectedSize(itemId, size) {
   state.cartSizes[itemId] = size;
 }
 
+// ---------- NESH Store category tabs ----------
+// Same name+unit lowercased key buildNeshStoreCatalog() groups items by —
+// it's what the operator's category item lists are stored as.
+function neshItemKey(it) {
+  return (it.name || '').trim().toLowerCase() + '|' + (it.unit || 'piece');
+}
+// Firebase-safe form of an item key, used for app_config/neshStorePrices
+// (item names can contain characters Firebase forbids in keys). Must match
+// opNeshPriceKey() in partner.html exactly.
+function neshPriceKey(it) {
+  return encodeURIComponent(neshItemKey(it)).replace(/\./g, '%2E');
+}
+// Categories worth showing right now: only NESH Store, and only those with
+// at least one item actually in the catalog for this customer (an empty tab
+// would just be a dead end).
+function neshVisibleCategories(r) {
+  if (!r || r.id !== 'NESH_STORE') return [];
+  const present = new Set((r.items || []).map(neshItemKey));
+  return (window.NESH_CATEGORIES || []).filter(c => c.items.some(k => present.has(k)));
+}
+function neshActiveCategory(r) {
+  if (!state.neshCategory) return null;
+  return neshVisibleCategories(r).find(c => c.id === state.neshCategory) || null;
+}
+function renderNeshCategoryBar(r) {
+  const bar = document.getElementById('nesh-cat-bar');
+  if (!bar) return;
+  const cats = neshVisibleCategories(r);
+  if (!cats.length) {
+    state.neshCategory = null;
+    bar.style.display = 'none';
+    bar.innerHTML = '';
+    return;
+  }
+  if (state.neshCategory && !cats.some(c => c.id === state.neshCategory)) state.neshCategory = null; // that category was removed/emptied
+  const html = `<button type="button" class="nesh-cat-chip${state.neshCategory ? '' : ' active'}" data-cat="">All</button>` +
+    cats.map(c => `<button type="button" class="nesh-cat-chip${state.neshCategory === c.id ? ' active' : ''}" data-cat="${escapeHtml(c.id)}">${escapeHtml(c.name)}</button>`).join('');
+  if (bar.dataset.sig !== html) {
+    const sl = bar.scrollLeft; // keep the tab row where the customer scrolled it
+    bar.innerHTML = html;
+    bar.scrollLeft = sl;
+    bar.dataset.sig = html;
+  }
+  bar.style.display = 'flex';
+}
+document.getElementById('nesh-cat-bar').addEventListener('click', e => {
+  const btn = e.target.closest('[data-cat]');
+  if (!btn) return;
+  state.neshCategory = btn.dataset.cat || null;
+  renderMenu();
+});
+
 function renderMenu() {
   const r = state.selectedRestaurant;
   menuRestName.textContent = r.name;
@@ -6340,22 +6681,30 @@ function renderMenu() {
     document.getElementById('item-list-label').style.display = 'none';
     document.getElementById('item-list').innerHTML = '';
     document.getElementById('menu-no-results').style.display = 'none';
+    document.getElementById('nesh-cat-bar').style.display = 'none';
     cartBar.classList.remove('visible');
     return;
   }
   unavailablePanel.style.display = 'none';
   searchWrap.style.display = 'block';
+  renderNeshCategoryBar(r);
 
   const query = (state.menuSearch || '').trim().toLowerCase();
+  // NESH Store only: a tapped category tab narrows the catalog to that
+  // category's items first; the search box then filters within it.
+  const activeCat = neshActiveCategory(r);
+  const baseItems = activeCat ? r.items.filter(it => activeCat.items.includes(neshItemKey(it))) : r.items;
   const items = query
-    ? r.items.filter(it =>
+    ? baseItems.filter(it =>
         (it.name || '').toLowerCase().includes(query) ||
         (it.desc || '').toLowerCase().includes(query)
       )
-    : r.items;
+    : baseItems;
   itemListLabel.textContent = query
     ? "Search results (" + items.length + ")"
-    : "Recommended (" + r.items.length + ")";
+    : activeCat
+      ? activeCat.name + " (" + baseItems.length + ")"
+      : "Recommended (" + r.items.length + ")";
   itemListEl.innerHTML = "";
   menuNoResults.style.display = items.length === 0 ? 'block' : 'none';
   itemListLabel.style.display = items.length === 0 ? 'none' : 'block';
@@ -6603,7 +6952,16 @@ function currentOrderShopDiscount() {
   const preDiscountTotal = currentCartItemsTotal() + currentPlatformFee() + currentDeliveryFee();
   return Math.min(available, preDiscountTotal);
 }
-function currentPlatformFee() { return Number(window.PLATFORM_EXTRA_AMOUNT) || 0; }
+// Platform fee for the currently selected shop: the operator-set Go Series
+// platform fee (Operator Panel → Go Series) for any shop flagged
+// restaurants/{id}.goSeries === true, otherwise the app-wide platform fee
+// (Operator Panel → Platform Fee) — untouched, exactly as before Go Series
+// existed.
+function currentPlatformFee() {
+  const r = state.selectedRestaurant;
+  if (r && r.goSeries) return Number(window.GO_SERIES_PLATFORM_FEE) || 0;
+  return Number(window.PLATFORM_EXTRA_AMOUNT) || 0;
+}
 // Restaurant-set delivery charge: a base fee + a per-km rate. The "km" here
 // is the actual bike-route distance from the shop to the delivery pin (via
 // OSRM routing — the same real road distance you'd ride, not a straight
@@ -6614,11 +6972,85 @@ function currentPlatformFee() { return Number(window.PLATFORM_EXTRA_AMOUNT) || 0
 function deliveryDistanceKey(restPos, pc) {
   return restPos.lat.toFixed(5) + ',' + restPos.lng.toFixed(5) + '|' + pc.lat.toFixed(5) + ',' + pc.lng.toFixed(5);
 }
+// NESH Store (the merged groceries catalog — see buildNeshStoreCatalog())
+// has no single shop location: which real shop fulfills the order isn't
+// decided until the operator assigns it, AFTER checkout. So delivery fee
+// for it is routed from the NEAREST groceries shop to the delivery pin
+// instead — a shop's location is fixed (unlike a driver's, which moves and
+// might not even be online right now), and the operator will generally
+// pick a nearby shop when one has everything in stock anyway, so this is
+// usually close to the real distance the actual assigned shop will need.
+function nearestGroceryShopLocation(pt) {
+  if (!pt || typeof pt.lat !== 'number' || typeof pt.lng !== 'number') return null;
+  let best = null, bestKm = Infinity;
+  (window.RESTAURANTS || []).forEach(r => {
+    if (r.businessType !== 'groceries' || !r.location) return;
+    const loc = parseLatLng(r.location);
+    if (!loc) return;
+    const km = haversineMeters(pt.lat, pt.lng, loc.lat, loc.lng) / 1000;
+    if (km < bestKm) { bestKm = km; best = loc; }
+  });
+  return best; // null if there isn't a single groceries shop with a location set yet
+}
 
-function currentDeliveryKm() {
+// NESH Store: which real shop would earn the MOST total profit on the
+// items currently in the cart? Same rule the operator sees when assigning
+// (opCandidateShopsForOrder in partner.html): shops stocking every cart item
+// rank first, then highest profit, where profit = what the customer pays
+// (NESH Store price) minus that shop's own total for the same items.
+// The delivery charge is then worked out for THAT shop.
+function bestProfitShopForCart() {
+  const r = state.selectedRestaurant;
+  if (!r || r.id !== 'NESH_STORE') return null;
+  const cartItems = (r.items || []).filter(it => state.cart[it.id] > 0);
+  if (!cartItems.length) return null;
+  const shops = {};
+  // Only shops that serve the delivery point's Shop Zone are candidates.
+  const zonePt = (state.pendingCheckout && typeof state.pendingCheckout.lat === 'number') ? state.pendingCheckout : state.customerPos;
+  cartItems.forEach(it => (it._shopOptions || []).forEach(o => {
+    if (!shopAllowedAtPoint(o.shopId, zonePt)) return;
+    if (!shops[o.shopId]) shops[o.shopId] = { shopId: o.shopId, shopTotal: 0, missing: 0 };
+  }));
+  const displayedTotal = currentCartItemsTotal();
+  const list = Object.values(shops).map(s => {
+    cartItems.forEach(it => {
+      const opt = (it._shopOptions || []).find(o => o.shopId === s.shopId);
+      if (opt) s.shopTotal += getUnitPrice(Object.assign({}, it, { price: opt.price })) * state.cart[it.id];
+      else s.missing += 1;
+    });
+    s.profit = displayedTotal - s.shopTotal;
+    return s;
+  });
+  list.sort((a, b) => ((a.missing > 0) - (b.missing > 0)) || (b.profit - a.profit));
+  const best = list[0];
+  if (!best) return null;
+  return (window.RESTAURANTS || []).find(x => x.id === best.shopId) || null;
+}
+
+// The shop the delivery charge/distance is measured from: the selected shop
+// itself for a normal order; for NESH Store, the highest-profit shop for the
+// current cart (falling back to the nearest groceries shop if none found).
+function deliveryOriginShop() {
+  const r = state.selectedRestaurant;
+  if (!r) return null;
+  if (r.id === 'NESH_STORE') return bestProfitShopForCart();
+  return r;
+}
+function deliveryOriginPos() {
   const r = state.selectedRestaurant;
   const pc = state.pendingCheckout;
-  const restPos = r ? parseLatLng(r.location) : null;
+  if (!r) return null;
+  if (r.id === 'NESH_STORE') {
+    const shop = deliveryOriginShop();
+    const loc = shop ? parseLatLng(shop.location) : null;
+    return loc || nearestGroceryShopLocation(pc);
+  }
+  return parseLatLng(r.location);
+}
+
+function currentDeliveryKm() {
+  const pc = state.pendingCheckout;
+  const restPos = deliveryOriginPos();
   if (!pc || typeof pc.lat !== 'number' || typeof pc.lng !== 'number' || !restPos) return null;
   const key = deliveryDistanceKey(restPos, pc);
   if (state.roadDistanceKey === key && state.roadDistanceKm != null) {
@@ -6633,23 +7065,31 @@ let deliveryRouteAbort = null;
 // shop: the operator-set Go Series charge (Operator Panel → Go Series) for
 // any shop flagged restaurants/{id}.goSeries === true, otherwise that
 // shop's own deliveryCharges — untouched, exactly as before Go Series
-// existed.
+// existed. NESH Store (no shop of its own) always uses the same shared Go
+// Series charge config, since it's already the one flat, operator-set rate
+// meant to apply independently of any one shop's own settings.
 function activeDeliveryCharge() {
   const r = state.selectedRestaurant;
   if (!r) return null;
-  if (r.goSeries) return window.GO_SERIES_DELIVERY || { baseFee: 0, perKmFee: 0 };
+  const goSeriesCfg = window.GO_SERIES_DELIVERY || { baseFee: 0, perKmFee: 0 };
+  // NESH Store and every groceries shop always use the operator-set Go
+  // Series delivery charge. (For NESH Store the DISTANCE is still measured
+  // from the highest-profit shop — see deliveryOriginPos().)
+  if (r.goSeries || r.id === 'NESH_STORE' || r.businessType === 'groceries') return goSeriesCfg;
   return r.deliveryCharges || null;
 }
 
 // Asks OSRM's public routing server for the real cycling-route distance
-// between the restaurant and the customer's pinned delivery spot. Cheap,
-// no API key needed — same free-service pattern already used for landmark
-// lookups (Overpass) and address search (Nominatim) elsewhere in this app.
+// between the restaurant (or, for NESH Store, the nearest groceries shop —
+// see nearestGroceryShopLocation()) and the customer's pinned delivery
+// spot. Cheap, no API key needed — same free-service pattern already used
+// for landmark lookups (Overpass) and address search (Nominatim) elsewhere
+// in this app.
 async function ensureRoadDistance() {
   const r = state.selectedRestaurant;
   const dc = activeDeliveryCharge();
   const pc = state.pendingCheckout;
-  const restPos = r ? parseLatLng(r.location) : null;
+  const restPos = deliveryOriginPos();
   if (!dc || !pc || typeof pc.lat !== 'number' || typeof pc.lng !== 'number' || !restPos) return;
 
   const key = deliveryDistanceKey(restPos, pc);
@@ -6683,7 +7123,7 @@ async function ensureRoadDistance() {
   }
 }
 
-function currentDeliveryFee() {
+function deliveryFeeBeforeFree() {
   const dc = activeDeliveryCharge();
   if (!dc) return 0;
   const d = currentDeliveryKm();
@@ -6693,6 +7133,32 @@ function currentDeliveryFee() {
   const baseFee = Number(dc.baseFee) || 0;
   const perKmFee = Number(dc.perKmFee) || 0;
   return Math.round((baseFee + perKmFee * km) * 100) / 100;
+}
+// Free delivery, read from whichever delivery-charge config is active:
+//  - freeAbove: "free on orders of ₹X and above" — the operator's Go Series
+//    config (NESH Store, groceries, Go Series shops) or a shop's own
+//    deliveryCharges.freeAbove (set by the shop itself in its app). Compared
+//    against the item total (before platform fee / delivery / discount).
+//  - freeWithinKm: Go Series config only. A shop's own distance rule is its
+//    separate freeUnderKm, handled in deliveryFeeBeforeFree().
+function isFreeDelivery() {
+  const dc = activeDeliveryCharge();
+  if (!dc) return false;
+  // Rule 1: item total reaches the free-above amount.
+  const min = Number(dc.freeAbove) || 0;
+  if (min > 0 && currentCartItemsTotal() >= min) return true;
+  // Rule 2: the delivery distance (shop -> customer's pin) is under the
+  // free-within-km limit. Either rule is enough on its own.
+  const within = Number(dc.freeWithinKm) || 0;
+  if (within > 0) {
+    const d = currentDeliveryKm();
+    if (d && d.km < within) return true;
+  }
+  return false;
+}
+// What every total, discount cap, GPay amount and order record uses.
+function currentDeliveryFee() {
+  return isFreeDelivery() ? 0 : deliveryFeeBeforeFree();
 }
 function currentCartItemsTotal() {
   const r = state.selectedRestaurant;
@@ -6704,6 +7170,8 @@ function updateLocSummary() {
   const fee = currentPlatformFee();
   const dc = activeDeliveryCharge();
   const deliveryFee = currentDeliveryFee();
+  const freeDelivery = isFreeDelivery();
+  const wouldBeFee = freeDelivery ? deliveryFeeBeforeFree() : 0;
   // Platform fee and delivery charge are shown to the customer as two
   // separate rows — "Platform fee" always shows the operator-set extra
   // amount on its own, and "Delivery charge" shows only the restaurant's
@@ -6715,8 +7183,20 @@ function updateLocSummary() {
   // instead of a number that's about to change — avoids the customer
   // seeing one total on screen and a slightly different one get charged.
   const showLoading = state.roadDistanceLoading && dc;
-  if (locSummaryDeliveryEl) locSummaryDeliveryEl.textContent = showLoading ? "Calculating…" : "₹" + deliveryFee;
-  if (locSummaryDeliveryRowEl) locSummaryDeliveryRowEl.style.display = (deliveryFee > 0 || showLoading) ? "flex" : "none";
+  if (locSummaryDeliveryEl) {
+    if (showLoading) locSummaryDeliveryEl.textContent = "Calculating…";
+    else if (freeDelivery && wouldBeFee > 0) locSummaryDeliveryEl.innerHTML = '<s style="color:var(--muted);">₹' + wouldBeFee + '</s> <b style="color:var(--leaf);">FREE</b>';
+    else locSummaryDeliveryEl.textContent = "₹" + deliveryFee;
+  }
+  if (locSummaryDeliveryRowEl) locSummaryDeliveryRowEl.style.display = (deliveryFee > 0 || showLoading || (freeDelivery && wouldBeFee > 0)) ? "flex" : "none";
+  // Nudge: how much more to add to unlock free delivery.
+  const freeMin = dc ? (Number(dc.freeAbove) || 0) : 0;
+  const freeHintEl = document.getElementById('loc-summary-free-hint');
+  if (freeHintEl) {
+    const showHint = freeMin > 0 && !freeDelivery && !showLoading && deliveryFee > 0;
+    freeHintEl.style.display = showHint ? "block" : "none";
+    if (showHint) freeHintEl.textContent = "Add ₹" + (Math.round((freeMin - itemsTotal) * 100) / 100) + " more for free delivery";
+  }
   const discount = showLoading ? 0 : currentOrderShopDiscount();
   if (locSummaryDiscountEl) locSummaryDiscountEl.textContent = "-₹" + discount;
   if (locSummaryDiscountRowEl) locSummaryDiscountRowEl.style.display = (discount > 0 && !showLoading) ? "flex" : "none";
@@ -7626,6 +8106,7 @@ browseLocConfirmBtn.addEventListener('click', () => {
   closeBrowseLocationPicker();
   updateHomeLocationLabel();
   renderRestaurantList();
+  if (isAreaUnavailable(state.customerPos)) showInfoModal(AREA_UNAVAILABLE_TITLE, AREA_UNAVAILABLE_MSG);
 });
 
 cartBtn.addEventListener('click', () => {
@@ -7715,6 +8196,14 @@ locProceedBtn.addEventListener('click', () => {
   // (a pinned map location) and the shop has drawn a zone — a typed-only
   // location with no lat/lng can't be checked, so it's allowed through as
   // before rather than blocking on something we can't verify.
+  if (typeof pendingLocation.lat === 'number' && typeof pendingLocation.lng === 'number') {
+    const zPt = { lat: pendingLocation.lat, lng: pendingLocation.lng };
+    if (isAreaUnavailable(zPt)) { showInfoModal(AREA_UNAVAILABLE_TITLE, AREA_UNAVAILABLE_MSG); return; }
+    if (r.id !== 'NESH_STORE' && !shopAllowedAtPoint(r.id, zPt)) {
+      showInfoModal("Out of delivery area", (r.name || "This shop") + " doesn't deliver to this location. Please pick a location inside their delivery area.");
+      return;
+    }
+  }
   if (r.zone && typeof pendingLocation.lat === 'number' && typeof pendingLocation.lng === 'number') {
     const inZone = isPointInZone({ lat: pendingLocation.lat, lng: pendingLocation.lng }, r.zone);
     if (!inZone) {
@@ -7797,8 +8286,14 @@ payConfirmBtn.addEventListener('click', async () => {
   const orderItems = r.items
     .filter(it => state.cart[it.id])
     .map(it => {
+      // NESH Store's merged catalog items carry _shopOptions (every real
+      // shop that stocks this item name, with that shop's own price) —
+      // copied onto the order item so the operator can see the same
+      // price comparison at assignment time (see opCandidateShopsForOrder
+      // in partner.html). Regular single-shop orders never have this.
+      const shopOptions = (r.id === 'NESH_STORE' && it._shopOptions) ? it._shopOptions : undefined;
       if (isWeightUnit(it.unit)) {
-        return { name: `${it.name} (${weightLabel(it)})`, desc: it.desc || '', price: getUnitPrice(it), qty: state.cart[it.id], unit: it.unit, weightGrams: getSelectedGrams(it) };
+        return { name: `${it.name} (${weightLabel(it)})`, desc: it.desc || '', price: getUnitPrice(it), qty: state.cart[it.id], unit: it.unit, weightGrams: getSelectedGrams(it), ...(shopOptions ? { shopOptions } : {}) };
       }
       if (hasSizes(it)) {
         const size = getSelectedSize(it);
@@ -7806,9 +8301,9 @@ payConfirmBtn.addEventListener('click', async () => {
         // field) so it shows up everywhere an order's items are printed —
         // shop order popup, order detail, delivery route, payment summary —
         // without those screens needing to know about sizes at all.
-        return { name: `${it.name} (Size: ${size})`, desc: it.desc || '', price: it.price, qty: state.cart[it.id], size };
+        return { name: `${it.name} (Size: ${size})`, desc: it.desc || '', price: it.price, qty: state.cart[it.id], size, ...(shopOptions ? { shopOptions } : {}) };
       }
-      return { name: it.name, desc: it.desc || '', price: it.price, qty: state.cart[it.id] };
+      return { name: it.name, desc: it.desc || '', price: it.price, qty: state.cart[it.id], ...(shopOptions ? { shopOptions } : {}) };
     });
   const itemsTotal = orderItems.reduce((sum, it) => sum + it.price * it.qty, 0);
   // Platform fee is a flat amount added once per order/transaction (not per
@@ -7833,11 +8328,25 @@ payConfirmBtn.addEventListener('click', async () => {
     // will pop up an alert with sound as soon as this write lands. Lat/lng
     // (when available) let the restaurant app open the exact pinned spot
     // on the map instead of a text search.
+    //
+    // NESH Store is the one exception: it isn't a real shop, so there's no
+    // restaurants/{id} to push into. The order instead goes into a shared
+    // groceryOrderQueue, unassigned, until the operator picks which real
+    // shop fulfills it (see opAssignGroceryOrder in partner.html) — only
+    // then does it become a normal restaurants/{shopId}/orders/{id} entry
+    // and this same tracking key starts following it there (see
+    // openTrackScreen's NESH_STORE branch).
     const { db, ref, push, set, get } = window.fb;
-    const orderRef = push(ref(db, 'restaurants/' + r.id + '/orders'));
+    const isNeshStore = r.id === 'NESH_STORE';
+    const orderRef = push(ref(db, isNeshStore ? 'groceryOrderQueue' : ('restaurants/' + r.id + '/orders')));
+    // NESH Store orders are NOT sent to any shop here — they wait in the
+    // operator's queue, where the operator sees each shop's distance and
+    // profit and picks who fulfils it. The highest-profit shop (the one the
+    // delivery charge was measured from) is only recorded as a suggestion.
+    const suggestedShop = isNeshStore ? deliveryOriginShop() : null;
     const orderPayload = {
       orderNumber,
-      status: selectedPaymentMethod === 'gpay' ? "awaiting_payment" : "pending",
+      status: isNeshStore ? 'pending_assignment' : (selectedPaymentMethod === 'gpay' ? "awaiting_payment" : "pending"),
       createdAt: Date.now(),
       customerName: state.user?.name || "Guest",
       customerPhone: pc.contact,
@@ -7852,8 +8361,12 @@ payConfirmBtn.addEventListener('click', async () => {
       platformDue: platformFee,
       deliveryFee,
       shopDiscountApplied: shopDiscount,
-      paymentMethod: selectedPaymentMethod === 'gpay' ? 'GPay (Scanner)' : 'Cash on Delivery'
+      paymentMethod: (isNeshStore || selectedPaymentMethod !== 'gpay') ? 'Cash on Delivery' : 'GPay (Scanner)'
     };
+    if (suggestedShop) {
+      orderPayload.suggestedShopId = suggestedShop.id;
+      orderPayload.suggestedShopName = suggestedShop.name || suggestedShop.id;
+    }
     if (selectedPaymentMethod === 'gpay' && r.gpayNumber) {
       orderPayload.gpayNumber = r.gpayNumber;
     }
@@ -7865,26 +8378,53 @@ payConfirmBtn.addEventListener('click', async () => {
       orderPayload.deliveryDistanceKm = Math.round(deliveryKmInfo.km * 10) / 10;
       orderPayload.deliveryDistanceIsRoadRoute = deliveryKmInfo.isRoadDistance;
     }
+    // Free delivery: deliveryFee above is 0, so also record what the charge
+    // would have been — anything that pays out from the delivery charge
+    // (e.g. a delivery boy's cut) can use this instead of the 0.
+    if (isFreeDelivery()) {
+      const waived = deliveryFeeBeforeFree();
+      if (waived > 0) { orderPayload.freeDelivery = true; orderPayload.deliveryFeeWaived = waived; }
+    }
     await set(orderRef, orderPayload);
 
-    // Fire-and-forget: tell the free Cloudflare Worker to push-alert the
-    // shop (loud alarm + auto screen-wake on the native app, even if it's
-    // fully closed). Never block or fail order placement on this — the
-    // order itself is already safely saved above.
-    fetch('https://broad-paper-6445.raise3715.workers.dev', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        restId: r.id,
-        orderId: orderRef.key,
-        orderNumber: orderNumber,
-        itemsSummary: orderItems.map(it => `${it.qty}x ${it.name}`).join(', '),
-        customerName: state.user?.name || "Guest",
-        customerPhone: pc.contact,
-        customerAddress: pc.text || state.user?.address || "",
-        totalAmount: total,
-      }),
-    }).catch(() => {});
+    // The shop-alert push only fires once there IS a shop — for NESH
+    // Store that happens later, from the operator panel at assignment
+    // time (opAssignGroceryOrder), not here.
+    if (!isNeshStore) {
+      // Fire-and-forget: tell the free Cloudflare Worker to push-alert the
+      // shop (loud alarm + auto screen-wake on the native app, even if it's
+      // fully closed). Never block or fail order placement on this — the
+      // order itself is already safely saved above.
+      fetch('https://broad-paper-6445.raise3715.workers.dev', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          restId: r.id,
+          orderId: orderRef.key,
+          orderNumber: orderNumber,
+          itemsSummary: orderItems.map(it => `${it.qty}x ${it.name}`).join(', '),
+          customerName: state.user?.name || "Guest",
+          customerPhone: pc.contact,
+          customerAddress: pc.text || state.user?.address || "",
+          totalAmount: total,
+        }),
+      }).catch(() => {});
+    }
+
+    if (isNeshStore) {
+      // Tell the operator's device(s) a new order is waiting for a shop to
+      // be picked (Worker type 'operator'). Fire-and-forget.
+      fetch('https://broad-paper-6445.raise3715.workers.dev', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'operator',
+          orderId: orderRef.key,
+          title: 'New NESH Store order #' + orderNumber,
+          body: orderItems.map(it => `${it.qty}x ${it.name}`).join(', ') + ' · ₹' + total,
+        }),
+      }).catch(() => {});
+    }
 
     document.getElementById('confirm-order-num').textContent = orderNumber;
     document.getElementById('confirm-rest-name').textContent = "from " + r.name;
@@ -7969,6 +8509,15 @@ function normalizeStatus(raw) {
 }
 
 function renderTrackTimeline(rawStatus, reason, o) {
+  if (rawStatus === 'pending_assignment') {
+    trackStatusText.textContent = "Finding a store for your order";
+    trackEtaText.textContent = "We're picking the best NESH Store shop to prepare this — hang tight.";
+    trackReasonBox.style.display = "none";
+    trackTimelineEl.innerHTML = "";
+    if (trackMap) { trackMap.hide(); trackMapDriverId = null; }
+    trackCancelOrderBtn.style.display = 'block';
+    return;
+  }
   const status = normalizeStatus(rawStatus);
   const isFood = trackBusinessType !== 'groceries' && trackBusinessType !== 'online_shop';
   const steps = getOrderSteps(trackBusinessType);
@@ -8057,6 +8606,38 @@ function openTrackOrder(order, returnScreen) {
 
   if (trackUnsub) { trackUnsub(); trackUnsub = null; }
   const { db, ref, onValue } = window.fb;
+
+  // NESH Store orders start out unassigned to any real shop (see
+  // buildNeshStoreCatalog()/payConfirmBtn) — they live in groceryOrderQueue
+  // until the operator assigns one. Watch that queue entry first; the
+  // moment it's marked assigned, switch this same tracking screen over to
+  // the real restaurants/{shopId}/orders/{orderKey} listener below, same
+  // as any other order from then on.
+  if (order.restId === 'NESH_STORE') {
+    trackUnsub = onValue(ref(db, 'groceryOrderQueue/' + order.orderKey), snap => {
+      const q = snap.val() || {};
+      if (q.status === 'assigned' && q.assignedShopId) {
+        trackCurrentRestId = q.assignedShopId;
+        if (q.assignedShopName) trackRestName.textContent = q.assignedShopName;
+        if (trackUnsub) { trackUnsub(); trackUnsub = null; }
+        trackUnsub = onValue(
+          ref(db, 'restaurants/' + q.assignedShopId + '/orders/' + order.orderKey),
+          snap2 => {
+            const o = snap2.val() || {};
+            renderTrackTimeline(o.status, o.statusReason, o);
+          }
+        );
+        return;
+      }
+      if (q.status === 'cancelled') {
+        renderTrackTimeline('cancelled', q.statusReason);
+        return;
+      }
+      renderTrackTimeline('pending_assignment');
+    });
+    return;
+  }
+
   trackUnsub = onValue(
     ref(db, 'restaurants/' + order.restId + '/orders/' + order.orderKey),
     snap => {
@@ -8082,6 +8663,16 @@ trackCancelOrderBtn.addEventListener('click', async () => {
   trackCancelOrderBtn.disabled = true;
   try {
     const { db, ref, update } = window.fb;
+    // Still sitting unassigned in the NESH Store queue (no real shop has
+    // even seen it yet) — cancel the queue entry itself, not a
+    // restaurants/{id}/orders path that doesn't exist for it.
+    if (trackCurrentRestId === 'NESH_STORE') {
+      await update(ref(db, 'groceryOrderQueue/' + trackCurrentOrderKey), {
+        status: 'cancelled',
+        statusReason: 'Cancelled by customer'
+      });
+      return;
+    }
     await update(ref(db, 'restaurants/' + trackCurrentRestId + '/orders/' + trackCurrentOrderKey), {
       status: 'cancelled',
       statusReason: 'Cancelled by customer'
@@ -8187,10 +8778,7 @@ function openOrdersScreen() {
 
   const myNumber = state.user?.number || "";
   if (ordersUnsub) { ordersUnsub(); ordersUnsub = null; }
-  const { db, ref, onValue } = window.fb;
-  // Orders live under each restaurant's own node rather than a per-customer
-  // index, so scan every restaurant's orders and keep just this customer's,
-  // matched by phone number.
+  const { db, ref, onValue, get } = window.fb;
   ordersUnsub = onValue(ref(db, 'restaurants'), snap => {
     const mine = [];
     snap.forEach(restSnap => {
@@ -8216,7 +8804,30 @@ function openOrdersScreen() {
         });
       });
     });
-    renderOrdersList(mine);
+    // NESH Store orders still sitting unassigned (or cancelled before ever
+    // reaching a shop) only exist in groceryOrderQueue — once assigned,
+    // the real copy lands under restaurants/{shopId}/orders/{orderKey} and
+    // gets picked up by the scan above instead, so 'assigned' entries are
+    // skipped here to avoid listing the same order twice.
+    get(ref(db, 'groceryOrderQueue')).then(qSnap => {
+      qSnap.forEach(qChild => {
+        const q = qChild.val() || {};
+        if (!q || q.customerPhone !== myNumber || q.status === 'assigned') return;
+        mine.push({
+          restId: 'NESH_STORE',
+          orderKey: qChild.key,
+          restName: 'NESH Store',
+          businessType: 'groceries',
+          orderNumber: q.orderNumber,
+          status: q.status === 'cancelled' ? 'cancelled' : 'pending_assignment',
+          statusReason: q.statusReason,
+          items: q.items,
+          total: q.total,
+          createdAt: q.createdAt,
+        });
+      });
+      renderOrdersList(mine);
+    }).catch(() => renderOrdersList(mine));
   });
 }
 
