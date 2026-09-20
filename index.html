@@ -2867,94 +2867,7 @@ function showScreen(id) {
   updateOrderProgressBarVisibility();
 }
 
-// ---------- Back button / hardware-back navigation ----------
-// Screens above are only ever shown/hidden with CSS (no real browser
-// navigation happens), so by default there's nothing on the history
-// stack for the phone's back button/gesture to consume — the OS just
-// closes the whole app on the very first back press. This gives every
-// screen change (and every open sheet/dropdown) a real history entry,
-// so back steps through the app the way people expect, and only lets
-// the app actually exit once there's truly nowhere left to go back to.
-const neshScreenStack = ['category']; // matches the .screen.active in the markup on load
-let neshSkipHistoryPush = false;
-history.replaceState({ neshScreen: 'category' }, '', location.href);
-
-const neshRealShowScreen = showScreen;
-showScreen = function (id) {
-  neshRealShowScreen(id);
-  if (neshSkipHistoryPush) { neshSkipHistoryPush = false; return; }
-  if (neshScreenStack[neshScreenStack.length - 1] !== id) {
-    neshScreenStack.push(id);
-    history.pushState({ neshScreen: id }, '', location.href);
-  }
-};
-
-function neshRearmHistoryBuffer() {
-  // Push a fresh state representing "still here", so the *next* back
-  // press has our own entry to pop instead of leaving the app.
-  history.pushState({ neshScreen: neshScreenStack[neshScreenStack.length - 1] }, '', location.href);
-}
-
-function neshShowExitToast() {
-  let toast = document.getElementById('nesh-exit-toast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.id = 'nesh-exit-toast';
-    toast.textContent = 'Tap back again to exit';
-    toast.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translate(-50%,0);background:#2B2410;color:#fff;padding:10px 18px;border-radius:20px;font-family:Inter,sans-serif;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 6px 16px rgba(0,0,0,.25);opacity:0;transition:opacity .2s;pointer-events:none;';
-    document.body.appendChild(toast);
-  }
-  requestAnimationFrame(() => { toast.style.opacity = '1'; });
-  clearTimeout(neshShowExitToast._t);
-  neshShowExitToast._t = setTimeout(() => { toast.style.opacity = '0'; }, 1600);
-}
-
-let neshExitArmed = false;
-
-window.addEventListener('popstate', () => {
-  // 1) An open sheet/dropdown/modal should close first — same as how a
-  // back press behaves on any app with something layered on top.
-  const overlays = [
-    { id: 'install-overlay', close: null }, // intentionally not dismissable (see openSheet()) — just swallow back
-    { id: 'info-modal-overlay', close: () => document.getElementById('info-modal-ok-btn').click() },
-    { id: 'scratch-modal-overlay', close: () => closeScratchModal() },
-    { id: 'account-dropdown', close: () => closeAccountDropdown() },
-    { id: 'order-summary-overlay', close: () => closeOrderSummary() },
-    { id: 'payment-overlay', close: () => document.getElementById('pay-cancel-btn').click() },
-    { id: 'browse-loc-overlay', close: () => document.getElementById('browse-loc-cancel-btn').click() },
-    { id: 'loc-overlay', close: () => document.getElementById('loc-cancel-btn').click() },
-  ];
-  for (const o of overlays) {
-    const el = document.getElementById(o.id);
-    if (el && el.classList.contains('show')) {
-      if (o.close) o.close();
-      neshRearmHistoryBuffer();
-      return;
-    }
-  }
-
-  // 2) No overlay open — step back to the previous in-app screen, if any.
-  if (neshScreenStack.length > 1) {
-    neshScreenStack.pop();
-    const prevId = neshScreenStack[neshScreenStack.length - 1];
-    neshSkipHistoryPush = true;
-    showScreen(prevId);
-    neshRearmHistoryBuffer();
-    return;
-  }
-
-  // 3) Already on the first screen with nothing left to go back to —
-  // require a second back press (within ~1.6s) before actually letting
-  // the app exit, so one stray back tap can't close it outright.
-  if (!neshExitArmed) {
-    neshExitArmed = true;
-    neshShowExitToast();
-    neshRearmHistoryBuffer();
-    setTimeout(() => { neshExitArmed = false; }, 1600);
-  }
-  // If already armed, we don't re-push a state here, so this second back
-  // press is left free to actually exit the app.
-});
+// (Back-button handling lives in the "Hardware back button" block further down.)
 
 function digitsOnly(v) { return v.replace(/\D/g, ''); }
 
@@ -5345,76 +5258,123 @@ document.getElementById('taxi-chat-input').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') { e.preventDefault(); sendTaxiChatMessage(); }
 });
 
-// ---------- Hardware back-button guard (Android/Capacitor) ----------
-// While a ride is active and the customer is on the trip-tracking or
-// trip-chat screen, the phone's back button must not be able to leave that
-// screen — no matter how many times it's pressed — so the trip stays
-// visible until the ride is completed/cancelled. Everywhere else, this
-// reproduces the same behaviour the app already had (go back in web
-// history if there is any, otherwise exit) so nothing else changes.
-// Only does anything inside the native (Capacitor) wrapped app — a no-op
-// in a plain browser tab.
+// ---------- Hardware back button (Android APK / AAB via Capacitor) ----------
+// ONE function (neshHandleBack) decides what "back" means, so the phone's
+// back button/gesture behaves exactly like the arrow at the top of each
+// screen — no separate history stack to get out of sync:
+//   1. an open popup/sheet closes first
+//   2. otherwise the current screen's own back arrow is pressed
+//   3. on the first (category) screen: "press again to exit"
+//   4. while a taxi ride is active, back can't leave the trip screen
+let neshExitArmed = false;
+
+function neshShowExitToast() {
+  let toast = document.getElementById('nesh-exit-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'nesh-exit-toast';
+    toast.textContent = 'Tap back again to exit';
+    toast.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translate(-50%,0);background:#2B2410;color:#fff;padding:10px 18px;border-radius:20px;font-family:Inter,sans-serif;font-size:13px;font-weight:600;z-index:999999;box-shadow:0 6px 16px rgba(0,0,0,.25);opacity:0;transition:opacity .2s;pointer-events:none;';
+    document.body.appendChild(toast);
+  }
+  requestAnimationFrame(() => { toast.style.opacity = '1'; });
+  clearTimeout(neshShowExitToast._t);
+  neshShowExitToast._t = setTimeout(() => { toast.style.opacity = '0'; }, 1800);
+}
+
+function neshIsShown(id) {
+  const el = document.getElementById(id);
+  return !!(el && el.classList.contains('show'));
+}
+
+// Returns 'stay' (back was used up inside the app) or 'exit' (nothing left
+// to go back to — the caller may minimise/exit the app).
+function neshHandleBack() {
+  // --- 1) Popups / sheets, top-most first ---
+  if (neshIsShown('nesh-blocked-overlay')) return 'stay';       // blocked account: can't dismiss
+  if (neshIsShown('install-overlay')) return 'stay';            // intentionally not dismissable
+  if (neshIsShown('bus-video-overlay')) {
+    const c = document.getElementById('bus-video-close-btn');
+    if (c && c.style.display !== 'none') c.click();             // only once "Close" is available
+    return 'stay';
+  }
+  if (neshIsShown('scratch-modal-overlay')) { closeScratchModal(); return 'stay'; }
+  if (neshIsShown('info-modal-overlay')) {
+    // Confirm popups have a Cancel button — back must press CANCEL (never
+    // the destructive "Yes"). Plain info popups only have OK.
+    const cancel = document.getElementById('info-modal-cancel-btn');
+    const cancelVisible = cancel && cancel.style.display !== 'none';
+    (cancelVisible ? cancel : document.getElementById('info-modal-ok-btn')).click();
+    return 'stay';
+  }
+  if (neshIsShown('account-dropdown')) { closeAccountDropdown(); return 'stay'; }
+  if (neshIsShown('order-summary-overlay')) { closeOrderSummary(); return 'stay'; }
+  if (neshIsShown('payment-overlay')) { document.getElementById('pay-cancel-btn').click(); return 'stay'; }
+  if (neshIsShown('browse-loc-overlay')) { document.getElementById('browse-loc-cancel-btn').click(); return 'stay'; }
+  if (neshIsShown('loc-overlay')) { document.getElementById('loc-cancel-btn').click(); return 'stay'; }
+
+  // --- 2) Current screen ---
+  const active = document.querySelector('.screen.active');
+  const id = active ? active.id.replace('screen-', '') : 'category';
+
+  // Active taxi ride: back must not leave the trip screen.
+  const rideActive = !!currentRideKey && !['completed', 'cancelled'].includes(taxiTrackLastStatus);
+  if (rideActive && id === 'taxi-track') return 'stay';
+
+  if (id === 'category') {
+    // --- 3) Root screen: double-back to exit ---
+    if (neshExitArmed) { neshExitArmed = false; return 'exit'; }
+    neshExitArmed = true;
+    neshShowExitToast();
+    setTimeout(() => { neshExitArmed = false; }, 2000);
+    return 'stay';
+  }
+  neshExitArmed = false;
+
+  if (id === 'placed') {                       // "Order confirmed" has no arrow
+    renderHome();
+    showScreen('home');
+    persistScreen('home', { category: state.category });
+    return 'stay';
+  }
+
+  // Every other screen has its own back arrow with the correct logic
+  // (menu -> shop list, home -> categories, track -> orders/home, taxi
+  // steps, bus steps, login -> categories ...). Just press it.
+  const backBtn = active && active.querySelector('.btn-back, .home-back-btn');
+  if (backBtn) { backBtn.click(); return 'stay'; }
+
+  goToCategoryScreen();                         // safety net
+  return 'stay';
+}
+
 (function () {
-  if (!window.Capacitor || !window.Capacitor.Plugins || !window.Capacitor.Plugins.App) return;
-  const CapApp = window.Capacitor.Plugins.App;
-  CapApp.addListener('backButton', () => {
-    const activeScreen = document.querySelector('.screen.active');
-    const activeId = activeScreen ? activeScreen.id.replace('screen-', '') : '';
-    const rideActive = !!currentRideKey && !['completed', 'cancelled'].includes(taxiTrackLastStatus);
+  const CapApp = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
 
-    if (rideActive && (activeId === 'taxi-track' || activeId === 'taxi-chat')) {
-      // Trip in progress — swallow the back press, stay right here.
-      return;
-    }
-    if (activeId === 'taxi-chat') { closeTaxiChat(); return; }
-    if (activeId === 'taxi-track') { leaveTaxiTrack(); return; }
-
-    // 1) An open sheet/dropdown/modal should close first — mirrors the
-    // web popstate handler above.
-    const overlays = [
-      { id: 'install-overlay', close: null },
-      { id: 'info-modal-overlay', close: () => document.getElementById('info-modal-ok-btn').click() },
-      { id: 'scratch-modal-overlay', close: () => closeScratchModal() },
-      { id: 'account-dropdown', close: () => closeAccountDropdown() },
-      { id: 'order-summary-overlay', close: () => closeOrderSummary() },
-      { id: 'payment-overlay', close: () => document.getElementById('pay-cancel-btn').click() },
-      { id: 'browse-loc-overlay', close: () => document.getElementById('browse-loc-cancel-btn').click() },
-      { id: 'loc-overlay', close: () => document.getElementById('loc-cancel-btn').click() },
-    ];
-    for (const o of overlays) {
-      const el = document.getElementById(o.id);
-      if (el && el.classList.contains('show')) {
-        if (o.close) o.close();
-        return;
+  if (CapApp && CapApp.addListener) {
+    // Native app (APK/AAB). Registering this listener turns OFF Android's
+    // default back behaviour (which would just close the app).
+    CapApp.addListener('backButton', () => {
+      if (neshHandleBack() === 'exit') {
+        if (CapApp.minimizeApp) CapApp.minimizeApp();   // like WhatsApp etc.: goes to background
+        else if (CapApp.exitApp) CapApp.exitApp();
       }
-    }
+    });
+    return;
+  }
 
-    // 2) Step back to the previous in-app screen using our own stack
-    // DIRECTLY — deliberately never calling window.history.back()/going
-    // through the browser's real history here. That would re-trigger the
-    // popstate handler above, so a single hardware press could end up
-    // popping two screens at once (this call's own pop, plus the browser's
-    // own back navigation) instead of exactly one — which is what let the
-    // exit confirmation get reached, and then consumed, before the
-    // customer had actually stepped back to the root screen.
-    if (neshScreenStack.length > 1) {
-      neshScreenStack.pop();
-      const prevId = neshScreenStack[neshScreenStack.length - 1];
-      neshSkipHistoryPush = true;
-      showScreen(prevId);
-      return;
+  // Fallback: plain browser / PWA / WebView without @capacitor/app.
+  // Keep one "guard" history entry so a back press is delivered to us as
+  // a popstate event instead of leaving the page.
+  try {
+    history.replaceState({ nesh: 'base' }, '', location.href);
+    history.pushState({ nesh: 'guard' }, '', location.href);
+  } catch (e) { return; }
+  window.addEventListener('popstate', () => {
+    if (neshHandleBack() === 'stay') {
+      try { history.pushState({ nesh: 'guard' }, '', location.href); } catch (e) {}
     }
-
-    // 3) Already at the root screen — require a second press (within
-    // ~1.6s) before actually letting the app exit.
-    if (!neshExitArmed) {
-      neshExitArmed = true;
-      neshShowExitToast();
-      setTimeout(() => { neshExitArmed = false; }, 1600);
-      return;
-    }
-    if (CapApp.minimizeApp) CapApp.minimizeApp();
-    else if (CapApp.exitApp) CapApp.exitApp();
+    // 'exit': guard not re-added, so the browser/WebView leaves on this press.
   });
 })();
 
