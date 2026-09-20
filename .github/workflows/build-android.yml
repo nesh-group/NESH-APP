@@ -44,6 +44,7 @@ jobs:
         run: |
           npm init -y
           npm install @capacitor/core @capacitor/android @capacitor/cli
+          npm install @capacitor/app
           npm install @capacitor/geolocation
           npm install @capacitor/push-notifications
           npm install @capacitor/local-notifications
