@@ -787,6 +787,12 @@
     color:var(--chili); font-weight:700; font-size:13px; font-family:'Inter',sans-serif; cursor:pointer;
   }
   .account-dropdown-logout:active{ transform:scale(0.98); }
+  .account-dropdown-delete{
+    width:100%; display:flex; align-items:center; gap:8px; padding:10px 10px; margin-top:8px;
+    border-radius:10px; border:1.5px solid #F3C6C0; background:#FDF0EE;
+    color:#C0392B; font-weight:700; font-size:13px; font-family:'Inter',sans-serif; cursor:pointer;
+  }
+  .account-dropdown-delete:active{ transform:scale(0.98); }
   .account-backdrop{
     display:none; position:fixed; inset:0; z-index:55; background:transparent;
   }
@@ -1277,10 +1283,10 @@
       <p class="loc-field-label">Payment method</p>
       <div class="pay-method-row" id="pay-method-row">
         <button type="button" class="pay-method-btn active" id="pay-cod-btn" data-method="cod">💵 Cash on Delivery</button>
-        <button type="button" class="pay-method-btn" id="pay-gpay-btn" data-method="gpay">📱 GPay Scanner</button>
+        <button type="button" class="pay-method-btn" id="pay-gpay-btn" data-method="gpay">📱 UPI Scanner</button>
       </div>
       <div class="gpay-scanner-box" id="gpay-scanner-box" style="display:none;">
-        <img id="gpay-qr-img" alt="GPay scanner QR code" />
+        <img id="gpay-qr-img" alt="UPI scanner QR code" />
         <p class="gpay-number-text" id="gpay-number-text"></p>
         <p class="gpay-scanner-hint">Scan &amp; complete the payment in your UPI app first</p>
         <label class="gpay-paid-check">
@@ -1524,6 +1530,10 @@
             <button class="account-dropdown-logout" id="logout-btn">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
               Logout
+            </button>
+            <button class="account-dropdown-delete" id="delete-account-btn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C0392B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              Delete Account
             </button>
           </div>
         </div>
@@ -2810,6 +2820,10 @@ function updateVerifiedBadges() {
   if (catBadge) catBadge.style.display = show ? '' : 'none';
   const acctBadge = document.getElementById('account-verified-stamp');
   if (acctBadge) acctBadge.style.display = show ? '' : 'none';
+  // Delete Account only makes sense for a signed-in customer — a guest has
+  // no account/record to delete.
+  const deleteBtn = document.getElementById('delete-account-btn');
+  if (deleteBtn) deleteBtn.style.display = show ? '' : 'none';
 }
 try {
   const savedUser = JSON.parse(localStorage.getItem('asfood_customer_user') || 'null');
@@ -2820,10 +2834,8 @@ try {
     attachOrderStatusWatcher(savedUser.number);
     registerCustomerPush(savedUser.number);
   } else {
-    // Not logged in — still ask for notification permission and subscribe
-    // this device to "all_customers" (guests still get offer/announcement
-    // broadcasts, they just won't get single-order status alerts, which
-    // need a phone number to look up).
+    // Not logged in — just a silent sync (re-registers if permission was
+    // already granted earlier). Does NOT ask for permission here.
     registerCustomerPush();
   }
 } catch (e) {}
@@ -2889,12 +2901,12 @@ function goToCategoryScreen() {
   showScreen('category');
   persistScreen('category');
 }
-document.getElementById('cat-card-food').addEventListener('click', () => openCategory('hotel'));
-document.getElementById('cat-card-groceries').addEventListener('click', () => openNeshStore());
-document.getElementById('cat-card-online-shop').addEventListener('click', () => openCategory('online_shop'));
+document.getElementById('cat-card-food').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); openCategory('hotel'); });
+document.getElementById('cat-card-groceries').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); openNeshStore(); });
+document.getElementById('cat-card-online-shop').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); openCategory('online_shop'); });
 document.getElementById('home-cat-back-btn').addEventListener('click', goToCategoryScreen);
-document.getElementById('cat-card-taxi').addEventListener('click', () => goToTaxiBooking());
-document.getElementById('cat-card-bus').addEventListener('click', () => openBusList());
+document.getElementById('cat-card-taxi').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); goToTaxiBooking(); });
+document.getElementById('cat-card-bus').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); openBusList(); });
 document.getElementById('cat-card-orders').addEventListener('click', () => openOrdersScreen());
 document.getElementById('cat-loc-card').addEventListener('click', () => openBrowseLocationPicker());
 
@@ -5621,11 +5633,13 @@ if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Pus
   });
 }
 
-// phone is optional — pass it for a logged-in customer (also saves the
-// token under customers/{phone}/fcmToken for single-order alerts); call
-// with no argument for a guest, which still asks permission and
-// subscribes the device to "all_customers" so operator broadcasts
-// (offers/announcements) reach everyone, logged in or not.
+// Silent sync only — NEVER shows the system permission popup. If the
+// customer has already granted notifications at some point (via the
+// order-placed prompt or the bell button — the only two places that are
+// allowed to ask), this just re-registers the device/refreshes the FCM
+// token (e.g. on every app open / login / register) so pushes keep
+// reaching this device. If permission hasn't been decided yet or was
+// denied, this does nothing and stays silent.
 async function registerCustomerPush(phone) {
   if (!window.Capacitor || !window.Capacitor.Plugins || !window.Capacitor.Plugins.PushNotifications) return;
   try {
@@ -5633,13 +5647,10 @@ async function registerCustomerPush(phone) {
     const permStatus = await PushNotifications.checkPermissions();
     if (permStatus.receive === 'granted') {
       await PushNotifications.register();
-      updateNotifBellStatus();
-      return;
     }
-    if (permStatus.receive === 'denied') { updateNotifBellStatus(); return; } // Android already said no once — asking again does nothing
-    // Ask directly on app open — no soft-ask modal first.
-    const result = await PushNotifications.requestPermissions();
-    if (result.receive === 'granted') await PushNotifications.register();
+    // Not granted (default/prompt or denied) — do nothing here. Asking is
+    // only allowed from maybePromptNotificationPermission() (after an
+    // order is placed) or the home-notif-btn click handler.
   } catch (e) {}
   updateNotifBellStatus();
 }
@@ -6168,8 +6179,8 @@ async function maybePromptNotificationPermission() {
   }
   if (permStatus.receive === 'denied') return; // Android already said no once — asking again does nothing
   const proceed = await showConfirmModal(
-    '🔔 Stay updated',
-    'Turn on notifications to get live order status, delivery alerts and offers.',
+    '🔔 Track your order',
+    'Turn on notifications to get live updates on your order — accepted, prepared, out for delivery.',
     'Enable',
     'Not now'
   );
@@ -7688,7 +7699,7 @@ function openPaymentConfirm() {
   setPaymentMethod('cod');
   const hasGpay = !!(state.selectedRestaurant && state.selectedRestaurant.gpayNumber);
   payGpayBtn.disabled = !hasGpay;
-  payGpayBtn.title = hasGpay ? "" : "This restaurant hasn't set up GPay yet";
+  payGpayBtn.title = hasGpay ? "" : "This restaurant hasn't set up UPI payment yet";
   paymentOverlay.classList.add('show');
   // Render the scratch card only after the sheet is actually visible —
   // it needs real on-screen dimensions to size its canvas correctly.
@@ -8259,7 +8270,7 @@ payConfirmBtn.addEventListener('click', async () => {
     return;
   }
   if (selectedPaymentMethod === 'gpay' && !gpayPaidCheckbox.checked) {
-    showInfoModal('One more step', "Please complete the GPay payment and tick \"I've completed the payment\" before placing the order.");
+    showInfoModal('One more step', "Please complete the UPI payment and tick \"I've completed the payment\" before placing the order.");
     return;
   }
 
@@ -8347,7 +8358,7 @@ payConfirmBtn.addEventListener('click', async () => {
       platformDue: platformFee,
       deliveryFee,
       shopDiscountApplied: shopDiscount,
-      paymentMethod: (isNeshStore || selectedPaymentMethod !== 'gpay') ? 'Cash on Delivery' : 'GPay (Scanner)'
+      paymentMethod: (isNeshStore || selectedPaymentMethod !== 'gpay') ? 'Cash on Delivery' : 'UPI (Scanner)'
     };
     if (suggestedShop) {
       orderPayload.suggestedShopId = suggestedShop.id;
@@ -8848,6 +8859,37 @@ function logoutUser() {
 }
 document.getElementById('logout-btn').addEventListener('click', logoutUser);
 
+// ---------- DELETE ACCOUNT ----------
+// Permanently removes the customer's Firebase record (name, number,
+// address, saved fcmToken — all of it) and then signs them out locally,
+// same as Logout. Required so the app meets Google Play's policy that any
+// app allowing account creation must also offer in-app account/data
+// deletion. Order history already placed stays with the restaurant's
+// records (normal business/legal record-keeping), same as other delivery
+// apps — only the customer's own profile/account data is deleted here.
+async function deleteAccountUser() {
+  closeAccountDropdown();
+  const number = state.user && state.user.number;
+  if (!number) return;
+  const proceed = await showConfirmModal(
+    '⚠️ Delete account',
+    "This permanently deletes your account and saved details (name, number, address). This can't be undone. Are you sure?",
+    'Delete',
+    'Cancel'
+  );
+  if (!proceed) return;
+  try {
+    const { db, ref, remove } = window.fb;
+    await remove(ref(db, 'customers/' + number));
+  } catch (e) {
+    showInfoModal('Oops', "Couldn't delete your account — check your connection and try again.");
+    return;
+  }
+  logoutUser();
+  showInfoModal('Account deleted', "Your account and saved details have been deleted.");
+}
+document.getElementById('delete-account-btn').addEventListener('click', deleteAccountUser);
+
 // ---------- Account menu dropdown (VERIFIED badge + Logout live here) ----------
 const accountBtn = document.getElementById('account-btn');
 const accountDropdown = document.getElementById('account-dropdown');
@@ -8865,14 +8907,16 @@ accountBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleAccount
 accountBackdrop.addEventListener('click', closeAccountDropdown);
 document.getElementById('logout-btn').addEventListener('click', closeAccountDropdown);
 
-// ---------- Auto-detect location every time the app is opened — always
-// asks the browser for a fresh GPS position and re-renders the shop list
-// filtered to that location, so the customer never has to pick manually.
-// If permission is denied/unavailable, whatever location was saved from
-// last time (if any) is kept, so the list doesn't just disappear. If
-// there's no saved location either, the "Select your location" label is
-// updated to make it obvious the customer needs to tap it and pick one
-// manually instead of silently doing nothing. ----------
+// ---------- Auto-detect location — triggered once, on the customer's
+// first tap into a category (see maybeDetectLocationOnCategoryTap below),
+// NOT automatically on app open. Asks the browser/OS for a fresh GPS
+// position and re-renders the shop list filtered to that location, so the
+// customer doesn't have to pick manually. If permission is denied/
+// unavailable, whatever location was saved from last time (if any) is
+// kept, so the list doesn't just disappear. If there's no saved location
+// either, the "Select your location" label is updated to make it obvious
+// the customer needs to tap it and pick one manually instead of silently
+// doing nothing. ----------
 function autoDetectLocation() {
   if (!navigator.geolocation) {
     state.locationDetectFailed = true;
@@ -8908,7 +8952,18 @@ function autoDetectLocation() {
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
   );
 }
-autoDetectLocation();
+// Only asks for location permission once the customer actually taps into
+// a category (Food/Groceries/Other Shop/Taxi/Bus) — never automatically
+// on app open. Runs fire-and-forget alongside the screen navigation (it
+// doesn't block opening the category); once a position is known, or a
+// permission decision has already been made this session, it's a no-op
+// so we don't re-trigger the native prompt/GPS fetch on every tap.
+let locationDetectAttempted = false;
+function maybeDetectLocationOnCategoryTap() {
+  if (state.customerPos || locationDetectAttempted) return;
+  locationDetectAttempted = true;
+  autoDetectLocation();
+}
 
 // ---------- Init: resume the customer on whichever screen they were last
 // on (home, category, a restaurant's menu with their cart, order tracking,

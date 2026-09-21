@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Delete Account - NESH</title>
-<meta name="description" content="Request deletion of your NESH account and associated data." />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Delete Your Account — NESH</title>
+<meta name="description" content="Request deletion of your NESH account and personal data." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#FFFFFF;
@@ -16,131 +16,190 @@
     --marigold-dark:#D69E00;
     --chili:#C97F00;
     --leaf:#1BA672;
+    --danger:#C0392B;
+    --danger-bg:#FDF0EE;
+    --danger-border:#F3C6C0;
     --muted:#B4A87F;
     --muted-2:#6B5E3D;
     --field-bg:#FFF8DF;
     --field-border:#F2E2A6;
-    --card-shadow:0 2px 14px rgba(43,36,16,.08);
   }
   *{box-sizing:border-box;}
   body{
-    margin:0;
-    background:var(--bg-outer);
-    font-family:'Inter',sans-serif;
-    display:flex;
-    justify-content:center;
-    min-height:100vh;
+    margin:0; background:var(--bg-outer); font-family:'Inter',sans-serif;
+    display:flex; justify-content:center; min-height:100vh;
+    padding: env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);
   }
-  #app{
-    width:100%;
-    max-width:560px;
-    min-height:100vh;
-    background:var(--bg);
-    padding:40px 24px 60px;
+  #app{ width:100%; max-width:460px; min-height:100vh; background:var(--bg); padding:32px 24px 40px; }
+  .eyebrow{ color:var(--chili); font-weight:700; font-size:12px; letter-spacing:1.5px; margin:0; }
+  h1{ font-family:'Fraunces',serif; font-size:26px; font-weight:700; color:var(--ink); margin:6px 0 6px; }
+  .sub{ color:var(--muted-2); font-size:14px; line-height:1.55; margin:0 0 24px; }
+  .box{
+    background:var(--field-bg); border:1.5px solid var(--field-border); border-radius:14px;
+    padding:16px; margin-bottom:18px;
   }
-  .eyebrow{
-    color:var(--chili);
-    font-weight:700;
-    font-size:12px;
-    letter-spacing:1.5px;
-    margin:0 0 4px;
+  .box h2{ font-size:14px; margin:0 0 8px; color:var(--ink); }
+  .box ul{ margin:0; padding-left:18px; color:var(--muted-2); font-size:13px; line-height:1.7; }
+  label{ display:block; font-size:12px; font-weight:700; color:var(--muted-2); letter-spacing:.4px; margin:0 0 6px; }
+  .field{
+    display:flex; align-items:center; gap:8px; padding:13px 14px; border-radius:12px;
+    background:var(--field-bg); border:1.5px solid var(--field-border); margin-bottom:16px;
   }
-  h1{
-    color:var(--ink);
-    font-family:'Fraunces',serif;
-    font-size:28px;
-    font-weight:700;
-    margin:0 0 20px;
+  .field span.prefix{ color:var(--muted-2); font-weight:600; font-size:14px; }
+  .field input, .field textarea{
+    background:transparent; border:none; outline:none; width:100%; font-size:14px;
+    color:var(--ink); font-family:'Inter',sans-serif;
   }
-  p{
-    color:var(--muted-2);
-    font-size:15px;
-    line-height:1.6;
+  textarea{ resize:vertical; min-height:64px; }
+  .checkline{ display:flex; align-items:flex-start; gap:10px; margin:4px 0 20px; }
+  .checkline input{ margin-top:3px; width:16px; height:16px; accent-color:var(--danger); flex-shrink:0; }
+  .checkline span{ font-size:12.5px; color:var(--muted-2); line-height:1.5; }
+  .btn-danger{
+    width:100%; padding:15px; border:none; border-radius:12px;
+    background:var(--danger); color:#fff; font-weight:700; font-size:15px;
+    font-family:'Inter',sans-serif; cursor:pointer; letter-spacing:.2px;
   }
-  .card{
-    background:var(--field-bg);
-    border:1.5px solid var(--field-border);
-    border-radius:16px;
-    padding:20px;
-    margin:20px 0;
-  }
-  .card h2{
-    color:var(--ink);
-    font-size:16px;
-    margin:0 0 10px;
-  }
-  .card ul{
-    margin:0;
-    padding-left:20px;
-    color:var(--muted-2);
-    font-size:14px;
-    line-height:1.8;
-  }
-  .contact-box{
-    display:flex;
-    align-items:center;
-    gap:12px;
-    padding:16px;
-    border-radius:14px;
-    background:linear-gradient(135deg, var(--marigold) 0%, var(--marigold-dark) 100%);
-    box-shadow:0 6px 16px rgba(242,183,5,.3);
-    margin:24px 0;
-  }
-  .contact-box a{
-    color:var(--ink);
-    font-weight:700;
-    text-decoration:none;
-    font-size:15px;
-  }
-  .contact-icon{
-    width:40px;height:40px;border-radius:12px;
-    background:rgba(255,255,255,.9);
-    display:flex;align-items:center;justify-content:center;
-    font-size:18px;flex-shrink:0;
-  }
-  .stamp{
-    display:inline-flex;align-items:center;gap:4px;
-    padding:6px 10px;border:1.5px solid var(--leaf);
-    color:var(--leaf);border-radius:20px;
-    background:rgba(27,166,114,.08);
-    font-weight:700;font-size:11px;letter-spacing:.5px;
-    margin-top:24px;
-  }
+  .btn-danger:disabled{ background:#E3DFD8; color:var(--muted); cursor:not-allowed; }
+  .btn-danger:active:not(:disabled){ transform:scale(0.98); }
+  .error-text{ color:var(--danger); font-size:13px; margin:-10px 0 14px; display:none; }
+  .status-card{ display:none; text-align:center; padding:32px 8px; }
+  .status-card .icon{ font-size:40px; margin-bottom:10px; }
+  .status-card h2{ font-family:'Fraunces',serif; font-size:20px; margin:0 0 8px; color:var(--ink); }
+  .status-card p{ color:var(--muted-2); font-size:13.5px; line-height:1.6; margin:0; }
+  .contact{ margin-top:28px; font-size:12px; color:var(--muted); text-align:center; }
+  .contact a{ color:var(--chili); font-weight:600; text-decoration:none; }
+  #form-wrap.hidden, .status-card.show ~ #form-wrap{ display:none; }
 </style>
 </head>
 <body>
 <div id="app">
   <p class="eyebrow">NESH ACCOUNT</p>
   <h1>Delete your account</h1>
-  <p>You can request permanent deletion of your NESH account and all associated data at any time. To submit a deletion request, please contact us using the details below with your registered phone number.</p>
+  <p class="sub">Submit a request to permanently delete your NESH account and the personal data linked to it.</p>
 
-  <div class="contact-box">
-    <div class="contact-icon">✉️</div>
-    <a href="mailto:neshgroup1@gmail.com?subject=Account%20Deletion%20Request">neshgroup1@gmail.com</a>
-  </div>
-
-  <div class="card">
+  <div class="box">
     <h2>What gets deleted</h2>
     <ul>
-      <li>Your profile information (name, phone number, email)</li>
-      <li>Saved delivery addresses and locations</li>
-      <li>Order history and past transactions</li>
-      <li>Any other personal data linked to your account</li>
+      <li>Your name, phone number and saved address</li>
+      <li>Your saved payment/notification device tokens</li>
+      <li>Your login session on every device</li>
     </ul>
   </div>
-
-  <div class="card">
-    <h2>How it works</h2>
+  <div class="box">
+    <h2>What's kept</h2>
     <ul>
-      <li>Send us an email or message with your registered phone number and a request to delete your account</li>
-      <li>We verify your identity to protect your data</li>
-      <li>Your account and associated data are permanently deleted within 7 business days</li>
+      <li>Past order records — restaurants/partners keep these for their own accounting, same as any delivery service</li>
     </ul>
   </div>
 
-  <p style="font-size:13px;color:var(--muted);">Note: Some information may be retained where required by law (e.g. transaction records for tax or legal compliance) even after account deletion.</p>
+  <div id="form-wrap">
+    <label for="phone-input">Registered mobile number</label>
+    <div class="field">
+      <span class="prefix">+91</span>
+      <input id="phone-input" type="tel" inputmode="numeric" maxlength="10" placeholder="9XXXXXXXXX" />
+    </div>
 
-  <span class="stamp">✓ NESH · Taxi and Delivery Services</span>
+    <label for="reason-input">Reason (optional)</label>
+    <div class="field">
+      <textarea id="reason-input" placeholder="Let us know why you're leaving — helps us improve"></textarea>
+    </div>
+
+    <p class="error-text" id="error-text"></p>
+
+    <div class="checkline">
+      <input type="checkbox" id="confirm-check" />
+      <span>I understand this request is permanent and cannot be undone once processed.</span>
+    </div>
+
+    <button class="btn-danger" id="submit-btn" disabled>Submit deletion request</button>
+  </div>
+
+  <div class="status-card" id="status-card">
+    <div class="icon">✅</div>
+    <h2>Request received</h2>
+    <p id="status-msg">We've received your account deletion request. Your account and personal data will be removed within a few business days.</p>
+  </div>
+
+  <p class="contact">Questions? Contact <a href="mailto:support@nesh.app">support@nesh.app</a></p>
 </div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCrM5wKwsnGtIc7HSTk_5R1d3dXEcYyd7o",
+    authDomain: "texi-and-food.firebaseapp.com",
+    databaseURL: "https://texi-and-food-default-rtdb.firebaseio.com",
+    projectId: "texi-and-food",
+    storageBucket: "texi-and-food.firebasestorage.app",
+    messagingSenderId: "98800730432",
+    appId: "1:98800730432:web:9d7651e792c60baafabaa5"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  const phoneInput = document.getElementById('phone-input');
+  const reasonInput = document.getElementById('reason-input');
+  const confirmCheck = document.getElementById('confirm-check');
+  const submitBtn = document.getElementById('submit-btn');
+  const errorText = document.getElementById('error-text');
+  const formWrap = document.getElementById('form-wrap');
+  const statusCard = document.getElementById('status-card');
+  const statusMsg = document.getElementById('status-msg');
+
+  function digitsOnly(v) { return v.replace(/\D/g, ''); }
+  function updateSubmitEnabled() {
+    const valid = digitsOnly(phoneInput.value).length === 10;
+    submitBtn.disabled = !(valid && confirmCheck.checked);
+  }
+  phoneInput.addEventListener('input', () => {
+    phoneInput.value = digitsOnly(phoneInput.value).slice(0, 10);
+    errorText.style.display = 'none';
+    updateSubmitEnabled();
+  });
+  confirmCheck.addEventListener('change', updateSubmitEnabled);
+
+  function showError(msg) {
+    errorText.textContent = msg;
+    errorText.style.display = 'block';
+  }
+
+  // This does NOT delete instantly from a public, unauthenticated page —
+  // the app itself has no OTP/identity verification, so an anyone-can-type
+  // -a-number instant-delete here would let anyone wipe someone else's
+  // account just by knowing their phone number. Instead this records a
+  // deletion request (accountDeletionRequests/{number}) for the NESH team
+  // to verify and action — still satisfies Play Store's requirement of a
+  // reachable, working web path to request account/data deletion.
+  submitBtn.addEventListener('click', async () => {
+    const number = digitsOnly(phoneInput.value);
+    if (number.length !== 10) { showError("Enter a valid 10-digit mobile number."); return; }
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Submitting…";
+    try {
+      const snap = await get(ref(db, 'customers/' + number));
+      if (!snap.exists()) {
+        showError("No NESH account found for this number.");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit deletion request";
+        return;
+      }
+      await set(ref(db, 'accountDeletionRequests/' + number), {
+        number,
+        reason: reasonInput.value.trim() || null,
+        requestedAt: Date.now(),
+        status: 'pending',
+      });
+      formWrap.style.display = 'none';
+      statusCard.classList.add('show');
+      statusCard.style.display = 'block';
+    } catch (e) {
+      showError("Couldn't submit your request — check your connection and try again.");
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Submit deletion request";
+    }
+  });
+</script>
 </body>
 </html>
