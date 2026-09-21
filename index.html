@@ -1639,7 +1639,7 @@
       </div>
       <div class="confirm-btn-wrap stack">
         <button class="btn-primary" id="confirm-track-btn" style="background:var(--leaf); color:var(--cloud);">🛵 Track your Order</button>
-        <button class="btn-primary" onclick="renderHome(); showScreen('home'); persistScreen('home', { category: state.category });">Back to restaurants</button>
+        <button class="btn-primary" onclick="goHomeSafe();">Back to home</button>
       </div>
     </div>
   </section>
@@ -2743,7 +2743,8 @@ function tryResumeScreen(saved) {
     return true;
   } else if (saved.id === 'home') {
     state.category = saved.category || state.category;
-    openCategory(state.category || 'hotel');
+    if (!state.category || state.category === 'groceries') goToCategoryScreen();
+    else openCategory(state.category);
     resumed = true;
     return true;
   } else if (saved.id === 'category') {
@@ -2873,6 +2874,7 @@ function digitsOnly(v) { return v.replace(/\D/g, ''); }
 
 // ---------- CATEGORY (Food / Groceries) ----------
 function openCategory(cat) {
+  if (cat === 'groceries') { openNeshStore(); return; }   // no per-shop groceries list
   if (isAreaUnavailable(state.customerPos)) { showInfoModal(AREA_UNAVAILABLE_TITLE, AREA_UNAVAILABLE_MSG); return; }
   state.category = cat;
   renderHome();
@@ -5332,9 +5334,7 @@ function neshHandleBack() {
   neshExitArmed = false;
 
   if (id === 'placed') {                       // "Order confirmed" has no arrow
-    renderHome();
-    showScreen('home');
-    persistScreen('home', { category: state.category });
+    goHomeSafe();
     return 'stay';
   }
 
@@ -5731,9 +5731,9 @@ function attachOrderStatusWatcher(number) {
         if (status === 'preparing' && !seen[orderKey]) {
           seen[orderKey] = true;
           changed = true;
-          showOrderNotifyToast(restVal.restaurantName || 'Restaurant', o.orderNumber, {
+          showOrderNotifyToast(o.fromNeshStoreQueue ? 'NESH Store' : (restVal.restaurantName || 'Restaurant'), o.orderNumber, {
             restId: restSnap.key, orderKey, orderNumber: o.orderNumber,
-            restName: restVal.restaurantName || 'Restaurant', businessType: restVal.businessType || 'hotel',
+            restName: o.fromNeshStoreQueue ? 'NESH Store' : (restVal.restaurantName || 'Restaurant'), businessType: restVal.businessType || 'hotel',
           });
         }
         // Anything not yet delivered/cancelled counts as "in progress" for
@@ -5742,7 +5742,7 @@ function attachOrderStatusWatcher(number) {
         if (!['delivered', 'cancelled'].includes(status)) {
           activeCandidates.push({
             restId: restSnap.key, orderKey, orderNumber: o.orderNumber,
-            restName: restVal.restaurantName || 'Restaurant', businessType: restVal.businessType || 'hotel',
+            restName: o.fromNeshStoreQueue ? 'NESH Store' : (restVal.restaurantName || 'Restaurant'), businessType: restVal.businessType || 'hotel',
             createdAt: o.createdAt || 0,
           });
         }
@@ -6215,9 +6215,12 @@ window.onShopZonesUpdated = () => {
 
 function renderRestaurantList() {
   const q = searchInput.value.toLowerCase();
+  // Individual groceries shops are never shown to customers — groceries is
+  // only ever ordered through the merged NESH Store (openNeshStore()).
+  const visibleShops = RESTAURANTS.filter(r => r.businessType !== 'groceries');
   const categoryFiltered = state.category
-    ? RESTAURANTS.filter(r => r.businessType === state.category)
-    : RESTAURANTS;
+    ? visibleShops.filter(r => r.businessType === state.category)
+    : visibleShops;
 
   // Apply the operator-set shop order for this category (Operator Panel →
   // Shop Order), if one has been saved. Shops in the saved order come
@@ -6385,8 +6388,9 @@ const cartBtn = document.getElementById('cart-btn');
 function buildNeshStoreCatalog() {
   const groceryShops = (window.RESTAURANTS || []).filter(r =>
     r.businessType === 'groceries' && !r.shopUnavailable &&
-    shopAllowedAtPoint(r.id, state.customerPos) &&
-    (!r.zone || isPointInZone(state.customerPos, r.zone))
+    // Groceries shops have no zone of their own — the operator assigns them
+    // to Shop Zones, so only that (not a shop-drawn r.zone) decides this.
+    shopAllowedAtPoint(r.id, state.customerPos)
   );
   const groups = {};
   const order = [];
@@ -6467,9 +6471,9 @@ function resolveRestaurantById(id) {
 }
 function openNeshStore() {
   if (isAreaUnavailable(state.customerPos)) { showInfoModal(AREA_UNAVAILABLE_TITLE, AREA_UNAVAILABLE_MSG); return; }
-  state.category = 'groceries';
   const store = resolveRestaurantById('NESH_STORE');
-  if (!store) { openCategory('groceries'); return; } // RESTAURANTS hasn't loaded yet — fall back to the normal shop-list screen just this once
+  if (!store) { showInfoModal('Loading stores…', 'Stores are still loading. Please try again in a moment.'); return; } // RESTAURANTS hasn't loaded yet
+  state.category = 'groceries';
   state.selectedRestaurant = store;
   state.cart = {};
   state.cartGrams = {};
@@ -6487,6 +6491,16 @@ function openNeshStore() {
 // shop list, same as always. NESH Store has no shop-list screen to go
 // back to (the whole point is that it's skipped) — back from it goes to
 // the category-picker screen instead.
+// Where "back to the shop list" should land after an order / from orders /
+// from tracking. Groceries (NESH Store) has no shop list, and with no category
+// picked the home list would mix every kind of shop together — in both cases
+// go to the category picker instead.
+function goHomeSafe() {
+  if (!state.category || state.category === 'groceries') { goToCategoryScreen(); return; }
+  renderHome();
+  showScreen('home');
+  persistScreen('home', { category: state.category });
+}
 function menuBackClicked() {
   const r = state.selectedRestaurant;
   if (r && r.id === 'NESH_STORE') {
@@ -8159,6 +8173,18 @@ locProceedBtn.addEventListener('click', () => {
   if (typeof pendingLocation.lat === 'number' && typeof pendingLocation.lng === 'number') {
     const zPt = { lat: pendingLocation.lat, lng: pendingLocation.lng };
     if (isAreaUnavailable(zPt)) { showInfoModal(AREA_UNAVAILABLE_TITLE, AREA_UNAVAILABLE_MSG); return; }
+    if (r.id === 'NESH_STORE') {
+      // The delivery pin decides the zone: each item in the cart must be
+      // stocked by at least one shop assigned to that zone.
+      const missing = (r.items || [])
+        .filter(it => state.cart[it.id])
+        .filter(it => !(it._shopOptions || []).some(o => shopAllowedAtPoint(o.shopId, zPt)))
+        .map(it => it.name);
+      if (missing.length) {
+        showInfoModal('Not available in your area', 'These items aren\'t available for delivery to this location: ' + missing.join(', ') + '. Please remove them or pick a different location.');
+        return;
+      }
+    }
     if (r.id !== 'NESH_STORE' && !shopAllowedAtPoint(r.id, zPt)) {
       showInfoModal("Out of delivery area", (r.name || "This shop") + " doesn't deliver to this location. Please pick a location inside their delivery area.");
       return;
@@ -8578,7 +8604,6 @@ function openTrackOrder(order, returnScreen) {
       const q = snap.val() || {};
       if (q.status === 'assigned' && q.assignedShopId) {
         trackCurrentRestId = q.assignedShopId;
-        if (q.assignedShopName) trackRestName.textContent = q.assignedShopName;
         if (trackUnsub) { trackUnsub(); trackUnsub = null; }
         trackUnsub = onValue(
           ref(db, 'restaurants/' + q.assignedShopId + '/orders/' + order.orderKey),
@@ -8610,8 +8635,8 @@ function openTrackOrder(order, returnScreen) {
 function leaveTrackScreen() {
   if (trackUnsub) { trackUnsub(); trackUnsub = null; }
   if (trackMap) { trackMap.hide(); trackMapDriverId = null; }
-  showScreen(trackReturnScreen);
-  persistScreen(trackReturnScreen === 'orders' ? 'orders' : 'home');
+  if (trackReturnScreen === 'orders') { showScreen('orders'); persistScreen('orders'); }
+  else goHomeSafe();
 }
 
 confirmTrackBtn.addEventListener('click', () => openTrackOrder(state.lastOrder, 'home'));
@@ -8743,13 +8768,15 @@ function openOrdersScreen() {
     const mine = [];
     snap.forEach(restSnap => {
       const restVal = restSnap.val() || {};
-      const restName = restVal.restaurantName || 'Restaurant';
+      const realRestName = restVal.restaurantName || 'Restaurant';
       const businessType = restVal.businessType || 'hotel';
       const ordersVal = restVal.orders;
       if (!ordersVal) return;
       Object.keys(ordersVal).forEach(orderKey => {
         const o = ordersVal[orderKey];
         if (!o || o.customerPhone !== myNumber) return;
+        // Orders that came through NESH Store never reveal the real shop.
+        const restName = o.fromNeshStoreQueue ? 'NESH Store' : realRestName;
         mine.push({
           restId: restSnap.key,
           orderKey,
@@ -8793,9 +8820,7 @@ function openOrdersScreen() {
 
 function leaveOrdersScreen() {
   if (ordersUnsub) { ordersUnsub(); ordersUnsub = null; }
-  renderHome();
-  showScreen('home');
-  persistScreen('home', { category: state.category });
+  goHomeSafe();
 }
 
 yourOrdersBtn.addEventListener('click', openOrdersScreen);
