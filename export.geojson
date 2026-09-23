@@ -7,6 +7,198 @@
     {
       "type": "Feature",
       "properties": {
+        "@id": "node/manual-place-43",
+        "place_name": "Moollapuram",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          75.89966297062347,
+          11.22920650958518
+        ]
+      },
+      "id": "node/manual-place-43"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/manual-place-42",
+        "place_name": "Chennayil",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          75.9085464485179,
+          11.23372804433263
+        ]
+      },
+      "id": "node/manual-place-42"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/manual-place-41",
+        "place_name": "Akode",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          75.91554880142213,
+          11.234275255379226
+        ]
+      },
+      "id": "node/manual-place-41"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/manual-place-40",
+        "place_name": "Asherikal valav",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          75.91559171676637,
+          11.234485720473101
+        ]
+      },
+      "id": "node/manual-place-40"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/manual-place-39",
+        "place_name": "Kalathigal",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          75.92167854352738,
+          11.236176450927715
+        ]
+      },
+      "id": "node/manual-place-39"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/manual-place-38",
+        "place_name": "VIRIPPADAM",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          75.92291951179506,
+          11.239079082451806
+        ]
+      },
+      "id": "node/manual-place-38"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/manual-place-37",
+        "place_name": "Navas clinic",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          75.92442244289943,
+          11.24110345348463
+        ]
+      },
+      "id": "node/manual-place-37"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/manual-place-36",
+        "place_name": "Puthiyadathparamba",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          75.93788623809816,
+          11.21673244821521
+        ]
+      },
+      "id": "node/manual-place-36"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/manual-place-35",
+        "place_name": "Pilakkal",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          75.93265056544624,
+          11.212635119581453
+        ]
+      },
+      "id": "node/manual-place-35"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/manual-place-34",
+        "place_name": "Kodiyamal",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          75.91914653821733,
+          11.222303045270232
+        ]
+      },
+      "id": "node/manual-place-34"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/manual-place-33",
+        "place_name": "Peruvayal",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          75.9059929848809,
+          11.262195614946357
+        ]
+      },
+      "id": "node/manual-place-33"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/manual-place-32",
+        "place_name": "Pallithazham",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          75.90824604078081,
+          11.249635297634901
+        ]
+      },
+      "id": "node/manual-place-32"
+    },
+    {
+      "type": "Feature",
+      "properties": {
         "@id": "node/manual-place-31",
         "place_name": "Pattayil",
         "@geometry": "center"
