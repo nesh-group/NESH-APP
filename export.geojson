@@ -7,6 +7,22 @@
     {
       "type": "Feature",
       "properties": {
+        "@id": "node/manual-place-44",
+        "place_name": "Kodiyamal",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          75.9245638103162,
+          11.218555393218605
+        ]
+      },
+      "id": "node/manual-place-44"
+    },
+    {
+      "type": "Feature",
+      "properties": {
         "@id": "node/manual-place-43",
         "place_name": "Moollapuram",
         "@geometry": "center"
