@@ -2176,17 +2176,6 @@
     CapApp.addListener('pause', () => { try { goOffline(db); } catch (e) {} });
     CapApp.addListener('resume', () => { try { goOnline(db); } catch (e) {} });
   })();
-  // manifest.json's theme_color only affects the browser/PWA-install case.
-  // This app also ships as a native Capacitor app, where the status bar
-  // color/icon-style has to be set explicitly through @capacitor/status-bar
-  // (it defaults to opaque black otherwise) — do that here, once, on load.
-  (function () {
-    if (!window.Capacitor || !window.Capacitor.Plugins || !window.Capacitor.Plugins.StatusBar) return;
-    const { StatusBar, Style } = window.Capacitor.Plugins;
-    try { StatusBar.setOverlaysWebView({ overlay: false }); } catch (e) {}
-    try { StatusBar.setBackgroundColor({ color: '#F2B705' }); } catch (e) {}
-    try { StatusBar.setStyle({ style: Style.Dark }); } catch (e) {} // dark icons/text, for the light marigold background
-  })();
   const REST_COLORS = ["#C97F00", "#A66600", "#1BA672", "#7C5CBF", "#2E86AB"];
   // Stand-in photography for restaurants/dishes that don't have a real photo
   // uploaded yet — cycled by index so each listing still looks distinct.
