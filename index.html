@@ -787,6 +787,21 @@
     color:var(--chili); font-weight:700; font-size:13px; font-family:'Inter',sans-serif; cursor:pointer;
   }
   .account-dropdown-logout:active{ transform:scale(0.98); }
+  .account-dropdown-support{
+    width:100%; display:flex; align-items:center; gap:8px; padding:10px 10px; margin-top:8px;
+    border-radius:10px; border:1.5px solid var(--field-border); background:var(--field-bg);
+    color:var(--ink); font-weight:700; font-size:13px; font-family:'Inter',sans-serif; cursor:pointer;
+    text-decoration:none;
+  }
+  .account-dropdown-support:active{ transform:scale(0.98); }
+  .account-dropdown-support.hidden{ display:none; }
+  .track-support-btn{
+    width:36px; height:36px; border-radius:50%; border:1.5px solid var(--field-border); background:#fff;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;
+    margin-left:auto; text-decoration:none;
+  }
+  .track-support-btn:active{ transform:scale(0.94); }
+  .track-support-btn.hidden{ display:none; }
   .account-dropdown-delete{
     width:100%; display:flex; align-items:center; gap:8px; padding:10px 10px; margin-top:8px;
     border-radius:10px; border:1.5px solid #F3C6C0; background:#FDF0EE;
@@ -915,6 +930,26 @@
   .your-orders-card-text{ flex:1; }
   .your-orders-card-title{ color:#fff; font-weight:700; font-family:'Poppins',sans-serif; font-size:14px; margin:0; }
   .your-orders-card-sub{ color:rgba(255,255,255,.85); font-size:11.5px; margin:2px 0 0; }
+
+  .home-loc-card{
+    display:flex; align-items:center; gap:14px; margin:14px 24px 0;
+    padding:16px 18px; border-radius:18px; cursor:pointer;
+    background:linear-gradient(135deg, var(--marigold) 0%, var(--marigold-dark) 100%);
+    box-shadow:0 8px 20px rgba(242,183,5,.35);
+  }
+  .home-loc-card-icon{
+    width:44px; height:44px; border-radius:13px; flex-shrink:0; font-size:21px;
+    background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center;
+  }
+  .home-loc-card-text{ flex:1; min-width:0; }
+  .home-loc-card-label{ color:rgba(43,36,16,.75); font-size:11px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; margin:0; }
+  .home-loc-card-value{ color:var(--ink); font-family:'Poppins',sans-serif; font-size:15.5px; font-weight:700; margin:2px 0 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .your-orders-pill{
+    display:inline-flex; align-items:center; gap:6px; margin-top:6px; cursor:pointer;
+    background:linear-gradient(135deg, #1BA672 0%, #0C6E4A 100%);
+    border-radius:20px; padding:7px 13px 7px 11px;
+    box-shadow:0 4px 10px rgba(27,166,114,.3);
+  }
 
   /* Your Orders screen */
   .orders-header{ padding:40px 24px 8px; display:flex; align-items:center; gap:14px; }
@@ -1096,6 +1131,15 @@
     margin-top:16px; padding:10px 28px; border-radius:999px; border:none; background:var(--marigold, #ffb703);
     color:var(--ink, #241f1b); font-weight:700; font-size:14px; cursor:pointer; display:none; font-family:'Inter',sans-serif;
   }
+/* Fallback look for item/shop photos that fail to load (broken URL,
+   offline, hotlink block, etc.) — keeps the image slot from showing the
+   browser's default "broken image" icon. */
+.img-fallback {
+  object-fit: contain !important;
+  padding: 18% !important;
+  background: #f2f2f2;
+  opacity: 0.6;
+}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
@@ -1501,10 +1545,10 @@
           </button>
           <p class="eyebrow" style="margin:0;" id="home-cat-eyebrow">DELIVER TO</p>
         </div>
-        <div class="loc-row" id="home-loc-row" style="cursor:pointer;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#241F1B" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          <p style="color:var(--ink); font-size:14px; margin:0; font-weight:600;" id="home-location">Select your location</p>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--marigold)" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        <div class="your-orders-pill" id="your-orders-btn">
+          <span style="font-size:13px; line-height:1;">📦</span>
+          <p style="color:#fff; font-size:14px; margin:0; font-weight:600;">Your Orders</p>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
         </div>
       </div>
       <div class="top-row-right">
@@ -1527,6 +1571,10 @@
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1BA672" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
               VERIFIED
             </div>
+            <a class="account-dropdown-support hidden" id="support-call-btn" href="tel:">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2B7A78" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              Call Support
+            </a>
             <button class="account-dropdown-logout" id="logout-btn">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
               Logout
@@ -1540,13 +1588,13 @@
       </div>
     </div>
     <div class="account-backdrop" id="account-backdrop"></div>
-    <div class="your-orders-card" id="your-orders-btn">
-      <div class="your-orders-card-icon">📦</div>
-      <div class="your-orders-card-text">
-        <p class="your-orders-card-title">Your Orders</p>
-        <p class="your-orders-card-sub">Track live orders & view order history</p>
+    <div class="home-loc-card" id="home-loc-row">
+      <div class="home-loc-card-icon">📍</div>
+      <div class="home-loc-card-text">
+        <p class="home-loc-card-label">DELIVER TO</p>
+        <p class="home-loc-card-value" id="home-location">Select your location</p>
       </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2B2410" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
     </div>
     <h1 class="greeting" id="home-greeting">Hungry, friend?</h1>
 
@@ -1665,6 +1713,9 @@
         <h1 class="track-title" id="track-rest-name"></h1>
         <p class="track-sub" id="track-order-num"></p>
       </div>
+      <a class="track-support-btn hidden" id="track-support-btn" href="tel:" title="Call Support">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2B7A78" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+      </a>
     </div>
     <div class="track-body">
       <div class="chit ticket track-ticket">
@@ -1790,6 +1841,9 @@
         <h1 class="track-title">Your ride</h1>
         <p class="track-sub" id="taxi-track-ride-num"></p>
       </div>
+      <a class="track-support-btn hidden" id="taxi-track-support-btn" href="tel:" title="Call Support">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2B7A78" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+      </a>
     </div>
     <div class="track-body">
       <div class="chit ticket track-ticket">
@@ -2373,6 +2427,22 @@
     if (window.onShopZonesUpdated) window.onShopZonesUpdated();
   });
 
+  // Live-listens to the operator-set LOCATION ZONES (Operator Panel →
+  // Location Setup): each is { name, bounds:[{lat,lng}...] }. When a
+  // customer's pin falls inside one of these, "Place / Area" is filled with
+  // that zone's name instead of the app's own default naming. Purely
+  // cosmetic — doesn't affect which shops/drivers a customer can reach.
+  onValue(ref(db, 'app_config/locationZones'), (snapshot) => {
+    const v = snapshot.val() || {};
+    window.LOCATION_ZONES = Object.keys(v).map(id => {
+      const z = v[id] || {};
+      return {
+        id, name: z.name || '',
+        bounds: (Array.isArray(z.bounds) ? z.bounds : Object.values(z.bounds || {})).filter(pt => pt && typeof pt.lat === 'number' && typeof pt.lng === 'number')
+      };
+    }).filter(z => z.bounds.length >= 3 && z.name);
+  });
+
   // Live-listens to the operator-set Go Series delivery charge + platform
   // fee + per-item profit markup (Operator Panel → Go Series). Applies only
   // to shops with restaurants/{id}.goSeries === true — see
@@ -2419,6 +2489,16 @@
       configured: !!data,
     };
     if (window.onTaxiFareUpdated) window.onTaxiFareUpdated();
+  });
+
+  // Live-listens to the operator-set customer support phone number
+  // (Operator Panel → Customer Support). Exposed on window so the plain
+  // <script> below can wire it into the "Call Support" button — no number
+  // set means the button stays hidden (see updateSupportCallBtn()).
+  onValue(ref(db, 'app_config/supportPhone'), (snapshot) => {
+    const data = snapshot.val();
+    window.SUPPORT_PHONE = (data && data.number) ? String(data.number) : '';
+    if (window.updateSupportCallBtn) window.updateSupportCallBtn();
   });
 </script>
 
@@ -2887,8 +2967,7 @@ function digitsOnly(v) { return v.replace(/\D/g, ''); }
 // ---------- CATEGORY (Food / Groceries) ----------
 function openCategory(cat) {
   if (cat === 'groceries') { openNeshStore(); return; }   // no per-shop groceries list
-  if (isAreaUnavailable(state.customerPos)) { showInfoModal(AREA_UNAVAILABLE_TITLE, AREA_UNAVAILABLE_MSG); return; }
-  state.category = cat;
+  if (isAreaUnavailable(state.customerPos)) { handleAreaUnavailable(() => openCategory(cat)); return; }
   renderHome();
   showScreen('home');
   persistScreen('home', { category: cat });
@@ -2901,9 +2980,9 @@ function goToCategoryScreen() {
   showScreen('category');
   persistScreen('category');
 }
-document.getElementById('cat-card-food').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); openCategory('hotel'); });
-document.getElementById('cat-card-groceries').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); openNeshStore(); });
-document.getElementById('cat-card-online-shop').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); openCategory('online_shop'); });
+document.getElementById('cat-card-food').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); requireLocationThen(() => openCategory('hotel')); });
+document.getElementById('cat-card-groceries').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); requireLocationThen(() => openNeshStore()); });
+document.getElementById('cat-card-online-shop').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); requireLocationThen(() => openCategory('online_shop')); });
 document.getElementById('home-cat-back-btn').addEventListener('click', goToCategoryScreen);
 document.getElementById('cat-card-taxi').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); goToTaxiBooking(); });
 document.getElementById('cat-card-bus').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); openBusList(); });
@@ -4910,9 +4989,10 @@ function showTaxiCandidateCard(rideKey, pickup, candidate, excludeIds) {
   taxiCandidateCard.classList.remove('hidden');
   taxiCandidateNameEl.textContent = candidate.name;
   taxiCandidateMetaEl.textContent = [candidate.vehicleNumber, candidate.distanceKm.toFixed(1) + ' km away'].filter(Boolean).join(' · ');
+  const driverFallbackSvg = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--muted-2)" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg>`;
   document.getElementById('taxi-candidate-avatar').innerHTML = candidate.photo
-    ? `<img src="${candidate.photo}" alt="${candidate.name}" />`
-    : `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--muted-2)" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg>`;
+    ? `<img src="${candidate.photo}" alt="${candidate.name}" onerror="this.parentElement.innerHTML='${driverFallbackSvg.replace(/'/g, "\\'")}';" />`
+    : driverFallbackSvg;
 
   let secondsLeft = Math.ceil(TAXI_CANDIDATE_WINDOW_MS / 1000);
   const renderCountdown = () => { taxiCandidateTimerEl.textContent = `Auto-accepts in ${secondsLeft}s if you don't respond`; };
@@ -6103,9 +6183,9 @@ function renderHome() {
   homeGreeting.textContent = isGroceries ? "Stock up, " + firstName + "?"
     : isOnlineShop ? "Shop something, " + firstName + "?"
     : "Hungry, " + firstName + "?";
-  document.getElementById('home-cat-eyebrow').textContent = isGroceries ? "GROCERIES · DELIVER TO"
-    : isOnlineShop ? "SHOPPING · DELIVER TO"
-    : "FOOD · DELIVER TO";
+  document.getElementById('home-cat-eyebrow').textContent = isGroceries ? "GROCERIES"
+    : isOnlineShop ? "SHOPPING"
+    : "FOOD";
   searchInput.placeholder = isGroceries ? "Search groceries or stores"
     : isOnlineShop ? "Search products or shops"
     : "Search dishes or restaurants";
@@ -6211,6 +6291,17 @@ function isPointInZone(pt, poly) {
 // from the shops the operator added to that zone.
 const AREA_UNAVAILABLE_TITLE = 'Not available in your area';
 const AREA_UNAVAILABLE_MSG = "Sorry, NESH isn't available at this location yet. Please pick a different location.";
+
+// Instead of just telling the customer their set location has no shops and
+// leaving them stuck on it, reopen the "Deliver to" location picker right
+// away so they can pick a different one — retryAction (if given) re-runs
+// once they confirm a location that does have shops, same auto-continue
+// behavior as requireLocationThen().
+function handleAreaUnavailable(retryAction) {
+  pendingLocationRequiredAction = retryAction || null;
+  openBrowseLocationPicker();
+  browseLocCurrentValue.textContent = "Not available here — please pick a different location";
+}
 function shopZonesConfigured() { return (window.SHOP_ZONES || []).length > 0; }
 function zonesAtPoint(pt) { return (window.SHOP_ZONES || []).filter(z => isPointInZone(pt, z.bounds)); }
 function isAreaUnavailable(pt) {
@@ -6359,7 +6450,7 @@ function renderProductResults(q, categoryFiltered) {
     card.style.cursor = "pointer";
     card.innerHTML = `
       <div class="item-img-wrap">
-        <img class="item-img" src="${it.image || ''}" alt="${escapeHtml(it.name)}" loading="lazy" />
+        <img class="item-img" src="${it.image || ''}" alt="${escapeHtml(it.name)}" loading="lazy" onerror="this.onerror=null;this.src='icon-192.png';this.classList.add('img-fallback');" />
       </div>
       <p class="item-name2">${escapeHtml(it.name)}</p>
       <p class="item-desc" style="margin-top:2px;">${escapeHtml(r.name)}</p>
@@ -6481,7 +6572,7 @@ function resolveRestaurantById(id) {
   };
 }
 function openNeshStore() {
-  if (isAreaUnavailable(state.customerPos)) { showInfoModal(AREA_UNAVAILABLE_TITLE, AREA_UNAVAILABLE_MSG); return; }
+  if (isAreaUnavailable(state.customerPos)) { handleAreaUnavailable(() => openNeshStore()); return; }
   const store = resolveRestaurantById('NESH_STORE');
   if (!store) { showInfoModal('Loading stores…', 'Stores are still loading. Please try again in a moment.'); return; } // RESTAURANTS hasn't loaded yet
   state.category = 'groceries';
@@ -6523,7 +6614,7 @@ function menuBackClicked() {
   persistScreen('home', { category: state.category });
 }
 function openRestaurant(id) {
-  if (isAreaUnavailable(state.customerPos)) { showInfoModal(AREA_UNAVAILABLE_TITLE, AREA_UNAVAILABLE_MSG); return; }
+  if (isAreaUnavailable(state.customerPos)) { handleAreaUnavailable(() => openRestaurant(id)); return; }
   if (!shopAllowedAtPoint(id, state.customerPos)) { showInfoModal('Out of delivery area', "This shop doesn't deliver to your selected location."); return; }
   state.selectedRestaurant = RESTAURANTS.find(r => r.id === id);
   state.cart = {};
@@ -6654,6 +6745,9 @@ function renderMenu() {
   menuRestLogo.src = r.image || '';
   menuRestLogo.alt = r.name || '';
   menuRestLogo.style.display = r.image ? 'block' : 'none';
+  // If the shop's photo URL 404s / times out, hide the slot instead of
+  // leaving the browser's broken-image icon on screen.
+  menuRestLogo.onerror = () => { menuRestLogo.style.display = 'none'; };
 
   const unavailablePanel = document.getElementById('shop-unavailable-panel');
   const searchWrap = document.getElementById('menu-search-wrap');
@@ -6700,7 +6794,7 @@ function renderMenu() {
       card.className = "item-card2";
       card.innerHTML = `
         <div class="item-img-wrap">
-          <img class="item-img" src="${it.image || ''}" alt="${it.name}" loading="lazy" />
+          <img class="item-img" src="${it.image || ''}" alt="${it.name}" loading="lazy" onerror="this.onerror=null;this.src='icon-192.png';this.classList.add('img-fallback');" />
           <span class="item-veg"><span></span></span>
           <span class="item-rating2">★ ${it.rating || '4.5'}${it.ratingCount ? ' (' + it.ratingCount + ')' : ''}</span>
         </div>
@@ -6851,6 +6945,8 @@ function renderItemDetail() {
   const qty = state.cart[it.id] || 0;
   itemDetailPhoto.src = it.image || '';
   itemDetailPhoto.alt = it.name || '';
+  itemDetailPhoto.style.display = it.image ? 'block' : 'none';
+  itemDetailPhoto.onerror = () => { itemDetailPhoto.style.display = 'none'; };
   itemDetailRating.textContent = `★ ${it.rating || '4.5'}${it.ratingCount ? ' (' + it.ratingCount + ')' : ''}`;
   itemDetailName.textContent = it.name;
   if (it.desc) {
@@ -7117,7 +7213,9 @@ function deliveryFeeBeforeFree() {
   if (dc.freeUnderKm != null && km < Number(dc.freeUnderKm)) return 0;
   const baseFee = Number(dc.baseFee) || 0;
   const perKmFee = Number(dc.perKmFee) || 0;
-  return Math.round((baseFee + perKmFee * km) * 100) / 100;
+  // Rounded to the nearest whole rupee (not paise) — this is a
+  // Cash-on-Delivery app, so customers/drivers need round, practical change.
+  return Math.round(baseFee + perKmFee * km);
 }
 // Free delivery, read from whichever delivery-charge config is active:
 //  - freeAbove: "free on orders of ₹X and above" — the operator's Go Series
@@ -7534,14 +7632,25 @@ async function fetchPlaceAreaFromNominatim(lat, lng) {
   }
 }
 
+// Operator-drawn "Location Setup" zone (app_config/locationZones) whose
+// boundary contains this point, if any — takes priority over every other
+// naming source below since the operator has explicitly named this spot.
+function findLocationZoneName(lat, lng) {
+  const zones = window.LOCATION_ZONES || [];
+  const hit = zones.find(z => isPointInZone({ lat, lng }, z.bounds));
+  return hit ? hit.name : null;
+}
+
 async function fetchPlaceArea(lat, lng) {
   await loadLocalLandmarks();
-  let placeName = null;
-  const nearest = findNearestLocality(lat, lng, 3000);
-  if (nearest) {
-    placeName = nearest.name;
-  } else {
-    placeName = await fetchPlaceAreaFromNominatim(lat, lng);
+  let placeName = findLocationZoneName(lat, lng);
+  if (!placeName) {
+    const nearest = findNearestLocality(lat, lng, 3000);
+    if (nearest) {
+      placeName = nearest.name;
+    } else {
+      placeName = await fetchPlaceAreaFromNominatim(lat, lng);
+    }
   }
   // Always sync to the pin's nearest place — not just the first time — so
   // dragging the pin, tapping the map, or picking a new search result keeps
@@ -7639,14 +7748,32 @@ function ensureLocMap(startLat, startLng) {
 
 function openLocationConfirm(prefill) {
   // If we're re-opening this step to edit details already saved from a
-  // previous "Proceed" tap (state.pendingCheckout), start from those values
-  // instead of wiping them back to the user's saved profile location.
+  // previous "Proceed" tap (state.pendingCheckout), start from those values.
+  // Otherwise, default to the location the customer already picked in
+  // "Select your location" (state.customerPos) instead of the (possibly
+  // stale) saved profile address — the map/search/GPS fields below still
+  // let them change it before placing the order.
   const pc = prefill || state.pendingCheckout;
-  const savedText = pc?.text || state.user?.location || "";
-  const parsed = parseLatLng(savedText);
-  const startLat = pc?.lat ?? parsed?.lat ?? DEFAULT_MAP_CENTER.lat;
-  const startLng = pc?.lng ?? parsed?.lng ?? DEFAULT_MAP_CENTER.lng;
-  pendingLocation = { text: savedText, lat: pc?.lat ?? parsed?.lat ?? null, lng: pc?.lng ?? parsed?.lng ?? null };
+  let savedText, startPosLat, startPosLng;
+  if (pc) {
+    savedText = pc.text || "";
+    const parsedPc = parseLatLng(savedText);
+    startPosLat = pc.lat ?? parsedPc?.lat ?? null;
+    startPosLng = pc.lng ?? parsedPc?.lng ?? null;
+  } else if (state.customerPos) {
+    startPosLat = state.customerPos.lat;
+    startPosLng = state.customerPos.lng;
+    savedText = startPosLat.toFixed(5) + ", " + startPosLng.toFixed(5);
+  } else {
+    savedText = state.user?.location || "";
+    const parsedUser = parseLatLng(savedText);
+    startPosLat = parsedUser?.lat ?? null;
+    startPosLng = parsedUser?.lng ?? null;
+  }
+  const startLat = startPosLat ?? DEFAULT_MAP_CENTER.lat;
+  const startLng = startPosLng ?? DEFAULT_MAP_CENTER.lng;
+  const hasStartPos = typeof startPosLat === 'number' && typeof startPosLng === 'number';
+  pendingLocation = { text: savedText, lat: startPosLat, lng: startPosLng };
   locCurrentValue.textContent = savedText || "No saved location — tap the map or use GPS below";
   locGpsBtn.disabled = false;
   locGpsBtn.textContent = "📍 Use my current location";
@@ -7666,7 +7793,7 @@ function openLocationConfirm(prefill) {
     locMap.invalidateSize();
     locMap.setView([startLat, startLng], 16);
     if (locMarker) locMarker.setLatLng([startLat, startLng]);
-    if (parsed) {
+    if (hasStartPos) {
       scheduleNearbyLandmarks(startLat, startLng);
       schedulePlaceArea(startLat, startLng);
     }
@@ -7888,6 +8015,22 @@ let browseLocMap = null;
 let browseLocMarker = null;
 let pendingBrowsePos = null; // { lat, lng }
 
+// Set by requireLocationThen() when a category tap needed a location first;
+// run once the customer confirms one in the picker, then cleared. Cleared
+// on Cancel too, so cancelling never silently opens the shop list anyway.
+let pendingLocationRequiredAction = null;
+
+// Gate for opening a shop list (Food / Groceries / Other Shop): if the
+// customer hasn't set a delivery location yet (GPS declined/unavailable and
+// never picked manually), open the "Deliver to" location picker directly —
+// no separate confirm popup first — and the shop list opens automatically
+// once they confirm a location in the picker.
+function requireLocationThen(next) {
+  if (state.customerPos) { next(); return; }
+  pendingLocationRequiredAction = next;
+  openBrowseLocationPicker();
+}
+
 function setPendingBrowsePos(lat, lng) {
   pendingBrowsePos = { lat, lng };
   browseLocCurrentValue.textContent = lat.toFixed(5) + ", " + lng.toFixed(5);
@@ -7962,7 +8105,7 @@ browseLocGpsBtn.addEventListener('click', () => {
   );
 });
 
-browseLocCancelBtn.addEventListener('click', closeBrowseLocationPicker);
+browseLocCancelBtn.addEventListener('click', () => { pendingLocationRequiredAction = null; closeBrowseLocationPicker(); });
 
 // ---------- Search-to-select location (OpenStreetMap Nominatim geocoding) ----------
 function hideBrowseSearchResults() {
@@ -8086,12 +8229,29 @@ browseLocConfirmBtn.addEventListener('click', () => {
     browseLocCurrentValue.textContent = "Please tap the map or use GPS to set a location first";
     return;
   }
+  if (isAreaUnavailable(pendingBrowsePos)) {
+    // Save it (shops may be added to this area later) but keep the picker
+    // open with an inline hint instead of closing then reopening — and
+    // keep whatever pendingLocationRequiredAction was already set, so
+    // picking a valid location right after still auto-continues.
+    state.customerPos = pendingBrowsePos;
+    try { localStorage.setItem('asfood_customer_pos', JSON.stringify(state.customerPos)); } catch (e) {}
+    updateHomeLocationLabel();
+    renderRestaurantList();
+    browseLocCurrentValue.textContent = "Not available here — please pick a different location";
+    showInfoModal(AREA_UNAVAILABLE_TITLE, AREA_UNAVAILABLE_MSG);
+    return;
+  }
   state.customerPos = pendingBrowsePos;
   try { localStorage.setItem('asfood_customer_pos', JSON.stringify(state.customerPos)); } catch (e) {}
   closeBrowseLocationPicker();
   updateHomeLocationLabel();
   renderRestaurantList();
-  if (isAreaUnavailable(state.customerPos)) showInfoModal(AREA_UNAVAILABLE_TITLE, AREA_UNAVAILABLE_MSG);
+  if (pendingLocationRequiredAction) {
+    const action = pendingLocationRequiredAction;
+    pendingLocationRequiredAction = null;
+    action();
+  }
 });
 
 cartBtn.addEventListener('click', () => {
@@ -8126,7 +8286,7 @@ function openOrderSummary() {
     const row = document.createElement('div');
     row.className = "order-summary-row";
     row.innerHTML = `
-      <img class="order-summary-row-img" src="${it.image || ''}" alt="${it.name}" loading="lazy" />
+      <img class="order-summary-row-img" src="${it.image || ''}" alt="${it.name}" loading="lazy" onerror="this.onerror=null;this.src='icon-192.png';this.classList.add('img-fallback');" />
       <div class="order-summary-row-mid">
         <p class="order-summary-row-name">${it.name}</p>
         <p class="order-summary-row-price">${priceLine}</p>
@@ -8231,19 +8391,6 @@ locProceedBtn.addEventListener('click', () => {
     landmark,
     contact: contactNumber
   };
-
-  // Keep the app-wide delivery location (used by "Delivering to selected
-  // location", the shop list, and every shopAllowedAtPoint/isAreaUnavailable
-  // check) in sync with whatever point the customer just confirmed here at
-  // checkout. Without this, state.customerPos stays on the old location, so
-  // shops/items can show as "unavailable" for the new address even though
-  // this very order just went through for it.
-  if (typeof pendingLocation.lat === 'number' && typeof pendingLocation.lng === 'number') {
-    state.customerPos = { lat: pendingLocation.lat, lng: pendingLocation.lng };
-    try { localStorage.setItem('asfood_customer_pos', JSON.stringify(state.customerPos)); } catch (e) {}
-    updateHomeLocationLabel();
-    renderRestaurantList();
-  }
   // Persisted under the same "resume state" mechanism used for the menu
   // screen, so an app refresh or close-and-reopen lands the customer back
   // on the payment step with everything they already entered intact.
@@ -8919,6 +9066,25 @@ function toggleAccountDropdown() {
 accountBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleAccountDropdown(); });
 accountBackdrop.addEventListener('click', closeAccountDropdown);
 document.getElementById('logout-btn').addEventListener('click', closeAccountDropdown);
+
+// "Call Support" — number is operator-set (Operator Panel → Customer
+// Support, app_config/supportPhone). Button stays hidden until a number
+// is configured, so there's nothing to tap into a dead "tel:" link.
+function updateSupportCallBtn() {
+  const phone = window.SUPPORT_PHONE;
+  ['support-call-btn', 'track-support-btn', 'taxi-track-support-btn'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    if (phone) {
+      btn.href = 'tel:' + phone;
+      btn.classList.remove('hidden');
+    } else {
+      btn.classList.add('hidden');
+    }
+  });
+}
+window.updateSupportCallBtn = updateSupportCallBtn;
+document.getElementById('support-call-btn').addEventListener('click', closeAccountDropdown);
 
 // ---------- Auto-detect location — triggered once, on the customer's
 // first tap into a category (see maybeDetectLocationOnCategoryTap below),
