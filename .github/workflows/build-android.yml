@@ -48,6 +48,7 @@ jobs:
           npm install @capacitor/geolocation
           npm install @capacitor/push-notifications
           npm install @capacitor/local-notifications
+          npm install @capacitor/status-bar
           npm install @capacitor/assets --save-dev
 
       # IMPORTANT: appId must stay exactly the same as the package name
@@ -97,16 +98,34 @@ jobs:
         run: |
           sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />#' android/app/src/main/AndroidManifest.xml
 
+      # @capacitor/local-notifications auto-merges SCHEDULE_EXACT_ALARM into
+      # the manifest via its own library AndroidManifest.xml, even though
+      # this app only shows notifications immediately (no future/exact-time
+      # scheduling anywhere in index.html). Google requires a Play Console
+      # "Permissions declaration" for that permission and can reject builds
+      # that carry it without one, so explicitly strip it back out at merge
+      # time instead of declaring it. If exact-time scheduled reminders are
+      # ever added to the app later, remove this step and fill out that
+      # declaration form instead.
+      - name: Remove unused SCHEDULE_EXACT_ALARM permission
+        run: |
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          if ! grep -q 'xmlns:tools=' "$MANIFEST"; then
+            sed -i 's#<manifest #<manifest xmlns:tools="http://schemas.android.com/tools" #' "$MANIFEST"
+          fi
+          sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />#' "$MANIFEST"
+          cat "$MANIFEST"
+
       - name: Sync web assets into Android project
         run: npx cap sync android
 
-      # Play Store's current live versionCode is 1 (the closed-testing TWA
-      # build). Every new upload must have a strictly higher versionCode,
-      # so this is bumped to 3 here.
+      # Play Store's current live versionCode is 3 (the previous closed-testing
+      # build already installed on devices). Every new upload must have a
+      # strictly higher versionCode, so this is bumped to 4 here.
       - name: Set version code and name
         run: |
-          sed -i "s/versionCode 1/versionCode 3/" android/app/build.gradle
-          sed -i 's/versionName "1.0"/versionName "1.0.2"/' android/app/build.gradle
+          sed -i "s/versionCode 1/versionCode 4/" android/app/build.gradle
+          sed -i 's/versionName "1.0"/versionName "1.0.3"/' android/app/build.gradle
           grep -E "versionCode|versionName" android/app/build.gradle
 
       - name: Fix Kotlin stdlib duplicate class conflict
