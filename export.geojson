@@ -7,6 +7,102 @@
     {
       "type": "Feature",
       "properties": {
+        "@id": "node/manual-place-31",
+        "place_name": "Pattayil",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          75.9269285217306,
+          11.214852172103964
+        ]
+      },
+      "id": "node/manual-place-31"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/manual-place-30",
+        "place_name": "Nellipadi",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          75.93304038042335,
+          11.204126299690317
+        ]
+      },
+      "id": "node/manual-place-30"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/manual-place-29",
+        "place_name": "Kariyathankotta",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          75.93159914016725,
+          11.208421958810325
+        ]
+      },
+      "id": "node/manual-place-29"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/manual-place-28",
+        "place_name": "Pykadathumulla",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          75.92533012970857,
+          11.20771093004268
+        ]
+      },
+      "id": "node/manual-place-28"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/manual-place-27",
+        "name": "Cheruppa hospital",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          75.92496782536502,
+          11.263312285704956
+        ]
+      },
+      "id": "node/manual-place-27"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/manual-place-26",
+        "place_name": "Cherooppa",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          75.9243679046631,
+          11.262534080628035
+        ]
+      },
+      "id": "node/manual-place-26"
+    },
+    {
+      "type": "Feature",
+      "properties": {
         "@id": "node/manual-place-25",
         "place_name": "PUTHIYATH PARAMBA",
         "@geometry": "center"
