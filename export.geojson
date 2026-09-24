@@ -7,6 +7,38 @@
     {
       "type": "Feature",
       "properties": {
+        "@id": "node/manual-place-46",
+        "name": "OORKADAV, Malappuram,Kerala",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          75.90461254076219,
+          11.228266410779174
+        ]
+      },
+      "id": "node/manual-place-46"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/manual-place-45",
+        "name": "OORKADAV",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          75.9075450897217,
+          11.231241032342574
+        ]
+      },
+      "id": "node/manual-place-45"
+    },
+    {
+      "type": "Feature",
+      "properties": {
         "@id": "node/manual-place-44",
         "place_name": "Kodiyamal",
         "@geometry": "center"
