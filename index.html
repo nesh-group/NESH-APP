@@ -2988,6 +2988,15 @@ function digitsOnly(v) { return v.replace(/\D/g, ''); }
 function openCategory(cat) {
   if (cat === 'groceries') { openNeshStore(); return; }   // no per-shop groceries list
   if (isAreaUnavailable(state.customerPos)) { handleAreaUnavailable(() => openCategory(cat)); return; }
+  // Bug fix: this used to only persist `cat` to localStorage without ever
+  // setting state.category itself, so the shop-list filter (categoryFiltered
+  // in renderHome, which filters by state.category) kept using whatever
+  // state.category was left over from before — null on a first-ever tap
+  // (which skips filtering entirely, showing every shop) or the previously
+  // opened category on any tap after that. Tapping Food showed Other Shop
+  // shops too, and vice versa, because the tap never actually switched
+  // which category was in effect.
+  state.category = cat;
   renderHome();
   showScreen('home');
   persistScreen('home', { category: cat });
