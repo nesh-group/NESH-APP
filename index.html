@@ -5383,7 +5383,7 @@ function neshHandleBack() {
   if (rideActive && id === 'taxi-track') return 'stay';
 
   if (id === 'category') {
-    // --- 3) Root screen: double-back to exit ---
+    // --- 3) Root screen: double-back to exit (same on website and native app) ---
     if (neshExitArmed) { neshExitArmed = false; return 'exit'; }
     neshExitArmed = true;
     neshShowExitToast();
