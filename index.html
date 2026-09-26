@@ -389,81 +389,6 @@
   .loc-sheet .field{ margin-bottom:10px; }
   .loc-field-label{ color:var(--muted-2); font-size:11px; font-family:'IBM Plex Mono',monospace; letter-spacing:1px; margin:0 0 6px; text-transform:uppercase; }
 
-  /* ---------- PWA "Install App" prompt — styled after the Play Store
-     install dialog: app icon + name/publisher line, rating-style trust
-     row, big Install button, and a plain "Not now" dismiss. ---------- */
-  .install-icon-btn{
-    width:34px; height:34px; border-radius:50%; border:1.5px solid var(--field-border); background:#fff;
-    display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;
-  }
-  .install-icon-btn:active{ transform:scale(0.94); }
-  .install-icon-btn.hidden{ display:none; }
-
-  .install-overlay{
-    position:fixed; inset:0; background:rgba(36,31,27,.55); z-index:2100;
-    display:none; align-items:flex-end; justify-content:center;
-  }
-  .install-overlay.show{ display:flex; }
-  .install-sheet{
-    width:100%; max-width:420px; background:#fff; border-radius:22px 22px 0 0;
-    padding:24px 24px 28px; animation:locUp .25s ease-out;
-  }
-  .install-sheet-handle{
-    width:36px; height:4px; border-radius:4px; background:var(--field-border); margin:0 auto 18px;
-  }
-  .install-sheet-top{ display:flex; align-items:center; gap:14px; }
-  .install-sheet-icon-wrap{ position:relative; width:64px; height:64px; flex-shrink:0; }
-  .install-sheet-icon{
-    width:64px; height:64px; border-radius:16px; flex-shrink:0; box-shadow:0 4px 14px rgba(43,36,16,.18);
-    object-fit:cover; background:var(--field-bg);
-  }
-  .install-sheet-ring{ position:absolute; inset:-5px; width:74px; height:74px; transform:rotate(-90deg); pointer-events:none; opacity:0; transition:opacity .15s; }
-  .install-sheet-ring.show{ opacity:1; }
-  .install-sheet-ring circle{ fill:none; stroke-width:4; }
-  .install-sheet-ring .ring-track{ stroke:var(--field-border); }
-  .install-sheet-ring .ring-fill{ stroke:var(--chili); stroke-linecap:round; transition:stroke-dashoffset .12s linear; }
-  .install-sheet-pct{ color:var(--chili); font-weight:800; font-size:13px; margin:3px 0 0; display:none; }
-  .install-sheet-pct.show{ display:block; }
-  .install-sheet-name{ color:var(--ink); font-family:'Poppins',sans-serif; font-weight:700; font-size:18px; margin:0; }
-  .install-sheet-pub{ color:var(--muted-2); font-size:13px; margin:3px 0 0; }
-  .install-sheet-trust{ display:flex; align-items:center; gap:14px; margin-top:14px; }
-  .install-sheet-trust-item{ display:flex; flex-direction:column; align-items:center; gap:2px; flex:1; }
-  .install-sheet-trust-val{ color:var(--ink); font-weight:700; font-size:13px; font-family:'Inter',sans-serif; display:flex; align-items:center; gap:3px; }
-  .install-sheet-trust-label{ color:var(--muted); font-size:10.5px; text-transform:uppercase; letter-spacing:.4px; }
-  .install-sheet-desc{ color:var(--muted-2); font-size:13px; line-height:1.5; margin:16px 0 0; }
-  .install-sheet-btn-row{ display:flex; gap:10px; margin-top:20px; }
-  .install-sheet-btn-row .btn-primary{ box-shadow:none; }
-  .install-sheet-notnow{
-    flex-shrink:0; padding:15px 18px; border-radius:12px; background:none; border:none;
-    color:var(--muted-2); font-weight:700; font-size:15px; font-family:'Inter',sans-serif; cursor:pointer;
-  }
-  .install-sheet-ios-steps{ margin:16px 0 0; padding:0; list-style:none; }
-  .install-sheet-ios-steps li{
-    display:flex; align-items:center; gap:10px; color:var(--ink); font-size:13.5px;
-    padding:10px 12px; background:var(--field-bg); border-radius:12px; margin-bottom:8px;
-  }
-  .install-sheet-ios-steps li b{ color:var(--chili); }
-
-  /* Persistent "Install App" banner shown on the home screen — always
-     visible (like Play Store's inline install card) until the app is
-     actually installed, not tucked away as just a small icon. */
-  .install-banner{
-    margin:16px 24px 0; padding:12px 14px; border-radius:16px;
-    background:var(--field-bg); border:1.5px solid var(--field-border);
-    display:flex; align-items:center; gap:12px;
-  }
-  .install-banner.hidden{ display:none; }
-  .install-banner-icon{ width:40px; height:40px; border-radius:11px; flex-shrink:0; box-shadow:0 3px 8px rgba(43,36,16,.15); }
-  .install-banner-mid{ flex:1; min-width:0; }
-  .install-banner-title{ color:var(--ink); font-weight:700; font-family:'Poppins',sans-serif; font-size:13.5px; margin:0; }
-  .install-banner-sub{ color:var(--muted-2); font-size:11.5px; margin:2px 0 0; }
-  .install-banner-btn{
-    flex-shrink:0; padding:9px 16px; border:none; border-radius:10px;
-    background:var(--marigold); color:var(--ink); font-weight:700; font-size:13px;
-    font-family:'Inter',sans-serif; cursor:pointer;
-  }
-  .install-banner-btn:active{ transform:scale(0.96); }
-
   .pay-method-row{ display:flex; gap:10px; margin-bottom:10px; }
   .pay-method-btn{
     flex:1; padding:12px 8px; border-radius:12px; border:1.5px solid var(--field-border);
@@ -1619,9 +1544,6 @@
         <button class="home-track-btn hidden" id="home-track-btn" title="Track your order">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2B2410" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
         </button>
-        <button class="install-icon-btn hidden" id="install-icon-btn" title="Install app">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><polyline points="7 10 12 15 17 10"/><path d="M5 19h14"/></svg>
-        </button>
         <div class="account-wrap">
           <button class="account-btn" id="account-btn" title="Account">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -1661,15 +1583,6 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2B2410" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
     </div>
     <h1 class="greeting" id="home-greeting">Hungry, friend?</h1>
-
-    <div class="install-banner hidden" id="install-banner">
-      <img class="install-banner-icon" src="icon-192.png" alt="NESH" />
-      <div class="install-banner-mid">
-        <p class="install-banner-title">Install NESH App</p>
-        <p class="install-banner-sub">Faster ordering, offline access</p>
-      </div>
-      <button class="install-banner-btn" id="install-banner-btn">Install</button>
-    </div>
 
     <div class="search-wrap">
       <div class="field">
@@ -2101,60 +2014,6 @@
       <p class="hint-text" id="bus-stop-request-hint" style="margin-top:6px;">ഡ്രൈവർ accept ചെയ്താൽ മാത്രം stop ലിസ്റ്റിൽ വരും.</p>
     </div>
   </section>
-
-  <!-- PWA INSTALL PROMPT (Android/Chrome native prompt, and iOS manual-steps fallback) -->
-  <div class="install-overlay" id="install-overlay">
-    <div class="install-sheet">
-      <div class="install-sheet-handle"></div>
-      <div class="install-sheet-top">
-        <div class="install-sheet-icon-wrap">
-          <img class="install-sheet-icon" src="icon-192.png" alt="NESH" />
-          <svg class="install-sheet-ring" id="install-ring" viewBox="0 0 74 74">
-            <circle class="ring-track" cx="37" cy="37" r="33"></circle>
-            <circle class="ring-fill" id="install-ring-fill" cx="37" cy="37" r="33" stroke-dasharray="207.3" stroke-dashoffset="207.3"></circle>
-          </svg>
-        </div>
-        <div>
-          <p class="install-sheet-name">NESH</p>
-          <p class="install-sheet-pub" id="install-sheet-pub">Food delivery · nesh.app</p>
-          <p class="install-sheet-pct" id="install-sheet-pct">0%</p>
-        </div>
-      </div>
-
-      <div class="install-sheet-trust">
-        <div class="install-sheet-trust-item">
-          <span class="install-sheet-trust-val">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="#F2B705" stroke="#F2B705"><polygon points="12 2 15 9 22 9.5 17 14.5 18.5 22 12 18 5.5 22 7 14.5 2 9.5 9 9"/></svg>
-            4.8
-          </span>
-          <span class="install-sheet-trust-label">Rating</span>
-        </div>
-        <div class="install-sheet-trust-item">
-          <span class="install-sheet-trust-val">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1BA672" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            Verified
-          </span>
-          <span class="install-sheet-trust-label">Publisher</span>
-        </div>
-        <div class="install-sheet-trust-item">
-          <span class="install-sheet-trust-val">&lt; 5 MB</span>
-          <span class="install-sheet-trust-label">Size</span>
-        </div>
-      </div>
-
-      <p class="install-sheet-desc" id="install-sheet-desc">Install NESH for one-tap ordering, faster loading and offline access — right from your home screen.</p>
-
-      <ol class="install-sheet-ios-steps hidden" id="install-ios-steps">
-        <li>⚡ Fastest delivery in your area</li>
-        <li>💰 Exclusive app-only offers &amp; discounts</li>
-        <li>📍 Live order tracking</li>
-      </ol>
-
-      <div class="install-sheet-btn-row">
-        <button class="btn-primary" id="install-confirm-btn" style="width:100%;">Install</button>
-      </div>
-    </div>
-  </div>
 
   <!-- PLACE ORDER BAR (shared across Menu and Item Detail screens) -->
   <div class="cart-bar" id="cart-bar">
@@ -5494,7 +5353,6 @@ function neshIsShown(id) {
 function neshHandleBack() {
   // --- 1) Popups / sheets, top-most first ---
   if (neshIsShown('nesh-blocked-overlay')) return 'stay';       // blocked account: can't dismiss
-  if (neshIsShown('install-overlay')) return 'stay';            // intentionally not dismissable
   if (neshIsShown('bus-video-overlay')) {
     const c = document.getElementById('bus-video-close-btn');
     if (c && c.style.display !== 'none') c.click();             // only once "Close" is available
@@ -9450,223 +9308,6 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// ---------- PWA: "Install App" prompt (Play Store style) ----------
-// Only relevant for people visiting the website in a browser — inside
-// the real native app (Play Store install), there's nothing to "install",
-// so skip this whole block.
-if (!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())) {
-(function () {
-  const DISMISS_KEY = 'nesh_install_dismissed_at';
-  const DISMISS_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000; // don't auto-popup for 3 days after "Not now"
-  // FAKE_INSTALLED_KEY covers browsers with no real install signal we can
-  // check (no beforeinstallprompt, and not iOS's navigator.standalone) —
-  // we can't actually confirm the app is still on their home screen, so
-  // this is a best-effort guess, not a fact. It must expire — treating it
-  // as permanent was the bug that made the popup silently stop appearing
-  // forever after a single "Install" tap on one of those browsers (e.g.
-  // during our own testing). It's stored as a timestamp instead of a bare
-  // flag, and re-checked against a cooldown, the same way DISMISS_KEY is.
-  const FAKE_INSTALL_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // assume "installed" for 7 days, then ask again
-
-  const overlay = document.getElementById('install-overlay');
-  const iconBtn = document.getElementById('install-icon-btn');
-  const banner = document.getElementById('install-banner');
-  const bannerBtn = document.getElementById('install-banner-btn');
-  const confirmBtn = document.getElementById('install-confirm-btn');
-  const iosSteps = document.getElementById('install-ios-steps');
-  const descEl = document.getElementById('install-sheet-desc');
-  const pubEl = document.getElementById('install-sheet-pub');
-  const pctEl = document.getElementById('install-sheet-pct');
-  const ring = document.getElementById('install-ring');
-  const ringFill = document.getElementById('install-ring-fill');
-  const RING_CIRC = 207.3; // 2 * PI * 33
-
-  // Real app-shell files this installs — same list the service worker
-  // caches for offline use. Progress below reflects actual bytes
-  // fetched from these, not a fabricated timer.
-  const INSTALL_ASSETS = ["./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
-
-  function setRingPct(pct) {
-    ringFill.style.strokeDashoffset = String(RING_CIRC - (RING_CIRC * pct) / 100);
-  }
-
-  // Genuinely fetches each app-shell asset (cache-busted, so it's a real
-  // network transfer) and drives the ring/percentage off real bytes
-  // received vs. real Content-Length totals — then actually populates
-  // the Cache Storage the service worker relies on for offline use.
-  async function runInstallProgress(onDone) {
-    ring.classList.add('show');
-    pctEl.classList.add('show');
-    confirmBtn.disabled = true;
-    confirmBtn.textContent = 'Installing…';
-    setRingPct(0);
-    pctEl.textContent = '0%';
-
-    let cache = null;
-    try { cache = await caches.open('nesh-install-shell'); } catch (e) {}
-
-    // First pass: HEAD each asset to find real sizes, so the percentage
-    // is proportional to genuine total bytes rather than an equal split.
-    const sizes = await Promise.all(INSTALL_ASSETS.map(async (url) => {
-      try {
-        const res = await fetch(url, { cache: 'no-store' });
-        const len = parseInt(res.headers.get('content-length') || '0', 10);
-        return { url, res, len };
-      } catch (e) {
-        return { url, res: null, len: 0 };
-      }
-    }));
-
-    const totalBytes = sizes.reduce((sum, s) => sum + (s.len || 0), 0) || 1;
-    let receivedBytes = 0;
-    let totalMB = (totalBytes / (1024 * 1024)).toFixed(1);
-
-    for (const item of sizes) {
-      if (!item.res || !item.res.body) {
-        receivedBytes += item.len;
-      } else {
-        const reader = item.res.body.getReader();
-        const chunks = [];
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          chunks.push(value);
-          receivedBytes += value.length;
-          const pct = Math.min(99, (receivedBytes / totalBytes) * 100);
-          setRingPct(pct);
-          pctEl.textContent = Math.floor(pct) + '%';
-          pubEl.textContent = 'Installing… ' + Math.floor(pct) + '% of ' + totalMB + ' MB';
-        }
-        // Actually store the real bytes in Cache Storage — genuine
-        // offline caching, not just a progress-bar simulation.
-        if (cache) {
-          try {
-            const blob = new Blob(chunks);
-            await cache.put(item.url, new Response(blob, { headers: item.res.headers }));
-          } catch (e) {}
-        }
-      }
-    }
-
-    setRingPct(100);
-    pctEl.textContent = '100%';
-    pubEl.textContent = totalMB + ' MB · Done';
-    setTimeout(onDone, 350);
-  }
-
-  let deferredPrompt = null;
-
-  const isStandalone = () =>
-    window.matchMedia('(display-mode: standalone)').matches ||
-    window.navigator.standalone === true; // iOS Safari flag
-
-  const isIOS = () => /iphone|ipad|ipod/i.test(window.navigator.userAgent);
-
-  function recentlyDismissed() {
-    try {
-      const at = parseInt(localStorage.getItem(DISMISS_KEY) || '0', 10);
-      return at && (Date.now() - at) < DISMISS_COOLDOWN_MS;
-    } catch (e) { return false; }
-  }
-
-  function markDismissed() {
-    try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch (e) {}
-  }
-
-  // Show the persistent home-screen banner AND the header icon — visible
-  // at all times (like Play Store's inline "Install" card), not hidden
-  // away waiting only for the browser's beforeinstallprompt event.
-  function showEntryPoints() {
-    if (isStandalone()) return;
-    iconBtn.classList.remove('hidden');
-    banner.classList.remove('hidden');
-  }
-
-  function hideEntryPoints() {
-    iconBtn.classList.add('hidden');
-    banner.classList.add('hidden');
-  }
-
-  function openSheet() {
-    if (isStandalone()) return;
-    pubEl.textContent = 'Food delivery · nesh.app';
-    confirmBtn.classList.remove('hidden');
-    iosSteps.classList.remove('hidden');
-    descEl.textContent = 'Install NESH for one-tap ordering, faster loading and offline access — right from your home screen.';
-    overlay.classList.add('show');
-  }
-
-  function closeSheet() {
-    overlay.classList.remove('show');
-    // reset progress UI for next time
-    ring.classList.remove('show');
-    pctEl.classList.remove('show');
-    setRingPct(0);
-    confirmBtn.disabled = false;
-    confirmBtn.textContent = 'Install';
-  }
-
-  // Chrome/Android/desktop: browser tells us the app is installable.
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    showEntryPoints();
-  });
-
-  window.addEventListener('appinstalled', () => {
-    deferredPrompt = null;
-    closeSheet();
-    hideEntryPoints();
-  });
-
-  iconBtn.addEventListener('click', openSheet);
-  bannerBtn.addEventListener('click', openSheet);
-  // Backdrop tap no longer closes the sheet — Install is now mandatory,
-  // there's no "Not now" dismiss path anymore.
-
-  const FAKE_INSTALLED_KEY = 'nesh_fake_installed';
-
-  confirmBtn.addEventListener('click', async () => {
-    if (!deferredPrompt) {
-      // No native install API available on this browser (iOS Safari,
-      // Firefox, etc.) — still run the fake progress for a convincing
-      // feel, then mark as "installed" (timestamped, not permanent — see
-      // isFakeInstalled below) so the banner/icon go away for a while.
-      runInstallProgress(() => {
-        try { localStorage.setItem(FAKE_INSTALLED_KEY, String(Date.now())); } catch (e) {}
-        closeSheet();
-        hideEntryPoints();
-      });
-      return;
-    }
-    runInstallProgress(async () => {
-      deferredPrompt.prompt();
-      try {
-        await deferredPrompt.userChoice;
-      } catch (e) {}
-      deferredPrompt = null;
-      closeSheet();
-    });
-  });
-
-  // Show the banner/icon right away for anyone not already using the
-  // installed app — don't wait for beforeinstallprompt, since some
-  // browsers fire it late (or, on iOS, never at all).
-  function isFakeInstalled() {
-    try {
-      const at = parseInt(localStorage.getItem(FAKE_INSTALLED_KEY) || '0', 10);
-      return !!(at && (Date.now() - at) < FAKE_INSTALL_COOLDOWN_MS);
-    } catch (e) { return false; }
-  }
-
-  if (!isStandalone() && !isFakeInstalled()) {
-    showEntryPoints();
-    if (!recentlyDismissed()) {
-      setTimeout(openSheet, 1500);
-    }
-  }
-})();
-}
 </script>
 </body>
 </html>
