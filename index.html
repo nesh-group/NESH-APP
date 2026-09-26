@@ -1,6 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+// ---------- Browser back-button guard (runs FIRST, before anything else)
+// This has to be the very first thing the page does. If it sat further
+// down the page (after Leaflet/Firebase/etc.), a back press pressed while
+// those are still loading — or if one of them fails on a slow/blocked
+// connection — would land on the browser's default "just leave the page"
+// behaviour instead of being caught by us, closing the site in 1-2 taps
+// instead of stepping back through screens. Registering it here means
+// it's active within milliseconds, before there's any chance of that gap.
+// Native app (Capacitor) doesn't need this at all — its back handling is
+// wired up natively later in the page, independent of page-load timing.
+(function () {
+  if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) return;
+  try {
+    history.replaceState({ nesh: 'base' }, '', location.href);
+    history.pushState({ nesh: 'guard' }, '', location.href);
+  } catch (e) { return; }
+  let neshLettingGo = false;
+  window.addEventListener('popstate', () => {
+    if (neshLettingGo) { neshLettingGo = false; return; }
+    // If the rest of the app hasn't finished loading yet, neshHandleBack
+    // won't exist — default to 'stay' so we never exit before it's ready.
+    const result = (typeof window.neshHandleBack === 'function') ? window.neshHandleBack() : 'stay';
+    if (result === 'stay') {
+      try { history.pushState({ nesh: 'guard' }, '', location.href); } catch (e) {}
+    } else {
+      neshLettingGo = true;
+      history.back();
+    }
+  });
+})();
+</script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>NESH Taxi and Delivery Services</title>
@@ -5408,32 +5440,19 @@ function neshHandleBack() {
 }
 
 (function () {
+  // Native app (APK/AAB) only. The browser/PWA fallback is registered at
+  // the very top of <head> instead, so it's active before this point in
+  // the page even loads — see the comment there for why.
   const CapApp = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+  if (!(CapApp && CapApp.addListener)) return;
 
-  if (CapApp && CapApp.addListener) {
-    // Native app (APK/AAB). Registering this listener turns OFF Android's
-    // default back behaviour (which would just close the app).
-    CapApp.addListener('backButton', () => {
-      if (neshHandleBack() === 'exit') {
-        if (CapApp.minimizeApp) CapApp.minimizeApp();   // like WhatsApp etc.: goes to background
-        else if (CapApp.exitApp) CapApp.exitApp();
-      }
-    });
-    return;
-  }
-
-  // Fallback: plain browser / PWA / WebView without @capacitor/app.
-  // Keep one "guard" history entry so a back press is delivered to us as
-  // a popstate event instead of leaving the page.
-  try {
-    history.replaceState({ nesh: 'base' }, '', location.href);
-    history.pushState({ nesh: 'guard' }, '', location.href);
-  } catch (e) { return; }
-  window.addEventListener('popstate', () => {
-    if (neshHandleBack() === 'stay') {
-      try { history.pushState({ nesh: 'guard' }, '', location.href); } catch (e) {}
+  // Registering this listener turns OFF Android's default back behaviour
+  // (which would just close the app).
+  CapApp.addListener('backButton', () => {
+    if (neshHandleBack() === 'exit') {
+      if (CapApp.minimizeApp) CapApp.minimizeApp();   // like WhatsApp etc.: goes to background
+      else if (CapApp.exitApp) CapApp.exitApp();
     }
-    // 'exit': guard not re-added, so the browser/WebView leaves on this press.
   });
 })();
 
