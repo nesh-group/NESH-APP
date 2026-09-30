@@ -2093,6 +2093,7 @@
         <div class="order-summary-total-row"><span>Item total</span><span id="order-summary-items-total">₹0</span></div>
         <div class="order-summary-grand-row"><span>Total</span><span id="order-summary-grand-total">₹0</span></div>
       </div>
+      <p id="order-summary-min-note" style="display:none; margin:12px 0 0; padding:10px 12px; border-radius:10px; background:#FFF4E5; color:#8A4B00; font-size:13px; font-weight:600;"></p>
       <button class="btn-primary" id="order-summary-proceed-btn" style="width:100%; margin-top:16px;">Proceed to checkout →</button>
     </div>
   </div>
@@ -2323,7 +2324,10 @@
           // — see getShopClosedInfo() / isWithinShopHours() below.
           hoursEnabled: !!v.hoursEnabled,
           openTime: v.openTime || "",
-          closeTime: v.closeTime || ""
+          closeTime: v.closeTime || "",
+          // Minimum item total (₹) the shop accepts per order, set in the
+          // partner app (Account → Minimum order amount). 0 = no minimum.
+          minOrderAmount: Math.max(0, Number(v.minOrderAmount) || 0)
         });
       } catch (e) {
         console.error('Skipped one broken restaurant record while rendering:', child.key, e);
@@ -6703,7 +6707,7 @@ function resolveRestaurantById(id) {
     businessType: 'groceries', opCategory: '', items: buildNeshStoreCatalog(),
     gpayNumber: '', zone: null, deliveryCharges: null, goSeries: true,
     discountAmount: 0, discountCardImage: null, shopUnavailable: false, shopUnavailableMessage: '',
-    hoursEnabled: false, openTime: '', closeTime: ''
+    hoursEnabled: false, openTime: '', closeTime: '', minOrderAmount: 0
   };
 }
 function openNeshStore() {
@@ -7127,13 +7131,26 @@ function renderItemDetail() {
   renderQtyControl(itemDetailQtySlot, it.id, qty);
 }
 
+// Item total of the current cart (no delivery / platform fee) and how far
+// it is below the shop's minimum order amount (0 when it's met or unset).
+function cartItemsTotal(r) {
+  return (r.items || []).reduce((sum, it) => sum + (state.cart[it.id] || 0) * getUnitPrice(it), 0);
+}
+function minOrderShortfall(r, itemsTotal) {
+  const min = Number(r && r.minOrderAmount) || 0;
+  return min > itemsTotal ? min - itemsTotal : 0;
+}
+
 function updateCartBar() {
   const count = Object.values(state.cart).reduce((a, b) => a + b, 0);
   const total = state.selectedRestaurant.items.reduce((sum, it) => sum + (state.cart[it.id] || 0) * getUnitPrice(it), 0);
   if (count > 0) {
     cartBar.classList.add('visible');
     cartCountText.textContent = count + (count > 1 ? " items" : " item");
-    cartTotalText.textContent = "Place order · ₹" + total;
+    const short = minOrderShortfall(state.selectedRestaurant, total);
+    cartTotalText.textContent = short > 0
+      ? "Add ₹" + short + " more · Min ₹" + state.selectedRestaurant.minOrderAmount
+      : "Place order · ₹" + total;
   } else {
     cartBar.classList.remove('visible');
   }
@@ -8635,6 +8652,20 @@ function openOrderSummary() {
   });
   orderSummaryItemsTotalEl.textContent = "₹" + itemsTotal;
   orderSummaryGrandTotalEl.textContent = "₹" + itemsTotal;
+  const minNoteEl = document.getElementById('order-summary-min-note');
+  const short = minOrderShortfall(r, itemsTotal);
+  if (short > 0) {
+    minNoteEl.textContent = (r.name || "This shop") + " accepts orders of ₹" + r.minOrderAmount + " or more. Add items worth ₹" + short + " more to continue.";
+    minNoteEl.style.display = 'block';
+    orderSummaryProceedBtn.disabled = true;
+    orderSummaryProceedBtn.style.opacity = '0.5';
+    orderSummaryProceedBtn.textContent = "Add ₹" + short + " more to order";
+  } else {
+    minNoteEl.style.display = 'none';
+    orderSummaryProceedBtn.disabled = false;
+    orderSummaryProceedBtn.style.opacity = '';
+    orderSummaryProceedBtn.textContent = "Proceed to checkout →";
+  }
   orderSummaryOverlay.classList.add('show');
 }
 function closeOrderSummary() {
@@ -8647,6 +8678,11 @@ orderSummaryOverlay.addEventListener('click', (e) => {
 orderSummaryProceedBtn.addEventListener('click', () => {
   const count = Object.values(state.cart).reduce((a, b) => a + b, 0);
   if (count === 0) { closeOrderSummary(); return; }
+  {
+    const rr = state.selectedRestaurant;
+    const short = rr ? minOrderShortfall(rr, cartItemsTotal(rr)) : 0;
+    if (short > 0) { showInfoModal('Minimum order', (rr.name || 'This shop') + ' accepts orders of ₹' + rr.minOrderAmount + ' or more. Please add items worth ₹' + short + ' more.'); return; }
+  }
   closeOrderSummary();
   state.pendingCheckout = null;
   // Guests get to browse freely — login/register is only asked for right
@@ -8764,6 +8800,15 @@ payConfirmBtn.addEventListener('click', async () => {
     closePaymentConfirm();
     renderMenu();
     return;
+  }
+  {
+    const short = minOrderShortfall(r, cartItemsTotal(r));
+    if (short > 0) {
+      showInfoModal('Minimum order', (r.name || 'This shop') + ' accepts orders of ₹' + r.minOrderAmount + ' or more. Please add items worth ₹' + short + ' more.');
+      closePaymentConfirm();
+      renderMenu();
+      return;
+    }
   }
   if (selectedPaymentMethod === 'gpay' && !gpayPaidCheckbox.checked) {
     showInfoModal('One more step', "Please complete the UPI payment and tick \"I've completed the payment\" before placing the order.");
