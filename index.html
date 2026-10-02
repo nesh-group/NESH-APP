@@ -1376,6 +1376,23 @@
     </div>
   </div>
 
+  <!-- Groceries "How to use" guide — shown when Groceries is opened -->
+  <div class="loc-overlay" id="howto-overlay" style="align-items:center; z-index:3100;">
+    <div class="loc-sheet" style="border-radius:20px; max-width:340px; animation:locUp .2s ease-out; padding:22px;">
+      <p class="loc-title" style="margin:0 0 12px; font-size:18px;">🛒 How to use Groceries</p>
+      <ol style="margin:0 0 14px; padding-left:20px; color:var(--ink); font-size:14px; line-height:1.55;">
+        <li><b>Find items</b> — use the category tabs or the search box.</li>
+        <li><b>Set the weight</b> — type grams in the box, or tap <b>100g / 250g / 500g / 1kg</b>. The price updates instantly.</li>
+        <li><b>Add to cart</b> — tap <b>Add</b> (or <b>+</b> for more of the same weight).</li>
+        <li><b>Check out</b> — open the cart bar at the bottom, review the total and place your order.</li>
+      </ol>
+      <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted-2); margin:0 0 16px;">
+        <input type="checkbox" id="howto-dontshow" /> Don't show this again
+      </label>
+      <button type="button" class="loc-gps-btn" id="howto-ok-btn" style="background:var(--marigold); margin-bottom:0;">Got it</button>
+    </div>
+  </div>
+
   <!-- Generic in-app message modal (replaces native alert()/confirm() for a
        styled, on-brand popup instead of the browser's "site says" dialog) -->
   <div class="loc-overlay" id="info-modal-overlay" style="align-items:center; z-index:3000;">
@@ -1662,6 +1679,7 @@
         <p class="menu-rest-name" id="menu-rest-name"></p>
         <p class="menu-rest-meta" id="menu-rest-meta"></p>
       </div>
+      <button type="button" id="menu-howto-btn" style="display:none; margin-left:auto; padding:6px 12px; border-radius:999px; border:1.5px solid var(--marigold); background:#fff; color:#C97F00; font-size:12px; font-weight:700; cursor:pointer;">How to use</button>
     </div>
     <div class="search-wrap" id="menu-search-wrap">
       <div class="field">
@@ -1700,6 +1718,7 @@
         <input type="number" id="item-detail-weight-input" min="1" step="1" style="width:80px; padding:8px 10px; border:1px solid #ddd; border-radius:8px; font-size:14px;" />
         <span id="item-detail-weight-hint" style="font-size:12px; color:var(--muted-2);"></span>
       </div>
+      <div id="item-detail-gram-chips" style="display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px;"></div>
       <div id="item-detail-size-row" style="display:none; margin:4px 0 10px;">
         <p style="font-size:12px; color:var(--muted-2); margin:0 0 6px;">Select size</p>
         <div id="item-detail-size-chips" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
@@ -6710,6 +6729,25 @@ function resolveRestaurantById(id) {
     hoursEnabled: false, openTime: '', closeTime: '', minOrderAmount: 0
   };
 }
+// ---------- Groceries "How to use" guide ----------
+const HOWTO_KEY = 'neshGroceriesHowtoSeen';
+function openGroceriesHowTo() {
+  document.getElementById('howto-dontshow').checked = false;
+  document.getElementById('howto-overlay').classList.add('show');
+}
+function maybeShowGroceriesHowTo() {
+  let seen = false;
+  try { seen = localStorage.getItem(HOWTO_KEY) === '1'; } catch (e) {}
+  if (!seen) openGroceriesHowTo();
+}
+document.getElementById('howto-ok-btn').addEventListener('click', () => {
+  if (document.getElementById('howto-dontshow').checked) {
+    try { localStorage.setItem(HOWTO_KEY, '1'); } catch (e) {}
+  }
+  document.getElementById('howto-overlay').classList.remove('show');
+});
+document.getElementById('menu-howto-btn').addEventListener('click', openGroceriesHowTo);
+
 function openNeshStore() {
   if (isAreaUnavailable(state.customerPos)) { handleAreaUnavailable(() => openNeshStore()); return; }
   const store = resolveRestaurantById('NESH_STORE');
@@ -6726,6 +6764,7 @@ function openNeshStore() {
   renderMenu();
   showScreen('menu');
   persistScreen('menu', { restaurantId: 'NESH_STORE', cart: state.cart });
+  maybeShowGroceriesHowTo();
 }
 
 // Menu screen's back button: for a real shop, back to that category's
@@ -6795,6 +6834,24 @@ function setSelectedGrams(itemId, grams) {
   const g = Math.max(1, Math.round(Number(grams)) || DEFAULT_GRAMS);
   state.cartGrams[itemId] = g;
   return g;
+}
+// Quick-pick gram chips (100g / 250g / 500g / 1kg) shown under the gram box
+// for weight items, so customers can set the quantity with one tap.
+const GRAM_PRESETS = [100, 250, 500, 1000];
+function renderGramChips(container, it, onChange) {
+  if (!container) return;
+  const cur = getSelectedGrams(it);
+  container.innerHTML = GRAM_PRESETS.map(g =>
+    `<button type="button" data-g="${g}" style="padding:4px 10px; border-radius:999px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid ${cur === g ? 'var(--primary, #1BA672)' : '#ddd'}; background:${cur === g ? 'var(--primary, #1BA672)' : '#fff'}; color:${cur === g ? '#fff' : '#444'};">${g >= 1000 ? (g / 1000) + 'kg' : g + 'g'}</button>`
+  ).join('');
+  container.onclick = e => {
+    const b = e.target.closest('[data-g]');
+    if (!b) return;
+    e.stopPropagation();
+    setSelectedGrams(it.id, b.dataset.g);
+    renderGramChips(container, it, onChange);
+    if (onChange) onChange();
+  };
 }
 // Price for ONE portion of this item as currently configured — the flat
 // price for piece items, or the rate scaled to the chosen grams for
@@ -6898,6 +6955,7 @@ function renderMenu() {
   const r = state.selectedRestaurant;
   menuRestName.textContent = r.name;
   menuRestMeta.textContent = r.cuisine;
+  document.getElementById('menu-howto-btn').style.display = (r.id === 'NESH_STORE') ? 'inline-block' : 'none';
   menuRestLogo.src = r.image || '';
   menuRestLogo.alt = r.name || '';
   menuRestLogo.style.display = r.image ? 'block' : 'none';
@@ -6960,7 +7018,8 @@ function renderMenu() {
         <div class="item-weight-row" style="display:flex; align-items:center; gap:6px; margin-top:6px;">
           <input type="number" class="item-weight-input" min="1" step="1" value="${getSelectedGrams(it)}" style="width:60px; padding:4px 6px; border:1px solid #ddd; border-radius:6px; font-size:12px;" />
           <span style="font-size:11px; color:var(--muted-2);">grams (₹${it.price}${UNIT_SUFFIX[it.unit]})</span>
-        </div>` : ''}
+        </div>
+        <div class="item-gram-chips" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;"></div>` : ''}
         ${hasSizes(it) ? `
         <div class="item-size-row" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;"></div>` : ''}
         <div class="item-row2">
@@ -6971,13 +7030,22 @@ function renderMenu() {
       const qtySlot = card.querySelector('.qty-slot');
       renderQtyControl(qtySlot, it.id, qty);
       const weightInput = card.querySelector('.item-weight-input');
+      const gramChips = card.querySelector('.item-gram-chips');
       if (weightInput) {
-        weightInput.addEventListener('click', e => e.stopPropagation());
-        weightInput.addEventListener('input', () => {
-          setSelectedGrams(it.id, weightInput.value);
+        const syncCardWeight = () => {
           const priceEl = card.querySelector('.item-price2');
           if (priceEl) priceEl.textContent = `₹${getUnitPrice(it)} for ${weightLabel(it)}`;
           updateCartBar();
+        };
+        weightInput.addEventListener('click', e => e.stopPropagation());
+        weightInput.addEventListener('input', () => {
+          setSelectedGrams(it.id, weightInput.value);
+          renderGramChips(gramChips, it, null);
+          syncCardWeight();
+        });
+        renderGramChips(gramChips, it, () => {
+          weightInput.value = getSelectedGrams(it);
+          syncCardWeight();
         });
       }
       const sizeRow = card.querySelector('.item-size-row');
@@ -7078,6 +7146,7 @@ itemDetailWeightInput.addEventListener('input', () => {
   const it = state.selectedRestaurant.items.find(i => i.id === state.selectedItem);
   if (!it) return;
   setSelectedGrams(it.id, itemDetailWeightInput.value);
+  renderGramChips(document.getElementById('item-detail-gram-chips'), it, null);
   itemDetailPrice.textContent = `₹${getUnitPrice(it)} for ${weightLabel(it)}`;
   updateCartBar();
 });
@@ -7116,7 +7185,15 @@ function renderItemDetail() {
     itemDetailWeightInput.value = getSelectedGrams(it);
     itemDetailWeightHint.textContent = `grams (rate ₹${it.price}${UNIT_SUFFIX[it.unit]})`;
     itemDetailPrice.textContent = `₹${getUnitPrice(it)} for ${weightLabel(it)}`;
+    const dChips = document.getElementById('item-detail-gram-chips');
+    dChips.style.display = 'flex';
+    renderGramChips(dChips, it, () => {
+      itemDetailWeightInput.value = getSelectedGrams(it);
+      itemDetailPrice.textContent = `₹${getUnitPrice(it)} for ${weightLabel(it)}`;
+      updateCartBar();
+    });
   } else {
+    document.getElementById('item-detail-gram-chips').style.display = 'none';
     itemDetailWeightRow.style.display = 'none';
     itemDetailPrice.textContent = `₹${it.price}`;
   }
