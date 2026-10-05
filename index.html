@@ -4945,27 +4945,52 @@ taxiChoiceDriverOpenBtn.addEventListener('click', async () => {
 //     between this app and the driver's own app.
 // excludeIds are drivers already skipped by the customer or who've already
 // declined this exact ride.
+// ---- Daily ride counter (used for fair driver tie-breaking) ----
+function taxiTodayKey() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+// Adds +1 to the driver's counter for today, exactly once per ride.
+// rides/{rideKey}/driverCounted is a guard flag so retries / re-renders /
+// two tabs can never count the same ride twice.
+async function countTaxiRideForDriver(rideKey, driverId) {
+  if (!window.fb || !rideKey || !driverId) return;
+  const { db, ref, runTransaction } = window.fb;
+  try {
+    const guard = await runTransaction(ref(db, 'rides/' + rideKey + '/driverCounted'), v => (v ? undefined : true));
+    if (!guard.committed) return; // already counted
+    const today = taxiTodayKey();
+    await runTransaction(ref(db, 'taxi_drivers/' + driverId + '/rideCountToday'), v =>
+      (v && v.date === today) ? { date: today, count: (v.count || 0) + 1 } : { date: today, count: 1 });
+  } catch (e) { /* non-critical: matching still works with count 0 */ }
+}
+
 async function findNearestTaxiCandidate(pickup, excludeIds, vehicleType, createdAt) {
   if (!window.fb || !pickup) return null;
   const { db, ref, get } = window.fb;
-  let driversSnap, zonesSnap, ridesSnap;
+  let driversSnap, zonesSnap;
   try {
-    [driversSnap, zonesSnap, ridesSnap] = await Promise.all([
+    [driversSnap, zonesSnap] = await Promise.all([
       get(ref(db, 'taxi_drivers')),
       get(ref(db, 'driver_zones')),
-      get(ref(db, 'rides')),
     ]);
   } catch (e) { return null; }
   const drivers = driversSnap.val() || {};
   const zonesVal = zonesSnap.val() || {};
   const zones = Object.keys(zonesVal).map(id => Object.assign({ _id: id }, zonesVal[id]));
-  const ridesVal = ridesSnap.val() || {};
 
   const drawn = zones.filter(z => z.bounds && z.bounds.length >= 3);
   const containing = drawn.find(z => taxiPointInZoneBounds(pickup, z.bounds));
   const zoneId = containing ? containing._id : null; // null = pickup outside every drawn zone -> radius fallback
 
-  const orderCountFor = driverId => Object.values(ridesVal).filter(r => r && r.driverId === driverId).length;
+  // Today's ride count per driver, read from a small counter stored on the
+  // driver record (taxi_drivers/{id}/rideCountToday = {date, count}).
+  // No need to download the rides node any more.
+  const todayKey = taxiTodayKey();
+  const orderCountFor = driverId => {
+    const rc = drivers[driverId] && drivers[driverId].rideCountToday;
+    return rc && rc.date === todayKey ? (rc.count || 0) : 0;
+  };
 
   const buildPool = includeBusy => {
     const candidates = [];
@@ -5092,6 +5117,12 @@ function renderTaxiTimeline(ride) {
   }
   taxiTrackLastRide = ride;
   taxiTrackLastStatus = status;
+
+  // Count this ride toward the driver's daily total (once per ride).
+  if (ride.driverId && !ride.driverCounted && currentRideKey &&
+      ['accepted', 'arriving', 'ontrip', 'completed'].includes(status)) {
+    countTaxiRideForDriver(currentRideKey, ride.driverId);
+  }
 
   // A Choice Driver ride (rides/{key}.chosenDriverId, or one that was and
   // has since stopped — see below) never engages the auto-candidate flow:
