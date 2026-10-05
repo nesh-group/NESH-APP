@@ -2946,13 +2946,10 @@ function tryResumeScreen(saved) {
   return true;
 }
 
-// Restore the customer's chosen browsing location (if any) across sessions.
-try {
-  const savedPos = JSON.parse(localStorage.getItem('asfood_customer_pos') || 'null');
-  if (savedPos && typeof savedPos.lat === 'number' && typeof savedPos.lng === 'number') {
-    state.customerPos = savedPos;
-  }
-} catch (e) {}
+// The customer's location is NOT restored from the last session any more —
+// an old saved spot could be wherever they were yesterday. A fresh GPS fix is
+// fetched every time the app opens (see detectLocationOnOpen below).
+try { localStorage.removeItem('asfood_customer_pos'); } catch (e) {}
 
 // Restore the logged-in customer (if any) across sessions/reloads, so they
 // stay signed in until they explicitly tap Logout.
@@ -9720,12 +9717,7 @@ function autoDetectLocation() {
     return;
   }
   navigator.geolocation.getCurrentPosition(
-    pos => {
-      state.customerPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      state.locationDetectFailed = false;
-      try { localStorage.setItem('asfood_customer_pos', JSON.stringify(state.customerPos)); } catch (e) {}
-      renderHome();
-    },
+    pos => { onLocationGranted(pos); },
     (err) => {
       // Permission denied / timeout / position unavailable — keep whatever
       // location was saved from last time (if any); otherwise the label
@@ -9738,7 +9730,7 @@ function autoDetectLocation() {
       // Location is off / permission denied — ask the customer to turn it on.
       showLocationOffPopup(err && err.code);
     },
-    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
   );
 }
 
@@ -9781,7 +9773,6 @@ function hideLocationOffPopup() {
 function onLocationGranted(pos) {
   state.customerPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
   state.locationDetectFailed = false;
-  try { localStorage.setItem('asfood_customer_pos', JSON.stringify(state.customerPos)); } catch (e) {}
   hideLocationOffPopup();
   renderHome();
   try { updateHomeLocationLabel(); } catch (e) {}
@@ -9870,6 +9861,21 @@ document.addEventListener('visibilitychange', () => {
 // permission decision has already been made this session, it's a no-op
 // so we don't re-trigger the native prompt/GPS fetch on every tap.
 let locationDetectAttempted = false;
+// Runs once every time the app opens: asks for a fresh GPS fix straight away
+// (never reuses an old location). Blocked permission or GPS off → the
+// "Turn on location" popup appears.
+function detectLocationOnOpen() {
+  locationDetectAttempted = true;
+  const isNative = !!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation);
+  if (!isNative && navigator.permissions && navigator.permissions.query) {
+    navigator.permissions.query({ name: 'geolocation' }).then(st => {
+      if (st.state === 'denied') { state.locationDetectFailed = true; showLocationOffPopup(1); }
+      else autoDetectLocation();
+    }).catch(() => autoDetectLocation());
+    return;
+  }
+  autoDetectLocation();
+}
 function maybeDetectLocationOnCategoryTap() {
   if (state.customerPos || locationDetectAttempted) return;
   locationDetectAttempted = true;
@@ -9893,6 +9899,7 @@ function maybeDetectLocationOnCategoryTap() {
 // so minimizing the app or refreshing the page keeps their place. ----------
 try { updateLocSuggestBanners(); } catch (e) {}
 if (state.category) renderHome();
+detectLocationOnOpen();
 try {
   const savedOrder = JSON.parse(localStorage.getItem('asfood_last_order') || 'null');
   if (savedOrder && savedOrder.orderKey) state.lastOrder = savedOrder;
