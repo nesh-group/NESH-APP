@@ -402,6 +402,11 @@
   .loc-sheet{
     width:100%; max-width:420px; background:#fff; border-radius:22px 22px 0 0;
     padding:24px; animation:locUp .25s ease-out;
+    /* Tall sheets (location + landmark suggestions + contact) used to grow past
+       the top of the screen and hide the search box with no way to scroll up.
+       Cap the height and let the sheet itself scroll instead. */
+    max-height:92vh; max-height:92dvh; overflow-y:auto; overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch; box-sizing:border-box;
   }
   @keyframes locUp{ from{ transform:translateY(30px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
   .loc-eyebrow{ color:var(--chili); font-family:'Inter',sans-serif; font-size:12px; letter-spacing:1.5px; margin:0; font-weight:700; }
@@ -9837,6 +9842,21 @@ function tryEnableLocationCore(silent) {
     { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
   );
 }
+['loc-search', 'browse-loc-search'].forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('focus', () => {
+    const sheet = el.closest('.loc-sheet');
+    if (sheet) setTimeout(() => sheet.scrollTo({ top: 0, behavior: 'smooth' }), 50);
+  });
+});
+['loc-overlay', 'browse-loc-overlay'].forEach(id => {
+  const ov = document.getElementById(id);
+  if (!ov) return;
+  new MutationObserver(() => {
+    if (ov.classList.contains('show')) { const sh = ov.querySelector('.loc-sheet'); if (sh) sh.scrollTop = 0; }
+  }).observe(ov, { attributes: true, attributeFilter: ['class'] });
+});
 if (locOffEnableBtn) locOffEnableBtn.addEventListener('click', () => tryEnableLocation(false));
 if (locOffLaterBtn) locOffLaterBtn.addEventListener('click', hideLocationOffPopup);
 // Customer switched GPS on in Settings and returned to the app → retry quietly.
