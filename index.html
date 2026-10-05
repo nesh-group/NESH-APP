@@ -942,6 +942,9 @@
   .your-orders-card-title{ color:#fff; font-weight:700; font-family:'Poppins',sans-serif; font-size:14px; margin:0; }
   .your-orders-card-sub{ color:rgba(255,255,255,.85); font-size:11.5px; margin:2px 0 0; }
 
+  .loc-suggest{ margin:8px 24px 0; padding:9px 12px; border-radius:14px; background:#FFF3D6; border:1px solid #F0D58A; align-items:center; gap:10px; }
+  .loc-suggest-text{ flex:1; font-size:12.5px; font-weight:600; color:#6B4A00; line-height:1.35; font-family:'Inter',sans-serif; }
+  .loc-suggest-btn{ border:none; background:var(--marigold,#F5A300); color:#2B2410; font-weight:700; font-size:12.5px; padding:8px 14px; border-radius:10px; cursor:pointer; font-family:'Inter',sans-serif; }
   .home-loc-card{
     display:flex; align-items:center; gap:14px; margin:14px 24px 0;
     padding:16px 18px; border-radius:18px; cursor:pointer;
@@ -1402,6 +1405,19 @@
     </div>
   </div>
 
+  <!-- Location OFF popup — shown when GPS/permission is off so the customer can turn it on -->
+  <div class="loc-overlay" id="loc-off-overlay" style="align-items:center; z-index:3200;">
+    <div class="loc-sheet" style="border-radius:20px; max-width:340px; animation:locUp .2s ease-out; padding:24px; text-align:center;">
+      <div style="font-size:44px; line-height:1; margin-bottom:8px;">📍</div>
+      <p class="loc-title" style="margin:0 0 8px; font-size:19px;">Turn on location</p>
+      <p style="margin:0 0 4px; color:var(--ink); font-size:14px; line-height:1.5;">Please turn on your location to find nearby shops, taxis and delivery.</p>
+      <p style="margin:0 0 16px; color:var(--muted-2); font-size:12.5px; line-height:1.5;">Once it is on, tap the button to try again.</p>
+      <p id="loc-off-help" style="display:none; margin:0 0 14px; padding:10px 12px; background:var(--cloud); border-radius:10px; color:var(--ink); font-size:12.5px; line-height:1.55; text-align:left;"></p>
+      <button type="button" class="loc-gps-btn" id="loc-off-enable-btn" style="background:var(--marigold);">Turn on location</button>
+      <button type="button" class="loc-cancel-btn" id="loc-off-later-btn" style="width:100%; flex:none;">Not now — select manually</button>
+    </div>
+  </div>
+
   <!-- Generic in-app message modal (replaces native alert()/confirm() for a
        styled, on-brand popup instead of the browser's "site says" dialog) -->
   <div class="loc-overlay" id="info-modal-overlay" style="align-items:center; z-index:3000;">
@@ -1531,7 +1547,11 @@
     </div>
     <div class="account-backdrop" id="cat-account-backdrop"></div>
     <div class="cat-wrap">
-      <div class="cat-loc-card" id="cat-loc-card">
+      <div class="loc-suggest" id="cat-loc-suggest" style="display:none;">
+      <span class="loc-suggest-text">📍 Location is off — turn it on to see nearby shops</span>
+      <button type="button" class="loc-suggest-btn" data-loc-suggest-btn>Turn on</button>
+    </div>
+    <div class="cat-loc-card" id="cat-loc-card">
         <div class="cat-loc-card-icon">📍</div>
         <div class="cat-loc-card-text">
           <p class="cat-loc-card-label">Deliver to</p>
@@ -1661,6 +1681,10 @@
         <p class="home-loc-card-value" id="home-location">Select your location</p>
       </div>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2B2410" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+    <div class="loc-suggest" id="home-loc-suggest" style="display:none;">
+      <span class="loc-suggest-text">📍 Location is off — turn it on to see nearby shops</span>
+      <button type="button" class="loc-suggest-btn" data-loc-suggest-btn>Turn on</button>
     </div>
     <h1 class="greeting" id="home-greeting">Hungry, friend?</h1>
 
@@ -4405,7 +4429,7 @@ function useTaxiGps() {
       taxiActivePin = 'drop';
       updateTaxiPinRows();
     },
-    () => { btn.textContent = prevLabel; },
+    (err) => { btn.textContent = prevLabel; showLocationOffPopup(err && err.code); },
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
   );
 }
@@ -5071,6 +5095,18 @@ function showTaxiCandidateCard(rideKey, pickup, candidate, excludeIds) {
   document.getElementById('taxi-candidate-avatar').innerHTML = candidate.photo
     ? `<img src="${candidate.photo}" alt="${candidate.name}" onerror="this.parentElement.innerHTML='${driverFallbackSvg.replace(/'/g, "\\'")}';" />`
     : driverFallbackSvg;
+  // Photos now live in their own node (driver_photos/{id}) instead of on the
+  // driver record — fetch just this one driver's photo if it isn't inline.
+  if (!candidate.photo && window.fb) {
+    const { db: pdb, ref: pref, get: pget } = window.fb;
+    pget(pref(pdb, 'driver_photos/' + candidate.id)).then(snap => {
+      const photo = snap.val();
+      if (!photo || taxiCandidateNameEl.textContent !== candidate.name) return;
+      candidate.photo = photo;
+      document.getElementById('taxi-candidate-avatar').innerHTML =
+        '<img src="' + photo + '" alt="' + candidate.name + '" />';
+    }).catch(() => {});
+  }
 
   let secondsLeft = Math.ceil(TAXI_CANDIDATE_WINDOW_MS / 1000);
   const renderCountdown = () => { taxiCandidateTimerEl.textContent = `Auto-accepts in ${secondsLeft}s if you don't respond`; };
@@ -6301,7 +6337,19 @@ function updateHomeTrackBtn() {
 }
 homeTrackBtn.addEventListener('click', () => openTrackOrder(state.lastOrder, 'home'));
 
+function updateLocSuggestBanners() {
+  const show = !state.customerPos;
+  ['home-loc-suggest', 'cat-loc-suggest'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = show ? 'flex' : 'none';
+  });
+}
+document.querySelectorAll('[data-loc-suggest-btn]').forEach(b => b.addEventListener('click', e => {
+  e.stopPropagation();
+  showLocationOffPopup(0);
+}));
 function updateHomeLocationLabel() {
+  updateLocSuggestBanners();
   homeLocation.textContent = state.customerPos
     ? "Delivering to selected location"
     : (state.locationDetectFailed ? "Tap to set your location" : "Select your location");
@@ -8568,6 +8616,7 @@ browseLocGpsBtn.addEventListener('click', () => {
         err.code === 1 ? "Location permission denied — enable it in browser settings" :
         err.code === 2 ? "Location unavailable — check GPS/network" :
         "Location request timed out — try again";
+      showLocationOffPopup(err.code);
       browseLocGpsBtn.disabled = false;
       browseLocGpsBtn.textContent = "📍 Use my current location";
     },
@@ -9681,10 +9730,119 @@ function autoDetectLocation() {
         state.locationDetectFailed = true;
         updateHomeLocationLabel();
       }
+      // Location is off / permission denied — ask the customer to turn it on.
+      showLocationOffPopup(err && err.code);
     },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
   );
 }
+
+// ---------- "Turn on location" popup ----------
+// Browsers/apps can't switch GPS on silently, so this popup (a) re-requests
+// permission / a fresh fix when the customer taps "Turn on location", (b) opens
+// the phone's location settings when the native app has that plugin, and
+// (c) otherwise shows short steps. When the customer comes back to the app
+// after switching GPS on, it retries automatically.
+const locOffOverlay = document.getElementById('loc-off-overlay');
+const locOffEnableBtn = document.getElementById('loc-off-enable-btn');
+const locOffLaterBtn = document.getElementById('loc-off-later-btn');
+const locOffHelp = document.getElementById('loc-off-help');
+
+function showLocationOffPopup(errCode) {
+  if (!locOffOverlay || locOffOverlay.classList.contains('show')) return;
+  locOffHelp.style.display = 'none';
+  locOffEnableBtn.disabled = false;
+  locOffEnableBtn.textContent = 'Turn on location';
+  if (errCode === 1) { locOffHelp.innerHTML = locBlockedHelpHtml(); locOffHelp.style.display = 'block'; locOffEnableBtn.textContent = 'Try again'; }
+  locOffOverlay.classList.add('show');
+  // When the customer allows location from the browser's site settings,
+  // continue automatically without needing another tap.
+  try {
+    if (navigator.permissions && !showLocationOffPopup._watching) {
+      showLocationOffPopup._watching = true;
+      navigator.permissions.query({ name: 'geolocation' }).then(st => {
+        st.onchange = () => { if (st.state === 'granted' && locOffOverlay.classList.contains('show')) tryEnableLocation(true); };
+      }).catch(() => {});
+    }
+  } catch (e) {}
+}
+function locBlockedHelpHtml() {
+  return '<b>Location is blocked.</b> Tap the 🔒 (or ⓘ) icon in the browser address bar → <b>Permissions / Site settings</b> → <b>Location</b> → <b>Allow</b>. Then tap <b>Try again</b> (reload the page if needed).';
+}
+function hideLocationOffPopup() {
+  if (locOffOverlay) locOffOverlay.classList.remove('show');
+}
+
+function onLocationGranted(pos) {
+  state.customerPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+  state.locationDetectFailed = false;
+  try { localStorage.setItem('asfood_customer_pos', JSON.stringify(state.customerPos)); } catch (e) {}
+  hideLocationOffPopup();
+  renderHome();
+  try { updateHomeLocationLabel(); } catch (e) {}
+  // If a category tap was waiting on a location (picker open), continue it.
+  if (pendingLocationRequiredAction && browseLocOverlay && browseLocOverlay.classList.contains('show')) {
+    closeBrowseLocationPicker();
+    renderRestaurantList();
+    const action = pendingLocationRequiredAction;
+    pendingLocationRequiredAction = null;
+    action();
+  }
+}
+
+// Native Android app only: shows Google's own "Turn on device location?
+// [No thanks] [OK]" dialog and switches GPS on with one tap. Needs the
+// cordova-plugin-request-location-accuracy plugin in the app build; on the
+// web (or without the plugin) this does nothing and the normal flow runs.
+function requestNativeLocationDialog() {
+  return new Promise(resolve => {
+    try {
+      const la = window.cordova && window.cordova.plugins && window.cordova.plugins.locationAccuracy;
+      if (!la) { resolve(false); return; }
+      la.canRequest(can => {
+        if (!can) { resolve(false); return; }
+        la.request(() => resolve(true), () => resolve(false), la.REQUEST_PRIORITY_HIGH_ACCURACY);
+      });
+    } catch (e) { resolve(false); }
+  });
+}
+
+function tryEnableLocation(silent) {
+  if (!navigator.geolocation) return;
+  if (!silent) { requestNativeLocationDialog().then(() => tryEnableLocationCore(silent)); return; }
+  tryEnableLocationCore(silent);
+}
+function tryEnableLocationCore(silent) {
+  if (!silent) {
+    locOffEnableBtn.disabled = true;
+    locOffEnableBtn.textContent = 'Checking…';
+  }
+  navigator.geolocation.getCurrentPosition(
+    onLocationGranted,
+    (err) => {
+      if (silent) return;
+      locOffEnableBtn.disabled = false;
+      locOffEnableBtn.textContent = 'Try again';
+      const isNativeApp = !!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation);
+      locOffHelp.innerHTML = (err && err.code === 1)
+        ? (isNativeApp ? '<b>Permission is blocked.</b> Go to phone Settings → Apps → this app → Permissions → Location → <b>Allow</b>. Then come back and tap <b>Try again</b>.' : locBlockedHelpHtml())
+        : '<b>GPS is off.</b> Turn on the <b>Location</b> icon in your phone\'s notification bar (or Settings → Location → On). Then come back and tap <b>Try again</b>.';
+      locOffHelp.style.display = 'block';
+      // Native app: jump straight to the phone's location settings if available.
+      try {
+        const NS = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.NativeSettings;
+        if (NS && NS.open) NS.open({ optionAndroid: (err && err.code === 1) ? 'application_details' : 'location', optionIOS: 'app' });
+      } catch (e) {}
+    },
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+  );
+}
+if (locOffEnableBtn) locOffEnableBtn.addEventListener('click', () => tryEnableLocation(false));
+if (locOffLaterBtn) locOffLaterBtn.addEventListener('click', hideLocationOffPopup);
+// Customer switched GPS on in Settings and returned to the app → retry quietly.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && locOffOverlay && locOffOverlay.classList.contains('show')) tryEnableLocation(true);
+});
 // Only asks for location permission once the customer actually taps into
 // a category (Food/Groceries/Other Shop/Taxi/Bus) — never automatically
 // on app open. Runs fire-and-forget alongside the screen navigation (it
@@ -9695,6 +9853,17 @@ let locationDetectAttempted = false;
 function maybeDetectLocationOnCategoryTap() {
   if (state.customerPos || locationDetectAttempted) return;
   locationDetectAttempted = true;
+  // Web/PWA: check the browser's permission state first. "prompt" → show our
+  // popup first (its button triggers the browser's native Allow dialog),
+  // "denied" → show the popup with unblock steps, "granted" → just detect.
+  const isNative = !!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation);
+  if (!isNative && navigator.permissions && navigator.permissions.query) {
+    navigator.permissions.query({ name: 'geolocation' }).then(st => {
+      if (st.state === 'granted') autoDetectLocation();
+      else showLocationOffPopup(st.state === 'denied' ? 1 : 0);
+    }).catch(() => autoDetectLocation());
+    return;
+  }
   autoDetectLocation();
 }
 
@@ -9702,6 +9871,7 @@ function maybeDetectLocationOnCategoryTap() {
 // on (home, category, a restaurant's menu with their cart, order tracking,
 // or their orders list) instead of always dropping them back at the top,
 // so minimizing the app or refreshing the page keeps their place. ----------
+try { updateLocSuggestBanners(); } catch (e) {}
 if (state.category) renderHome();
 try {
   const savedOrder = JSON.parse(localStorage.getItem('asfood_last_order') || 'null');
