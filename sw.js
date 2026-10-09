@@ -31,7 +31,16 @@ messaging.onBackgroundMessage((payload) => {
     requireInteraction: true,
     data: { url: './' }
   };
-  self.registration.showNotification(title, options);
+  // When the push carries a `notification` payload, the Firebase SDK already
+  // shows its own copy on the web before this handler runs — so without this
+  // cleanup the person would see TWO notifications. We show ours (tag
+  // 'order-update', with the app logo) and close any untagged duplicate.
+  // Harmless if no duplicate exists. Native app pushes never reach here.
+  return self.registration.showNotification(title, options).then(() =>
+    self.registration.getNotifications().then((list) => {
+      list.forEach((n) => { if (n.tag !== 'order-update') n.close(); });
+    })
+  );
 });
 
 // Tapping the notification opens (or focuses) the app.

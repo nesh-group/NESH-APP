@@ -5836,6 +5836,70 @@ if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Pus
   });
 }
 
+// ---------- WEB PUSH (browser / installed PWA, no Capacitor) ----------
+// Paste your key from Firebase Console -> Project Settings -> Cloud
+// Messaging -> Web Push certificates -> "Generate key pair".
+const WEB_PUSH_VAPID_KEY = 'BJy2vLBreoMThId_Nm1pQlJWpAlcYdG4U2XW0eEW8_98xoA8ajBjwPGVlKNZSAgj9QBubFO3D5BkkqVYJvDHL3Q';
+
+function hasNativePush() {
+  return !!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications);
+}
+function webPushSupported() {
+  try {
+    return !hasNativePush() && 'Notification' in window && 'serviceWorker' in navigator &&
+      'PushManager' in window && typeof firebase !== 'undefined' && !!firebase.messaging &&
+      firebase.messaging.isSupported();
+  } catch (e) { return false; }
+}
+// iPhone/iPad Safari tab: web push only works after "Add to Home Screen".
+function iosNeedsInstall() {
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const standalone = window.navigator.standalone === true ||
+    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  return ios && !standalone && !hasNativePush();
+}
+// Same thing the native 'registration' listener does with a token.
+async function handlePushToken(token) {
+  if (!token) return;
+  fetch('https://broad-paper-6445.raise3715.workers.dev', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'subscribe_topic', token }),
+  }).catch(() => {});
+  const phone = state.user && state.user.number;
+  if (phone) {
+    try {
+      const { db, ref, update } = window.fb;
+      await update(ref(db, 'customers/' + phone), { fcmToken: token });
+    } catch (e) {}
+  }
+}
+// ask=true may show the browser permission popup (only call from a tap).
+// ask=false only refreshes the token if permission was already granted.
+async function registerWebPush(ask) {
+  if (!webPushSupported()) return false;
+  if (!WEB_PUSH_VAPID_KEY || WEB_PUSH_VAPID_KEY.indexOf('PASTE_') === 0) {
+    console.warn('Web push: set WEB_PUSH_VAPID_KEY first');
+    return false;
+  }
+  try {
+    if (Notification.permission === 'default' && ask) await Notification.requestPermission();
+    if (Notification.permission !== 'granted') return false;
+    const reg = await navigator.serviceWorker.register('sw.js');
+    await navigator.serviceWorker.ready;
+    const token = await firebase.messaging().getToken({
+      vapidKey: WEB_PUSH_VAPID_KEY,
+      serviceWorkerRegistration: reg
+    });
+    if (!token) return false;
+    await handlePushToken(token);
+    return true;
+  } catch (e) {
+    console.error('Web push registration failed:', e);
+    return false;
+  }
+}
+
 // Silent sync only — NEVER shows the system permission popup. If the
 // customer has already granted notifications at some point (via the
 // order-placed prompt or the bell button — the only two places that are
@@ -5844,7 +5908,7 @@ if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Pus
 // reaching this device. If permission hasn't been decided yet or was
 // denied, this does nothing and stays silent.
 async function registerCustomerPush(phone) {
-  if (!window.Capacitor || !window.Capacitor.Plugins || !window.Capacitor.Plugins.PushNotifications) return;
+  if (!hasNativePush()) { await registerWebPush(false); updateNotifBellStatus(); return; }
   try {
     const { PushNotifications } = window.Capacitor.Plugins;
     const permStatus = await PushNotifications.checkPermissions();
@@ -5864,8 +5928,11 @@ async function registerCustomerPush(phone) {
 async function updateNotifBellStatus() {
   const dot = document.getElementById('home-notif-dot');
   if (!dot) return;
-  if (!window.Capacitor || !window.Capacitor.Plugins || !window.Capacitor.Plugins.PushNotifications) {
-    dot.classList.add('hidden');
+  if (!hasNativePush()) {
+    // Browser: show the dot while web push is possible but not yet granted
+    // (also on iPhone Safari, as a nudge to install the app).
+    const canAsk = webPushSupported() || iosNeedsInstall();
+    dot.classList.toggle('hidden', !canAsk || ('Notification' in window && Notification.permission === 'granted'));
     return;
   }
   try {
@@ -5964,7 +6031,18 @@ async function renderNotifPanel() {
   try {
     const P = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications;
     if (P) showEnable = (await P.checkPermissions()).receive !== 'granted';
+    else if (webPushSupported()) showEnable = Notification.permission !== 'granted';
   } catch (e) {}
+  // iPhone Safari tab: explain how to get notifications.
+  const oldHint = document.getElementById('ios-install-hint');
+  if (oldHint) oldHint.remove();
+  if (iosNeedsInstall()) {
+    const h = document.createElement('p');
+    h.id = 'ios-install-hint';
+    h.style.cssText = 'color:var(--muted-2); font-size:13px; line-height:1.4; margin:10px 0 0; text-align:center;';
+    h.textContent = 'To get notifications on iPhone: tap Share → Add to Home Screen, then open NESH from your home screen.';
+    listEl.appendChild(h);
+  }
   enableBtn.style.display = showEnable ? '' : 'none';
 }
 async function openNotifPanel() {
@@ -5981,7 +6059,14 @@ document.getElementById('notif-panel-overlay').addEventListener('click', (e) => 
 });
 document.getElementById('notif-panel-enable-btn').addEventListener('click', async () => {
   const P = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications;
-  if (!P) return;
+  if (!P) {
+    const ok = await registerWebPush(true);
+    if (ok) showInfoModal('Notifications turned on', "You'll now get order updates and offers.");
+    else if ('Notification' in window && Notification.permission === 'denied') showInfoModal('Notifications are off', "Notifications are blocked for this site. Tap the lock icon next to the address bar → Notifications → Allow.");
+    updateNotifBellStatus();
+    renderNotifPanel();
+    return;
+  }
   try {
     const result = await P.requestPermissions();
     if (result.receive === 'granted') {
@@ -6497,7 +6582,20 @@ document.getElementById('info-modal-cancel-btn').addEventListener('click', () =>
 // Called right after an order is placed, when "I want updates on this"
 // is the most natural thing on the user's mind.
 async function maybePromptNotificationPermission() {
-  if (!window.Capacitor || !window.Capacitor.Plugins || !window.Capacitor.Plugins.PushNotifications) return;
+  if (!hasNativePush()) {
+    if (!webPushSupported()) return;
+    if (Notification.permission === 'granted') { registerWebPush(false); return; }
+    if (Notification.permission === 'denied') return;
+    const okWeb = await showConfirmModal(
+      '🔔 Track your order',
+      'Turn on notifications to get live updates on your order — accepted, prepared, out for delivery.',
+      'Enable',
+      'Not now'
+    );
+    if (okWeb) await registerWebPush(true);
+    updateNotifBellStatus();
+    return;
+  }
   const { PushNotifications } = window.Capacitor.Plugins;
   let permStatus;
   try { permStatus = await PushNotifications.checkPermissions(); } catch (e) { return; }
@@ -8768,10 +8866,20 @@ browseLocConfirmBtn.addEventListener('click', () => {
   closeBrowseLocationPicker();
   updateHomeLocationLabel();
   renderRestaurantList();
-  if (pendingLocationRequiredAction) {
-    const action = pendingLocationRequiredAction;
-    pendingLocationRequiredAction = null;
-    action();
+  const locAction = pendingLocationRequiredAction;
+  pendingLocationRequiredAction = null;
+  // Offer notifications right after the location is set (once only — if the
+  // person taps "Not now" we don't nag again here; the bell button and the
+  // after-order prompt are still there). Then continue the pending action.
+  let askNow = false;
+  // Web only — the native app's notification flow is left exactly as it was.
+  try { askNow = !hasNativePush() && !localStorage.getItem('nesh_notif_asked_at_location'); } catch (e) {}
+  const continueAfter = () => { if (locAction) locAction(); };
+  if (askNow) {
+    try { localStorage.setItem('nesh_notif_asked_at_location', '1'); } catch (e) {}
+    Promise.resolve(maybePromptNotificationPermission()).catch(() => {}).then(continueAfter);
+  } else {
+    continueAfter();
   }
 });
 
