@@ -5918,6 +5918,20 @@ async function registerWebPush(ask) {
   }
 }
 
+// Web only: if the person unblocks notifications in the browser/phone settings
+// and comes back to the site, finish the setup automatically (no extra tap).
+// Silent — never shows a permission popup; throttled to once per minute.
+let _lastWebPushSync = 0;
+function syncWebPushIfGranted() {
+  if (hasNativePush() || !webPushSupported() || Notification.permission !== 'granted') return;
+  const now = Date.now();
+  if (now - _lastWebPushSync < 60000) return;
+  _lastWebPushSync = now;
+  registerWebPush(false).then(() => { try { updateNotifBellStatus(); } catch (e) {} });
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) syncWebPushIfGranted(); });
+setTimeout(syncWebPushIfGranted, 3000);
+
 // Silent sync only — NEVER shows the system permission popup. If the
 // customer has already granted notifications at some point (via the
 // order-placed prompt or the bell button — the only two places that are
@@ -6972,7 +6986,7 @@ function openNeshStore() {
   renderMenu();
   showScreen('menu');
   persistScreen('menu', { restaurantId: 'NESH_STORE', cart: state.cart });
-  maybeShowGroceriesHowTo();
+  // Groceries "How to use" popup removed (was: maybeShowGroceriesHowTo();)
 }
 
 // Menu screen's back button: for a real shop, back to that category's
@@ -7163,7 +7177,7 @@ function renderMenu() {
   const r = state.selectedRestaurant;
   menuRestName.textContent = r.name;
   menuRestMeta.textContent = r.cuisine;
-  document.getElementById('menu-howto-btn').style.display = (r.id === 'NESH_STORE') ? 'inline-block' : 'none';
+  document.getElementById('menu-howto-btn').style.display = 'none'; // "How to use" button removed
   menuRestLogo.src = r.image || '';
   menuRestLogo.alt = r.name || '';
   menuRestLogo.style.display = r.image ? 'block' : 'none';
