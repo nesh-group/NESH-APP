@@ -3043,6 +3043,19 @@ function showScreen(id) {
 function digitsOnly(v) { return v.replace(/\D/g, ''); }
 
 // ---------- CATEGORY (Food / Groceries) ----------
+// Web only (the native app flow is untouched). Called when a home-screen card
+// opens its screen: offers notifications a single time. If the person taps
+// "Not now" we don't ask here again — the bell button and the after-order
+// prompt remain.
+function offerWebNotificationOnce() {
+  if (hasNativePush()) return;
+  let ask = false;
+  try { ask = !localStorage.getItem('nesh_notif_asked_at_cards'); } catch (e) {}
+  if (!ask || !webPushSupported() || Notification.permission !== 'default') return;
+  try { localStorage.setItem('nesh_notif_asked_at_cards', '1'); } catch (e) {}
+  setTimeout(() => { maybePromptNotificationPermission(); }, 700);
+}
+
 function openCategory(cat) {
   if (cat === 'groceries') { openNeshStore(); return; }   // no per-shop groceries list
   if (isAreaUnavailable(state.customerPos)) { handleAreaUnavailable(() => openCategory(cat)); return; }
@@ -3059,13 +3072,13 @@ function goToCategoryScreen() {
   showScreen('category');
   persistScreen('category');
 }
-document.getElementById('cat-card-food').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); requireLocationThen(() => openCategory('hotel')); });
-document.getElementById('cat-card-groceries').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); requireLocationThen(() => openNeshStore()); });
-document.getElementById('cat-card-online-shop').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); requireLocationThen(() => openCategory('online_shop')); });
+document.getElementById('cat-card-food').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); requireLocationThen(() => { openCategory('hotel'); offerWebNotificationOnce(); }); });
+document.getElementById('cat-card-groceries').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); requireLocationThen(() => { openNeshStore(); offerWebNotificationOnce(); }); });
+document.getElementById('cat-card-online-shop').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); requireLocationThen(() => { openCategory('online_shop'); offerWebNotificationOnce(); }); });
 document.getElementById('home-cat-back-btn').addEventListener('click', goToCategoryScreen);
-document.getElementById('cat-card-taxi').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); goToTaxiBooking(); });
-document.getElementById('cat-card-bus').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); openBusList(); });
-document.getElementById('cat-card-orders').addEventListener('click', () => openOrdersScreen());
+document.getElementById('cat-card-taxi').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); goToTaxiBooking(); offerWebNotificationOnce(); });
+document.getElementById('cat-card-bus').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); openBusList(); offerWebNotificationOnce(); });
+document.getElementById('cat-card-orders').addEventListener('click', () => { openOrdersScreen(); offerWebNotificationOnce(); });
 document.getElementById('cat-loc-card').addEventListener('click', () => openBrowseLocationPicker());
 
 // ---------- TAXI (Uber-style ride booking) ----------
@@ -6430,7 +6443,9 @@ function updateHomeTrackBtn() {
 homeTrackBtn.addEventListener('click', () => openTrackOrder(state.lastOrder, 'home'));
 
 function updateLocSuggestBanners() {
-  const show = !state.customerPos;
+  // Only after detection has actually failed — not during the few seconds the
+  // GPS is still finding the position (location is ON in that case).
+  const show = !state.customerPos && !!state.locationDetectFailed;
   ['home-loc-suggest', 'cat-loc-suggest'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = show ? 'flex' : 'none';
@@ -6592,8 +6607,8 @@ async function maybePromptNotificationPermission() {
     if (Notification.permission === 'granted') { registerWebPush(false); return; }
     if (Notification.permission === 'denied') return;
     const okWeb = await showConfirmModal(
-      '🔔 Track your order',
-      'Turn on notifications to get live updates on your order — accepted, prepared, out for delivery.',
+      '🔔 Stay updated with NESH',
+      'Turn on notifications to get live order updates, new shops and offers, and important announcements.',
       'Enable',
       'Not now'
     );
@@ -8871,20 +8886,10 @@ browseLocConfirmBtn.addEventListener('click', () => {
   closeBrowseLocationPicker();
   updateHomeLocationLabel();
   renderRestaurantList();
-  const locAction = pendingLocationRequiredAction;
-  pendingLocationRequiredAction = null;
-  // Offer notifications right after the location is set (once only — if the
-  // person taps "Not now" we don't nag again here; the bell button and the
-  // after-order prompt are still there). Then continue the pending action.
-  let askNow = false;
-  // Web only — the native app's notification flow is left exactly as it was.
-  try { askNow = !hasNativePush() && !localStorage.getItem('nesh_notif_asked_at_location'); } catch (e) {}
-  const continueAfter = () => { if (locAction) locAction(); };
-  if (askNow) {
-    try { localStorage.setItem('nesh_notif_asked_at_location', '1'); } catch (e) {}
-    Promise.resolve(maybePromptNotificationPermission()).catch(() => {}).then(continueAfter);
-  } else {
-    continueAfter();
+  if (pendingLocationRequiredAction) {
+    const action = pendingLocationRequiredAction;
+    pendingLocationRequiredAction = null;
+    action();
   }
 });
 
@@ -9817,6 +9822,7 @@ document.getElementById('cat-support-call-btn').addEventListener('click', closeC
 function autoDetectLocation() {
   if (!navigator.geolocation) {
     state.locationDetectFailed = true;
+    try { updateLocSuggestBanners(); } catch (e) {}
     return;
   }
   // getCurrentPosition silently fails on any page that isn't served over
@@ -9827,21 +9833,35 @@ function autoDetectLocation() {
   const isSecure = window.isSecureContext || location.protocol === 'https:' || location.hostname === 'localhost';
   if (!isSecure) {
     state.locationDetectFailed = true;
+    try { updateLocSuggestBanners(); } catch (e) {}
     return;
   }
   navigator.geolocation.getCurrentPosition(
     pos => { onLocationGranted(pos); },
     (err) => {
-      // Permission denied / timeout / position unavailable — keep whatever
-      // location was saved from last time (if any); otherwise the label
-      // is updated (via updateHomeLocationLabel) to point the customer at
-      // the manual picker instead of just sitting there unexplained.
-      if (!state.customerPos) {
-        state.locationDetectFailed = true;
-        updateHomeLocationLabel();
+      // Permission denied / still no position — keep whatever location was
+      // saved from last time (if any); otherwise point the customer at the
+      // manual picker. Then ask them to turn location on.
+      const failNow = (e) => {
+        if (!state.customerPos) {
+          state.locationDetectFailed = true;
+          updateHomeLocationLabel();
+        }
+        showLocationOffPopup(e && e.code);
+      };
+      // Timeout / position-unavailable usually just means the GPS is slow
+      // (location IS on). Retry once with a quicker, less strict request
+      // before telling the customer location is off. Denied (code 1) is
+      // reported straight away.
+      if (err && err.code !== 1) {
+        navigator.geolocation.getCurrentPosition(
+          pos2 => { onLocationGranted(pos2); },
+          failNow,
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 120000 }
+        );
+        return;
       }
-      // Location is off / permission denied — ask the customer to turn it on.
-      showLocationOffPopup(err && err.code);
+      failNow(err);
     },
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
   );
@@ -9982,7 +10002,7 @@ function detectLocationOnOpen() {
   const isNative = !!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation);
   if (!isNative && navigator.permissions && navigator.permissions.query) {
     navigator.permissions.query({ name: 'geolocation' }).then(st => {
-      if (st.state === 'denied') { state.locationDetectFailed = true; showLocationOffPopup(1); }
+      if (st.state === 'denied') { state.locationDetectFailed = true; try { updateLocSuggestBanners(); } catch (e) {} showLocationOffPopup(1); }
       else autoDetectLocation();
     }).catch(() => autoDetectLocation());
     return;
