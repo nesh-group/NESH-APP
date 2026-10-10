@@ -41,6 +41,66 @@
     padding-bottom:96px;
   }
 
+
+  /* ---------- top actions / orders / tracking / account ---------- */
+  #shop-view{ position:relative; }
+  .top-actions{
+    position:absolute; top:calc(12px + env(safe-area-inset-top)); left:12px; right:12px;
+    display:flex; justify-content:space-between; align-items:center; z-index:5;
+  }
+  .top-btn{
+    border:none; background:rgba(255,255,255,.96); color:var(--ink); font-weight:700; font-size:13px;
+    font-family:'Inter',sans-serif; padding:9px 14px; border-radius:999px; cursor:pointer;
+    box-shadow:0 2px 10px rgba(43,36,16,.22); display:flex; align-items:center; gap:6px;
+  }
+  .top-btn-round{ width:38px; height:38px; padding:0; justify-content:center; font-size:17px; }
+  .tall-sheet{ max-height:88vh; overflow-y:auto; }
+  .order-row{
+    border:1px solid var(--field-border); border-radius:14px; padding:12px 14px; margin-bottom:10px;
+    background:#fff; cursor:pointer; box-shadow:var(--card-shadow);
+  }
+  .order-row-top{ display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .order-num{ font-weight:700; font-size:14px; margin:0; }
+  .order-meta{ color:var(--muted-2); font-size:12px; margin:4px 0 0; line-height:1.4; }
+  .order-total{ font-weight:700; font-size:13.5px; color:var(--chili); margin:6px 0 0; }
+  .chip{
+    display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700;
+    background:var(--field-bg); color:var(--muted-2); border:1px solid var(--field-border); white-space:nowrap;
+  }
+  .chip.live{ background:rgba(27,166,114,.1); color:var(--leaf-dark); border-color:rgba(27,166,114,.3); }
+  .chip.done{ background:rgba(27,166,114,.1); color:var(--leaf-dark); border-color:rgba(27,166,114,.3); }
+  .chip.bad{ background:rgba(201,59,59,.08); color:#C93B3B; border-color:rgba(201,59,59,.25); }
+  .orders-label{ font-size:12px; font-weight:700; color:var(--muted-2); margin:14px 0 8px; text-transform:uppercase; letter-spacing:.04em; }
+  .orders-empty{ text-align:center; color:var(--muted-2); font-size:14px; padding:22px 8px; line-height:1.5; }
+  .track-status{ font-family:'Fraunces',serif; font-size:21px; font-weight:700; margin:6px 0 2px; }
+  .track-eta{ color:var(--muted-2); font-size:13px; margin:0 0 16px; line-height:1.4; }
+  .track-reason{ background:rgba(201,59,59,.08); color:#C93B3B; border-radius:10px; padding:10px 12px; font-size:13px; margin:0 0 14px; display:none; }
+  .tl-step{ display:flex; gap:12px; }
+  .tl-dotcol{ display:flex; flex-direction:column; align-items:center; }
+  .tl-dot{
+    width:20px; height:20px; border-radius:50%; border:2px solid var(--field-border); background:#fff;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .tl-line{ width:2px; flex:1; min-height:22px; background:var(--field-border); }
+  .tl-step.done .tl-dot, .tl-step.current .tl-dot{ background:var(--leaf); border-color:var(--leaf); }
+  .tl-step.done .tl-line{ background:var(--leaf); }
+  .tl-step.current .tl-dot{ box-shadow:0 0 0 4px rgba(27,166,114,.2); }
+  .tl-label{ font-size:14px; margin:0 0 18px; color:var(--muted-2); }
+  .tl-step.done .tl-label, .tl-step.current .tl-label{ color:var(--ink); font-weight:600; }
+  .track-items{ border-top:1px solid var(--field-border); margin-top:6px; padding-top:12px; font-size:13px; color:var(--muted-2); line-height:1.6; }
+  .track-live-dot{ display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--leaf); margin-right:6px; animation:pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.3; } }
+  .danger-btn{
+    width:100%; padding:13px; border-radius:12px; border:1.5px solid #C93B3B; background:#fff; color:#C93B3B;
+    font-weight:700; font-size:14px; font-family:'Inter',sans-serif; cursor:pointer; margin-top:10px;
+  }
+  .plain-btn{
+    width:100%; padding:13px; border-radius:12px; border:1.5px solid var(--field-border); background:var(--field-bg); color:var(--ink);
+    font-weight:700; font-size:14px; font-family:'Inter',sans-serif; cursor:pointer; margin-top:10px;
+  }
+  .acct-name{ font-family:'Fraunces',serif; font-size:22px; font-weight:700; margin:0; }
+  .acct-num{ color:var(--muted-2); font-size:14px; margin:4px 0 14px; }
+
   /* ---------- loading / error states ---------- */
   .state-screen{
     min-height:100vh; display:flex; flex-direction:column; align-items:center;
@@ -266,6 +326,10 @@
   </div>
 
   <div id="shop-view" style="display:none;">
+    <div class="top-actions">
+      <button type="button" class="top-btn" id="btn-your-orders">📦 Your Orders</button>
+      <button type="button" class="top-btn top-btn-round" id="btn-account" aria-label="Account">👤</button>
+    </div>
     <div id="shop-banner" class="shop-banner"></div>
     <div class="shop-header">
       <p id="shop-name" class="shop-name"></p>
@@ -406,10 +470,58 @@
     <p class="sheet-title">Order placed!</p>
     <p class="sheet-sub" id="success-sub">The shop has been notified.</p>
     <p class="success-order-num" id="success-order-num"></p>
-    <button class="sheet-btn" id="success-close">Done</button>
+    <button class="sheet-btn" id="success-track" style="display:none; margin-bottom:6px;">Track order</button>
+    <button class="sheet-link" id="success-close">Done</button>
   </div>
 </div>
 
+<!-- ---------- YOUR ORDERS ---------- -->
+<div class="overlay" id="orders-overlay">
+  <div class="sheet tall-sheet">
+    <p class="sheet-title">Your Orders</p>
+    <p class="sheet-sub" id="orders-sub">Orders you placed with this shop — tap one to track it live.</p>
+    <div id="orders-list"></div>
+    <a class="sheet-link" style="display:block;" href="https://nesh-group.github.io/NESH-APP/">See all your NESH orders in the app</a>
+    <button class="sheet-link" id="orders-close">Close</button>
+  </div>
+</div>
+
+<!-- ---------- LIVE ORDER TRACKING ---------- -->
+<div class="overlay" id="track-overlay">
+  <div class="sheet tall-sheet">
+    <p class="sheet-title" id="track-num"></p>
+    <p class="order-meta" id="track-shop"></p>
+    <p class="track-status" id="track-status"></p>
+    <p class="track-eta" id="track-eta"></p>
+    <p class="track-reason" id="track-reason"></p>
+    <div id="track-timeline"></div>
+    <div class="track-items" id="track-items"></div>
+    <button type="button" class="danger-btn" id="track-cancel" style="display:none;">Cancel order</button>
+    <button class="sheet-link" id="track-close">Close</button>
+  </div>
+</div>
+
+<!-- ---------- ACCOUNT ---------- -->
+<div class="overlay" id="account-overlay">
+  <div class="sheet tall-sheet">
+    <div id="account-body"></div>
+    <button class="sheet-link" id="account-close">Close</button>
+  </div>
+</div>
+
+<!-- Notification permission sheet (same wording as the NESH customer site) -->
+<div class="overlay" id="notif-overlay">
+  <div class="sheet" style="text-align:center;">
+    <p class="sheet-title">🔔 Stay updated with NESH</p>
+    <p class="sheet-sub">Turn on notifications to get live order updates, new shops and offers, and important announcements.</p>
+    <p class="sheet-sub" id="notif-msg" style="color:#B3261E; display:none;"></p>
+    <button class="sheet-btn" id="notif-enable">Enable</button>
+    <button class="sheet-link" id="notif-later">Not now</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
 <script>
   // ---------- Config ----------
   const FIREBASE_DB = "https://texi-and-food-default-rtdb.firebaseio.com";
@@ -570,7 +682,7 @@
   const welcomeAddressRow = document.getElementById("welcome-address-row");
   const welcomeAddressEl = document.getElementById("welcome-address");
   const welcomeContinueBtn = document.getElementById("welcome-continue");
-  welcomeContinueBtn.addEventListener("click", () => welcomeOverlay.classList.remove("show"));
+  welcomeContinueBtn.addEventListener("click", () => { welcomeOverlay.classList.remove("show"); offerNotifications(false); });
 
   function formatTime12(hhmm) {
     if (!hhmm) return "";
@@ -683,8 +795,9 @@
       if (record && record.name) {
         currentUser = { name: record.name, number };
         saveUserSession(currentUser);
+        savePushTokenForUser();
         closeLogin();
-        openLocationSheet();
+        afterLogin();
       } else {
         pendingRegNumber = number;
         registerNumberDisplay.textContent = "+91 " + number;
@@ -720,8 +833,9 @@
       });
       currentUser = newUser;
       saveUserSession(currentUser);
+      savePushTokenForUser();
       registerOverlay.classList.remove("show");
-      openLocationSheet();
+      afterLogin();
     } catch (e) {
       registerErrorEl.style.display = "block";
     } finally {
@@ -731,6 +845,7 @@
 
   successCloseBtn.addEventListener("click", () => {
     successOverlay.classList.remove("show");
+    offerNotifications(true);
   });
 
   function openLocationSheet() {
@@ -900,6 +1015,7 @@
   reviewContinueBtn.addEventListener("click", () => {
     closeReviewSheet();
     if (!currentUser) {
+      loginForOrder = true;
       openLogin();
       return;
     }
@@ -940,11 +1056,15 @@
     };
 
     try {
-      await fetch(`${FIREBASE_DB}/restaurants/${encodeURIComponent(shopId)}/orders.json`, {
+      const postRes = await fetch(`${FIREBASE_DB}/restaurants/${encodeURIComponent(shopId)}/orders.json`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(orderPayload),
       });
+      // Firebase answers a POST with { name: <new order key> } — needed for live tracking.
+      let newKey = null;
+      try { const pj = await postRes.json(); newKey = pj && pj.name; } catch (e) {}
+      lastPlacedOrder = newKey ? Object.assign({ key: newKey }, orderPayload) : null;
       for (const id of Object.keys(cart)) delete cart[id];
       renderMenu();
       renderCartBar();
@@ -952,6 +1072,7 @@
         ? `Thanks ${currentUser.name.split(" ")[0]}, complete the GPay payment if you haven't — the shop will confirm once it's received.`
         : `Thanks ${currentUser.name.split(" ")[0]}, the shop has been notified.`;
       successOrderNum.textContent = orderNumber;
+      successTrackBtn.style.display = lastPlacedOrder ? "block" : "none";
       successOverlay.classList.add("show");
     } catch (e) {
       alert("Couldn't place the order. Please check your connection and try again.");
@@ -1000,6 +1121,389 @@
     renderCartBar();
     showWelcomeCard();
   }
+
+  // ---------- Your Orders · live tracking · account ----------
+  let loginForOrder = true;        // true: login came from "Place order"; false: from Account / Your Orders
+  let postLoginAction = null;
+  let lastPlacedOrder = null;
+  const successTrackBtn = document.getElementById("success-track");
+
+  function afterLogin() {
+    if (loginForOrder) { openLocationSheet(); return; }
+    const act = postLoginAction; postLoginAction = null;
+    if (act) act(); else openAccountSheet();
+  }
+  function startAccountLogin(then) {
+    loginForOrder = false;
+    postLoginAction = then || null;
+    openLogin();
+  }
+
+  const qoEsc = (v) => String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  function normalizeStatus(raw) {
+    const st = String(raw || "pending").toLowerCase().trim();
+    if (["awaiting_payment", "payment_pending", "awaiting-payment"].includes(st)) return "awaiting_payment";
+    if (["pending", "placed", "received", "new"].includes(st)) return "pending";
+    if (["preparing", "accepted", "confirmed", "cooking", "in_progress", "ready"].includes(st)) return "preparing";
+    if (["out_for_delivery", "out-for-delivery", "picked_up", "picked-up", "dispatched", "on_the_way", "on-the-way"].includes(st)) return "out_for_delivery";
+    if (["delivered", "completed", "done"].includes(st)) return "delivered";
+    if (["cancelled", "canceled", "rejected"].includes(st)) return "cancelled";
+    return "pending";
+  }
+  function getOrderSteps() {
+    const bt = shopData && shopData.businessType;
+    const isFood = bt !== "groceries" && bt !== "online_shop";
+    return [
+      { key: "awaiting_payment", label: "Waiting for payment confirmation" },
+      { key: "pending", label: "Order received" },
+      { key: "preparing", label: isFood ? "Preparing your food" : "Preparing your order" },
+      { key: "out_for_delivery", label: "Out for delivery" },
+      { key: "delivered", label: "Delivered" },
+    ];
+  }
+  const STATUS_CHIP = {
+    awaiting_payment: ["Awaiting payment", "live"], pending: ["Order received", "live"],
+    preparing: ["Preparing", "live"], out_for_delivery: ["Out for delivery", "live"],
+    delivered: ["Delivered", "done"], cancelled: ["Cancelled", "bad"],
+  };
+  function itemsSummary(o) {
+    return (o.items || []).map((it) => `${it.qty}× ${qoEsc(it.name)}`).join(", ");
+  }
+  function orderTimeText(o) {
+    try { return o.createdAt ? new Date(o.createdAt).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : ""; } catch (e) { return ""; }
+  }
+  const ordersBase = () => `${FIREBASE_DB}/restaurants/${encodeURIComponent(shopId)}/orders`;
+
+  async function fetchMyOrders() {
+    if (!currentUser) return [];
+    let data = null;
+    try {
+      const q = `${ordersBase()}.json?orderBy=%22customerPhone%22&equalTo=%22${currentUser.number}%22`;
+      const r = await fetch(q);
+      const j = await r.json();
+      if (r.ok && (!j || !j.error)) data = j || {};
+      else throw new Error("indexed query not available");
+    } catch (e) {
+      // No index on customerPhone — fall back to reading this shop's orders and filtering here.
+      const r2 = await fetch(`${ordersBase()}.json`);
+      const all = (await r2.json()) || {};
+      data = {};
+      Object.keys(all).forEach((k) => { if (all[k] && all[k].customerPhone === currentUser.number) data[k] = all[k]; });
+    }
+    return Object.keys(data).map((k) => Object.assign({ key: k }, data[k]))
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  }
+
+  // ----- Your Orders sheet -----
+  const ordersOverlay = document.getElementById("orders-overlay");
+  const ordersListEl = document.getElementById("orders-list");
+  let ordersTimer = null;
+
+  function renderOrderRow(o) {
+    const st = normalizeStatus(o.status);
+    const chip = STATUS_CHIP[st];
+    const row = document.createElement("div");
+    row.className = "order-row";
+    row.innerHTML = `
+      <div class="order-row-top">
+        <p class="order-num">${qoEsc(o.orderNumber || "Order")}</p>
+        <span class="chip ${chip[1]}">${chip[0]}</span>
+      </div>
+      <p class="order-meta">${qoEsc(orderTimeText(o))}</p>
+      <p class="order-meta">${itemsSummary(o)}</p>
+      <p class="order-total">₹${Number(o.total) || 0}</p>`;
+    row.addEventListener("click", () => openTrackSheet(o));
+    return row;
+  }
+  async function refreshOrdersList(showLoading) {
+    if (!ordersOverlay.classList.contains("show")) return;
+    if (!currentUser) {
+      ordersListEl.innerHTML = `<div class="orders-empty">Log in with your mobile number to see and track your orders.</div>
+        <button type="button" class="sheet-btn" id="orders-login-btn">Log in</button>`;
+      document.getElementById("orders-login-btn").addEventListener("click", () => {
+        closeOrdersSheet();
+        startAccountLogin(() => openOrdersSheet());
+      });
+      return;
+    }
+    if (showLoading) ordersListEl.innerHTML = `<div class="orders-empty">Loading your orders…</div>`;
+    try {
+      const orders = await fetchMyOrders();
+      if (!ordersOverlay.classList.contains("show")) return;
+      ordersListEl.innerHTML = "";
+      if (!orders.length) {
+        ordersListEl.innerHTML = `<div class="orders-empty">You haven't ordered from this shop yet.</div>`;
+        return;
+      }
+      const live = orders.filter((o) => !["delivered", "cancelled"].includes(normalizeStatus(o.status)));
+      const past = orders.filter((o) => ["delivered", "cancelled"].includes(normalizeStatus(o.status)));
+      if (live.length) {
+        ordersListEl.insertAdjacentHTML("beforeend", `<p class="orders-label"><span class="track-live-dot"></span>In progress</p>`);
+        live.forEach((o) => ordersListEl.appendChild(renderOrderRow(o)));
+      }
+      if (past.length) {
+        ordersListEl.insertAdjacentHTML("beforeend", `<p class="orders-label">Past orders</p>`);
+        past.forEach((o) => ordersListEl.appendChild(renderOrderRow(o)));
+      }
+    } catch (e) {
+      if (showLoading) ordersListEl.innerHTML = `<div class="orders-empty">Couldn't load your orders. Check your connection and try again.</div>`;
+    }
+  }
+  function openOrdersSheet() {
+    ordersOverlay.classList.add("show");
+    refreshOrdersList(true);
+    clearInterval(ordersTimer);
+    ordersTimer = setInterval(() => { if (!document.hidden) refreshOrdersList(false); }, 8000);
+  }
+  function closeOrdersSheet() {
+    ordersOverlay.classList.remove("show");
+    clearInterval(ordersTimer); ordersTimer = null;
+  }
+  document.getElementById("orders-close").addEventListener("click", closeOrdersSheet);
+  document.getElementById("btn-your-orders").addEventListener("click", openOrdersSheet);
+
+  // ----- Live tracking sheet (polls this one order every few seconds) -----
+  const trackOverlay = document.getElementById("track-overlay");
+  const trackCancelBtn = document.getElementById("track-cancel");
+  let trackKey = null, trackTimer = null;
+
+  function renderTrack(o) {
+    const st = normalizeStatus(o.status);
+    const steps = getOrderSteps();
+    const isFood = !(shopData && (shopData.businessType === "groceries" || shopData.businessType === "online_shop"));
+    document.getElementById("track-num").textContent = o.orderNumber || "Your order";
+    document.getElementById("track-shop").textContent = (shopData && (shopData.restaurantName || shopData.name)) || "";
+    const statusEl = document.getElementById("track-status");
+    const etaEl = document.getElementById("track-eta");
+    const reasonEl = document.getElementById("track-reason");
+    const tlEl = document.getElementById("track-timeline");
+    reasonEl.style.display = "none";
+    if (st === "cancelled") {
+      statusEl.textContent = "Order cancelled";
+      etaEl.textContent = "This order was cancelled.";
+      if (o.statusReason) { reasonEl.textContent = o.statusReason; reasonEl.style.display = "block"; }
+      tlEl.innerHTML = "";
+    } else {
+      const idx = Math.max(0, steps.findIndex((x) => x.key === st));
+      statusEl.innerHTML = (st !== "delivered" ? '<span class="track-live-dot"></span>' : "") + qoEsc(steps[idx].label);
+      etaEl.textContent = st === "delivered" ? (isFood ? "Enjoy your meal!" : "Your order has been delivered!") : "Estimated arrival: 30–35 min";
+      const check = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
+      tlEl.innerHTML = steps
+        .filter((x) => x.key !== "awaiting_payment" || st === "awaiting_payment" || o.paymentMethod === "GPay")
+        .map((step, i, arr) => {
+          const si = steps.findIndex((x) => x.key === step.key);
+          const cls = si < idx ? "done" : si === idx ? "current" : "pending";
+          return `<div class="tl-step ${cls}"><div class="tl-dotcol"><div class="tl-dot">${si <= idx ? check : ""}</div>${i < arr.length - 1 ? '<div class="tl-line"></div>' : ""}</div><p class="tl-label">${qoEsc(step.label)}</p></div>`;
+        }).join("");
+    }
+    document.getElementById("track-items").innerHTML =
+      `${itemsSummary(o)}<br><b style="color:var(--ink);">Total ₹${Number(o.total) || 0}</b> · ${qoEsc(o.paymentMethod || "")}`;
+    trackCancelBtn.style.display = (st === "pending" || st === "awaiting_payment") ? "block" : "none";
+    if (st === "delivered" || st === "cancelled") { clearInterval(trackTimer); trackTimer = null; }
+  }
+  async function pollTrack() {
+    if (!trackKey || document.hidden) return;
+    try {
+      const r = await fetch(`${ordersBase()}/${encodeURIComponent(trackKey)}.json`);
+      const o = await r.json();
+      if (o && trackOverlay.classList.contains("show")) renderTrack(o);
+    } catch (e) {}
+  }
+  function openTrackSheet(order) {
+    if (!order || !order.key) return;
+    trackKey = order.key;
+    renderTrack(order);
+    trackOverlay.classList.add("show");
+    clearInterval(trackTimer);
+    trackTimer = setInterval(pollTrack, 4000);
+    pollTrack();
+  }
+  function closeTrackSheet() {
+    trackOverlay.classList.remove("show");
+    clearInterval(trackTimer); trackTimer = null; trackKey = null;
+  }
+  document.getElementById("track-close").addEventListener("click", closeTrackSheet);
+  trackCancelBtn.addEventListener("click", async () => {
+    if (!trackKey || !confirm("Are you sure you want to cancel this order?")) return;
+    trackCancelBtn.disabled = true;
+    try {
+      await fetch(`${ordersBase()}/${encodeURIComponent(trackKey)}.json`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "cancelled", statusReason: "Cancelled by customer" }),
+      });
+      pollTrack();
+    } catch (e) { alert("Couldn't cancel the order. Please try again."); }
+    trackCancelBtn.disabled = false;
+  });
+  successTrackBtn.addEventListener("click", () => {
+    successOverlay.classList.remove("show");
+    if (lastPlacedOrder) openTrackSheet(lastPlacedOrder);
+  });
+
+  // ----- Account sheet -----
+  const accountOverlay = document.getElementById("account-overlay");
+  const accountBody = document.getElementById("account-body");
+  function openAccountSheet() {
+    if (currentUser) {
+      const canAsk = webPushSupported() && Notification.permission === "default";
+      const blocked = webPushSupported() && Notification.permission === "denied";
+      accountBody.innerHTML = `
+        <p class="acct-name">${qoEsc(currentUser.name)}</p>
+        <p class="acct-num">+91 ${qoEsc(currentUser.number)}</p>
+        <button type="button" class="plain-btn" id="acct-orders">📦 Your Orders</button>
+        ${canAsk ? '<button type="button" class="plain-btn" id="acct-notif">🔔 Turn on notifications</button>' : ""}
+        ${blocked ? '<p class="order-meta" style="margin-top:10px;">Notifications are blocked. Tap the lock icon next to the address bar → Notifications → Allow.</p>' : ""}
+        <a class="plain-btn" style="display:block; text-align:center; text-decoration:none;" href="https://nesh-group.github.io/NESH-APP/">Open the NESH app</a>
+        <button type="button" class="danger-btn" id="acct-logout">Log out</button>`;
+      document.getElementById("acct-orders").addEventListener("click", () => { closeAccountSheet(); openOrdersSheet(); });
+      const nb = document.getElementById("acct-notif");
+      if (nb) nb.addEventListener("click", () => { closeAccountSheet(); notifMsgEl.style.display = "none"; notifAskedThisPage = true; notifOverlay.classList.add("show"); });
+      document.getElementById("acct-logout").addEventListener("click", () => {
+        if (!confirm("Log out of your account?")) return;
+        currentUser = null;
+        try { localStorage.removeItem(USER_SESSION_KEY); } catch (e) {}
+        closeAccountSheet();
+      });
+    } else {
+      accountBody.innerHTML = `
+        <p class="sheet-title">Your account</p>
+        <p class="sheet-sub">Log in with your mobile number — it's the same account as the NESH app, so your orders show up in both.</p>
+        <button type="button" class="sheet-btn" id="acct-login">Log in</button>`;
+      document.getElementById("acct-login").addEventListener("click", () => { closeAccountSheet(); startAccountLogin(); });
+    }
+    accountOverlay.classList.add("show");
+  }
+  function closeAccountSheet() { accountOverlay.classList.remove("show"); }
+  document.getElementById("account-close").addEventListener("click", closeAccountSheet);
+  document.getElementById("btn-account").addEventListener("click", openAccountSheet);
+
+  // ---------- Push notifications ----------
+  // Same Firebase project, sw.js and VAPID key as the NESH customer site
+  // (index.html). Notification permission belongs to the domain, so a
+  // customer who allowed it on either page is already allowed on both.
+  const WEB_PUSH_VAPID_KEY = "BJy2vLBreoMThId_Nm1pQlJWpAlcYdG4U2XW0eEW8_98xoA8ajBjwPGVlKNZSAgj9QBubFO3D5BkkqVYJvDHL3Q";
+  const PUSH_WORKER_URL = "https://broad-paper-6445.raise3715.workers.dev";
+  const FIREBASE_WEB_CONFIG = {
+    apiKey: "AIzaSyCrM5wKwsnGtIc7HSTk_5R1d3dXEcYyd7o",
+    authDomain: "texi-and-food.firebaseapp.com",
+    databaseURL: "https://texi-and-food-default-rtdb.firebaseio.com",
+    projectId: "texi-and-food",
+    storageBucket: "texi-and-food.firebasestorage.app",
+    messagingSenderId: "98800730432",
+    appId: "1:98800730432:web:9d7651e792c60baafabaa5"
+  };
+  const notifOverlay = document.getElementById("notif-overlay");
+  const notifEnableBtn = document.getElementById("notif-enable");
+  const notifLaterBtn = document.getElementById("notif-later");
+  const notifMsgEl = document.getElementById("notif-msg");
+  let pushToken = null;
+  let notifAskedThisPage = false;
+  let foregroundHandlerSet = false;
+
+  function webPushSupported() {
+    try {
+      return "Notification" in window && "serviceWorker" in navigator && "PushManager" in window &&
+        typeof firebase !== "undefined" && !!firebase.messaging && firebase.messaging.isSupported();
+    } catch (e) { return false; }
+  }
+  async function getPushToken() {
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_WEB_CONFIG);
+    const reg = await navigator.serviceWorker.register("sw.js");
+    await navigator.serviceWorker.ready;
+    return firebase.messaging().getToken({ vapidKey: WEB_PUSH_VAPID_KEY, serviceWorkerRegistration: reg });
+  }
+  async function savePushToken(token) {
+    // Broadcast topic (works for guests too)
+    fetch(PUSH_WORKER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "subscribe_topic", token }),
+    }).catch(() => {});
+    // Order-status pushes find the customer by phone number
+    if (currentUser && currentUser.number) {
+      try {
+        await fetch(`${FIREBASE_DB}/customers/${currentUser.number}.json`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fcmToken: token }),
+        });
+      } catch (e) {}
+    }
+  }
+  function setupForegroundPush() {
+    if (foregroundHandlerSet) return;
+    foregroundHandlerSet = true;
+    try {
+      firebase.messaging().onMessage((payload) => {
+        const n = (payload && payload.notification) || {};
+        const title = n.title || "NESH";
+        const opts = { body: n.body || "", icon: "./icon-192.png", badge: "./icon-192.png" };
+        navigator.serviceWorker.getRegistration("sw.js")
+          .then((reg) => { if (reg) reg.showNotification(title, opts); else new Notification(title, opts); })
+          .catch(() => {});
+      });
+    } catch (e) {}
+  }
+  // ask=true may show the browser permission popup (call it from a tap only).
+  async function registerWebPush(ask) {
+    if (!webPushSupported()) return false;
+    try {
+      if (Notification.permission === "default" && ask) await Notification.requestPermission();
+      if (Notification.permission !== "granted") return false;
+      pushToken = await getPushToken();
+      if (!pushToken) return false;
+      await savePushToken(pushToken);
+      setupForegroundPush();
+      return true;
+    } catch (e) {
+      console.error("Web push registration failed:", e);
+      if (ask) {
+        notifMsgEl.textContent = "Couldn't turn on notifications: " + String((e && (e.code || e.message)) || e).slice(0, 120);
+        notifMsgEl.style.display = "block";
+      }
+      return false;
+    }
+  }
+  // After login / registration the customer's number is known — (re)save the token.
+  function savePushTokenForUser() {
+    if (pushToken) savePushToken(pushToken);
+    else if (webPushSupported() && Notification.permission === "granted") registerWebPush(false);
+  }
+  // Shows the sheet once. afterOrder=true also asks again (like the NESH site does
+  // after an order) if the customer is still undecided.
+  function offerNotifications(afterOrder) {
+    if (!webPushSupported()) return;
+    if (Notification.permission === "granted") { registerWebPush(false); return; }
+    if (Notification.permission !== "default") return; // blocked: only browser settings can undo it
+    if (notifAskedThisPage) return;
+    if (!afterOrder) {
+      let asked = false;
+      try { asked = !!localStorage.getItem("nesh_notif_asked_at_cards"); } catch (e) {}
+      if (asked) return;
+      try { localStorage.setItem("nesh_notif_asked_at_cards", "1"); } catch (e) {}
+    }
+    notifAskedThisPage = true;
+    notifMsgEl.style.display = "none";
+    setTimeout(() => notifOverlay.classList.add("show"), 400);
+  }
+  notifEnableBtn.addEventListener("click", async () => {
+    notifEnableBtn.disabled = true;
+    const ok = await registerWebPush(true);
+    notifEnableBtn.disabled = false;
+    if (ok || Notification.permission !== "default") {
+      if (!ok && Notification.permission === "denied") {
+        notifMsgEl.textContent = "Notifications are blocked. Tap the lock icon next to the address bar → Notifications → Allow.";
+        notifMsgEl.style.display = "block";
+        return;
+      }
+      notifOverlay.classList.remove("show");
+    }
+  });
+  notifLaterBtn.addEventListener("click", () => notifOverlay.classList.remove("show"));
+  // Already allowed earlier? Quietly refresh the token.
+  if (webPushSupported() && Notification.permission === "granted") registerWebPush(false);
 
   init();
 </script>
