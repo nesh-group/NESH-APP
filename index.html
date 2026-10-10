@@ -5865,7 +5865,7 @@ async function handlePushToken(token) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type: 'subscribe_topic', token }),
-  }).catch(() => {});
+  }).then(r => { if (!r.ok) console.warn('subscribe_topic failed, HTTP', r.status); }).catch(() => {});
   const phone = state.user && state.user.number;
   if (phone) {
     try {
@@ -5891,11 +5891,16 @@ async function registerWebPush(ask) {
       vapidKey: WEB_PUSH_VAPID_KEY,
       serviceWorkerRegistration: reg
     });
-    if (!token) return false;
+    if (!token) {
+      if (ask) showInfoModal('Notifications', 'Could not get a notification token. Please try again.');
+      return false;
+    }
     await handlePushToken(token);
     return true;
   } catch (e) {
     console.error('Web push registration failed:', e);
+    // Only when the person tapped Enable: show the real reason so it can be fixed.
+    if (ask) showInfoModal('Could not turn on notifications', String((e && (e.code || e.message)) || e).slice(0, 220));
     return false;
   }
 }
