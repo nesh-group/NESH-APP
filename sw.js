@@ -31,6 +31,9 @@ messaging.onBackgroundMessage((payload) => {
     requireInteraction: true,
     data: { url: './' }
   };
+  // Big picture (operator-panel broadcast with an image URL).
+  const img = payload.notification && payload.notification.image;
+  if (img) options.image = img;
   // When the push carries a `notification` payload, the Firebase SDK already
   // shows its own copy on the web before this handler runs — so without this
   // cleanup the person would see TWO notifications. We show ours (tag
