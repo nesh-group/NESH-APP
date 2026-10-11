@@ -60,7 +60,16 @@ jobs:
           {
             "appId": "com.neshgroup.nesh",
             "appName": "NESH",
-            "webDir": "www"
+            "webDir": "www",
+            "backgroundColor": "#F2B705",
+            "plugins": {
+              "SplashScreen": {
+                "launchShowDuration": 0,
+                "launchAutoHide": true,
+                "backgroundColor": "#F2B705",
+                "showSpinner": false
+              }
+            }
           }
           EOF
 
@@ -87,16 +96,60 @@ jobs:
           echo "apply plugin: 'com.google.gms.google-services'" >> android/app/build.gradle
           grep -n "google-services" android/build.gradle android/app/build.gradle
 
-      - name: Generate app icon from icon-512.png
+      # The native splash (shown by Android before the WebView loads) must be
+      # a plain yellow screen - no logo, no dark background - so it blends
+      # straight into the in-app "Locating..." splash in index.html.
+      # splash.png is replaced by a generated solid #F2B705 image.
+      - name: Generate app icon + plain yellow splash
         run: |
           mkdir -p assets
           cp icon-512.png assets/icon.png
-          cp splash.png assets/splash.png
-          npx capacitor-assets generate --android
+          python3 - << 'PYEOF'
+          import zlib, struct
+          W = H = 2732
+          def chunk(t, d):
+              c = struct.pack('>I', len(d)) + t + d
+              return c + struct.pack('>I', zlib.crc32(t + d) & 0xffffffff)
+          raw = (b'\x00' + bytes([0xF2, 0xB7, 0x05]) * W) * H
+          png = (b'\x89PNG\r\n\x1a\n'
+                 + chunk(b'IHDR', struct.pack('>IIBBBBB', W, H, 8, 2, 0, 0, 0))
+                 + chunk(b'IDAT', zlib.compress(raw, 9))
+                 + chunk(b'IEND', b''))
+          open('assets/splash.png', 'wb').write(png)
+          PYEOF
+          npx capacitor-assets generate --android \
+            --splashBackgroundColor '#F2B705' \
+            --splashBackgroundColorDark '#F2B705'
 
-      - name: Add location permissions to AndroidManifest.xml
+      # Android 12+ ignores splash.png and draws its own splash (app icon on
+      # a dark/theme background). Force that one to yellow with no icon too.
+      - name: Make Android 12+ system splash yellow (no icon)
         run: |
-          sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />#' android/app/src/main/AndroidManifest.xml
+          python3 - << 'PYEOF'
+          import re
+          path = "android/app/src/main/res/values/styles.xml"
+          s = open(path).read()
+          m = re.search(r'<style name="AppTheme\.NoActionBarLaunch"[^>]*>.*?</style>', s, re.S)
+          assert m, "NoActionBarLaunch style not found"
+          block = m.group(0)
+          if 'Theme.SplashScreen' in block:
+              extra = (
+                  '\n        <item name="windowSplashScreenBackground">#F2B705</item>'
+                  '\n        <item name="windowSplashScreenAnimatedIcon">@android:color/transparent</item>'
+                  '\n    </style>'
+              )
+              s = s.replace(block, block.replace('</style>', extra))
+              open(path, "w").write(s)
+          print(open(path).read())
+          PYEOF
+          # Dark-mode variant (if the template ships one) must not override it
+          rm -f android/app/src/main/res/values-night/styles.xml || true
+
+      # Location + POST_NOTIFICATIONS (Android 13+ will not even show the
+      # notification permission dialog unless the app declares it).
+      - name: Add location + notification permissions to AndroidManifest.xml
+        run: |
+          sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />#' android/app/src/main/AndroidManifest.xml
 
       # @capacitor/local-notifications auto-merges SCHEDULE_EXACT_ALARM into
       # the manifest via its own library AndroidManifest.xml, even though
@@ -119,13 +172,13 @@ jobs:
       - name: Sync web assets into Android project
         run: npx cap sync android
 
-      # Play Store's current live versionCode is 3 (the previous closed-testing
-      # build already installed on devices). Every new upload must have a
-      # strictly higher versionCode, so this is bumped to 4 here.
+      # Previous upload used versionCode 4 (versionName 1.0.3). Every new
+      # upload must have a strictly higher versionCode, so this is bumped to
+      # 5 here. versionName is only the label users see (1.0.4).
       - name: Set version code and name
         run: |
-          sed -i "s/versionCode 1/versionCode 4/" android/app/build.gradle
-          sed -i 's/versionName "1.0"/versionName "1.0.3"/' android/app/build.gradle
+          sed -i "s/versionCode 1/versionCode 5/" android/app/build.gradle
+          sed -i 's/versionName "1.0"/versionName "1.0.4"/' android/app/build.gradle
           grep -E "versionCode|versionName" android/app/build.gradle
 
       - name: Fix Kotlin stdlib duplicate class conflict
