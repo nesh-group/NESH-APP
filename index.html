@@ -2077,6 +2077,7 @@
         <div class="track-map" id="track-map"></div>
       </div>
       <div class="timeline" id="track-timeline"></div>
+      <div class="track-items" id="track-items" style="display:none; margin-top:16px; padding:14px 16px; border-radius:16px; background:#fff; border:1px solid rgba(43,36,16,.12);"></div>
       <button class="btn-link" id="track-cancel-order-btn" style="margin-top:8px; display:none;">Cancel order</button>
     </div>
   </section>
@@ -2590,7 +2591,13 @@
                 // customer sees — it shows up as the item's price itself,
                 // not as a separate line anywhere in the app. Every other
                 // shop's price is untouched.
-                price: (Number(v.menu[k].price) || 0) + ((v.goSeries || businessType === 'groceries') ? (Number(window.GO_SERIES_ITEM_MARKUP) || 0) : 0),
+                // Operator-set customer price (Operator Panel -> partner -> item
+                // "Customer price"): customers pay this, the shop is paid its own
+                // price (kept as shopRate and stamped on the order as shopPrice).
+                price: (Number(v.menu[k].customerPrice) > 0 && businessType !== 'groceries')
+                  ? Number(v.menu[k].customerPrice)
+                  : (Number(v.menu[k].price) || 0) + ((v.goSeries || businessType === 'groceries') ? (Number(window.GO_SERIES_ITEM_MARKUP) || 0) : 0),
+                shopRate: (Number(v.menu[k].customerPrice) > 0 && businessType !== 'groceries') ? (Number(v.menu[k].price) || 0) : undefined,
                 unit: v.menu[k].unit || 'piece', // 'piece' | 'gram' | 'kg' — set by the shop; for gram/kg, `price` is the rate per gram/kg, not a flat price
                 sizes: Array.isArray(v.menu[k].sizes) ? v.menu[k].sizes.filter(Boolean) : [], // e.g. ['S','M','L','XL','2XL'] — only set on "Sports" shop items
                 image: v.menu[k].photo || itemPhotoSet[di % itemPhotoSet.length],
@@ -6469,7 +6476,7 @@ function attachOrderStatusWatcher(number) {
         const o = ordersVal[orderKey];
         if (!o || o.customerPhone !== number) return;
         const status = normalizeStatus(o.status);
-        if (status === 'preparing' && !seen[orderKey]) {
+        if ((status === 'preparing' || status === 'ready') && !seen[orderKey]) {
           seen[orderKey] = true;
           changed = true;
           showOrderNotifyToast(o.fromNeshStoreQueue ? 'NESH Store' : (restVal.restaurantName || 'Restaurant'), o.orderNumber, {
@@ -8031,23 +8038,24 @@ function updateLocSummary() {
   const deliveryFee = currentDeliveryFee();
   const freeDelivery = isFreeDelivery();
   const wouldBeFee = freeDelivery ? deliveryFeeBeforeFree() : 0;
-  // Platform fee and delivery charge are shown to the customer as two
-  // separate rows — "Platform fee" always shows the operator-set extra
-  // amount on its own, and "Delivery charge" shows only the restaurant's
-  // own delivery fee (not merged together).
+  // The platform fee is shown to the customer INSIDE the delivery charge
+  // (one "Delivery charge" row = delivery fee + platform fee). The two are
+  // still stored separately on the order (deliveryFee / platformFee), so the
+  // driver's earnings (deliveryFee only) and the shop's platform due are
+  // unaffected — the driver never sees the platform fee as earnings.
   if (locSummaryItemsEl) locSummaryItemsEl.textContent = "₹" + itemsTotal;
-  if (locSummaryFeeEl) locSummaryFeeEl.textContent = "₹" + fee;
-  if (locSummaryFeeRowEl) locSummaryFeeRowEl.style.display = (fee > 0) ? "flex" : "none";
+  if (locSummaryFeeRowEl) locSummaryFeeRowEl.style.display = "none";
   // While the real road distance is still loading, show "Calculating…"
   // instead of a number that's about to change — avoids the customer
   // seeing one total on screen and a slightly different one get charged.
   const showLoading = state.roadDistanceLoading && dc;
+  const shownDelivery = deliveryFee + fee;
   if (locSummaryDeliveryEl) {
     if (showLoading) locSummaryDeliveryEl.textContent = "Calculating…";
-    else if (freeDelivery && wouldBeFee > 0) locSummaryDeliveryEl.innerHTML = '<s style="color:var(--muted);">₹' + wouldBeFee + '</s> <b style="color:var(--leaf);">FREE</b>';
-    else locSummaryDeliveryEl.textContent = "₹" + deliveryFee;
+    else if (freeDelivery && wouldBeFee > 0) locSummaryDeliveryEl.innerHTML = '<s style="color:var(--muted);">₹' + (wouldBeFee + fee) + '</s> ' + (fee > 0 ? '<b style="color:var(--leaf);">₹' + fee + '</b>' : '<b style="color:var(--leaf);">FREE</b>');
+    else locSummaryDeliveryEl.textContent = "₹" + shownDelivery;
   }
-  if (locSummaryDeliveryRowEl) locSummaryDeliveryRowEl.style.display = (deliveryFee > 0 || showLoading || (freeDelivery && wouldBeFee > 0)) ? "flex" : "none";
+  if (locSummaryDeliveryRowEl) locSummaryDeliveryRowEl.style.display = (shownDelivery > 0 || showLoading || (freeDelivery && wouldBeFee > 0)) ? "flex" : "none";
   // Nudge: how much more to add to unlock free delivery.
   const freeMin = dc ? (Number(dc.freeAbove) || 0) : 0;
   const freeHintEl = document.getElementById('loc-summary-free-hint');
@@ -9438,8 +9446,13 @@ payConfirmBtn.addEventListener('click', async () => {
       // price comparison at assignment time (see opCandidateShopsForOrder
       // in partner.html). Regular single-shop orders never have this.
       const shopOptions = (r.id === 'NESH_STORE' && it._shopOptions) ? it._shopOptions : undefined;
+      // Shop's own rate for this item when the operator set a separate
+      // customer price — scaled the same way as the customer price so it
+      // also works for gram/kg items. The shop only ever sees this amount.
+      const shopRatio = (it.shopRate != null && it.price > 0) ? it.shopRate / it.price : null;
+      const withShop = (o) => shopRatio == null ? o : { ...o, shopPrice: Math.round(o.price * shopRatio * 100) / 100 };
       if (isWeightUnit(it.unit)) {
-        return { name: `${it.name} (${weightLabel(it)})`, desc: it.desc || '', price: getUnitPrice(it), qty: state.cart[it.id], unit: it.unit, weightGrams: getSelectedGrams(it), ...(shopOptions ? { shopOptions } : {}) };
+        return withShop({ name: `${it.name} (${weightLabel(it)})`, desc: it.desc || '', price: getUnitPrice(it), qty: state.cart[it.id], unit: it.unit, weightGrams: getSelectedGrams(it), ...(shopOptions ? { shopOptions } : {}) });
       }
       if (hasSizes(it)) {
         const size = getSelectedSize(it);
@@ -9447,9 +9460,9 @@ payConfirmBtn.addEventListener('click', async () => {
         // field) so it shows up everywhere an order's items are printed —
         // shop order popup, order detail, delivery route, payment summary —
         // without those screens needing to know about sizes at all.
-        return { name: `${it.name} (Size: ${size})`, desc: it.desc || '', price: it.price, qty: state.cart[it.id], size, ...(shopOptions ? { shopOptions } : {}) };
+        return withShop({ name: `${it.name} (Size: ${size})`, desc: it.desc || '', price: it.price, qty: state.cart[it.id], size, ...(shopOptions ? { shopOptions } : {}) });
       }
-      return { name: it.name, desc: it.desc || '', price: it.price, qty: state.cart[it.id], ...(shopOptions ? { shopOptions } : {}) };
+      return withShop({ name: it.name, desc: it.desc || '', price: it.price, qty: state.cart[it.id], ...(shopOptions ? { shopOptions } : {}) });
     });
   const itemsTotal = orderItems.reduce((sum, it) => sum + it.price * it.qty, 0);
   // Platform fee is a flat amount added once per order/transaction (not per
@@ -9631,6 +9644,7 @@ function getOrderSteps(businessType) {
     { key: 'awaiting_payment',  label: 'Waiting for payment confirmation' },
     { key: 'pending',          label: 'Order received' },
     { key: 'preparing',        label: isFood ? 'Preparing your food' : 'Preparing your order' },
+    { key: 'ready',            label: isFood ? 'Your food is ready' : 'Your order is ready' },
     { key: 'out_for_delivery', label: 'Out for delivery' },
     { key: 'delivered',        label: 'Delivered' },
   ];
@@ -9647,11 +9661,34 @@ function normalizeStatus(raw) {
   const s = String(raw || 'pending').toLowerCase().trim();
   if (['awaiting_payment', 'payment_pending', 'awaiting-payment'].includes(s)) return 'awaiting_payment';
   if (['pending', 'placed', 'received', 'new'].includes(s)) return 'pending';
-  if (['preparing', 'accepted', 'confirmed', 'cooking', 'in_progress', 'ready'].includes(s)) return 'preparing';
+  if (['preparing', 'accepted', 'confirmed', 'cooking', 'in_progress'].includes(s)) return 'preparing';
+  if (['ready', 'ready_for_pickup', 'ready-for-pickup', 'packed'].includes(s)) return 'ready';
   if (['out_for_delivery', 'out-for-delivery', 'picked_up', 'picked-up', 'dispatched', 'on_the_way', 'on-the-way'].includes(s)) return 'out_for_delivery';
   if (['delivered', 'completed', 'done'].includes(s)) return 'delivered';
   if (['cancelled', 'canceled', 'rejected'].includes(s)) return 'cancelled';
   return 'pending';
+}
+
+// "Your items" card on the order tracking screen: every item of THIS order
+// (qty x name, customer price), plus fees / discount and the total.
+function renderTrackItems(o) {
+  const box = document.getElementById('track-items');
+  if (!box) return;
+  const items = o && Array.isArray(o.items) ? o.items : [];
+  if (!items.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const row = (l, r, bold) => '<div style="display:flex; justify-content:space-between; gap:12px; padding:5px 0;' + (bold ? ' font-weight:700; border-top:1px dashed rgba(43,36,16,.2); margin-top:6px; padding-top:10px;' : '') + '"><span>' + l + '</span><span style="white-space:nowrap;">' + r + '</span></div>';
+  let html = '<p style="margin:0 0 6px; font-size:12px; letter-spacing:.08em; font-weight:700; color:#8A6A00;">YOUR ITEMS</p>';
+  items.forEach(it => {
+    const lineTotal = Math.round((Number(it.price) || 0) * (Number(it.qty) || 0) * 100) / 100;
+    html += row(esc(it.qty) + ' × ' + esc(it.name) + (it.desc ? '<br><span style="font-size:11px; color:#8a7f66;">' + esc(it.desc) + '</span>' : ''), '₹' + lineTotal);
+  });
+  const shownDeliveryCharge = (Number(o.deliveryFee) || 0) + (Number(o.platformFee) || 0);
+  if (shownDeliveryCharge > 0) html += row('Delivery charge', '₹' + shownDeliveryCharge);
+  if (Number(o.shopDiscountApplied) > 0) html += row('Shop discount', '−₹' + o.shopDiscountApplied);
+  if (o.total != null) html += row('Total', '₹' + o.total, true);
+  box.innerHTML = html;
+  box.style.display = 'block';
 }
 
 // Live "arriving in X min" from the rider's route (grocery nav-map only).
@@ -9666,6 +9703,7 @@ function renderTrackTimeline(rawStatus, reason, o) {
     trackCancelOrderBtn.style.display = 'block';
     return;
   }
+  if (o) renderTrackItems(o);
   const status = normalizeStatus(rawStatus);
   const isFood = trackBusinessType !== 'groceries' && trackBusinessType !== 'online_shop';
   const isNav = trackBusinessType === 'groceries'; // navigation-app style live map
@@ -9702,7 +9740,8 @@ function renderTrackTimeline(rawStatus, reason, o) {
   // cancellation has to go through the shop instead.
   trackCancelOrderBtn.style.display = (status === 'pending' || status === 'awaiting_payment') ? 'block' : 'none';
 
-  const currentIdx = steps.findIndex(s => s.key === status);
+  let currentIdx = steps.findIndex(s => s.key === status);
+  if (currentIdx < 0) currentIdx = 1; // unknown status: never crash, show "Order received"
   trackStatusText.textContent = steps[currentIdx].label;
   trackEtaText.textContent = status === 'delivered' ? (isFood ? "Enjoy your meal!" : "Your order has been delivered!")
     : (isNav && status === 'out_for_delivery' && trackLiveEtaMins) ? ("Arriving in " + trackLiveEtaMins + " min")
@@ -9763,6 +9802,7 @@ function openTrackOrder(order, returnScreen) {
   trackRestName.textContent = order.restName;
   trackOrderNum.textContent = "Order " + order.orderNumber;
   trackLiveEtaMins = null;
+  renderTrackItems(null);
   renderTrackTimeline('pending');
   showScreen('track');
   persistScreen('track', { trackReturnScreen });
@@ -9792,9 +9832,11 @@ function openTrackOrder(order, returnScreen) {
         return;
       }
       if (q.status === 'cancelled') {
+        renderTrackItems(q);
         renderTrackTimeline('cancelled', q.statusReason);
         return;
       }
+      renderTrackItems(q);
       renderTrackTimeline('pending_assignment');
     });
     return;
@@ -10253,6 +10295,17 @@ function onLocationGranted(pos) {
 function requestNativeLocationDialog() {
   return new Promise(resolve => {
     try {
+      // Google's own "Turn on location? OK" dialog (NeshLocation native plugin).
+      // Only used when the customer taps the button in the popup; any error
+      // or timeout just resolves false so normal locating continues.
+      const NL = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.NeshLocation;
+      if (NL && NL.enable) {
+        let done = false;
+        const fin = v => { if (!done) { done = true; resolve(v); } };
+        setTimeout(() => fin(false), 30000);
+        NL.enable().then(r => fin(!!(r && r.enabled))).catch(() => fin(false));
+        return;
+      }
       const la = window.cordova && window.cordova.plugins && window.cordova.plugins.locationAccuracy;
       if (!la) { resolve(false); return; }
       la.canRequest(can => {
