@@ -3,6 +3,8 @@
 <head>
 <style id="nesh-splash-css">
   html{ background:#F2B705; }
+  /* Yellow strip behind the system status bar (edge-to-edge Android) */
+  body::before{ content:''; position:fixed; top:0; left:0; right:0; height:env(safe-area-inset-top); background:#F2B705; z-index:99999; pointer-events:none; }
   #nesh-splash{
     position:fixed; inset:0; z-index:99998;
     display:flex; flex-direction:column; align-items:center;
