@@ -48,7 +48,6 @@ jobs:
           npm install @capacitor/geolocation
           npm install @capacitor/push-notifications
           npm install @capacitor/local-notifications
-          npm install @capacitor/status-bar
           npm install @capacitor/assets --save-dev
 
       # IMPORTANT: appId must stay exactly the same as the package name
@@ -62,11 +61,12 @@ jobs:
             "appName": "NESH",
             "webDir": "www",
             "backgroundColor": "#F2B705",
+            "android": {
+              "adjustMarginsForEdgeToEdge": "disable"
+            },
             "plugins": {
-              "StatusBar": {
-                "overlaysWebView": false,
-                "backgroundColor": "#F2B705",
-                "style": "LIGHT"
+              "SystemBars": {
+                "insetsHandling": "disable"
               },
               "SplashScreen": {
                 "launchShowDuration": 0,
@@ -159,9 +159,8 @@ jobs:
           path = "android/app/src/main/res/values/styles.xml"
           s = open(path).read()
           extra = (
-              '\n        <item name="android:statusBarColor">#F2B705</item>'
               '\n        <item name="android:windowLightStatusBar">true</item>'
-              '\n        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>'
+              '\n        <item name="android:statusBarColor">@android:color/transparent</item>'
               '\n        <item name="android:windowBackground">#F2B705</item>'
               '\n    </style>'
           )
@@ -174,34 +173,143 @@ jobs:
           PYEOF
 
       # On Android 15/16 the system ignores statusBarColor, and the strip
-      # behind the status bar shows the WINDOW background instead (that is
-      # the dark grey seen on the phone). Paint that background yellow from
-      # MainActivity so it works on every Android version.
-      - name: Paint window behind status bar yellow (MainActivity)
+      # behind the status bar shows the WINDOW background instead. Paint it
+      # yellow from MainActivity. Also registers a tiny native plugin
+      # (NeshLocation) used ONLY when the customer taps "Turn on location"
+      # in the popup: shows Google's own "Turn on device location? OK" dialog.
+      - name: MainActivity (yellow window) + native "turn on GPS" dialog
         run: |
-          F=$(find android/app/src/main/java -name MainActivity.java | head -1)
-          echo "Found: $F"
-          PKG=$(grep -m1 '^package ' "$F")
-          cat > "$F" << EOF2
-          $PKG
+          python3 - << 'PYEOF'
+          import glob, os
+          F = glob.glob("android/app/src/main/java/**/MainActivity.java", recursive=True)[0]
+          D = os.path.dirname(F)
+          pkg = [l for l in open(F) if l.startswith("package ")][0].strip()
+          open(F, "w").write(pkg + """
 
           import android.graphics.Color;
+          import android.graphics.drawable.ColorDrawable;
           import android.os.Bundle;
+          import android.view.View;
+          import android.view.Window;
+          import androidx.core.graphics.Insets;
+          import androidx.core.view.ViewCompat;
+          import androidx.core.view.WindowCompat;
+          import androidx.core.view.WindowInsetsCompat;
           import com.getcapacitor.BridgeActivity;
 
           public class MainActivity extends BridgeActivity {
               @Override
               public void onCreate(Bundle savedInstanceState) {
+                  registerPlugin(NeshLocationPlugin.class);
                   super.onCreate(savedInstanceState);
-                  int yellow = Color.parseColor("#F2B705");
-                  getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(yellow));
-                  getWindow().getDecorView().setBackgroundColor(yellow);
-                  getWindow().setStatusBarColor(yellow);
+
+                  // Edge-to-edge done the recommended way (all Android versions):
+                  // the app draws edge-to-edge, and we pad the content by the
+                  // system bar insets. The yellow window background shows behind
+                  // the status bar. No deprecated status-bar colour APIs used.
+                  Window w = getWindow();
+                  WindowCompat.setDecorFitsSystemWindows(w, false);
+                  w.setBackgroundDrawable(new ColorDrawable(Color.parseColor("#F2B705")));
+                  WindowCompat.getInsetsController(w, w.getDecorView()).setAppearanceLightStatusBars(true);
+
+                  View content = findViewById(android.R.id.content);
+                  ViewCompat.setOnApplyWindowInsetsListener(content, (v, insets) -> {
+                      Insets bars = insets.getInsets(
+                          WindowInsetsCompat.Type.systemBars()
+                          | WindowInsetsCompat.Type.displayCutout()
+                          | WindowInsetsCompat.Type.ime());
+                      v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+                      return WindowInsetsCompat.CONSUMED;
+                  });
+                  ViewCompat.requestApplyInsets(content);
               }
           }
-          EOF2
-          sed -i 's/^          //' "$F"
-          cat "$F"
+          """.replace("\n          ", "\n"))
+          open(D + "/NeshLocationPlugin.java", "w").write(pkg + """
+
+          import androidx.activity.ComponentActivity;
+          import androidx.activity.result.ActivityResultLauncher;
+          import androidx.activity.result.IntentSenderRequest;
+          import androidx.activity.result.contract.ActivityResultContracts;
+          import android.app.Activity;
+          import com.getcapacitor.JSObject;
+          import com.getcapacitor.Plugin;
+          import com.getcapacitor.PluginCall;
+          import com.getcapacitor.PluginMethod;
+          import com.getcapacitor.annotation.CapacitorPlugin;
+          import com.google.android.gms.common.api.ResolvableApiException;
+          import com.google.android.gms.location.LocationRequest;
+          import com.google.android.gms.location.LocationServices;
+          import com.google.android.gms.location.LocationSettingsRequest;
+          import com.google.android.gms.location.Priority;
+
+          @CapacitorPlugin(name = "NeshLocation")
+          public class NeshLocationPlugin extends Plugin {
+              private PluginCall pending;
+              private ActivityResultLauncher<IntentSenderRequest> launcher;
+
+              @Override
+              public void load() {
+                  try {
+                      ComponentActivity act = (ComponentActivity) getActivity();
+                      launcher = act.getActivityResultRegistry().register(
+                          "nesh_location_settings",
+                          new ActivityResultContracts.StartIntentSenderForResult(),
+                          result -> {
+                              PluginCall c = pending;
+                              pending = null;
+                              if (c != null) done(c, result.getResultCode() == Activity.RESULT_OK ? "on" : "declined");
+                          });
+                  } catch (Throwable t) {
+                      launcher = null;
+                  }
+              }
+
+              // state: "on" (GPS is on), "declined" (user tapped No thanks), "error" (could not ask)
+              private void done(PluginCall call, String state) {
+                  try {
+                      JSObject o = new JSObject();
+                      o.put("enabled", "on".equals(state));
+                      o.put("declined", "declined".equals(state));
+                      o.put("state", state);
+                      call.resolve(o);
+                  } catch (Throwable ignored) { }
+              }
+
+              @PluginMethod
+              public void enable(final PluginCall call) {
+                  try {
+                      if (getActivity() == null || launcher == null || pending != null) { done(call, "error"); return; }
+                      LocationRequest req = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10000).build();
+                      LocationSettingsRequest lsr = new LocationSettingsRequest.Builder()
+                          .addLocationRequest(req).setAlwaysShow(true).build();
+                      LocationServices.getSettingsClient(getActivity()).checkLocationSettings(lsr)
+                          .addOnSuccessListener(r -> done(call, "on"))
+                          .addOnFailureListener(e -> {
+                              try {
+                                  if (e instanceof ResolvableApiException) {
+                                      pending = call;
+                                      launcher.launch(new IntentSenderRequest.Builder(
+                                          ((ResolvableApiException) e).getResolution()).build());
+                                  } else {
+                                      done(call, "error");
+                                  }
+                              } catch (Throwable t) {
+                                  pending = null;
+                                  done(call, "error");
+                              }
+                          });
+                  } catch (Throwable t) {
+                      pending = null;
+                      done(call, "error");
+                  }
+              }
+          }
+          """.replace("\n          ", "\n"))
+          PYEOF
+          # Google Play Services location (for the "Turn on GPS" dialog)
+          printf '\ndependencies {\n    implementation "com.google.android.gms:play-services-location:21.3.0"\n}\n' >> android/app/build.gradle
+          cat android/app/src/main/java/com/neshgroup/nesh/*.java
 
       # Location + POST_NOTIFICATIONS (Android 13+ will not even show the
       # notification permission dialog unless the app declares it).
