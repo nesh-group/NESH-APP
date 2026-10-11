@@ -162,6 +162,7 @@ jobs:
               '\n        <item name="android:statusBarColor">#F2B705</item>'
               '\n        <item name="android:windowLightStatusBar">true</item>'
               '\n        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>'
+              '\n        <item name="android:windowBackground">#F2B705</item>'
               '\n    </style>'
           )
           for name in ("AppTheme.NoActionBar", "AppTheme.NoActionBarLaunch"):
@@ -171,6 +172,36 @@ jobs:
           open(path, "w").write(s)
           print(s)
           PYEOF
+
+      # On Android 15/16 the system ignores statusBarColor, and the strip
+      # behind the status bar shows the WINDOW background instead (that is
+      # the dark grey seen on the phone). Paint that background yellow from
+      # MainActivity so it works on every Android version.
+      - name: Paint window behind status bar yellow (MainActivity)
+        run: |
+          F=$(find android/app/src/main/java -name MainActivity.java | head -1)
+          echo "Found: $F"
+          PKG=$(grep -m1 '^package ' "$F")
+          cat > "$F" << EOF2
+          $PKG
+
+          import android.graphics.Color;
+          import android.os.Bundle;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  int yellow = Color.parseColor("#F2B705");
+                  getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(yellow));
+                  getWindow().getDecorView().setBackgroundColor(yellow);
+                  getWindow().setStatusBarColor(yellow);
+              }
+          }
+          EOF2
+          sed -i 's/^          //' "$F"
+          cat "$F"
 
       # Location + POST_NOTIFICATIONS (Android 13+ will not even show the
       # notification permission dialog unless the app declares it).
