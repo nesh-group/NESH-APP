@@ -63,6 +63,11 @@ jobs:
             "webDir": "www",
             "backgroundColor": "#F2B705",
             "plugins": {
+              "StatusBar": {
+                "overlaysWebView": false,
+                "backgroundColor": "#F2B705",
+                "style": "LIGHT"
+              },
               "SplashScreen": {
                 "launchShowDuration": 0,
                 "launchAutoHide": true,
@@ -144,6 +149,28 @@ jobs:
           PYEOF
           # Dark-mode variant (if the template ships one) must not override it
           rm -f android/app/src/main/res/values-night/styles.xml || true
+
+      # Status bar (top bar with time/battery) must be yellow, not dark grey.
+      # Set it natively in the app theme so it works without relying on JS.
+      - name: Make status bar yellow in Android theme
+        run: |
+          python3 - << 'PYEOF'
+          import re
+          path = "android/app/src/main/res/values/styles.xml"
+          s = open(path).read()
+          extra = (
+              '\n        <item name="android:statusBarColor">#F2B705</item>'
+              '\n        <item name="android:windowLightStatusBar">true</item>'
+              '\n        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>'
+              '\n    </style>'
+          )
+          for name in ("AppTheme.NoActionBar", "AppTheme.NoActionBarLaunch"):
+              m = re.search(r'<style name="%s"[^>]*>.*?</style>' % re.escape(name), s, re.S)
+              if m:
+                  s = s.replace(m.group(0), m.group(0).replace('</style>', extra))
+          open(path, "w").write(s)
+          print(s)
+          PYEOF
 
       # Location + POST_NOTIFICATIONS (Android 13+ will not even show the
       # notification permission dialog unless the app declares it).
