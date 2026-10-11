@@ -1165,6 +1165,32 @@
   background: #f2f2f2;
   opacity: 0.6;
 }
+
+  /* "Get the Android app" banner — website visitors on Android only */
+  #play-banner{
+    display:flex; align-items:center; gap:12px; margin:10px 16px 0; padding:10px 12px;
+    background:#FFF4D6; border:1.5px solid #F2D98A; border-radius:16px; color:#2B2410;
+    font-family:inherit;
+  }
+  #play-banner[hidden]{ display:none; }
+  #play-banner img{ width:auto; height:30px; flex-shrink:0; display:block; }
+  #play-banner .pb-text{ flex:1; min-width:0; line-height:1.25; }
+  #play-banner .pb-title{ font-weight:700; font-size:14px; margin:0; }
+  #play-banner .pb-sub{ font-size:12px; margin:2px 0 0; opacity:.75; }
+  #play-banner .pb-btn{
+    background:#2B2410; color:#fff; text-decoration:none; font-weight:700; font-size:13px;
+    padding:9px 14px; border-radius:999px; white-space:nowrap;
+  }
+  #play-banner .pb-x{
+    border:none; background:transparent; color:#2B2410; opacity:.55; font-size:22px; line-height:1;
+    padding:2px 4px; cursor:pointer;
+  }
+  /* Play Store links: only inside the Android app */
+  .native-only{ display:none; }
+  html.is-native .native-only{ display:flex; }
+  /* "Update available" link: shown only when a newer app version is live on Play */
+  .update-only{ display:none; }
+  html.has-update .update-only{ display:flex; }
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
@@ -1521,6 +1547,101 @@
 
   <!-- HOME -->
   <section class="screen active" id="screen-category">
+    <div id="play-banner" hidden>
+      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFoAAABgCAYAAACdSWXJAAAsjUlEQVR42u29eZBl+VXf+Tnnd+/bM18ute/Ve6t6hISEQAgQAmssDPyD3R1mmQlmwhEweMI2gcdB2BOuqpglZoxjYgJsD9gM2ITHQDXIYjESWtxCLBJCSKCW1Gptraa71V1VWZVVubz37r2/3znzx+++l9mLQDLdqNXS63hRmdVZmS/PPfec7/l+v+f3hC/w4e5y//33K/c+43/cD/fee6+JiPPVx1/ucd7P61/4NefPKyDt86uPZzzkzw+w6wVwEXF3L//gkfe/tsFWgrsDiIh0iu7Nrzv5yveJSPVc/+6rIf4LAn3+/Hm9ePGiAbzn0394x+b0xv+V3L4TFcQdd0clEFDc+O1ed/Sjb7zjGx5WEfN95earwf5zAn3p0qVw3333pV/9yNve5CL/4249ec3GzesHH3viMeqmtqZuJMZI0OD9sqfra2uURefa6vLKpw6tHWxW+kvv8xu7/+sbX/3Gm/Pv9dVAP7vpqYjYWx5+59++sbv1c9d2b/YffeIxHrv8uN3YuiGzupa6rrBkBA2UWtIpSltdW9OTx05w7OBRbj18klUbvPXOlTM/cOrUqevuLm2lsa8Get+t/msPv/17t5vJz3/q8Ue7Dz78sfjE1SeDF4h2CqqmAYxQKEEDFp1YGwI+HAx9dTD2E6uH/LV3fl2xpoP/3O/2/+4bXv66j8+b6rn7z8lXIkqRZ2byex5/z3d97sbl+z/0yY/2PvXEn9m17S3dnGwhnYKi2yG5IWJIEEQUT4Y1CUuCSkEndBiFLmvF0G49clqPHTxy/ZZTpz5wYHX9J7/h0Cv/034kc1Eu2ldeRjuC4G/9zFvf/tj1x9/4W7/zrnh1Z6vwXodGjBrDcBDHJOFuOE5AUFGgAAuIB6RJ+GTGqNuzs8dP6z133MWh0Xq1Mlr+mbX+8m+//sTr3iEiDSDn3eXiV0BJkf1Bdnf55T95y3s/ffmzr/mDP32/X692NHaEWhImhik5yJKAfOeLC6CAol5AEgqUQadEYyJOKi8JdnTtaHj5HS/j9mNnWB+uvfnE+qF/fPf47ofncPClHmzdn9chBN+8ltLVy7XMph231MFNcQfEQBqQGiTmz9t/7O21cvZGFhcnkahjJTuzSfjc1Sf9Qw9+OP3Rg3/ij1x57Hs++uin3/vAZ/7gne/77Ae+7aKIXfJLoW2aL+FAL0Im3NyMsnGlptotIfXAS1SK9ivSvqftZTWKuIKDCJgnJpMd6tmMTq/LaHlE2e/ITjMJn3jsEXnPH73XPvCxP119dOPJb9+Ybr35gc/+4XfdJ/clEfHz58/rSzHgTw+0wM62cvMGWBoRdIwwRLwLhGdM2AaSQLyNd87reTabJVwMKQVKIQVjJ+5ydecaj15+XB/8zMP+ng+9L/7xJz88/sTjn/7FX/3w2/67D21+aOXixYsmIn7JPbRj/UviUfCMSE9nHaaTLiIrBElEK8goOOZMDtYWCdt7tmVEPOAOIkIoA2DU3lDHBkxyKwjQuBHjllQ3UnF566odWjk4uuXY2Z+7trP1P7/5w+948x2HX37xHpGdlxI6KZ75F6kuSU0f7XZQHCLgRv4gB3oOU5gHXBI5wpr/xJFCcZyUDAckKBoURDEXZpZomh0KD3rzqYk/dX2Ds8dO3/KyW+/4h0n++HW/+/j737zU6fz6K+QVn5hDz5dUoC0V4F3UBTEBiwiWS4QIJAGdgPq+Wt1WFDcQyQFua7gUQtACFcWBZE5KjrsRQoAQSDHKZHuDySMTu7F9nTtP3/raxprXjovBj/7uI+/9fhF59/kHzhfnrp7z++67b685fPkF2ueRQqVA6CBe4KnAzREpQEqQEpEADo6Ber4IzKmMsCj7JuB4Dn6ynO35HsEUKARPYD6jLAo6o5Iq1vrZK49xdeOKPfzwx+2us7cdO3X4xK+87ePv+IE33fXGt+1nBy8iC6DzZZnRoKh0MOtgscQtIGGAphJzzZejSLlc4OS5w5/2dMDdMAxzW5QV0b0L4eJ4cMwEUaEsAiZO3dTUk5nOphPdnmzZtRvX108ePHL/L7zvl3/pyPqBt7/xtm/71XkZ+XKq38WzJxhFCLgXeOoh3kXc0KSoOaYgkpD50KLS1u/5vWEZdXjCyKVEVSFoLisObo63U1LRKcGM3WqH0gO9fpeiK1jj3Kx39OOPPuxXb2yMbou3/J2K5u/80u5b/v27PvOuf354cvihe+Sees6fvNgZwmcHOgjuQooBCT3UBYuOCqgCKYAaJAdX3HdAp4ik9j7OgUYllxnARVpU2OJuddRAEfAcHw2Om9NIhBDyqKrGTqpktnXFNz8xsUeufk6PHjzyA0eW1v/m6cP1Bx949L0//gZ57e89k0b4Mikd4CbginiJeJFLsAjigqqAJBzHXVHPSMKpEG9AEoKjIpjs+63dwXMcRHJfVXcwR/JUCgIxRkyMogiEoHiCWWxkUm+FrWsznrhx1Y6MD/V3U3zdem/8m7/64Dv+4+ry2tu+7fSrfnlOI7wYmcHiuegPcW1LiOQG5zkzxTw3toz58JC/xpOC7iJMAMsKDPli7U81AcR9Ptcskk/aRjzPdhfHNOPuhBPdcIzKE7WZNjeu+PU/3fJj40Pj20/f8oMnvfnB3/jk7379d932TT8mIn7+gQcK3v1umytEL85Ae8DRnNFk2UpMUOmAgqWcneIKVrQQUCBovv0xzGJbZ8KCBdE53HNBPOMPaUuNtP/lqm4ogSQJUcFUsaCklKgtUiUnar4nPvnEI/7ZJx6zk0eOyau+5pU/eql+V9fd/6GITOdK0YuF+36OZihPUwP2hm5FvYtbbmigKLqP7yAjEU0oTZ5xhLZU+KJ8iIO6ZaAn+3mAPGVmKqr9uaJ4UDBwFdwEc6GyBo+JMqgkPDx+7Unfef+u3Xr8zI88+bnHXv1rH3vXO04eOPLvvvbQuU9C1j8vXLjwJRWLi+ciP3JwE+JtFuaOhrsi2m1x9LwkpDZAGU9L4ajWmDWozgkob0uS5+feeLQYPUTzTWAOSby9KAkcDM3NVYVCA3Ha0MTE6mDMoD/EZo08vvE5efLJx+22k2deo11eU9WT73/7xx/4pyuj4btfc+I1j128eJFLfincy5cmw5+btJGMk0UaVCJCbDMR1BT1DmoDJA3RtITGZSSuIHEVadaQuIymPmpl+yxQCwTTfffLvIYr3gZRgiIhINLS5GakFLHU4ClCiqQYCWWgO+gysynXdq6x0+zCQGCg+uiVR+1t7/nt9J4P/d6Zhx57+BeeuP7UBx749O9ccPfefobwRdAMLWczCWk/3hu1A7igFDiOWRfoIzTthCi4l0DZ3hmWY+naciL5giF5SN8L+LzhAaqE9rtl2qSdLluBYcGblEKqGuqYaDTQK0u0gHoWta4qHnps5te2r/pT108cuuXEqfPXdq58x1s/+usP9LT86Tfc/R2fveSXwn3yV4e9nyPQNeINQshB9mKRgwvskCk6BAUvwQb51vCAadkW5xrRKe5Niy8Up50scVxa/mRemVNERFANqCgq7c9L7RCEgGd8jUWigxZCURS4GVOb0pjTKQNlJ5DU5amdK/LUxuf8s0894uduufM1Jw8df81Ae9/97gd/8299q3zXQ/PMPnfuhReMi2dKh2gDoQYLbXY76opJbn6+GLMdm8M/K4AB0EW9i0mCsANeLLK5ZVLy6C2CS/4YaWcfm/cCR8VbiYysR7qgIkiLYkyMiJM8D0khKKFUgkBKTt3M2K12KQwKUXly87JMPrJjj688Zuduvetlshx//Z0f+Y3v/2v3fPf7nwa4/FLgwkddXgBY+JylY09F8YVMJQvkm1k7yS0Kd8VbYTY3vIIgNZZuguxAcExjbpYScQETB7EW+OVga1EsUE8yMo5sB5wg+aer5UFJJCvx5ilfbilQVUwEMyMSQSJFoZRFIM6m3Nze0Y5X+plPzaw8fvY2nRz47d9//79/38He6mRYdD/Tt+5PiXzznwH4+fP6fAf72TQpircs3Px2z8llbV3duxA5IRWj3Bs9PKBxhcAUkmDFNh6mWJiRdIoxI0kE8bbi5ilSpUAtF6jknsuyWwsNM+q2dlxP7riSp1TNYkPdJNwz6AxFhzIUBDfEGkqtGHYiI79Of1pp89RNk/rwSk+PvamjB1juHmBa+3de/9hb/o+mWPp9uePbP91a4vz5omSfQZOCe4F5B5MeoiWLcLRQLxcMA7MFCaWaBdx2mEZtiVAJIiNicZPUvYnJDaILURpMQMQInghuqCmF+z7ULrgKhuNqJOZev32aA1BoQDQQDRpLpOQECQQVVEFjjVa7jKk5OoCj3RknepGDnR0d7l7xavKwbRRDJsN1Vg6eubvXO/XvtOTaEw+/7cLxO9/0Ly5dujfce++93H8/3HvvR13+Ekzhc5SOEqfTPos8JS6KyD75ah9ClP1o0QO4oqmDMEAZIFoiAQgJ8wrzijBXbGh7ou11isyTKBK8VdbbEtbaJ0UUFcWS08SEi6JSEMqQIWiq0dRQxhkDrzjYS5waCUc7kaNFYk0TIUWxmmCzDrNmhWvpuu3Mrnhv5ey6907/1MMffVvvznNv+udw/14N/0uUlOfko/duall8/PQ7SJ7zjsoNbC4F5OZpbkiqCLGi0AaoMIuIQhAQ6j3Gb5/NxFtyS1DQ3JSFVpnRPMBUTWRWN4RQ0O/26ZQBjQ3Uu3TiLsvScLDXcHxJOTqEdZnR94pgNWoRd0G8JDUR2406aXZINzZssHpDBiu3/cTHPvSLt5adwduK7rCeVMWn5Ny3ftL9vP6XZHbxfHdXz0MkUVvoJgXufTQu0SFSWoOrYyELtXkSqjH1VuRtfSRzBsTnBEtqIWTG1W4tAtKWCZRESIki7hDSTcZMONJJnBgKJ4fKwW5iZBWdVGMWMY8kyf1H2MViwuIOSW/qTrPr9XSDlQNnf1jD2g8HW2Wlu3Tt0w++88dF/trP+qVLmWX7IiDh8x7obDeAGHL7RBWlSxFHYIYkx4PgQbACLDhJwInYPt5E2m80b7iLPJdWd/SEqtLvdlEEjRXECUXcYSxTjnYbTo/g5BAOlomhT+lYjbjlwqdZrVdxRGJmHn1GSDNmuxPZnV2nmT6ZeqNj2ls64kvLJ9f7xaGf/rOP/HZX7vnr/3IPEn5htGzxQoBzB5Jm9KwE1HoEFzQJkhQKJZkSva32qqCz7IRqi5W0anoWB9gngQWiJRpzup2SblkgscarCcVsk5FOOdKHW5aFU0PjUNkwSFOKOKWw2NpQtJXWBJWESkQt/6yCCo8T6rSN7WyHqtkiVTek2d200eh0KLtHfuqxP3nLyzQs/3q9cfZ3RGT2hdTuLzjQc/6BBVsxRym+YOrwtmWKkyRz0uoZY6sVFF4gEnAr8KKdOKWVblRBJplfcWsJLV14+4xMmSItyYQhrgRLqM0IaZclmXGsjJwZBk4PnaOdipHtUqQKSUbwuUHCWkmubciWkJQvboEwDEqPGXWqaCa71NUWcXpD691t7w83Ze3AmR8pSvmR4sgjb9164uP/rRy/a8P9geLChc/Pgb8wNXrfBcn8syJW5kmRAF5kLkRb+68pkqRVXqaI16jnluoSck0mT6cGiGpG7rHBmindtMuyNhwdBs4OlFNLzqFyxihN6FQVwYyiVXXmU4DNbSJGhqrOgifvhNycgyUkNdRWEeOUWE2kmW1RTa+l4dJJOXrs9u+YbG7/6qMPvf17Rd7wuT+vlLwgpUNobR+S/xQPeeDYB//MwU0hFZA0JzYt/sUQadEI4KotvZUDXYjQCY7UU8p6wlgqjg6Us0s9zgwSB4sZo1RR1BVSG0GgKFuSqr2J5vx48oXnJ79eaQV+Eh0cwvz3aRX6uEWK14LHTR6tLqe1g7d8i+nyWz/7sV/7NzNdfqeIfPyvJKPFs5kptJ488bk2Ljk7JSs4yQMplZgUIK326IKqZR5bU4tC5pZhJbUgT9wpLdGxxFidYx04Myw5PXAOlzWjVNGpa0I0CnLwrDVTefu5quCSR6yFI6dt5BazWifBCWWkE4QgBj6jsptYc53Z7jXq+qkwnV621YN3vnw86P5UXfPExz72nm+7++5v/iRckP0wsHghshnPQnnLiCJiWSFxwWiz2/PTTfC4qMJImFOzEQ++p0+2g5IihFQRqilLPuNw1zm5VHJiJBzs1gxjRVHtQl0RVOh2SgQhxojb3GOSe4vI3rBk3lJoonRUCQGSJ4iGUKOhoaP5KkXbAdvBZzukONVNM6tmTTp86lXHd5vpt4rIJ9wv6V9d6ZjPlOK4Jswdc22nzYDTy/UZsu3AAcueEEKuy17MgNgyMDWFR3ppwopPOdaB0yPl+NBZK2v6aULRTPNk6N5qlgW+4Lct/xzxpw23WaDX9rUFSglQGB7BPeIp8+oKdASKwOKipSjYtNQpJVtXVr2zdMcPXX7kI78O5y7vr9fF5+toPkcU7n/u2qe0zFomnva4CnFZkKpJDBNI2qrjrfirrighZ5R59ooFMDO8zMxg1h2nFNJQ+IwyTVhlyqmBc8uo5NgQVouafrODxB3EZ5QqaFniLsya2PLjmRfJmHwukYHlaSfb3gi4C3Vbu9GirTPZeC9A8LnxLeLsEF1JsUu1VehGHKQ7X3Hr186aa/9YRP6euy9E1eKFyefWFzI3R+LZiyeGE1vYFhCyxCX0EMkw0cRwi61fzyDWqM0orKGjE/q2w9Gy4cxQOdWPrBXQlZpgE4JVuezIfo5d2j7ni2QwwoLwzWNQ2GMsRUitWRPJ5Ja3WF58b5gKDuIJ9V0a26aOPVK4Jlubj7sOim//wAc+UIpIM8/qF6R0zF+OtW3QtFVUACW1RNQecyciiPSyxGuZGRQTNBpqEwq26ZeR5U7Fallztt9wtm8cKiJ9DDXDaVASIu2k6YZKdqy6g1nTBiyLdK66N4e6LFxW4Lh6Zgzb12xzl4vnoifuhHZqxSLJZgRmWNrRzY3HfPX4+p1rnav/A/CTFy5cyHbFF2YuzFYPWi67xRy5mbUvVkVQYqualJiXYL2FGhMkUFpNyQ26sslYhSNqHOs7p/sNx8OUZWo0OY1Bk3IWWosmwFBLC5P8nLQyCRhZJJhr/tpmp+zbYkjzcujzfjKHI56/3lpe04VAIlCR0g7TnasMZ5uhu7ryv33ukfe+49jZ1z7k7lo8f1BjX5hlYVLIvrt9+ox6ahuboK31wOebAhZQugQxytDQkwH91GcoJQdD4LQUnO33OFJOGTUTepKy4SG1v3Qo0JDlLrfs0J5bzrQN9tyiYyL7eoqRwx9bONnKbQuismzxf+sV9DlUaRl5gVKdSKSqdmU63bK148WosngX8BDcLy8Q1yELHju7kxRtNUgFgrdZ0UI2IaEeccuOpjI5vdoZAMOkjF05hHCkLjhhMLYAdQaKro5Ya1bVrC1i/jTxXNqX4q2pyhYZ0RbedqNB2Vvr830MfP6LVohux3+I7eal4CJIW4qSNxipBe/PN7zz/Vndov7F+KW5trkjBLQVy2S/hwRBPYtiwWp6NmPYzBjZjFGcsWwNK3VirIlB2dAbSH7p2pAcSmnHfNd2yyOjpf2rTS77GXTf27tpu4m2nsH5HOBtnOY4G58nUEGu4NmInxCiCI1mBOMavOx2dTJrdoqiaKfEe1+oZjiPvraBTi22VsJ8pmUO9RwlEQIET3TShEHcZZS2WY47jOpdlpopo1DTrStSPSWuRbrLfbQfUM37u+ptgNM8G2UxUrvskTDi7TQ1n2LnlJXv3YNZCGbB1bjpvPi0WZ6/oUiWqRtyn/AyUPYHhE4/mfFPjp197UPnz59XEbGnTS9NE+X5jLO4Z/rRJdOkrlkq8xIjP5OU+dbDKKno2S6DuMlSdZ3l6Q3Gu9ss7UwY3KwJVyOzxyt2LxuzSY8qDkk+pKBP6SVFEspkFGkeKIUQgLCwA4FkisBTfloimO1ZttpkD+1TLSMOXQDFlIcvdZI6USNJIlETUnZs9cAhTLoPb9zxnf8PwIULF/aRvO0NVhbB3d2ej8N6cnD31ePWCpwra4nRIUmrSzpIrCjTLn27wShusFxfYVxdZ6XaZbWuWZo6xVag2QjcvAxXN4Qb2x3qqo+kLoUFighF4xTRCZbLi3mHRLcVnAucQHAozCncMsRszZfu7SBl0gY5y3FZ65kjkgaXJgc6QAqJqE5URbo9Xz98QnrDlXe9WqTJspfsBfr8+fMC8GRMS2UoDltMCwZaFkj9z1PeW1auRRc6p5nb2ivC4pYzyXSno/nWdaOTKrrNFoPqOsv1dVbrDVbrq6zV11mPE9ZSYpSgrANMu0w3hetPVmxtOGnSResu2pRIDHkFxHM3UFfMwNpxXDwgJgsfYbA8wXqb7dZ2EEwzAvKC4EJom7aRFfkoTlSnUSFKjxSGRAbWHR3UyrofHK0f+t9zub/gz2qG7q7vftB+fGk4vi3W0cJAdd4ofP+a28Kqq/ua3vzjfe0mGcmFIK3Aq61nY46nMUpP9L1imLYZzq6yUl/nQH2N9dlTrFTXWG52GMUJnVQR3LKbVbr4rKbZaKiITGJDZzXQHXQInTyBRm+IyUACRVCSZ8pZUFRCKybY4jfykOGctV6/ICWFKSm1oQ0JKVq3qwpJCiJOkwqijCn6J+h3jvnSyq0Kw585fPgNT/mlS0Huk4W3r2hHRPvhCxeGQfR7gnQWNVXmUr/bs5ucZQ9HHjj2uZzaxmPJ8i9UtI1kvrrsDUJEraFnFUs+YdxssjS7yvpsgwP1BuuzyyzXNxmkCZ00ay92gWkH04LC+/QmDlcbdpuKoi7QgyWdcRcPCfOaxAwRp9QCMSe6o5RoVoRJqZ1cQ94ysNCO3snbrA4L2/J8yd1VSBJopKChSy0DKA7SG91qKwfvDujxHfHl38277BeedvsX2cbqelRk93c/HH8iNbOfUSQsBlRnEaQFG7dv5p975BZDSsuuS8igNTNjc1bBCCQKavo+ZdDsMko3GVUbrMyu52ezyXKzndWRVKGtO8mUVsRVgncI5vhM8a2GaUiIOj0VinFJ0RshIRClpq6yebJQXfChbpI3w9otseTt5+qICk3TIDERQiAUJRRQ48wSzCwQZYB21ukODxH6R2y0cpuWnZO16fKPnP2vvuehnLxPl7Rkv/zi7uGf/N/v/eAHH3ri5Y30TQZjnZrSSMgYUXJw1Vr5iWyxzaPtPsAm4C4L8GqSEImUJDpe0/Mpw2ab5WqT5eo6y7PrrEw2WKlvsBJvspS26aUZhcesH7YsW5JA1NyYxBqS1jRFBYOacsXoHy4YHi7prwSkH5nZDtN6hyI4nW6BJcOTt3vpeWp1lXZrLFsXVICUsu4QSly7JEoqK6lSlygjtLNGd3TUBuOTPl47HTys19O6/KG7X33fv/18vo9iv/BalkX6Rz/xn7cLMWI7Xu2ZaMLcAY0s3HBx33i9f1+gxa5CuwMTCVbToWZoM0Zph6X6BuNqg+XpNZZmm4yam/TThOAR80AtXZIULTfSrl3IXNBqpzdTUi1Ed2pJxAAecjEt6SDlgDI4aEU0yxwyjmQRnCCtGX6eFCZZ0uwUJDHqmJ/JOqAraPcQw+5R6w6P+sr62TBcOYHrcGO30X9w96vf+P+5XwryeTzXz/LeiZh6u96GzK22AV/Mse0OuNjeykTLbs2V7/mwkI2QicIbOlYzsAmjtM242WJ5dp3x7CrL1TWWqi0GcUrPZpRERBSTMjMiPscCTV6vm3v+RAmUlBiejGYCU3VcItFg0BT0Vjr0BwVRdqnjzp6qklfQ891ogiUB03alSYgFzBRmojmDy3U63WM+HJ3lwIE7dbx6lu1p+cGYhj8dffA7Z+75+k/kTP78xvbi2XOG7zvyRBdc7dxELqTWNtu69xdZX+SGRVhQjjn7GrpUDG3CqNlmXF9npbrOyuwaK9UGS/Umg2ZCz2oKT6g4LkULt8JCuc4wC8TavXJRRKGkm38Nq4mThsoaYlOTGqegx6DoIoUTU5XRg9rC3TAXOMzAU16GshDYmRk7QZDOmN7yUXrd4740PiOj4S1ocfjDs7TyTpHV//PIPa+4svDkyRfp64jtAQaJvPlqXuDtpC7SbtC6ZeTQNrmsBWqru83hXyJIokPNwKeM0g7jepPVyVVWZ1dZqa6z2mwyitv0UkVhCRUhidKotHfR3JvdllCXffefLNYtCu0i0kVTRbM7o2kqZsmYqtEVp1gu6Xb6+Y7TGiSRUg5wSoKngKYuIkNMetQOUXv0h8d8tHYmrY5vKXq94+5x/D/F5Vf+q2OnTk2/WOP6cwRaiBqInlccTDTjV2+zeVEccs7lxjdntObjSkQ9UdqUnk0YxR2Wm5uM62usVFdZmV1hpbrBctpmYDM6HjNXQZ7mUjvk2Dys1vqlLQ9Grrn5mrWDCAWFFqgXaCpoomLSMA0NYpElC3TXBqBCUsU8ZrdTIyTroPTplksQlqAc0e8tezla9aX1k3ro8G2FsJrM+3/32F3f9TPP2F/8gndgnh3oUNBoQaRE2zpJu8+S2a32ZAOxvbIhWeGeKxiFOIXV9GzCMG6xVG0ynm2yMrvKWnWN1XqTpWaLQZrSIxJa939rY2ypVGvtW94SPnOSqiC1F9vabV71fDJZIQXBAoULNp2SNmdMYo1KiRQdfNDBukIsLRNBongxQMtlQncNCcsU5Titrp0JS0dvk0lTbjRp+Pt459+euv073+J+XuGCfzEB/ryBbqQgakHjBaXoglee6wy6YGrnMG7eR7N9S90oLTKgZmhTlpqMk5dm1xjPNlipNxnHnTaTawryCoWHVsr1BG7t92pLxHycbzW9OX2/YIJS5qTzuQwlpTgpQTNJNLFhWxuSQnmgJIx7JM3lqdaC0FkijA5QDA56p7tGf+l4iJ0TOAffVXZGf//UbV//0flSaK7DF58fI7q3JnBv2TdpM0vE9zx3ErC2dMwXjNWN4JFgkb5NWGaH5bjVwrhNlmbXGdU3GcQd+jaj53Um2t3a8Veytuh7bdhbckpcESkyhzYXe7NjnYDm04diAvO8XFQE1Dt46lHVie0bMyYhMSgG9HtLSLdL1AILXQ/9FXTpkPdWjslgeFgaH/6LaKu/VHPyA3fcfkfVZjF/2aOGiudyGuUSkaWdwtv9cCMf36OCt4O/eGsONCNYokwzBmYM0zZL9VXG1WXG9TXG1Q2Wmi2GaZduykbw/N3ycRPRnSo2RMmLnUEzRyKSs9pSAssnRubDVQxr1+VKLSjC/KjlLOxabFXKsocWgeQl29s1N64YPRGGYZnR4YO2sn5Eu0trDMbrEjrLVNb9Ryde9rd+Yo//+ctl8V9goMlosiARiHOTaPYkY6AtwyW5qhZt4yuspp+MZYuMm+uMdp9kefYkq2mLpWaHQZzQTxWFNbjn9TVaKd+0NUzsO8Umi7c633bErIWLogTNjlWVrKovTkeYT3qqJIUYlCgFlStT6+HWd9VDtrZ8Wzhxy91ajtexcmgeyo3dafxf7rznu/PeCvfOTebP22bWc2S0EzwiFiktkszbpZ12M0oE84CZLVBz1yN9m7EUK5biLuPqCqvVVVbqa4ziNt1U0UsVpecLZ5pX5lSy7SoUgUG/SzKnbiosNcSUKNxbs3hAVREDiw1SON1uB5dEbBqaOmbTuhRo2cGLklQqM3F2SExD4cV45Eduv01vfeXLw/DoUXTY+1faX7qUimJ6bSs9dc893/xnmQwSE7n/eV/sfFagOx7pWI2bUlqNeGgbTxeXkoiQPLN36pHSEgNvWEoTxvUNVmbXWa2ucGh2mXG9QcemqFlL/kPU0PokLNdoae+UWGPt7ndK1pJZgmpB0JJgCsmJscHdseTUsaFpEqolZbeHl10mDpNUU1sg9nrYcMnWjx7RU+deJp1Dh64vHz3x9u7a8n9cuf3rL+3/veeS01/ZinKZIl2LmNeUXoMHooBIp11LnvsgnNKcXqoZxgnj6mbGyNMrrFVXWK2usNzcIHgkaWh3EQULmb9TNwpqFMOsoZrM8tasBkQCopqbrmYjgC54FseSkTRj7lBmU3tTBCoxdoFZVzyMRjY6ckwPnD2r4xOn4srxk+8N4+V/cOjV3/jBOZF2//3367333usXLlzghT5E5RkrytLKO2lRqzPh5K3zJ1GiBAe1hkGcsBS3Wa43WZptMJ5tMK6vslRfZdhsMki72VfsXWoVouyN6NkyGxY6nHo+7qcoO7h28rSZoEmQPJLIOp9hJBE8lGi3g4RAZcZO0zAhOcORr508oafvvjsMDx/H+oN/vXrs1L8Zv+Z1D4pI5X5e77//nLRY+Eu1dD+3PMniMye00pMhHikdCo9044xRc5PVaoPV2RVWqquMqyss19cYxS36NqX0GkfbVYm967mQ/luuIWigLHsZPYQS84JouQGm9lxDF/AQkLIgaUElSpWEKiVSEWB57MsHD8jx22+XzsEDm0uHD//WYP3wb6x/0xt/+Wl7gl+i49uezd5ZawonLGh6a5fdgzd0LNFPU5biNkvNZh6np0+xXG+wVF9jFG8ytGlm4RbDzd4yqO+jUheqM0pQRSzX3miJ6Ox55IIQW1FHVJkR2IrOVhU9lYUsra9x+u475fBtt9bDQ4f+qFge/9iBb/nrf7jX37Ph4Et57OZzn6nkBSYFSUpqLUktXVnQ0LMZS3GbcZ1H6pXZFZZnG4yaDUZxi4FN6XjdWrBaq4xY3nyay1lou5w5T++WkEpGspRPLVAlFCUWlCjQtKaY6MZMlUnR8WK8JqsHDtiZu+9i/fTJ9x+99fTfK7/u9X8qIrWfP6/3n8vn4b0oz1RyChJdGumTZMCsteeVVqHW0E27jOrrrEwvszq7ymp1leVmg2G8SdemlN4geEvehL2FZolZOrCwOIEsr1NkDS/DN0O8oWg9XhaEKEbtTo1Tq9IExXoDO3TyVl07fTodu/U2Tr7sXNiupz/b+bpv+KPz58/rC3E6wfMfaAkkKbMXQjv5SEs3SjH6XjGI2yzPrjKeXmZldoXV+jpLzRY9m6De5OMdELJ/MmQoRj5IVm1veXlx4IqHdvMqW61E8wqyFEoToLHINCbqTokuLVlvvGpHb72rGJ88/cTq4WM/dOTWW7ux0/mm0Ou9rTV+82I8mbd4zrmwRRrBGnrJKLxmOW2z2myyUl1ZPMf1NYbNNr00pSRnsnlWKbwNoIvvO+vOF09ansTJp/pWHtvtAsnHH2seOHZDyazTs3JtjaO336nHbr9Ly7UDj44OH7pv5RtfPz/Y5M28yB/PCnSllnfw4oRubQw8MrQJy7MNViZXWKuvcGB2mdVmg2HMQS48tlJWiUmGb7FJOA2haFcaRNqTv6w1fu81ydSq3FoUUHSZCUzcmCqu42UOnjmrh2+/g2Jl9fd7hw79pq4d/pWVV73qU37pUuDee50LF+BLfNzaF98MxQjSoN4wbGb044yxbTPefYrx5ClWm+usNddZbm7STTOCx5YrbqUsKbORXCPumcP2dutp4S5Vbc/eUFwKkkHtRsJIAk2nS+r3bfnwYV05c4q102ceHR449Eun/us3XZwfHujnz6vsP/j14sUvr4zu+4wly2r0UoLO7CZLzRbL1XVW4hZLcYte2qG0GQVNq4bvO1bCHBGlLHtApI6zfHKAZfU5hJAPDpR8DFvSQO2wGyOVOnRL766v2ak77gorp05t9g4c+Ptrt9z+n1buuec6gF+6FC589IU59+ivdDJcaaasVTcpmsiSGqG6QW92g0G8STdNKLxGPGWY1nohZEGvGsEdNLWWsCY7lgw6GvK5dhowFxpzKnNqTVQhUA/7dNbW7MCZW/TMuXOhXDuw0Vla+dtHvuXb3jXP4LY8fFm+wdmzMnq53mZltklR122gb1LWW/TiDqVPCVa3g4gs8PD+XRCwzF27ET3lI3rIx6xJyCfaNG5UOJUGdgWn37cDt92iJ8/drYMjR2+uHD/xQTq9f7r2itf+3gPnzxffeuFCEhF7sZeHLyrQQ9tmKd0g1BNGJDr1Ll2b0rFdOmlCx6u2+c0d9dqeJS8LNJGHlHwg1XwPJGn2KFcYlUDq9lyXR7Y8Xg7Hbr0tnLjnHGFl5ZcYL11cfdW3Piwi3uLh+OUc4OcMtANLWrMadojNNQYpMog1A00EmyDNlA4NQaw9bSkbTwRts1mYH6+RLB+KUnS7SFkQFabJ2I6RKoiNDh/QU+deFvqHj+wuHTr0c0vHjr9j8HWvf6vksx14MQ4dz19GuzPuu+8OnK3rW4R6QmmJfhCC12A1JXNlQ59m4fN9u4UmeXO1ASZ1Q50arFsiwyGDlVU7deq4luvrN8bHj//x+MjRf3bg9X/j7U8jfi5etJdSkBeBnlNKMUb545//2bC6PvRqw8SqSbsImc/3L8Qp88knT1sWsLnyIpAkH2CSCmXqsG1GLUJ30Le1kyfszld+bdE5uPZbSycO/tj4NX/j426WG925c8J9973kAvx0k+P8tFFVf+g3fnGL5ohsbnwmVc1NrXdnVClRSqBQJaSWRnVtvRhCUiGqZJNhqdQi3KgaUq/H8OhRP3r0MIdPn9QDZ05r1e2+uXP22A8u3/1N2w7C+fPyUg3u/sfe/e/nBXdWjqz/ZP/w2qx7YFzMglhTBmIZ8CLgIWQOo11QN5SoBbHo0BQdZqFg05wNc+rlJRuePp3OfO3Xym3f+Do59jWv/Gg4dOSfha+55b85ePc3bfulS0HAvxKCDJ/nrVAffvt/+N4nPvnQz3/uwQe7zecuW6+qddQ4g0YpI4SUzTIRqFSZqdIUQuoU7Kphg77d+spX6Inb70BGoyvD5dUfP3THuV+W48cn+38OX0GPpzXDbEY/ryLf94sP/tYv+NJw5eef+MjHelc/8SmLqdGmEIqUKIJShgJTZeLGdkrUQemvjn3t6EE7ee5lYenoiT8aHlz713U3vPvwq97wqTbAylfo+4U/56JbXnS5L33iHb/yfdtPXf1/Nz/zZ70bn/ms2c1tYVpDTHkIKbMoWndKyvGSr586IXe/+hWiq6vvGJ099X3Lx+/ayAFeeNa+Yt8j/PNuFM6D/ei73n6vVtVP7T711OHty0/hsxlxVpFiRIqADPt0xsv019cZHFj34drqWzoHT/33q2fP3vAHHiguvMjepuNFF+j9mPbGhz98i21u3j3ZvalMJqRYE+tIChAGXYrBgLC8LDIYbn7i5V//3jeIxJfawPGCP/5L3njgpfzesS9IRu/PbM6d+wu/9n7gK/HN1b+Qx/8PT7J8/sr8Y/cAAAAASUVORK5CYII=" alt="">
+      <div class="pb-text">
+        <p class="pb-title">Get the NESH app</p>
+        <p class="pb-sub">Faster ordering, live tracking &amp; notifications</p>
+      </div>
+      <a class="pb-btn" id="play-banner-link" href="https://play.google.com/store/apps/details?id=com.neshgroup.nesh" target="_blank" rel="noopener">Install</a>
+      <button type="button" class="pb-x" id="play-banner-x" aria-label="Close">&times;</button>
+    </div>
+    <script>
+      // Inside the Android app (WebView / Capacitor) -> unlock the in-app-only links.
+      (function () {
+        var ua = navigator.userAgent || '';
+        if (window.Capacitor || /; wv\)/.test(ua)) document.documentElement.classList.add('is-native');
+      })();
+    </script>
+    <script>
+      // Shown only to Android visitors using the website (not inside the app,
+      // not on iPhone/desktop, not an installed home-screen app). Closing it
+      // hides it for 7 days.
+      (function () {
+        var el = document.getElementById('play-banner');
+        if (!el) return;
+        var ua = navigator.userAgent || '';
+        var isAndroid = /Android/i.test(ua);
+        var inAppWebView = /; wv\)/.test(ua) || !!window.Capacitor;
+        var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+        var hiddenUntil = 0;
+        try { hiddenUntil = parseInt(localStorage.getItem('nesh_play_banner_until') || '0', 10) || 0; } catch (e) {}
+        if (!isAndroid || inAppWebView || standalone || Date.now() < hiddenUntil) return;
+        el.hidden = false;
+        function hide() {
+          el.hidden = true;
+          try { localStorage.setItem('nesh_play_banner_until', String(Date.now() + 7 * 24 * 3600 * 1000)); } catch (e) {}
+        }
+        document.getElementById('play-banner-x').addEventListener('click', hide);
+        document.getElementById('play-banner-link').addEventListener('click', hide);
+      })();
+    </script>
+    <script>
+      // Inside the Android app: compare the installed version with the latest one
+      // published in version.json. Only when a newer version is live do we show the
+      // "Update available" menu link + a small banner. Edit version.json (latestBuild)
+      // each time a new version goes live on Google Play.
+      (function () {
+        var VERSION_URL = 'https://nesh-group.github.io/NESH-APP/version.json';
+        var PLAY_URL = 'https://play.google.com/store/apps/details?id=com.neshgroup.nesh';
+        var last = 0;
+        function appPlugin() {
+          return window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+        }
+        function showBanner() {
+          var until = 0;
+          try { until = parseInt(localStorage.getItem('nesh_update_banner_until') || '0', 10) || 0; } catch (e) {}
+          if (Date.now() < until) return;
+          var el = document.getElementById('play-banner');
+          if (!el) return;
+          var t = el.querySelector('.pb-title'), sub = el.querySelector('.pb-sub'), btn = document.getElementById('play-banner-link');
+          if (t) t.textContent = 'NESH update available';
+          if (sub) sub.textContent = 'Get the latest version with new features & fixes';
+          if (btn) btn.textContent = 'Update';
+          el.hidden = false;
+          var x = document.getElementById('play-banner-x');
+          if (x) x.addEventListener('click', function () {
+            try { localStorage.setItem('nesh_update_banner_until', String(Date.now() + 24 * 3600 * 1000)); } catch (e) {}
+          });
+        }
+        function check(force) {
+          var App = appPlugin();
+          if (!App || typeof App.getInfo !== 'function') return;
+          if (!force && Date.now() - last < 30 * 60 * 1000) return;
+          last = Date.now();
+          App.getInfo().then(function (info) {
+            var mine = parseInt(info && info.build, 10);
+            if (!mine) return;
+            return fetch(VERSION_URL + '?t=' + Date.now(), { cache: 'no-store' })
+              .then(function (r) { return r.json(); })
+              .then(function (v) {
+                var latest = parseInt(v && v.latestBuild, 10);
+                if (latest && latest > mine) {
+                  document.documentElement.classList.add('has-update');
+                  showBanner();
+                } else {
+                  document.documentElement.classList.remove('has-update');
+                }
+              });
+          }).catch(function () {});
+        }
+        window.addEventListener('load', function () { setTimeout(function () { check(true); }, 1500); });
+        try {
+          var App = appPlugin();
+          if (App && App.addListener) App.addListener('appStateChange', function (st) { if (st && st.isActive) check(false); });
+        } catch (e) {}
+      })();
+    </script>
     <div class="header" style="padding-bottom:8px;">
       <div class="cat-header-eyebrow">
         <p class="eyebrow" id="cat-greeting-eyebrow">HELLO</p>
@@ -1541,6 +1662,14 @@
               <a class="account-dropdown-support" href="https://nesh-group.github.io/NESH-APP/privacy.html" target="_blank" rel="noopener">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2B7A78" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                 Privacy Policy
+              </a>
+              <a class="account-dropdown-support update-only" href="https://play.google.com/store/apps/details?id=com.neshgroup.nesh" target="_blank" rel="noopener">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2B7A78" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                Rate NESH on Play Store
+              </a>
+              <a class="account-dropdown-support native-only" href="https://play.google.com/store/apps/details?id=com.neshgroup.nesh" target="_blank" rel="noopener">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2B7A78" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                Update available — tap to update
               </a>
               <button class="account-dropdown-logout" id="cat-logout-btn">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -1675,6 +1804,14 @@
             <a class="account-dropdown-support" href="https://nesh-group.github.io/NESH-APP/privacy.html" target="_blank" rel="noopener">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2B7A78" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
               Privacy Policy
+            </a>
+            <a class="account-dropdown-support update-only" href="https://play.google.com/store/apps/details?id=com.neshgroup.nesh" target="_blank" rel="noopener">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2B7A78" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              Rate NESH on Play Store
+            </a>
+            <a class="account-dropdown-support native-only" href="https://play.google.com/store/apps/details?id=com.neshgroup.nesh" target="_blank" rel="noopener">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2B7A78" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Update available — tap to update
             </a>
             <button class="account-dropdown-logout" id="logout-btn">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
