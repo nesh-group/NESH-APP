@@ -83,7 +83,7 @@ jobs:
 
       - name: Force target SDK 36 + newer Gradle/AGP
         run: |
-          sed -i -E 's/compileSdkVersion = [0-9]+/compileSdkVersion = 36/; s/targetSdkVersion = [0-9]+/targetSdkVersion = 36/' android/variables.gradle
+          sed -i -E 's/minSdkVersion = [0-9]+/minSdkVersion = 24/; s/compileSdkVersion = [0-9]+/compileSdkVersion = 36/; s/targetSdkVersion = [0-9]+/targetSdkVersion = 36/' android/variables.gradle
           sed -i -E "s#(com.android.tools.build:gradle:)[0-9.]+#\18.9.1#" android/build.gradle
           sed -i -E 's#gradle-[0-9.]+-(all|bin).zip#gradle-8.11.1-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
           cat android/variables.gradle
