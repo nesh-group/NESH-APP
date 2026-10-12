@@ -10,6 +10,7 @@ on:
       - 'sw.js'
       - 'icon-192.png'
       - 'icon-512.png'
+      - 'icon-1024.png'
       - 'splash.png'
       - 'google-services.json'
 
@@ -39,6 +40,7 @@ jobs:
           cp sw.js www/ || true
           cp icon-192.png www/ || true
           cp icon-512.png www/ || true
+          cp icon-1024.png www/ || true
 
       - name: Init npm + install Capacitor
         run: |
@@ -108,7 +110,21 @@ jobs:
       - name: Generate app icon + plain yellow splash
         run: |
           mkdir -p assets
-          cp icon-512.png assets/icon.png
+          pip install pillow -q
+          # Legacy (square/round) launcher icons: the full glossy icon.
+          cp icon-1024.png assets/icon-only.png
+          # Adaptive icon (Android 8+): Android crops the outer ~1/3 with a
+          # circle/squircle mask, so the icon is shrunk into the safe zone on
+          # a transparent layer, over a solid brand-yellow background layer.
+          python3 - << 'PYEOF'
+          from PIL import Image
+          ic = Image.open('icon-1024.png').convert('RGBA')
+          fg = Image.new('RGBA', (1024, 1024), (0, 0, 0, 0))
+          small = ic.resize((600, 600), Image.LANCZOS)
+          fg.paste(small, (212, 212), small)
+          fg.save('assets/icon-foreground.png')
+          Image.new('RGB', (1024, 1024), (0xF2, 0xB7, 0x05)).save('assets/icon-background.png')
+          PYEOF
           python3 - << 'PYEOF'
           import zlib, struct
           W = H = 2732
@@ -338,13 +354,13 @@ jobs:
       - name: Sync web assets into Android project
         run: npx cap sync android
 
-      # Previous upload used versionCode 4 (versionName 1.0.3). Every new
+      # Previous upload used versionCode 5 (versionName 1.0.4). Every new
       # upload must have a strictly higher versionCode, so this is bumped to
-      # 5 here. versionName is only the label users see (1.0.4).
+      # 6 here. versionName is only the label users see (1.0.5).
       - name: Set version code and name
         run: |
-          sed -i "s/versionCode 1/versionCode 5/" android/app/build.gradle
-          sed -i 's/versionName "1.0"/versionName "1.0.4"/' android/app/build.gradle
+          sed -i "s/versionCode 1/versionCode 6/" android/app/build.gradle
+          sed -i 's/versionName "1.0"/versionName "1.0.5"/' android/app/build.gradle
           grep -E "versionCode|versionName" android/app/build.gradle
 
       - name: Fix Kotlin stdlib duplicate class conflict
