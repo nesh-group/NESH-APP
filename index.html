@@ -1440,9 +1440,9 @@
   function show(keys) {
     clearTimeout(hideT); shownAt = Date.now();
     pending = {}; (keys || ['loc']).forEach(function (k) { pending[k] = 1; });
-    resetText(); el.classList.add('show'); arm();
+    gen++; resetText(); el.classList.add('show'); arm();
   }
-  var txtEl = el.querySelector('.sp-text'), txtOrig = txtEl ? txtEl.innerHTML : '';
+  var gen = 0, txtEl = el.querySelector('.sp-text'), txtOrig = txtEl ? txtEl.innerHTML : '';
   function resetText() { if (txtEl) { txtEl.innerHTML = txtOrig; txtEl.style.fontSize = ''; } }
   // Replace "Locating..." with the resolved place name.
   function setPlace(name) {
@@ -1461,7 +1461,7 @@
     if (!Object.keys(pending).length) hide();
   }
   function isActive() { return el.classList.contains('show'); }
-  window.neshSplash = { show: show, hide: hide, done: done, isActive: isActive, setPlace: setPlace, age: function () { return Date.now() - shownAt; } };
+  window.neshSplash = { show: show, hide: hide, done: done, isActive: isActive, setPlace: setPlace, age: function () { return Date.now() - shownAt; }, gen: function () { return gen; } };
   arm();
 })();
 </script>
@@ -2652,6 +2652,7 @@
   // still see/set their own raw price in their own app, untouched.
   let PLATFORM_EXTRA_AMOUNT = 0;
   let lastRestaurantsSnapshot = null;
+  let lastRestaurantsSig = null;
 
   // Turns a shop's own restaurants/{id}/itemCategories node into a sorted
   // array (Operator Panel → Stock Item Categories). Each category groups
@@ -2683,7 +2684,10 @@
       // One malformed restaurant record (bad item data, missing field, etc.)
       // must never take down the whole list — skip just that one.
       try {
-        const v = child.val();
+        // Build the shop record WITHOUT its `orders` subtree (never used here, and it
+        // grows forever with every order) so the list rebuild stays fast.
+        const v = {};
+        child.forEach(f => { if (f.key !== 'orders') v[f.key] = f.val(); });
         if (v.status !== 'active') return;
         const businessType = v.businessType === 'groceries' ? 'groceries' : v.businessType === 'online_shop' ? 'online_shop' : 'hotel';
         const itemPhotoSet = businessType === 'groceries' ? GROCERY_ITEM_PHOTOS : businessType === 'online_shop' ? SHOP_ITEM_PHOTOS : DISH_PHOTOS;
@@ -2759,17 +2763,86 @@
         console.error('Skipped one broken restaurant record while rendering:', child.key, e);
       }
     });
+    // An order changing in ANY shop fires this listener too, but the shop list itself
+    // is usually identical. Re-rendering then only wastes CPU and disrupts scrolling /
+    // search, so skip the heavy re-render when nothing the customer sees has changed.
+    let sig = null;
+    try { sig = JSON.stringify(list); } catch (e) {}
+    const unchanged = sig !== null && sig === lastRestaurantsSig && Array.isArray(window.RESTAURANTS);
+    lastRestaurantsSig = sig;
+    if (unchanged) {
+      if (window.onRestaurantsUnchanged) window.onRestaurantsUnchanged();
+      else if (window.onRestaurantsUpdated) window.onRestaurantsUpdated();
+      return;
+    }
     window.RESTAURANTS = list;
     if (window.onRestaurantsUpdated) window.onRestaurantsUpdated();
   }
 
   // Live-listens to restaurants added from the Restaurant Partner app and
   // keeps window.RESTAURANTS + the on-screen list in sync in real time.
-  onValue(ref(db, 'restaurants'), (snapshot) => {
-    lastRestaurantsSnapshot = snapshot;
-    rebuildRestaurantsFromSnapshot();
-    try { window.neshSplash && window.neshSplash.done('rest'); } catch (e) {}
-  });
+  // ---- Zone-aware shop loading (bandwidth saver) ----
+  // Used to download the WHOLE /restaurants node (every shop, every menu) on
+  // each app open. Now the page (see syncShopLoading() in the plain script)
+  // works out which shops the customer's location can actually see and calls
+  // window.setShopLoading():
+  //   mode 'all' -> no Shop Zones exist yet: old behaviour, whole list.
+  //   mode 'ids' -> listen ONLY to restaurants/{id} for those shops.
+  const shopUnsubs = {};        // shopId -> unsubscribe()
+  const shopSnaps = {};         // shopId -> latest snapshot
+  let shopInitPending = null;   // ids whose FIRST snapshot hasn't arrived yet
+  let fullListUnsub = null;     // whole-/restaurants listener (mode 'all' only)
+  let shopRebuildTimer = null;
+  let shopLoadRanOnce = false;
+
+  function restLoadedSplash() { try { window.neshSplash && window.neshSplash.done('rest'); } catch (e) {} }
+  function scheduleShopRebuild() {
+    if (shopInitPending && shopInitPending.size) return;   // wait for the first batch, no half-empty list
+    clearTimeout(shopRebuildTimer);
+    shopRebuildTimer = setTimeout(() => {
+      lastRestaurantsSnapshot = {
+        forEach(cb) {
+          Object.keys(shopSnaps).forEach(id => { const sn = shopSnaps[id]; if (sn && sn.exists()) cb(sn); });
+        }
+      };
+      rebuildRestaurantsFromSnapshot();
+      restLoadedSplash();
+    }, 30);
+  }
+  window.setShopLoading = function (mode, ids) {
+    if (mode === 'all') {
+      Object.keys(shopUnsubs).forEach(id => { try { shopUnsubs[id](); } catch (e) {} delete shopUnsubs[id]; delete shopSnaps[id]; });
+      shopInitPending = null;
+      if (!fullListUnsub) {
+        fullListUnsub = onValue(ref(db, 'restaurants'), (snapshot) => {
+          lastRestaurantsSnapshot = snapshot;
+          rebuildRestaurantsFromSnapshot();
+          restLoadedSplash();
+        });
+      }
+      shopLoadRanOnce = true;
+      return;
+    }
+    if (fullListUnsub) { try { fullListUnsub(); } catch (e) {} fullListUnsub = null; lastRestaurantsSnapshot = null; }
+    const want = new Set(ids || []);
+    let removed = false;
+    Object.keys(shopUnsubs).forEach(id => {
+      if (!want.has(id)) { try { shopUnsubs[id](); } catch (e) {} delete shopUnsubs[id]; delete shopSnaps[id]; removed = true; }
+    });
+    const added = [];
+    want.forEach(id => { if (!shopUnsubs[id]) added.push(id); });
+    if (added.length) { shopInitPending = shopInitPending || new Set(); added.forEach(id => shopInitPending.add(id)); }
+    added.forEach(id => {
+      const first = () => { if (shopInitPending) shopInitPending.delete(id); };
+      shopUnsubs[id] = onValue(ref(db, 'restaurants/' + id), (snap) => {
+        shopSnaps[id] = snap; first(); scheduleShopRebuild();
+      }, () => { first(); scheduleShopRebuild(); });
+    });
+    if (removed || !added.length || !shopLoadRanOnce) scheduleShopRebuild();
+    shopLoadRanOnce = true;
+  };
+  // The plain script may have been ready before this module — catch up now.
+  try { if (window.syncShopLoading) window.syncShopLoading(); } catch (e) {}
 
   // Live-listens to the operator-set extra amount (shown to customers as a
   // flat "Platform Fee" per order, not baked into individual item prices)
@@ -3009,6 +3082,11 @@ window.applyCategoryOrder = function (order) {
 
 if (window.CATEGORY_ORDER_RAW) window.applyCategoryOrder(window.CATEGORY_ORDER_RAW.v);
 
+// Same shop data as last time: skip the re-render, but keep the two cheap retry hooks.
+window.onRestaurantsUnchanged = () => {
+  tryOpenPendingShopLink();
+  attemptNormalResumeIfNeeded();
+};
 window.onRestaurantsUpdated = () => {
   RESTAURANTS = window.RESTAURANTS || [];
   restaurantsLoadedOnce = true;
@@ -3116,6 +3194,57 @@ let state = {
   roadDistanceKey: null,  // which rest/customer coordinate pair roadDistanceKm belongs to
   roadDistanceLoading: false,
 };
+
+// ---------- Zone-aware shop loading (bandwidth saver) ----------
+// Only the shops the customer's current location can see are downloaded from
+// Firebase (instead of the whole /restaurants node on every app open).
+//  - Shop Zones configured  -> shops of the zone(s) containing customerPos,
+//                              plus a few "always needed" shops (below).
+//  - No Shop Zones at all   -> old behaviour (everything), nothing restricted.
+const extraShopIds = new Set();   // shops needed regardless of zone (open order, shared link...)
+let _shopLoadKey = null;
+function addExtraShopId(id) {
+  if (!id || id === 'NESH_STORE' || extraShopIds.has(id)) return;
+  extraShopIds.add(id);
+  try { syncShopLoading(); } catch (e) {}
+}
+function syncShopLoading() {
+  if (typeof window.setShopLoading !== 'function') return;   // Firebase module not ready yet; it calls us when it is
+  const zones = window.SHOP_ZONES;
+  if (!Array.isArray(zones)) return;                          // zones haven't arrived yet
+  let mode = 'all', ids = [];
+  if (zones.length > 0) {
+    mode = 'ids';
+    const set = new Set();
+    const pt = state.customerPos;
+    if (pt && typeof pt.lat === 'number' && typeof pt.lng === 'number') {
+      zonesAtPoint(pt).forEach(z => z.shopIds.forEach(id => set.add(id)));
+    }
+    if (pendingShopLinkId) set.add(pendingShopLinkId);
+    if (state.selectedRestaurant && state.selectedRestaurant.id && state.selectedRestaurant.id !== 'NESH_STORE') set.add(state.selectedRestaurant.id);
+    if (state.lastOrder && state.lastOrder.restId && state.lastOrder.restId !== 'NESH_STORE') set.add(state.lastOrder.restId);
+    try {
+      const sv = JSON.parse(localStorage.getItem('asfood_screen') || 'null');
+      if (sv && sv.restaurantId && sv.restaurantId !== 'NESH_STORE') set.add(sv.restaurantId);
+    } catch (e) {}
+    extraShopIds.forEach(id => set.add(id));
+    ids = Array.from(set).sort();
+  }
+  const key = mode + ':' + ids.join(',');
+  if (key === _shopLoadKey) return;
+  _shopLoadKey = key;
+  window.setShopLoading(mode, ids);
+}
+// Any change of the customer's location (GPS fix, picked on map, cleared)
+// re-evaluates which shops need to be loaded.
+(function () {
+  let _pos = state.customerPos;
+  Object.defineProperty(state, 'customerPos', {
+    configurable: true, enumerable: true,
+    get() { return _pos; },
+    set(v) { _pos = v; try { syncShopLoading(); } catch (e) {} }
+  });
+})();
 
 // ---------- Device ID ----------
 // A persistent per-installation identifier (this is a PWA, so there's no
@@ -6607,8 +6736,185 @@ if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Pus
 }
 
 
+// Walks one shop's orders but fully reads ONLY this customer's (checks the phone
+// field first), so it doesn't deserialize every customer's orders on every change.
+function neshForMyOrders(restSnap, phone, cb) {
+  const os = restSnap.child('orders');
+  if (!os.exists()) return;
+  os.forEach(oSnap => {
+    if (oSnap.child('customerPhone').val() !== phone) return;
+    cb(oSnap.key, oSnap.val());
+  });
+}
+
+// ---------- Per-customer order index (bandwidth saver) ----------
+// Orders live under restaurants/{shopId}/orders, so finding "my orders" used to
+// mean downloading EVERY shop (all menus + all customers' orders) on each app
+// open. Now each customer has a tiny index: customers/{phone}/orderIndex/{orderKey}
+// = { restId, createdAt }, and only those orders are read.
+// ensureOrderIndex() resolves true once the index is trustworthy for this
+// customer (one-time backfill of their older orders, flagged orderIndexReady).
+// If it can't be set up (e.g. Firebase rules don't allow it yet) it resolves
+// false and the app keeps using the old full scan, so nothing breaks.
+var _orderIndexState = {};
+var _shopMetaCache = {};
+function ensureOrderIndex(number) {
+  if (_orderIndexState[number]) return _orderIndexState[number];
+  const p = (async () => {
+    try {
+      const { db, ref, get, update } = window.fb;
+      const flag = await get(ref(db, 'customers/' + number + '/orderIndexReady'));
+      if (flag.val() === true) return true;
+      const updates = {};
+      const all = await get(ref(db, 'restaurants'));
+      all.forEach(rs => {
+        neshForMyOrders(rs, number, (orderKey, o) => {
+          updates['orderIndex/' + orderKey] = { restId: rs.key, createdAt: (o && o.createdAt) || 0 };
+        });
+      });
+      const queue = await get(ref(db, 'groceryOrderQueue'));
+      queue.forEach(c => {
+        const q = c.val() || {};
+        if (q.customerPhone === number && q.status !== 'assigned') updates['orderIndex/' + c.key] = { restId: 'NESH_STORE', createdAt: q.createdAt || 0 };
+      });
+      updates.orderIndexReady = true;
+      await update(ref(db, 'customers/' + number), updates);
+      return true;
+    } catch (e) {
+      delete _orderIndexState[number];   // try again next time
+      return false;
+    }
+  })();
+  _orderIndexState[number] = p;
+  return p;
+}
+function getShopMeta(shopId) {
+  if (!_shopMetaCache[shopId]) {
+    const { db, ref, get } = window.fb;
+    _shopMetaCache[shopId] = Promise.all([
+      get(ref(db, 'restaurants/' + shopId + '/restaurantName')),
+      get(ref(db, 'restaurants/' + shopId + '/businessType'))
+    ]).then(r => ({ name: r[0].val() || 'Restaurant', type: r[1].val() || 'hotel' }))
+      .catch(() => { delete _shopMetaCache[shopId]; return { name: 'Restaurant', type: 'hotel' }; });
+  }
+  return _shopMetaCache[shopId];
+}
+// Same logic as the original watcher callback, fed from the indexed orders.
+function processWatchedOrders(entries, queueLiveKeys) {
+  const seen = getNotifiedOrders();
+  let changed = false;
+  const activeCandidates = [];
+  const lastKey = state.lastOrder && state.lastOrder.orderKey;
+  let lastOrderStillLive = !!(lastKey && queueLiveKeys && queueLiveKeys.has(lastKey));
+  entries.forEach(({ restId, orderKey, o, restName, businessType }) => {
+    if (!o) return;
+    const status = normalizeStatus(o.status);
+    const shownName = o.fromNeshStoreQueue ? 'NESH Store' : (restName || 'Restaurant');
+    if ((status === 'preparing' || status === 'ready') && !seen[orderKey]) {
+      seen[orderKey] = true;
+      changed = true;
+      showOrderNotifyToast(shownName, o.orderNumber, {
+        restId, orderKey, orderNumber: o.orderNumber, restName: shownName, businessType: businessType || 'hotel',
+      });
+    }
+    if (lastKey && orderKey === lastKey && !['delivered', 'cancelled'].includes(status)) lastOrderStillLive = true;
+    if (!['delivered', 'cancelled'].includes(status)) {
+      activeCandidates.push({ restId, orderKey, orderNumber: o.orderNumber, restName: shownName, businessType: businessType || 'hotel', createdAt: o.createdAt || 0 });
+    }
+  });
+  if (changed) saveNotifiedOrders(seen);
+  if (lastKey && !lastOrderStillLive) {
+    state.lastOrder = null;
+    try { localStorage.removeItem('asfood_last_order'); } catch (e) {}
+    updateHomeTrackBtn();
+  }
+  activeCandidates.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  setActiveOrderBar(activeCandidates[0] || null);
+}
+// Only orders from the last few days can still be "in progress".
+const ORDER_WATCH_WINDOW_MS = 3 * 24 * 3600 * 1000;
+function attachOrderStatusWatcherIndexed(number) {
+  const { db, ref, onValue } = window.fb;
+  const subs = {};            // orderKey -> [unsubscribe fns]
+  const orders = {};          // orderKey -> entry
+  const queueLive = new Set();// NESH Store orders still waiting for a shop
+  const firstPending = new Set();
+  let idxReady = false, disposed = false;
+  function flush() {
+    if (disposed || !idxReady || firstPending.size) return;
+    processWatchedOrders(Object.keys(orders).map(k => orders[k]), queueLive);
+  }
+  function watchOrder(orderKey, restId) {
+    if (subs[orderKey]) return;
+    const un = []; subs[orderKey] = un;
+    firstPending.add(orderKey);
+    const firstDone = () => { firstPending.delete(orderKey); };
+    const listenReal = (shopId) => {
+      getShopMeta(shopId).then(meta => {
+        if (disposed || subs[orderKey] !== un) return;
+        un.push(onValue(ref(db, 'restaurants/' + shopId + '/orders/' + orderKey), snap => {
+          if (disposed) return;
+          const o = snap.val();
+          if (!o) delete orders[orderKey];
+          else orders[orderKey] = { restId: shopId, orderKey, o, restName: meta.name, businessType: meta.type };
+          firstDone(); flush();
+        }, () => { firstDone(); flush(); }));
+      });
+    };
+    if (restId === 'NESH_STORE') {
+      let realStarted = false;
+      un.push(onValue(ref(db, 'groceryOrderQueue/' + orderKey), snap => {
+        if (disposed) return;
+        const q = snap.val();
+        if (q && q.status === 'assigned' && q.assignedShopId) {
+          queueLive.delete(orderKey);
+          if (!realStarted) { realStarted = true; listenReal(q.assignedShopId); }
+          return;
+        }
+        if (q && q.status !== 'cancelled') queueLive.add(orderKey); else queueLive.delete(orderKey);
+        firstDone(); flush();
+      }, () => { firstDone(); flush(); }));
+    } else {
+      listenReal(restId);
+    }
+  }
+  const idxUn = onValue(ref(db, 'customers/' + number + '/orderIndex'), snap => {
+    if (disposed) return;
+    const cutoff = Date.now() - ORDER_WATCH_WINDOW_MS;
+    const want = {};
+    snap.forEach(c => {
+      const v = c.val() || {};
+      if ((v.createdAt || 0) >= cutoff && v.restId) want[c.key] = v.restId;
+    });
+    // The order just placed on this device is always watched, even if its index write failed.
+    if (state.lastOrder && state.lastOrder.orderKey && state.lastOrder.restId && !want[state.lastOrder.orderKey]) want[state.lastOrder.orderKey] = state.lastOrder.restId;
+    Object.keys(subs).forEach(k => {
+      if (!(k in want)) { subs[k].forEach(u => { try { u(); } catch (e) {} }); delete subs[k]; delete orders[k]; queueLive.delete(k); firstPending.delete(k); }
+    });
+    Object.keys(want).forEach(k => watchOrder(k, want[k]));
+    idxReady = true; flush();
+  }, () => { idxReady = true; flush(); });
+  orderNotifyUnsub = () => {
+    disposed = true;
+    try { idxUn(); } catch (e) {}
+    Object.keys(subs).forEach(k => subs[k].forEach(u => { try { u(); } catch (e) {} }));
+  };
+}
+
+var orderWatchToken = 0;
 let orderNotifyUnsub = null;
 function attachOrderStatusWatcher(number) {
+  if (orderNotifyUnsub || !number) return;
+  const tok = ++orderWatchToken;
+  orderNotifyUnsub = () => {};   // claim the slot while the index is checked
+  ensureOrderIndex(number).then(ready => {
+    if (tok !== orderWatchToken) return;   // detached/re-attached meanwhile
+    orderNotifyUnsub = null;
+    if (ready) attachOrderStatusWatcherIndexed(number);
+    else attachOrderStatusWatcherLegacy(number);
+  });
+}
+function attachOrderStatusWatcherLegacy(number) {
   if (orderNotifyUnsub || !number) return;
   const { db, ref, onValue } = window.fb;
   orderNotifyUnsub = onValue(ref(db, 'restaurants'), snap => {
@@ -6619,12 +6925,9 @@ function attachOrderStatusWatcher(number) {
     const lastKey = state.lastOrder && state.lastOrder.orderKey;
     let lastOrderStillLive = false;
     snap.forEach(restSnap => {
-      const restVal = restSnap.val() || {};
-      const ordersVal = restVal.orders;
-      if (!ordersVal) return;
-      Object.keys(ordersVal).forEach(orderKey => {
-        const o = ordersVal[orderKey];
-        if (!o || o.customerPhone !== number) return;
+      const restVal = { restaurantName: restSnap.child('restaurantName').val(), businessType: restSnap.child('businessType').val() };
+      neshForMyOrders(restSnap, number, (orderKey, o) => {
+        if (!o) return;
         const status = normalizeStatus(o.status);
         if ((status === 'preparing' || status === 'ready') && !seen[orderKey]) {
           seen[orderKey] = true;
@@ -6664,6 +6967,7 @@ function attachOrderStatusWatcher(number) {
   });
 }
 function detachOrderStatusWatcher() {
+  orderWatchToken++;
   if (orderNotifyUnsub) { orderNotifyUnsub(); orderNotifyUnsub = null; }
   hideOrderNotifyToast();
   setActiveOrderBar(null);
@@ -7157,6 +7461,7 @@ function shopAllowedAtPoint(shopId, pt) {
   return zonesAtPoint(pt).some(z => z.shopIds.includes(shopId));
 }
 window.onShopZonesUpdated = () => {
+  try { syncShopLoading(); } catch (e) {}
   try { renderRestaurantList(); } catch (e) {}
 };
 
@@ -8784,6 +9089,7 @@ async function neshRevealPlaceThenDone(lat, lng) {
   const finish = () => { try { window.neshSplash && window.neshSplash.done('loc'); } catch (e) {} };
   try {
     if (!window.neshSplash || !window.neshSplash.isActive()) return finish();
+    const g0 = window.neshSplash.gen();
     const resolve = (async () => {
       await loadLocalLandmarks();
       let name = findLocationZoneName(lat, lng);
@@ -8794,13 +9100,15 @@ async function neshRevealPlaceThenDone(lat, lng) {
       return name;
     })();
     const name = await Promise.race([resolve, new Promise(r => setTimeout(() => r(null), 2500))]);
+    if (window.neshSplash.gen() !== g0) return;   // splash was re-shown meanwhile (fresh fix pending) — don't touch it
     if (name && window.neshSplash.isActive()) {
       // Let "Locating..." be seen first (at least ~1.3s), then swap in the place name.
       const wait = Math.max(0, 1300 - window.neshSplash.age());
       setTimeout(() => {
+        if (window.neshSplash.gen() !== g0) return;
         if (!window.neshSplash.isActive()) return finish();
         window.neshSplash.setPlace(name);
-        setTimeout(finish, 1000);
+        setTimeout(() => { if (window.neshSplash.gen() === g0) finish(); }, 1000);
       }, wait);
     } else finish();
   } catch (e) { finish(); }
@@ -9724,6 +10032,15 @@ payConfirmBtn.addEventListener('click', async () => {
     }
     await set(orderRef, orderPayload);
 
+    // Per-customer order index (see ensureOrderIndex): lets the app find this
+    // customer's orders without downloading every shop's data. Never blocks
+    // or fails the order itself.
+    try {
+      if (state.user && state.user.number && pc.contact === state.user.number) {
+        await set(ref(db, 'customers/' + state.user.number + '/orderIndex/' + orderRef.key), { restId: r.id, createdAt: orderPayload.createdAt });
+      }
+    } catch (e) {}
+
     // The shop-alert push only fires once there IS a shop — for NESH
     // Store that happens later, from the operator panel at assignment
     // time (opAssignGroceryOrder), not here.
@@ -10004,6 +10321,7 @@ function openTrackOrder(order, returnScreen) {
   trackReturnScreen = returnScreen || 'home';
   trackBusinessType = order.businessType || 'hotel';
   trackCurrentRestId = order.restId || null;
+  addExtraShopId(trackCurrentRestId);
   trackCurrentOrderKey = order.orderKey || null;
   trackRestName.textContent = order.restName;
   trackOrderNum.textContent = "Order " + order.orderNumber;
@@ -10027,6 +10345,7 @@ function openTrackOrder(order, returnScreen) {
       const q = snap.val() || {};
       if (q.status === 'assigned' && q.assignedShopId) {
         trackCurrentRestId = q.assignedShopId;
+        addExtraShopId(trackCurrentRestId);
         if (trackUnsub) { trackUnsub(); trackUnsub = null; }
         trackUnsub = onValue(
           ref(db, 'restaurants/' + q.assignedShopId + '/orders/' + order.orderKey),
@@ -10118,6 +10437,7 @@ const ordersPastSection = document.getElementById('orders-past-section');
 // Unsubscribe for the live listener backing the Your Orders screen —
 // cleared when the user leaves so it doesn't keep running in the background.
 let ordersUnsub = null;
+var ordersToken = 0;
 
 function statusChipInfo(status, businessType) {
   if (status === 'delivered') return { cls: 'delivered', label: 'Delivered' };
@@ -10188,18 +10508,96 @@ function openOrdersScreen() {
 
   const myNumber = state.user?.number || "";
   if (ordersUnsub) { ordersUnsub(); ordersUnsub = null; }
+  const tok = ++ordersToken;
+  ordersUnsub = () => { ordersToken++; };   // placeholder until the index check finishes
+  ensureOrderIndex(myNumber).then(ready => {
+    if (tok !== ordersToken) return;
+    if (ready) openOrdersIndexed(myNumber); else openOrdersLegacy(myNumber);
+  });
+}
+
+// Reads ONLY this customer's orders (via their order index). Recent orders stay
+// live; older ones are read once.
+function openOrdersIndexed(myNumber) {
+  const { db, ref, onValue, get } = window.fb;
+  const rows = {}, rowSubs = {}, pending = new Set();
+  let disposed = false, renderTimer = null;
+  function render() {
+    if (disposed || pending.size) return;
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(() => { if (!disposed) renderOrdersList(Object.keys(rows).map(k => rows[k])); }, 60);
+  }
+  function watchRow(key, restId, live) {
+    if (rowSubs[key]) return;
+    const un = []; rowSubs[key] = un;
+    pending.add(key);
+    const done = () => { pending.delete(key); render(); };
+    const sub = (path, cb) => {
+      if (live) un.push(onValue(ref(db, path), cb, () => cb({ val: () => null })));
+      else get(ref(db, path)).then(cb).catch(() => cb({ val: () => null }));
+    };
+    const real = (shopId) => {
+      getShopMeta(shopId).then(meta => {
+        if (disposed || rowSubs[key] !== un) return;
+        sub('restaurants/' + shopId + '/orders/' + key, s => {
+          const o = s.val();
+          if (!o) delete rows[key];
+          else rows[key] = {
+            restId: shopId, orderKey: key,
+            restName: o.fromNeshStoreQueue ? 'NESH Store' : meta.name,
+            businessType: meta.type, orderNumber: o.orderNumber, status: o.status,
+            statusReason: o.statusReason, items: o.items, total: o.total, createdAt: o.createdAt,
+          };
+          done();
+        });
+      });
+    };
+    if (restId === 'NESH_STORE') {
+      let started = false;
+      sub('groceryOrderQueue/' + key, s => {
+        const q = s.val();
+        if (q && q.status === 'assigned' && q.assignedShopId) { if (!started) { started = true; real(q.assignedShopId); } return; }
+        if (!q) delete rows[key];
+        else rows[key] = {
+          restId: 'NESH_STORE', orderKey: key, restName: 'NESH Store', businessType: 'groceries',
+          orderNumber: q.orderNumber, status: q.status === 'cancelled' ? 'cancelled' : 'pending_assignment',
+          statusReason: q.statusReason, items: q.items, total: q.total, createdAt: q.createdAt,
+        };
+        done();
+      });
+    } else {
+      real(restId);
+    }
+  }
+  const idxUn = onValue(ref(db, 'customers/' + myNumber + '/orderIndex'), snap => {
+    if (disposed) return;
+    const cutoff = Date.now() - ORDER_WATCH_WINDOW_MS;
+    let any = false;
+    snap.forEach(c => {
+      const v = c.val() || {};
+      if (!v.restId) return;
+      any = true;
+      watchRow(c.key, v.restId, (v.createdAt || 0) >= cutoff);
+    });
+    if (!any) { pending.clear(); render(); }
+    else render();
+  });
+  ordersUnsub = () => {
+    disposed = true; clearTimeout(renderTimer);
+    try { idxUn(); } catch (e) {}
+    Object.keys(rowSubs).forEach(k => rowSubs[k].forEach(u => { try { u(); } catch (e) {} }));
+  };
+}
+
+function openOrdersLegacy(myNumber) {
   const { db, ref, onValue, get } = window.fb;
   ordersUnsub = onValue(ref(db, 'restaurants'), snap => {
     const mine = [];
     snap.forEach(restSnap => {
-      const restVal = restSnap.val() || {};
-      const realRestName = restVal.restaurantName || 'Restaurant';
-      const businessType = restVal.businessType || 'hotel';
-      const ordersVal = restVal.orders;
-      if (!ordersVal) return;
-      Object.keys(ordersVal).forEach(orderKey => {
-        const o = ordersVal[orderKey];
-        if (!o || o.customerPhone !== myNumber) return;
+      const realRestName = restSnap.child('restaurantName').val() || 'Restaurant';
+      const businessType = restSnap.child('businessType').val() || 'hotel';
+      neshForMyOrders(restSnap, myNumber, (orderKey, o) => {
+        if (!o) return;
         // Orders that came through NESH Store never reveal the real shop.
         const restName = o.fromNeshStoreQueue ? 'NESH Store' : realRestName;
         mine.push({
@@ -10524,7 +10922,11 @@ function requestNativeLocationDialog() {
 
 function tryEnableLocation(silent) {
   if (!navigator.geolocation) return;
-  if (!silent) { requestNativeLocationDialog().then(() => tryEnableLocationCore(silent)); return; }
+  if (!silent) {
+    locOffEnableBtn.disabled = true; locOffEnableBtn.textContent = 'Checking…';
+    requestNativeLocationDialog().then(() => tryEnableLocationCore(silent));
+    return;
+  }
   tryEnableLocationCore(silent);
 }
 function tryEnableLocationCore(silent) {
@@ -10541,8 +10943,11 @@ function tryEnableLocationCore(silent) {
       const isNativeApp = !!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation);
       locOffHelp.innerHTML = (err && err.code === 1)
         ? (isNativeApp ? '<b>Permission is blocked.</b> Go to phone Settings → Apps → this app → Permissions → Location → <b>Allow</b>. Then come back and tap <b>Try again</b>.' : locBlockedHelpHtml())
-        : '<b>GPS is off.</b> Turn on the <b>Location</b> icon in your phone\'s notification bar (or Settings → Location → On). Then come back and tap <b>Try again</b>.';
+        : (err && err.code === 3)
+          ? '<b>Still finding your location.</b> Make sure <b>Location</b> is on, then tap <b>Try again</b> (GPS can take a few seconds outdoors).'
+          : '<b>GPS is off.</b> Turn on the <b>Location</b> icon in your phone\'s notification bar (or Settings → Location → On). Then come back and tap <b>Try again</b>.';
       locOffHelp.style.display = 'block';
+      if (err && err.code === 3) return;   // slow fix, not a settings problem — don't throw the customer into Settings
       // Native app: jump straight to the phone's location settings if available.
       try {
         const NS = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.NativeSettings;
@@ -10631,7 +11036,7 @@ try {
       if (sp) sp.done('bus');
     }
     if ('shopOrder' in cfg && !live.shopOrder) { SHOP_ORDER = cfg.shopOrder || {}; window.SHOP_ORDER = SHOP_ORDER; if (sp) sp.done('shop'); }
-    if (Array.isArray(cfg.zones) && !live.zones) { window.SHOP_ZONES = cfg.zones; if (sp) sp.done('zones'); }
+    if (Array.isArray(cfg.zones) && !live.zones) { window.SHOP_ZONES = cfg.zones; if (sp) sp.done('zones'); try { syncShopLoading(); } catch (e) {} }
   }
   const g = JSON.parse(localStorage.getItem('nesh_last_gps') || 'null');
   if (g && typeof g.lat === 'number' && typeof g.lng === 'number' && !state.customerPos) {
