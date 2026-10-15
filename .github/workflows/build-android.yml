@@ -217,6 +217,9 @@ jobs:
               @Override
               public void onCreate(Bundle savedInstanceState) {
                   registerPlugin(NeshLocationPlugin.class);
+                  // Google's own recommended call for Android 15+ edge-to-edge
+                  // (what Play Console asks for). Must run before super.onCreate.
+                  androidx.activity.EdgeToEdge.enable(this);
                   super.onCreate(savedInstanceState);
 
                   // Edge-to-edge done the recommended way (all Android versions):
