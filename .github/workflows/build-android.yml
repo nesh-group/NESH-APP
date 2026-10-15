@@ -354,13 +354,13 @@ jobs:
       - name: Sync web assets into Android project
         run: npx cap sync android
 
-      # Previous upload used versionCode 5 (versionName 1.0.4). Every new
+      # Previous upload used versionCode 6 (versionName 1.0.5). Every new
       # upload must have a strictly higher versionCode, so this is bumped to
-      # 6 here. versionName is only the label users see (1.0.5).
+      # 7 here. versionName is only the label users see (1.0.6).
       - name: Set version code and name
         run: |
-          sed -i "s/versionCode 1/versionCode 6/" android/app/build.gradle
-          sed -i 's/versionName "1.0"/versionName "1.0.5"/' android/app/build.gradle
+          sed -i "s/versionCode 1/versionCode 7/" android/app/build.gradle
+          sed -i 's/versionName "1.0"/versionName "1.0.6"/' android/app/build.gradle
           grep -E "versionCode|versionName" android/app/build.gradle
 
       - name: Fix Kotlin stdlib duplicate class conflict
