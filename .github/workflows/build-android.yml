@@ -217,9 +217,6 @@ jobs:
               @Override
               public void onCreate(Bundle savedInstanceState) {
                   registerPlugin(NeshLocationPlugin.class);
-                  // Google's own recommended call for Android 15+ edge-to-edge
-                  // (what Play Console asks for). Must run before super.onCreate.
-                  androidx.activity.EdgeToEdge.enable(this);
                   super.onCreate(savedInstanceState);
 
                   // Edge-to-edge done the recommended way (all Android versions):
@@ -357,13 +354,13 @@ jobs:
       - name: Sync web assets into Android project
         run: npx cap sync android
 
-      # Previous upload used versionCode 6 (versionName 1.0.5). Every new
-      # upload must have a strictly higher versionCode, so this is bumped to
-      # 7 here. versionName is only the label users see (1.0.6).
+      # versionCode 7 (1.0.6) is already uploaded to Play Console, and every
+      # new upload must have a strictly higher versionCode, so this build
+      # uses 8. versionName is only the label users see (1.0.7).
       - name: Set version code and name
         run: |
-          sed -i "s/versionCode 1/versionCode 7/" android/app/build.gradle
-          sed -i 's/versionName "1.0"/versionName "1.0.6"/' android/app/build.gradle
+          sed -i "s/versionCode 1/versionCode 8/" android/app/build.gradle
+          sed -i 's/versionName "1.0"/versionName "1.0.7"/' android/app/build.gradle
           grep -E "versionCode|versionName" android/app/build.gradle
 
       - name: Fix Kotlin stdlib duplicate class conflict
