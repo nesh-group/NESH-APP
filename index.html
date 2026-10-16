@@ -163,6 +163,15 @@
   html, body{
     overscroll-behavior-y: contain;
   }
+  /* FIX: stop the whole page sliding sideways (left part of screen cut off, yellow strip on right).
+     overflow-x on <html> is applied to the viewport, so it blocks sideways page-scroll without
+     breaking position:sticky. overflow-x:clip on #app hides stray overflow without making a scroll container. */
+  html{ overflow-x:hidden; max-width:100%; }
+  body{ max-width:100%; }
+  #app{ overflow-x:clip; }
+  .cat-wrap{ min-width:0; overflow-x:clip; }
+  .cat-wrap > *{ min-width:0; max-width:100%; box-sizing:border-box; }
+  .posters{ max-width:calc(100% + 40px); }
   body{
     margin:0;
     background:var(--bg-outer);
