@@ -46,6 +46,28 @@
   @keyframes spPulse{ 0%,100%{ transform:translate(-50%,-50%) scale(1); } 50%{ transform:translate(-50%,-50%) scale(1.06); } }
   @keyframes spNav{ 0%,100%{ transform:translate(0,0); } 50%{ transform:translate(3px,-3px); } }
   @keyframes spDot{ 0%,80%,100%{ opacity:.2; } 40%{ opacity:1; } }
+
+  /* ================= FOOD home (hotel only) — full-photo cards, own look (not NESH Mart) ================= */
+  .food-chips{ display:flex; gap:8px; overflow-x:auto; padding:2px 2px 12px; scrollbar-width:none; }
+  .food-chips::-webkit-scrollbar{ display:none; }
+  .food-chip{ flex:none; border:1.5px solid #e6d9b8; background:#fff; color:#5a4a1a; font-weight:700; font-size:13px; padding:8px 14px; border-radius:999px; cursor:pointer; font-family:inherit; }
+  .food-chip.active{ background:#2B2410; border-color:#2B2410; color:#FFD54A; }
+  .food-count{ font-size:13px; font-weight:700; color:#2B2410; margin:2px 2px 12px; }
+  .food-card{ position:relative; border-radius:24px; overflow:hidden; margin:0 0 16px; box-shadow:0 8px 22px rgba(43,36,16,.18); cursor:pointer; background:#222; transition:transform .15s; }
+  .food-card:active{ transform:scale(.98); }
+  .food-card-photo{ width:100%; height:210px; object-fit:cover; display:block; }
+  .food-card::after{ content:""; position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,.86) 0%, rgba(0,0,0,.35) 45%, rgba(0,0,0,0) 70%); pointer-events:none; }
+  .food-card.closed .food-card-photo{ filter:grayscale(1) brightness(.7); }
+  .food-card-top{ position:absolute; top:12px; left:12px; right:12px; display:flex; justify-content:space-between; align-items:flex-start; z-index:2; }
+  .food-tag{ background:#FFD54A; color:#2B2410; font-size:11.5px; font-weight:800; padding:5px 10px; border-radius:999px; }
+  .food-tag.closed{ background:#444; color:#fff; }
+  .food-rate{ background:#1BA672; color:#fff; font-weight:800; font-size:13px; padding:5px 10px; border-radius:10px; z-index:2; }
+  .food-card-bottom{ position:absolute; left:14px; right:14px; bottom:12px; z-index:2; color:#fff; }
+  .food-name{ font-size:20px; font-weight:800; margin:0 0 3px; line-height:1.2; text-shadow:0 1px 4px rgba(0,0,0,.4); }
+  .food-sub{ font-size:12.5px; margin:0 0 8px; opacity:.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .food-pills{ display:flex; gap:6px; flex-wrap:wrap; }
+  .food-pill{ background:rgba(0,0,0,.38); color:#fff; font-size:11.5px; font-weight:700; padding:4px 9px; border-radius:999px; }
+  .food-closed-msg{ font-size:12px; margin:6px 0 0; color:#ffd9a0; font-weight:600; }
 </style>
 <script>
 // ---------- Browser back-button guard (runs FIRST, before anything else)
@@ -602,6 +624,7 @@
   .item-desc{ color:var(--muted-2); font-size:12px; margin:4px 0 0; max-width:200px; }
   .item-price{ color:var(--marigold-dark); font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:14px; margin:8px 0 0; }
 
+  .add-btn, .plus-btn, .minus-btn, .qty-wrap button{ touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
   .add-btn{
     padding:10px 20px; border-radius:10px; border:1.5px solid var(--marigold);
     background:#fff; color:var(--chili); font-weight:700; font-size:13px;
@@ -1585,15 +1608,255 @@
   });
 </script>
 
+<style id="nesh-taxi-auto-css">
+  /* Illustrated auto-rickshaw ride scene on the taxi booking screen */
+  .taxi-auto-scene{ position:relative; height:112px; overflow:hidden; pointer-events:none; }
+  .taxi-auto-scene .ta-inner{ position:absolute; left:0; top:0; width:117.647%; height:132px; transform:scale(.85); transform-origin:0 0; }
+  .taxi-auto-scene svg{ max-width:none; }
+  .taxi-auto-scene .ta-sun{ position:absolute; top:16px; right:26px; width:28px; height:28px; border-radius:50%; background:#FFF3C4; }
+  .taxi-auto-scene .ta-cloud{ position:absolute; width:62px; height:auto; left:100%; animation:taCloud 80s linear infinite; }
+  .taxi-auto-scene .ta-cloud.c1{ top:16px; animation-delay:-30s; }
+  .taxi-auto-scene .ta-cloud.c2{ top:44px; width:44px; animation-duration:115s; animation-delay:-80s; }
+  .taxi-auto-scene .ta-birds{ position:absolute; top:26px; left:-60px; width:46px; height:auto; animation:taBirds 24s linear infinite; animation-delay:-9s; opacity:.9; }
+  .taxi-auto-scene .ta-birds g{ transform-box:fill-box; transform-origin:center; animation:taFlap .45s ease-in-out infinite alternate; }
+  .taxi-auto-scene .ta-layer{ position:absolute; bottom:30px; will-change:transform; }
+  .taxi-auto-scene .ta-far{ left:-300px; animation:taFar 37s linear infinite; }
+  .taxi-auto-scene .ta-mid{ left:-240px; animation:taMid 10.4s linear infinite; }
+  .taxi-auto-scene .ta-near{ left:-220px; animation:taNear 4.2s linear infinite; }
+  .taxi-auto-scene .ta-road{ position:absolute; left:0; right:0; bottom:0; height:30px; background:#2E281A; }
+  .taxi-auto-scene .ta-road::before{ content:''; position:absolute; left:0; right:0; top:0; height:4px; background:#CDB67A; }
+  .taxi-auto-scene .ta-road::after{ content:''; position:absolute; left:0; right:0; top:16px; height:3px;
+    background:repeating-linear-gradient(90deg,#F2B705 0 22px,transparent 22px 40px); animation:taDash .6s linear infinite; }
+  .taxi-auto-scene .ta-auto{ position:absolute; left:18%; bottom:11px; width:140px; }
+  .taxi-auto-scene .ta-svg{ display:block; width:100%; height:auto; overflow:visible; animation:taVib .17s ease-in-out infinite alternate; }
+  .taxi-auto-scene .ta-bodyg{ transform-box:view-box; transform-origin:80px 90px; animation:taRide 2.8s ease-in-out infinite; }
+  .taxi-auto-scene .ta-wheel{ transform-box:fill-box; transform-origin:center; animation:taSpin .95s linear infinite; }
+  .taxi-auto-scene .ta-puff{ transform-box:fill-box; transform-origin:center; opacity:0; animation:taPuff 1.1s ease-out infinite; }
+  .taxi-auto-scene .ta-puff.p2{ animation-delay:.37s; } .taxi-auto-scene .ta-puff.p3{ animation-delay:.74s; }
+  @keyframes taFar{ to{ transform:translateX(-300px); } }
+  @keyframes taMid{ to{ transform:translateX(-240px); } }
+  @keyframes taNear{ to{ transform:translateX(-220px); } }
+  @keyframes taDash{ to{ background-position-x:-40px; } }
+  @keyframes taSpin{ to{ transform:rotate(360deg); } }
+  @keyframes taVib{ from{ transform:translateY(0); } to{ transform:translateY(-.5px); } }
+  @keyframes taRide{ 0%{ transform:translateY(0) rotate(0); } 5%{ transform:translateY(-2px) rotate(-.45deg); } 10%{ transform:translateY(.5px) rotate(.2deg); } 15%,100%{ transform:translateY(0) rotate(0); } 55%{ transform:translateY(-.6px); } }
+  @keyframes taCloud{ from{ left:100%; } to{ left:-80px; } }
+  @keyframes taBirds{ from{ left:-60px; } to{ left:100%; } }
+  @keyframes taFlap{ from{ transform:scaleY(1); } to{ transform:scaleY(.45); } }
+  @keyframes taPuff{ 0%{ opacity:.55; transform:translate(0,0) scale(.5); } 100%{ opacity:0; transform:translate(-26px,-6px) scale(1.7); } }
+  @media (prefers-reduced-motion:reduce){
+    .taxi-auto-scene *{ animation:none !important; }
+    .taxi-auto-scene .ta-auto{ left:30%; }
+  }
+</style>
+<style id="nesh-taxi-book-css">
+  /* Taxi booking screen: animation lives inside the yellow header; bigger, bolder pickup / drop fields */
+  #screen-taxi-book .taxi-header{ flex-wrap:wrap; row-gap:0; align-content:flex-start; padding-bottom:0; }
+  #screen-taxi-book .taxi-header::after{ display:none; }
+  #screen-taxi-book .taxi-header .taxi-auto-scene{ flex:none; width:calc(100% + 48px); margin:-10px -24px 0; position:relative; z-index:1; }
+  #screen-taxi-book .taxi-body{ padding-top:18px; }
+
+  #screen-taxi-book .taxi-route-card{ display:flex; flex-direction:column; gap:14px; padding:0; border:none; background:none; box-shadow:none; border-radius:0; }
+  #screen-taxi-book .taxi-route-line{ left:35px; top:58px; bottom:58px; width:3px; border-radius:2px;
+    background-image:linear-gradient(var(--marigold-dark) 55%, transparent 0%); background-size:3px 9px; opacity:.75; }
+  #screen-taxi-book .taxi-pin-row{ min-height:76px; margin:0; padding:12px 14px; gap:14px; border-radius:20px; background:#fff;
+    border:2px solid var(--field-border); box-shadow:0 6px 16px rgba(43,36,16,.10); transition:box-shadow .15s, border-color .15s; }
+  #screen-taxi-book .taxi-pin-row + .taxi-pin-row{ border-top:2px solid var(--field-border); border-radius:20px; }
+  #screen-taxi-book .taxi-pin-row.active{ background:#fff; border-color:var(--marigold); box-shadow:0 0 0 4px rgba(242,183,5,.28), 0 12px 24px rgba(214,158,0,.28); }
+  #screen-taxi-book .taxi-pin-row.active + .taxi-pin-row, #screen-taxi-book .taxi-pin-row + .taxi-pin-row.active{ border-top-color:inherit; }
+  #screen-taxi-book .taxi-pin-row.active + .taxi-pin-row{ border-top-color:var(--field-border); }
+  #screen-taxi-book .taxi-pin-row + .taxi-pin-row.active{ border-top-color:var(--marigold); }
+
+  #screen-taxi-book .taxi-pin-dot{ position:relative; width:40px; height:40px; border:none; flex-shrink:0; box-shadow:none; }
+  #screen-taxi-book .taxi-pin-dot::after{ content:''; position:absolute; left:50%; top:50%; width:14px; height:14px; margin:-7px 0 0 -7px; background:#fff; }
+  #screen-taxi-book .taxi-pin-dot.pickup{ border-radius:50%; background:linear-gradient(135deg,#34C793,#1BA672); box-shadow:0 5px 12px rgba(27,166,114,.40); }
+  #screen-taxi-book .taxi-pin-dot.pickup::after{ border-radius:50%; }
+  #screen-taxi-book .taxi-pin-dot.drop{ border-radius:13px; background:linear-gradient(135deg,#FFB42E,#C97F00); box-shadow:0 5px 12px rgba(201,127,0,.40); }
+  #screen-taxi-book .taxi-pin-dot.drop::after{ border-radius:4px; }
+
+  #screen-taxi-book .taxi-pin-field{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  #screen-taxi-book .taxi-pin-label{ font-size:11px; font-weight:800; letter-spacing:1.5px; line-height:1.1; color:var(--chili); }
+  #screen-taxi-book #taxi-pickup-row .taxi-pin-label{ color:#0E8A5C; }
+  #screen-taxi-book .taxi-pin-row input{ font-size:17px; font-weight:700; padding:3px 0; text-overflow:ellipsis; }
+  #screen-taxi-book .taxi-pin-row input::placeholder{ color:#8C7B45; font-weight:600; }
+  #screen-taxi-book .taxi-gps-btn{ background:var(--leaf); color:#fff; font-size:13px; padding:10px 14px; box-shadow:0 5px 12px rgba(27,166,114,.38); }
+
+  /* ---- Tweaks: title blends into the scene; compact + wider pickup/drop ---- */
+  /* title sits inside the sky: scene slides up behind it, soft fade so there's no hard seam */
+  #screen-taxi-book .taxi-header{ padding:12px 16px 0; gap:12px; }
+  #screen-taxi-book .taxi-header .btn-back{ width:38px; height:38px; margin:0; align-self:center; }
+  #screen-taxi-book .taxi-header .eyebrow{ margin:0; font-size:11px; line-height:1.2; }
+  #screen-taxi-book .taxi-header .taxi-title{ font-size:24px; line-height:1.15; margin:0; }
+  #screen-taxi-book .taxi-header .taxi-auto-scene{ width:calc(100% + 32px); margin:-18px -16px 0; z-index:0; }
+  #screen-taxi-book .taxi-header .taxi-auto-scene::before{ content:''; position:absolute; left:0; right:0; top:0; height:46px; z-index:3; pointer-events:none;
+    background:linear-gradient(to bottom, var(--marigold) 0%, rgba(242,183,5,0) 100%); }
+  #screen-taxi-book .taxi-header .btn-back, #screen-taxi-book .taxi-header > div:not(.taxi-auto-scene){ z-index:4; position:relative; }
+
+  /* compact + wider boxes */
+  #screen-taxi-book .taxi-body{ padding-left:12px; padding-right:12px; }
+  #screen-taxi-book .taxi-route-card{ gap:10px; }
+  #screen-taxi-book .taxi-route-line{ left:27px; top:44px; bottom:44px; }
+  #screen-taxi-book .taxi-pin-row{ min-height:56px; padding:8px 12px; gap:10px; border-radius:16px; }
+  #screen-taxi-book .taxi-pin-row + .taxi-pin-row{ border-radius:16px; }
+  #screen-taxi-book .taxi-pin-dot{ width:32px; height:32px; }
+  #screen-taxi-book .taxi-pin-dot::after{ width:11px; height:11px; margin:-5.5px 0 0 -5.5px; }
+  #screen-taxi-book .taxi-pin-dot.drop{ border-radius:10px; }
+  #screen-taxi-book .taxi-pin-label{ font-size:10px; letter-spacing:1.3px; }
+  #screen-taxi-book .taxi-pin-row input{ font-size:15px; padding:1px 0; }
+  #screen-taxi-book .taxi-gps-btn{ font-size:12px; padding:7px 11px; }
+</style>
 <style id="nesh-posters-css">
-  #posters-mart{ margin:0 -20px 14px; }
+  #posters-mart, #posters-food{ margin:0 -20px 14px; }
+  /* ---- NESH Mart header: Deliver-to up top, Orders next to the bell, no brand/greeting ---- */
+  #screen-home[data-cat="online_shop"]{ overflow-x:clip; }
+  #screen-home[data-cat="online_shop"] #home-greeting,
+  #screen-home[data-cat="online_shop"] .home-brand-mark,
+  #screen-home[data-cat="online_shop"] #home-cat-eyebrow{ display:none; }
+  #screen-home[data-cat="online_shop"] .home-top-row{ padding:12px 14px 4px; column-gap:6px; }
+  #screen-home[data-cat="online_shop"] .home-top-left > div:first-child{ display:flex; align-items:center; gap:0; margin:0; min-width:0; }
+  #screen-home[data-cat="online_shop"] .home-top-row .home-loc-card{ flex:1; min-width:0; margin:0; padding:2px 4px 2px 0; gap:0; background:transparent; border:0; box-shadow:none; border-radius:0; }
+  #screen-home[data-cat="online_shop"] .home-top-row .home-loc-card-icon,
+  #screen-home[data-cat="online_shop"] .home-top-row .home-loc-card > svg{ display:none; }
+  #screen-home[data-cat="online_shop"] .home-top-row .home-loc-card-label{ font-size:10px; }
+  #screen-home[data-cat="online_shop"] .home-top-row .home-loc-card-label::before{ content:'📍 '; }
+  #screen-home[data-cat="online_shop"] .home-top-row .home-loc-card-value{ font-size:13px; }
+  #screen-home[data-cat="online_shop"] .top-row-right{ gap:6px; }
+  #screen-home[data-cat="online_shop"] .top-row-right .your-orders-pill{ margin:0; padding:7px 11px 7px 9px; gap:5px; border-radius:18px; }
+  #screen-home[data-cat="online_shop"] .top-row-right .your-orders-pill p,
+  #screen-home[data-cat="online_shop"] .top-row-right .your-orders-pill span{ font-size:13px !important; }
+  #screen-home[data-cat="online_shop"] .top-row-right .your-orders-pill svg{ display:none; }
+  #screen-home[data-cat="online_shop"] .home-track-btn{ width:34px; height:34px; }
+  #screen-home[data-cat="online_shop"] .search-wrap{ padding-top:8px; }
+
+  /* ---- Food header: same compact one-row header as NESH Mart (saves space) ---- */
+  #screen-home[data-cat="hotel"]{ overflow-x:clip; }
+  #screen-home[data-cat="hotel"] #home-greeting,
+  #screen-home[data-cat="hotel"] .home-brand-mark,
+  #screen-home[data-cat="hotel"] #home-cat-eyebrow{ display:none; }
+  #screen-home[data-cat="hotel"] .home-top-row{ padding:12px 14px 4px; column-gap:6px; }
+  #screen-home[data-cat="hotel"] .home-top-left > div:first-child{ display:flex; align-items:center; gap:0; margin:0; min-width:0; }
+  #screen-home[data-cat="hotel"] .home-top-row .home-loc-card{ flex:1; min-width:0; margin:0; padding:2px 4px 2px 0; gap:0; background:transparent; border:0; box-shadow:none; border-radius:0; }
+  #screen-home[data-cat="hotel"] .home-top-row .home-loc-card-icon,
+  #screen-home[data-cat="hotel"] .home-top-row .home-loc-card > svg{ display:none; }
+  #screen-home[data-cat="hotel"] .home-top-row .home-loc-card-label{ font-size:10px; }
+  #screen-home[data-cat="hotel"] .home-top-row .home-loc-card-label::before{ content:'📍 '; }
+  #screen-home[data-cat="hotel"] .home-top-row .home-loc-card-value{ font-size:13px; }
+  #screen-home[data-cat="hotel"] .top-row-right{ gap:6px; }
+  #screen-home[data-cat="hotel"] .top-row-right .your-orders-pill{ margin:0; padding:7px 11px 7px 9px; gap:5px; border-radius:18px; }
+  #screen-home[data-cat="hotel"] .top-row-right .your-orders-pill p,
+  #screen-home[data-cat="hotel"] .top-row-right .your-orders-pill span{ font-size:13px !important; }
+  #screen-home[data-cat="hotel"] .top-row-right .your-orders-pill svg{ display:none; }
+  #screen-home[data-cat="hotel"] .home-track-btn{ width:34px; height:34px; }
+  #screen-home[data-cat="hotel"] .search-wrap{ padding-top:8px; }
+
+  /* ================= NESH Mart home (mall style) — online_shop only ================= */
+  #screen-home:not([data-cat="online_shop"]) .mart-only{ display:none !important; }
+  .mart-filters{ margin:2px 0 12px; }
+  .mart-chips{ display:flex; gap:8px; overflow-x:auto; padding:2px 24px 4px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .mart-chips::-webkit-scrollbar{ display:none; }
+  .mart-chips-sort{ margin-top:6px; }
+  .mart-chip{ flex:none; border:1.5px solid #F2D675; background:#fff; color:#6B5410; font:700 13px/1 Inter,sans-serif;
+    padding:9px 14px; border-radius:999px; cursor:pointer; white-space:nowrap; }
+  .mart-chip.active{ background:linear-gradient(135deg,#FFD84D,#F2A900); border-color:#F2A900; color:#3A2A00; box-shadow:0 4px 10px rgba(242,169,0,.35); }
+  .mart-chips-sort .mart-chip{ font-size:12px; padding:7px 12px; border-color:#EADFB8; color:#7A6A33; background:#FFFBEA; }
+  .mart-chips-sort .mart-chip.active{ background:#2B2410; border-color:#2B2410; color:#fff; box-shadow:none; }
+
+  .mart-sec-title{ font:700 16px/1.2 Fraunces,serif; color:var(--ink); margin:14px 0 8px; padding:0 24px; }
+  .mart-hscroll{ display:flex; gap:12px; overflow-x:auto; margin:0; padding:2px 24px 8px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .mart-hscroll::-webkit-scrollbar{ display:none; }
+
+  .mart-deal{ flex:none; width:210px; display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:16px; cursor:pointer;
+    background:linear-gradient(135deg,#FFF1B8,#FFD84D); box-shadow:0 6px 14px rgba(242,169,0,.25); }
+  .mart-deal-amt{ font:800 20px/1 Poppins,Inter,sans-serif; color:#3A2A00; }
+  .mart-deal-amt small{ display:block; font:700 10px/1.2 Inter,sans-serif; letter-spacing:1px; }
+  .mart-deal-name{ font:700 13px/1.25 Inter,sans-serif; color:#3A2A00; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+
+  .mart-trend-list{ display:flex; flex-direction:column; gap:14px; }
+  .mart-shop-row{ margin:0 24px; background:#fff; border-radius:18px; padding:10px 0 4px; box-shadow:0 6px 16px rgba(43,36,16,.08); }
+  .mart-shop-row-head{ display:flex; align-items:center; gap:10px; padding:0 12px 8px; cursor:pointer; }
+  .mart-shop-row-logo{ width:34px; height:34px; border-radius:50%; overflow:hidden; flex:none; background:#F4EDD6; }
+  .mart-shop-row-logo img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .mart-shop-row-name{ flex:1; min-width:0; font:700 14.5px/1.2 Poppins,Inter,sans-serif; color:var(--ink); margin:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .mart-shop-row-go{ flex:none; color:#C97F00; font:800 12.5px/1 Inter,sans-serif; }
+  .mart-shop-row .mart-hscroll{ margin:0; padding:2px 12px 8px; }
+  .mart-logo-strip{ display:flex; gap:12px; overflow-x:auto; padding:2px 24px 10px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .mart-logo-strip::-webkit-scrollbar{ display:none; }
+  .mart-logo-chip{ flex:none; width:64px; border:0; background:none; padding:0; text-align:center; cursor:pointer; }
+  .mart-logo-img{ display:flex; align-items:center; justify-content:center; width:56px; height:56px; margin:0 auto; border-radius:50%; overflow:hidden;
+    background:#fff; border:2.5px solid transparent; box-shadow:0 4px 10px rgba(43,36,16,.12); font-size:24px; }
+  .mart-logo-img img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .mart-logo-chip.active .mart-logo-img{ border-color:#F2A900; box-shadow:0 0 0 3px rgba(242,169,0,.28), 0 4px 10px rgba(43,36,16,.12); }
+  .mart-logo-name{ display:block; margin-top:5px; font:700 11px/1.2 Inter,sans-serif; color:var(--muted-2); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .mart-logo-chip.active .mart-logo-name{ color:var(--ink); }
+  .mart-trend-head{ display:flex; align-items:center; justify-content:space-between; padding:0 24px 4px; }
+  .mart-trend-shopname{ font:700 14.5px/1.2 Poppins,Inter,sans-serif; color:var(--ink); margin:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .mart-prod{ flex:none; width:118px; cursor:pointer; }
+  .mart-prod-img{ width:118px; height:118px; border-radius:16px; overflow:hidden; background:#F4EDD6; box-shadow:0 5px 12px rgba(43,36,16,.10); }
+  .mart-prod-img img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .mart-prod-name{ font:700 12.5px/1.25 Inter,sans-serif; color:var(--ink); margin:6px 0 0; overflow:hidden; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; }
+  .mart-prod-shop{ font:500 11px/1.2 Inter,sans-serif; color:var(--muted-2); margin:1px 0 0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .mart-prod-price{ font:800 13px/1.2 Inter,sans-serif; color:#0E8A5C; margin:2px 0 0; }
+
+  /* floors / sections */
+  .mart-section{ display:flex; flex-direction:column; gap:10px; }
+  .mart-section-head{ display:flex; align-items:center; justify-content:space-between; margin-top:6px; }
+  .mart-section-title{ font:700 17px/1.2 Fraunces,serif; color:var(--ink); margin:0; }
+  .mart-see-all{ border:0; background:none; color:#C97F00; font:800 13px/1 Inter,sans-serif; padding:6px 0 6px 10px; cursor:pointer; }
+  .mart-section-body{ display:flex; flex-direction:column; gap:10px; }
+  #screen-home[data-cat="online_shop"] .rest-list{ gap:12px; }
+
+  /* compact shop card */
+  .mart-card{ position:relative; display:flex; align-items:center; gap:12px; padding:10px 12px 10px 10px; background:#fff; border-radius:18px;
+    box-shadow:0 6px 16px rgba(43,36,16,.09); cursor:pointer; transition:transform .12s ease; }
+  .mart-card:active{ transform:scale(.985); }
+  .mart-card-img{ position:relative; width:84px; height:84px; flex:none; border-radius:14px; overflow:hidden; background:#F4EDD6; }
+  .mart-card-img img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .mart-card.is-closed .mart-card-img img{ filter:grayscale(70%) brightness(.7); }
+  .mart-card.is-closed .mart-card-name{ color:var(--muted-2); }
+  .mart-card-info{ flex:1; min-width:0; }
+  .mart-card-name{ font:700 15.5px/1.2 Poppins,Inter,sans-serif; color:var(--ink); margin:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .mart-card-meta{ display:flex; align-items:center; gap:6px; margin-top:5px; font:600 12px/1 Inter,sans-serif; color:var(--muted-2); }
+  .mart-card-rating{ background:#E6F8EF; color:#0E8A5C; padding:3px 8px; border-radius:999px; font-weight:700; }
+  .mart-card-sub{ font:500 12px/1.2 Inter,sans-serif; color:var(--muted-2); margin:5px 0 0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .mart-card-tags{ display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
+  .mart-pill{ font:800 10.5px/1 Inter,sans-serif; padding:4px 8px; border-radius:999px; letter-spacing:.3px; }
+  .mart-pill.open{ background:#E6F8EF; color:#0E8A5C; }
+  .mart-pill.closed{ background:#F1E3E0; color:#B03A2E; }
+  .mart-pill.deal{ background:#FFF1B8; color:#7A5200; }
+  .mart-card-arrow{ flex:none; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(135deg,#FFD84D,#F2A900); color:#3A2A00; font:800 20px/1 Poppins,Inter,sans-serif; padding-bottom:2px; }
+  .mart-closed-msg{ font:500 11px/1.2 Inter,sans-serif; color:#B03A2E; margin:4px 0 0; }
+
+  /* ---- tighter NESH Mart top sections so the first shop shows without scrolling ---- */
+  .mart-sec-title{ font-size:14.5px; margin:8px 0 4px; }
+  .mart-hscroll{ gap:10px; padding:2px 24px 6px; }
+  .mart-deal{ width:auto; min-width:170px; max-width:240px; padding:7px 14px; gap:10px; border-radius:14px; }
+  .mart-deal-amt{ font:800 16px/1 Poppins,Inter,sans-serif; white-space:nowrap; }
+  .mart-deal-amt small{ display:inline; font:800 10px/1 Inter,sans-serif; letter-spacing:.8px; }
+  .mart-deal-name{ -webkit-line-clamp:1; font-size:12.5px; }
+  .mart-logo-strip{ gap:10px; padding:0 24px 6px; }
+  .mart-logo-chip{ width:54px; }
+  .mart-logo-img{ width:42px; height:42px; font-size:19px; border-width:2px; }
+  .mart-logo-name{ font-size:10px; margin-top:3px; }
+  .mart-trend-head{ padding-bottom:2px; }
+  .mart-prod{ width:92px; }
+  .mart-prod-img{ width:92px; height:92px; border-radius:14px; }
+  .mart-prod-name{ font-size:11.5px; margin-top:4px; }
+  .mart-prod-shop{ font-size:10px; }
+  .mart-prod-price{ font-size:12px; margin-top:1px; }
+  #screen-home[data-cat="online_shop"] .rest-list{ padding-top:10px; }
+
   #screen-home:not([data-cat="online_shop"]) #posters-mart{ display:none !important; }
+  #screen-home:not([data-cat="hotel"]) #posters-food{ display:none !important; }
   .posters{ margin:-4px -20px 0; position:relative; display:none; }
   .posters.has{ display:block; }
   .posters-track{ display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; padding:4px 20px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
   .posters-track::-webkit-scrollbar{ display:none; }
   .poster-slide{ flex:0 0 100%; scroll-snap-align:center; border-radius:20px; overflow:hidden; aspect-ratio:16/9; background:#FFF8DF; box-shadow:var(--card-shadow); }
   .poster-slide img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .poster-slide{ position:relative; }
+  .poster-slide video{ width:100%; height:100%; object-fit:cover; display:block; background:#000; }
+  .poster-snd{ position:absolute; left:8px; bottom:8px; z-index:2; width:28px; height:28px; border:none; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; font-size:14px; line-height:28px; padding:0; cursor:pointer; }
   .posters-count{ position:absolute; right:30px; bottom:12px; background:rgba(0,0,0,.55); color:#fff; font-size:12px; font-weight:600; padding:3px 9px; border-radius:999px; }
   .posters-dots{ display:flex; justify-content:center; gap:6px; margin-top:8px; }
   .posters-dots i{ width:6px; height:6px; border-radius:50%; background:#E6D9A5; transition:all .2s; }
@@ -2334,16 +2597,43 @@
     </div>
     <h1 class="greeting" id="home-greeting">Hungry, friend?</h1>
 
+    <div id="home-rate-card" style="display:none; margin:10px 20px 4px; padding:12px 14px; border-radius:16px; background:#FFF6DC; border:1px solid rgba(201,127,0,.35);">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+        <div style="min-width:0;">
+          <p style="margin:0; font-weight:700; font-size:14px;">How was your order?</p>
+          <p id="home-rate-sub" style="margin:2px 0 0; font-size:12px; color:#8a7f66; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></p>
+        </div>
+        <button type="button" id="home-rate-close" aria-label="Hide" style="background:none; border:none; font-size:16px; line-height:1; color:#8a7f66; cursor:pointer; padding:2px 4px;">✕</button>
+      </div>
+      <div id="home-rate-stars" style="text-align:center; margin-top:4px;"></div>
+    </div>
     <div class="search-wrap">
       <div class="field">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="search-input" type="text" placeholder="Search restaurants or cuisine" />
       </div>
     </div>
+    <div class="mart-only mart-filters" id="mart-filters">
+      <div class="mart-chips" id="mart-cat-chips"></div>
+      <div class="mart-chips mart-chips-sort" id="mart-sort-chips"></div>
+    </div>
     <div class="posters" id="posters-mart" aria-label="NESH Mart offers">
       <div class="posters-track" id="posters-mart-track"></div>
       <span class="posters-count" id="posters-mart-count"></span>
       <div class="posters-dots" id="posters-mart-dots"></div>
+    </div>
+    <div class="posters" id="posters-food" aria-label="Food offers">
+      <div class="posters-track" id="posters-food-track"></div>
+      <span class="posters-count" id="posters-food-count"></span>
+      <div class="posters-dots" id="posters-food-dots"></div>
+    </div>
+    <div class="mart-only" id="mart-deals-wrap" style="display:none;">
+      <p class="mart-sec-title">🎁 Deals</p>
+      <div class="mart-hscroll" id="mart-deals"></div>
+    </div>
+    <div class="mart-only" id="mart-trend-wrap" style="display:none;">
+      <p class="mart-sec-title">🔥 Popular products</p>
+      <div class="mart-trend-list" id="mart-trend"></div>
     </div>
     <div class="rest-list" id="rest-list"></div>
     <div id="product-results-wrap" style="display:none;">
@@ -2401,6 +2691,11 @@
       <span class="item-rating2" id="item-detail-rating"></span>
     </div>
     <div class="item-detail-body">
+      <div class="item-detail-shop" id="item-detail-shop" style="display:none; align-items:center; gap:10px; margin:0 0 14px; padding:8px 12px 8px 8px; border:1.5px solid var(--marigold-dark); border-radius:14px; cursor:pointer; background:rgba(230,170,20,0.08);">
+        <img id="item-detail-shop-logo" src="" alt="" style="width:40px; height:40px; border-radius:50%; object-fit:cover; flex:none; background:#eee;" />
+        <span style="flex:1; min-width:0;"><span style="display:block; font-size:11px; color:var(--muted-2);">Sold by</span><span id="item-detail-shop-name" style="display:block; font-size:15px; font-weight:700; color:var(--marigold-dark); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></span></span>
+        <span style="font-size:12.5px; font-weight:700; color:var(--marigold-dark); flex:none;">View shop ›</span>
+      </div>
       <p class="item-detail-name" id="item-detail-name"></p>
       <p class="item-detail-desc" id="item-detail-desc" style="display:none;"></p>
       <p class="item-detail-price" id="item-detail-price"></p>
@@ -2509,18 +2804,27 @@
         <p class="eyebrow">BOOK A RIDE</p>
         <h1 class="taxi-title">Where to?</h1>
       </div>
-    </div>
+      <div class="taxi-auto-scene" aria-hidden="true"><div class="ta-inner">
+          <div class="ta-sun"></div>
+          <svg class="ta-cloud c1" viewBox="0 0 52 24" xmlns="http://www.w3.org/2000/svg"><path d="M8 22 a7 7 0 0 1 4-12 a10 10 0 0 1 18-3 a8 8 0 0 1 14 4 a6 6 0 0 1 6 11 Z" fill="#fff" opacity=".85"/></svg><svg class="ta-cloud c2" viewBox="0 0 52 24" xmlns="http://www.w3.org/2000/svg"><path d="M8 22 a7 7 0 0 1 4-12 a10 10 0 0 1 18-3 a8 8 0 0 1 14 4 a6 6 0 0 1 6 11 Z" fill="#fff" opacity=".85"/></svg><svg class="ta-birds" viewBox="0 0 46 16" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="#4A3A18" stroke-width="1.4" stroke-linecap="round"><path d="M2 8 Q6 3 10 8 Q14 3 18 8"/><path d="M24 4 Q27 0 30 4 Q33 0 36 4" opacity=".8"/><path d="M30 13 Q33 9 36 13 Q39 9 42 13" opacity=".7"/></g></svg>
+          <svg class="ta-layer ta-far" width="1200" height="50" viewBox="-300 0 1200 50" xmlns="http://www.w3.org/2000/svg"><g transform="translate(-300 0)"><path d="M0 50 L0 30 C40 8 80 8 120 26 C160 44 200 14 240 18 C265 20 285 26 300 30 L300 50 Z" fill="#C9960A"/><path d="M0 50 L0 38 C50 26 90 40 150 34 C210 28 260 40 300 38 L300 50 Z" fill="#B88700"/></g><g transform="translate(0 0)"><path d="M0 50 L0 30 C40 8 80 8 120 26 C160 44 200 14 240 18 C265 20 285 26 300 30 L300 50 Z" fill="#C9960A"/><path d="M0 50 L0 38 C50 26 90 40 150 34 C210 28 260 40 300 38 L300 50 Z" fill="#B88700"/></g><g transform="translate(300 0)"><path d="M0 50 L0 30 C40 8 80 8 120 26 C160 44 200 14 240 18 C265 20 285 26 300 30 L300 50 Z" fill="#C9960A"/><path d="M0 50 L0 38 C50 26 90 40 150 34 C210 28 260 40 300 38 L300 50 Z" fill="#B88700"/></g><g transform="translate(600 0)"><path d="M0 50 L0 30 C40 8 80 8 120 26 C160 44 200 14 240 18 C265 20 285 26 300 30 L300 50 Z" fill="#C9960A"/><path d="M0 50 L0 38 C50 26 90 40 150 34 C210 28 260 40 300 38 L300 50 Z" fill="#B88700"/></g></svg>
+          <svg class="ta-layer ta-mid" width="1200" height="66" viewBox="-240 0 1200 66" xmlns="http://www.w3.org/2000/svg"><g transform="translate(-240 0)"><path d="M26 66 Q31.0 44.0 30 22" stroke="#5A4520" stroke-width="3.0" fill="none" stroke-linecap="round"/><g transform="translate(30 22)" fill="none" stroke-linecap="round"><path d="M0.0 0.0 Q-12.0 -10.0 -26.0 2.0" stroke="#4F7A2E" stroke-width="3.3"/><path d="M0.0 0.0 Q-8.0 -17.0 -20.0 -9.0" stroke="#3F6B24" stroke-width="3.3"/><path d="M0.0 0.0 Q2.0 -15.0 10.0 -21.0" stroke="#4F7A2E" stroke-width="3.3"/><path d="M0.0 0.0 Q12.0 -12.0 26.0 0.0" stroke="#3F6B24" stroke-width="3.3"/><path d="M0.0 0.0 Q8.0 -17.0 20.0 -9.0" stroke="#4F7A2E" stroke-width="3.3"/><path d="M0.0 0.0 Q-10.0 2.0 -22.0 14.0" stroke="#3F6B24" stroke-width="3.3"/><path d="M0.0 0.0 Q10.0 2.0 22.0 14.0" stroke="#4F7A2E" stroke-width="3.3"/><path d="M0.0 0.0 Q-2.0 -18.0 -9.0 -20.0" stroke="#3F6B24" stroke-width="3.3"/><circle cx="0" cy="3.0" r="2.4" fill="#7a4a1e" stroke="none"/><circle cx="-3.0" cy="4.0" r="2.2" fill="#6a3f19" stroke="none"/></g><rect x="52" y="48" width="36" height="18" fill="#FFF1C9"/><polygon points="48,48 62.08,35.76 77.92,35.76 92,48" fill="#C4623F"/><polygon points="48,48 92,48 91,50.4 49,50.4" fill="#A94E30"/><rect x="59.2" y="54.84" width="7.92" height="11.16" fill="#8B5A2B"/><rect x="72.88" y="53.04" width="7.2" height="4.68" fill="#9CC9DD"/><circle cx="102" cy="63" r="5" fill="#3F6B24"/><circle cx="108" cy="60" r="6.5" fill="#5E8C3A"/><circle cx="114" cy="63" r="5" fill="#3F6B24"/><path d="M126 66 Q132.0 40.0 132 14" stroke="#5A4520" stroke-width="3.45" fill="none" stroke-linecap="round"/><g transform="translate(132 14)" fill="none" stroke-linecap="round"><path d="M0.0 0.0 Q-13.8 -11.5 -29.9 2.3" stroke="#4F7A2E" stroke-width="3.79"/><path d="M0.0 0.0 Q-9.2 -19.55 -23.0 -10.35" stroke="#3F6B24" stroke-width="3.79"/><path d="M0.0 0.0 Q2.3 -17.25 11.5 -24.15" stroke="#4F7A2E" stroke-width="3.79"/><path d="M0.0 0.0 Q13.8 -13.8 29.9 0.0" stroke="#3F6B24" stroke-width="3.79"/><path d="M0.0 0.0 Q9.2 -19.55 23.0 -10.35" stroke="#4F7A2E" stroke-width="3.79"/><path d="M0.0 0.0 Q-11.5 2.3 -25.3 16.1" stroke="#3F6B24" stroke-width="3.79"/><path d="M0.0 0.0 Q11.5 2.3 25.3 16.1" stroke="#4F7A2E" stroke-width="3.79"/><path d="M0.0 0.0 Q-2.3 -20.7 -10.35 -23.0" stroke="#3F6B24" stroke-width="3.79"/><circle cx="0" cy="3.45" r="2.76" fill="#7a4a1e" stroke="none"/><circle cx="-3.45" cy="4.6" r="2.53" fill="#6a3f19" stroke="none"/></g><path d="M152 66 Q153.5 47.0 149 28" stroke="#5A4520" stroke-width="2.7" fill="none" stroke-linecap="round"/><g transform="translate(149 28)" fill="none" stroke-linecap="round"><path d="M0.0 0.0 Q-10.8 -9.0 -23.4 1.8" stroke="#4F7A2E" stroke-width="2.97"/><path d="M0.0 0.0 Q-7.2 -15.3 -18.0 -8.1" stroke="#3F6B24" stroke-width="2.97"/><path d="M0.0 0.0 Q1.8 -13.5 9.0 -18.9" stroke="#4F7A2E" stroke-width="2.97"/><path d="M0.0 0.0 Q10.8 -10.8 23.4 0.0" stroke="#3F6B24" stroke-width="2.97"/><path d="M0.0 0.0 Q7.2 -15.3 18.0 -8.1" stroke="#4F7A2E" stroke-width="2.97"/><path d="M0.0 0.0 Q-9.0 1.8 -19.8 12.6" stroke="#3F6B24" stroke-width="2.97"/><path d="M0.0 0.0 Q9.0 1.8 19.8 12.6" stroke="#4F7A2E" stroke-width="2.97"/><path d="M0.0 0.0 Q-1.8 -16.2 -8.1 -18.0" stroke="#3F6B24" stroke-width="2.97"/><circle cx="0" cy="2.7" r="2.16" fill="#7a4a1e" stroke="none"/><circle cx="-2.7" cy="3.6" r="1.98" fill="#6a3f19" stroke="none"/></g><rect x="170" y="50" width="30" height="16" fill="#FFF1C9"/><polygon points="166,50 178.4,39.12 191.6,39.12 204,50" fill="#B9553A"/><polygon points="166,50 204,50 203,52.4 167,52.4" fill="#A94E30"/><rect x="176.0" y="56.08" width="6.6" height="9.92" fill="#8B5A2B"/><rect x="187.4" y="54.480000000000004" width="6.0" height="4.16" fill="#9CC9DD"/><path d="M222 66 Q223.5 46.0 219 26" stroke="#5A4520" stroke-width="2.85" fill="none" stroke-linecap="round"/><g transform="translate(219 26)" fill="none" stroke-linecap="round"><path d="M0.0 0.0 Q-11.4 -9.5 -24.7 1.9" stroke="#4F7A2E" stroke-width="3.13"/><path d="M0.0 0.0 Q-7.6 -16.15 -19.0 -8.55" stroke="#3F6B24" stroke-width="3.13"/><path d="M0.0 0.0 Q1.9 -14.25 9.5 -19.95" stroke="#4F7A2E" stroke-width="3.13"/><path d="M0.0 0.0 Q11.4 -11.4 24.7 0.0" stroke="#3F6B24" stroke-width="3.13"/><path d="M0.0 0.0 Q7.6 -16.15 19.0 -8.55" stroke="#4F7A2E" stroke-width="3.13"/><path d="M0.0 0.0 Q-9.5 1.9 -20.9 13.3" stroke="#3F6B24" stroke-width="3.13"/><path d="M0.0 0.0 Q9.5 1.9 20.9 13.3" stroke="#4F7A2E" stroke-width="3.13"/><path d="M0.0 0.0 Q-1.9 -17.1 -8.55 -19.0" stroke="#3F6B24" stroke-width="3.13"/><circle cx="0" cy="2.85" r="2.28" fill="#7a4a1e" stroke="none"/><circle cx="-2.85" cy="3.8" r="2.09" fill="#6a3f19" stroke="none"/></g></g><g transform="translate(0 0)"><path d="M26 66 Q31.0 44.0 30 22" stroke="#5A4520" stroke-width="3.0" fill="none" stroke-linecap="round"/><g transform="translate(30 22)" fill="none" stroke-linecap="round"><path d="M0.0 0.0 Q-12.0 -10.0 -26.0 2.0" stroke="#4F7A2E" stroke-width="3.3"/><path d="M0.0 0.0 Q-8.0 -17.0 -20.0 -9.0" stroke="#3F6B24" stroke-width="3.3"/><path d="M0.0 0.0 Q2.0 -15.0 10.0 -21.0" stroke="#4F7A2E" stroke-width="3.3"/><path d="M0.0 0.0 Q12.0 -12.0 26.0 0.0" stroke="#3F6B24" stroke-width="3.3"/><path d="M0.0 0.0 Q8.0 -17.0 20.0 -9.0" stroke="#4F7A2E" stroke-width="3.3"/><path d="M0.0 0.0 Q-10.0 2.0 -22.0 14.0" stroke="#3F6B24" stroke-width="3.3"/><path d="M0.0 0.0 Q10.0 2.0 22.0 14.0" stroke="#4F7A2E" stroke-width="3.3"/><path d="M0.0 0.0 Q-2.0 -18.0 -9.0 -20.0" stroke="#3F6B24" stroke-width="3.3"/><circle cx="0" cy="3.0" r="2.4" fill="#7a4a1e" stroke="none"/><circle cx="-3.0" cy="4.0" r="2.2" fill="#6a3f19" stroke="none"/></g><rect x="52" y="48" width="36" height="18" fill="#FFF1C9"/><polygon points="48,48 62.08,35.76 77.92,35.76 92,48" fill="#C4623F"/><polygon points="48,48 92,48 91,50.4 49,50.4" fill="#A94E30"/><rect x="59.2" y="54.84" width="7.92" height="11.16" fill="#8B5A2B"/><rect x="72.88" y="53.04" width="7.2" height="4.68" fill="#9CC9DD"/><circle cx="102" cy="63" r="5" fill="#3F6B24"/><circle cx="108" cy="60" r="6.5" fill="#5E8C3A"/><circle cx="114" cy="63" r="5" fill="#3F6B24"/><path d="M126 66 Q132.0 40.0 132 14" stroke="#5A4520" stroke-width="3.45" fill="none" stroke-linecap="round"/><g transform="translate(132 14)" fill="none" stroke-linecap="round"><path d="M0.0 0.0 Q-13.8 -11.5 -29.9 2.3" stroke="#4F7A2E" stroke-width="3.79"/><path d="M0.0 0.0 Q-9.2 -19.55 -23.0 -10.35" stroke="#3F6B24" stroke-width="3.79"/><path d="M0.0 0.0 Q2.3 -17.25 11.5 -24.15" stroke="#4F7A2E" stroke-width="3.79"/><path d="M0.0 0.0 Q13.8 -13.8 29.9 0.0" stroke="#3F6B24" stroke-width="3.79"/><path d="M0.0 0.0 Q9.2 -19.55 23.0 -10.35" stroke="#4F7A2E" stroke-width="3.79"/><path d="M0.0 0.0 Q-11.5 2.3 -25.3 16.1" stroke="#3F6B24" stroke-width="3.79"/><path d="M0.0 0.0 Q11.5 2.3 25.3 16.1" stroke="#4F7A2E" stroke-width="3.79"/><path d="M0.0 0.0 Q-2.3 -20.7 -10.35 -23.0" stroke="#3F6B24" stroke-width="3.79"/><circle cx="0" cy="3.45" r="2.76" fill="#7a4a1e" stroke="none"/><circle cx="-3.45" cy="4.6" r="2.53" fill="#6a3f19" stroke="none"/></g><path d="M152 66 Q153.5 47.0 149 28" stroke="#5A4520" stroke-width="2.7" fill="none" stroke-linecap="round"/><g transform="translate(149 28)" fill="none" stroke-linecap="round"><path d="M0.0 0.0 Q-10.8 -9.0 -23.4 1.8" stroke="#4F7A2E" stroke-width="2.97"/><path d="M0.0 0.0 Q-7.2 -15.3 -18.0 -8.1" stroke="#3F6B24" stroke-width="2.97"/><path d="M0.0 0.0 Q1.8 -13.5 9.0 -18.9" stroke="#4F7A2E" stroke-width="2.97"/><path d="M0.0 0.0 Q10.8 -10.8 23.4 0.0" stroke="#3F6B24" stroke-width="2.97"/><path d="M0.0 0.0 Q7.2 -15.3 18.0 -8.1" stroke="#4F7A2E" stroke-width="2.97"/><path d="M0.0 0.0 Q-9.0 1.8 -19.8 12.6" stroke="#3F6B24" stroke-width="2.97"/><path d="M0.0 0.0 Q9.0 1.8 19.8 12.6" stroke="#4F7A2E" stroke-width="2.97"/><path d="M0.0 0.0 Q-1.8 -16.2 -8.1 -18.0" stroke="#3F6B24" stroke-width="2.97"/><circle cx="0" cy="2.7" r="2.16" fill="#7a4a1e" stroke="none"/><circle cx="-2.7" cy="3.6" r="1.98" fill="#6a3f19" stroke="none"/></g><rect x="170" y="50" width="30" height="16" fill="#FFF1C9"/><polygon points="166,50 178.4,39.12 191.6,39.12 204,50" fill="#B9553A"/><polygon points="166,50 204,50 203,52.4 167,52.4" fill="#A94E30"/><rect x="176.0" y="56.08" width="6.6" height="9.92" fill="#8B5A2B"/><rect x="187.4" y="54.480000000000004" width="6.0" height="4.16" fill="#9CC9DD"/><path d="M222 66 Q223.5 46.0 219 26" stroke="#5A4520" stroke-width="2.85" fill="none" stroke-linecap="round"/><g transform="translate(219 26)" fill="none" stroke-linecap="round"><path d="M0.0 0.0 Q-11.4 -9.5 -24.7 1.9" stroke="#4F7A2E" stroke-width="3.13"/><path d="M0.0 0.0 Q-7.6 -16.15 -19.0 -8.55" stroke="#3F6B24" stroke-width="3.13"/><path d="M0.0 0.0 Q1.9 -14.25 9.5 -19.95" stroke="#4F7A2E" stroke-width="3.13"/><path d="M0.0 0.0 Q11.4 -11.4 24.7 0.0" stroke="#3F6B24" stroke-width="3.13"/><path d="M0.0 0.0 Q7.6 -16.15 19.0 -8.55" stroke="#4F7A2E" stroke-width="3.13"/><path d="M0.0 0.0 Q-9.5 1.9 -20.9 13.3" stroke="#3F6B24" stroke-width="3.13"/><path d="M0.0 0.0 Q9.5 1.9 20.9 13.3" stroke="#4F7A2E" stroke-width="3.13"/><path d="M0.0 0.0 Q-1.9 -17.1 -8.55 -19.0" stroke="#3F6B24" stroke-width="3.13"/><circle cx="0" cy="2.85" r="2.28" fill="#7a4a1e" stroke="none"/><circle cx="-2.85" cy="3.8" r="2.09" fill="#6a3f19" stroke="none"/></g></g><g transform="translate(240 0)"><path d="M26 66 Q31.0 44.0 30 22" stroke="#5A4520" stroke-width="3.0" fill="none" stroke-linecap="round"/><g transform="translate(30 22)" fill="none" stroke-linecap="round"><path d="M0.0 0.0 Q-12.0 -10.0 -26.0 2.0" stroke="#4F7A2E" stroke-width="3.3"/><path d="M0.0 0.0 Q-8.0 -17.0 -20.0 -9.0" stroke="#3F6B24" stroke-width="3.3"/><path d="M0.0 0.0 Q2.0 -15.0 10.0 -21.0" stroke="#4F7A2E" stroke-width="3.3"/><path d="M0.0 0.0 Q12.0 -12.0 26.0 0.0" stroke="#3F6B24" stroke-width="3.3"/><path d="M0.0 0.0 Q8.0 -17.0 20.0 -9.0" stroke="#4F7A2E" stroke-width="3.3"/><path d="M0.0 0.0 Q-10.0 2.0 -22.0 14.0" stroke="#3F6B24" stroke-width="3.3"/><path d="M0.0 0.0 Q10.0 2.0 22.0 14.0" stroke="#4F7A2E" stroke-width="3.3"/><path d="M0.0 0.0 Q-2.0 -18.0 -9.0 -20.0" stroke="#3F6B24" stroke-width="3.3"/><circle cx="0" cy="3.0" r="2.4" fill="#7a4a1e" stroke="none"/><circle cx="-3.0" cy="4.0" r="2.2" fill="#6a3f19" stroke="none"/></g><rect x="52" y="48" width="36" height="18" fill="#FFF1C9"/><polygon points="48,48 62.08,35.76 77.92,35.76 92,48" fill="#C4623F"/><polygon points="48,48 92,48 91,50.4 49,50.4" fill="#A94E30"/><rect x="59.2" y="54.84" width="7.92" height="11.16" fill="#8B5A2B"/><rect x="72.88" y="53.04" width="7.2" height="4.68" fill="#9CC9DD"/><circle cx="102" cy="63" r="5" fill="#3F6B24"/><circle cx="108" cy="60" r="6.5" fill="#5E8C3A"/><circle cx="114" cy="63" r="5" fill="#3F6B24"/><path d="M126 66 Q132.0 40.0 132 14" stroke="#5A4520" stroke-width="3.45" fill="none" stroke-linecap="round"/><g transform="translate(132 14)" fill="none" stroke-linecap="round"><path d="M0.0 0.0 Q-13.8 -11.5 -29.9 2.3" stroke="#4F7A2E" stroke-width="3.79"/><path d="M0.0 0.0 Q-9.2 -19.55 -23.0 -10.35" stroke="#3F6B24" stroke-width="3.79"/><path d="M0.0 0.0 Q2.3 -17.25 11.5 -24.15" stroke="#4F7A2E" stroke-width="3.79"/><path d="M0.0 0.0 Q13.8 -13.8 29.9 0.0" stroke="#3F6B24" stroke-width="3.79"/><path d="M0.0 0.0 Q9.2 -19.55 23.0 -10.35" stroke="#4F7A2E" stroke-width="3.79"/><path d="M0.0 0.0 Q-11.5 2.3 -25.3 16.1" stroke="#3F6B24" stroke-width="3.79"/><path d="M0.0 0.0 Q11.5 2.3 25.3 16.1" stroke="#4F7A2E" stroke-width="3.79"/><path d="M0.0 0.0 Q-2.3 -20.7 -10.35 -23.0" stroke="#3F6B24" stroke-width="3.79"/><circle cx="0" cy="3.45" r="2.76" fill="#7a4a1e" stroke="none"/><circle cx="-3.45" cy="4.6" r="2.53" fill="#6a3f19" stroke="none"/></g><path d="M152 66 Q153.5 47.0 149 28" stroke="#5A4520" stroke-width="2.7" fill="none" stroke-linecap="round"/><g transform="translate(149 28)" fill="none" stroke-linecap="round"><path d="M0.0 0.0 Q-10.8 -9.0 -23.4 1.8" stroke="#4F7A2E" stroke-width="2.97"/><path d="M0.0 0.0 Q-7.2 -15.3 -18.0 -8.1" stroke="#3F6B24" stroke-width="2.97"/><path d="M0.0 0.0 Q1.8 -13.5 9.0 -18.9" stroke="#4F7A2E" stroke-width="2.97"/><path d="M0.0 0.0 Q10.8 -10.8 23.4 0.0" stroke="#3F6B24" stroke-width="2.97"/><path d="M0.0 0.0 Q7.2 -15.3 18.0 -8.1" stroke="#4F7A2E" stroke-width="2.97"/><path d="M0.0 0.0 Q-9.0 1.8 -19.8 12.6" stroke="#3F6B24" stroke-width="2.97"/><path d="M0.0 0.0 Q9.0 1.8 19.8 12.6" stroke="#4F7A2E" stroke-width="2.97"/><path d="M0.0 0.0 Q-1.8 -16.2 -8.1 -18.0" stroke="#3F6B24" stroke-width="2.97"/><circle cx="0" cy="2.7" r="2.16" fill="#7a4a1e" stroke="none"/><circle cx="-2.7" cy="3.6" r="1.98" fill="#6a3f19" stroke="none"/></g><rect x="170" y="50" width="30" height="16" fill="#FFF1C9"/><polygon points="166,50 178.4,39.12 191.6,39.12 204,50" fill="#B9553A"/><polygon points="166,50 204,50 203,52.4 167,52.4" fill="#A94E30"/><rect x="176.0" y="56.08" width="6.6" height="9.92" fill="#8B5A2B"/><rect x="187.4" y="54.480000000000004" width="6.0" height="4.16" fill="#9CC9DD"/><path d="M222 66 Q223.5 46.0 219 26" stroke="#5A4520" stroke-width="2.85" fill="none" stroke-linecap="round"/><g transform="translate(219 26)" fill="none" stroke-linecap="round"><path d="M0.0 0.0 Q-11.4 -9.5 -24.7 1.9" stroke="#4F7A2E" stroke-width="3.13"/><path d="M0.0 0.0 Q-7.6 -16.15 -19.0 -8.55" stroke="#3F6B24" stroke-width="3.13"/><path d="M0.0 0.0 Q1.9 -14.25 9.5 -19.95" stroke="#4F7A2E" stroke-width="3.13"/><path d="M0.0 0.0 Q11.4 -11.4 24.7 0.0" stroke="#3F6B24" stroke-width="3.13"/><path d="M0.0 0.0 Q7.6 -16.15 19.0 -8.55" stroke="#4F7A2E" stroke-width="3.13"/><path d="M0.0 0.0 Q-9.5 1.9 -20.9 13.3" stroke="#3F6B24" stroke-width="3.13"/><path d="M0.0 0.0 Q9.5 1.9 20.9 13.3" stroke="#4F7A2E" stroke-width="3.13"/><path d="M0.0 0.0 Q-1.9 -17.1 -8.55 -19.0" stroke="#3F6B24" stroke-width="3.13"/><circle cx="0" cy="2.85" r="2.28" fill="#7a4a1e" stroke="none"/><circle cx="-2.85" cy="3.8" r="2.09" fill="#6a3f19" stroke="none"/></g></g><g transform="translate(480 0)"><path d="M26 66 Q31.0 44.0 30 22" stroke="#5A4520" stroke-width="3.0" fill="none" stroke-linecap="round"/><g transform="translate(30 22)" fill="none" stroke-linecap="round"><path d="M0.0 0.0 Q-12.0 -10.0 -26.0 2.0" stroke="#4F7A2E" stroke-width="3.3"/><path d="M0.0 0.0 Q-8.0 -17.0 -20.0 -9.0" stroke="#3F6B24" stroke-width="3.3"/><path d="M0.0 0.0 Q2.0 -15.0 10.0 -21.0" stroke="#4F7A2E" stroke-width="3.3"/><path d="M0.0 0.0 Q12.0 -12.0 26.0 0.0" stroke="#3F6B24" stroke-width="3.3"/><path d="M0.0 0.0 Q8.0 -17.0 20.0 -9.0" stroke="#4F7A2E" stroke-width="3.3"/><path d="M0.0 0.0 Q-10.0 2.0 -22.0 14.0" stroke="#3F6B24" stroke-width="3.3"/><path d="M0.0 0.0 Q10.0 2.0 22.0 14.0" stroke="#4F7A2E" stroke-width="3.3"/><path d="M0.0 0.0 Q-2.0 -18.0 -9.0 -20.0" stroke="#3F6B24" stroke-width="3.3"/><circle cx="0" cy="3.0" r="2.4" fill="#7a4a1e" stroke="none"/><circle cx="-3.0" cy="4.0" r="2.2" fill="#6a3f19" stroke="none"/></g><rect x="52" y="48" width="36" height="18" fill="#FFF1C9"/><polygon points="48,48 62.08,35.76 77.92,35.76 92,48" fill="#C4623F"/><polygon points="48,48 92,48 91,50.4 49,50.4" fill="#A94E30"/><rect x="59.2" y="54.84" width="7.92" height="11.16" fill="#8B5A2B"/><rect x="72.88" y="53.04" width="7.2" height="4.68" fill="#9CC9DD"/><circle cx="102" cy="63" r="5" fill="#3F6B24"/><circle cx="108" cy="60" r="6.5" fill="#5E8C3A"/><circle cx="114" cy="63" r="5" fill="#3F6B24"/><path d="M126 66 Q132.0 40.0 132 14" stroke="#5A4520" stroke-width="3.45" fill="none" stroke-linecap="round"/><g transform="translate(132 14)" fill="none" stroke-linecap="round"><path d="M0.0 0.0 Q-13.8 -11.5 -29.9 2.3" stroke="#4F7A2E" stroke-width="3.79"/><path d="M0.0 0.0 Q-9.2 -19.55 -23.0 -10.35" stroke="#3F6B24" stroke-width="3.79"/><path d="M0.0 0.0 Q2.3 -17.25 11.5 -24.15" stroke="#4F7A2E" stroke-width="3.79"/><path d="M0.0 0.0 Q13.8 -13.8 29.9 0.0" stroke="#3F6B24" stroke-width="3.79"/><path d="M0.0 0.0 Q9.2 -19.55 23.0 -10.35" stroke="#4F7A2E" stroke-width="3.79"/><path d="M0.0 0.0 Q-11.5 2.3 -25.3 16.1" stroke="#3F6B24" stroke-width="3.79"/><path d="M0.0 0.0 Q11.5 2.3 25.3 16.1" stroke="#4F7A2E" stroke-width="3.79"/><path d="M0.0 0.0 Q-2.3 -20.7 -10.35 -23.0" stroke="#3F6B24" stroke-width="3.79"/><circle cx="0" cy="3.45" r="2.76" fill="#7a4a1e" stroke="none"/><circle cx="-3.45" cy="4.6" r="2.53" fill="#6a3f19" stroke="none"/></g><path d="M152 66 Q153.5 47.0 149 28" stroke="#5A4520" stroke-width="2.7" fill="none" stroke-linecap="round"/><g transform="translate(149 28)" fill="none" stroke-linecap="round"><path d="M0.0 0.0 Q-10.8 -9.0 -23.4 1.8" stroke="#4F7A2E" stroke-width="2.97"/><path d="M0.0 0.0 Q-7.2 -15.3 -18.0 -8.1" stroke="#3F6B24" stroke-width="2.97"/><path d="M0.0 0.0 Q1.8 -13.5 9.0 -18.9" stroke="#4F7A2E" stroke-width="2.97"/><path d="M0.0 0.0 Q10.8 -10.8 23.4 0.0" stroke="#3F6B24" stroke-width="2.97"/><path d="M0.0 0.0 Q7.2 -15.3 18.0 -8.1" stroke="#4F7A2E" stroke-width="2.97"/><path d="M0.0 0.0 Q-9.0 1.8 -19.8 12.6" stroke="#3F6B24" stroke-width="2.97"/><path d="M0.0 0.0 Q9.0 1.8 19.8 12.6" stroke="#4F7A2E" stroke-width="2.97"/><path d="M0.0 0.0 Q-1.8 -16.2 -8.1 -18.0" stroke="#3F6B24" stroke-width="2.97"/><circle cx="0" cy="2.7" r="2.16" fill="#7a4a1e" stroke="none"/><circle cx="-2.7" cy="3.6" r="1.98" fill="#6a3f19" stroke="none"/></g><rect x="170" y="50" width="30" height="16" fill="#FFF1C9"/><polygon points="166,50 178.4,39.12 191.6,39.12 204,50" fill="#B9553A"/><polygon points="166,50 204,50 203,52.4 167,52.4" fill="#A94E30"/><rect x="176.0" y="56.08" width="6.6" height="9.92" fill="#8B5A2B"/><rect x="187.4" y="54.480000000000004" width="6.0" height="4.16" fill="#9CC9DD"/><path d="M222 66 Q223.5 46.0 219 26" stroke="#5A4520" stroke-width="2.85" fill="none" stroke-linecap="round"/><g transform="translate(219 26)" fill="none" stroke-linecap="round"><path d="M0.0 0.0 Q-11.4 -9.5 -24.7 1.9" stroke="#4F7A2E" stroke-width="3.13"/><path d="M0.0 0.0 Q-7.6 -16.15 -19.0 -8.55" stroke="#3F6B24" stroke-width="3.13"/><path d="M0.0 0.0 Q1.9 -14.25 9.5 -19.95" stroke="#4F7A2E" stroke-width="3.13"/><path d="M0.0 0.0 Q11.4 -11.4 24.7 0.0" stroke="#3F6B24" stroke-width="3.13"/><path d="M0.0 0.0 Q7.6 -16.15 19.0 -8.55" stroke="#4F7A2E" stroke-width="3.13"/><path d="M0.0 0.0 Q-9.5 1.9 -20.9 13.3" stroke="#3F6B24" stroke-width="3.13"/><path d="M0.0 0.0 Q9.5 1.9 20.9 13.3" stroke="#4F7A2E" stroke-width="3.13"/><path d="M0.0 0.0 Q-1.9 -17.1 -8.55 -19.0" stroke="#3F6B24" stroke-width="3.13"/><circle cx="0" cy="2.85" r="2.28" fill="#7a4a1e" stroke="none"/><circle cx="-2.85" cy="3.8" r="2.09" fill="#6a3f19" stroke="none"/></g></g><g transform="translate(720 0)"><path d="M26 66 Q31.0 44.0 30 22" stroke="#5A4520" stroke-width="3.0" fill="none" stroke-linecap="round"/><g transform="translate(30 22)" fill="none" stroke-linecap="round"><path d="M0.0 0.0 Q-12.0 -10.0 -26.0 2.0" stroke="#4F7A2E" stroke-width="3.3"/><path d="M0.0 0.0 Q-8.0 -17.0 -20.0 -9.0" stroke="#3F6B24" stroke-width="3.3"/><path d="M0.0 0.0 Q2.0 -15.0 10.0 -21.0" stroke="#4F7A2E" stroke-width="3.3"/><path d="M0.0 0.0 Q12.0 -12.0 26.0 0.0" stroke="#3F6B24" stroke-width="3.3"/><path d="M0.0 0.0 Q8.0 -17.0 20.0 -9.0" stroke="#4F7A2E" stroke-width="3.3"/><path d="M0.0 0.0 Q-10.0 2.0 -22.0 14.0" stroke="#3F6B24" stroke-width="3.3"/><path d="M0.0 0.0 Q10.0 2.0 22.0 14.0" stroke="#4F7A2E" stroke-width="3.3"/><path d="M0.0 0.0 Q-2.0 -18.0 -9.0 -20.0" stroke="#3F6B24" stroke-width="3.3"/><circle cx="0" cy="3.0" r="2.4" fill="#7a4a1e" stroke="none"/><circle cx="-3.0" cy="4.0" r="2.2" fill="#6a3f19" stroke="none"/></g><rect x="52" y="48" width="36" height="18" fill="#FFF1C9"/><polygon points="48,48 62.08,35.76 77.92,35.76 92,48" fill="#C4623F"/><polygon points="48,48 92,48 91,50.4 49,50.4" fill="#A94E30"/><rect x="59.2" y="54.84" width="7.92" height="11.16" fill="#8B5A2B"/><rect x="72.88" y="53.04" width="7.2" height="4.68" fill="#9CC9DD"/><circle cx="102" cy="63" r="5" fill="#3F6B24"/><circle cx="108" cy="60" r="6.5" fill="#5E8C3A"/><circle cx="114" cy="63" r="5" fill="#3F6B24"/><path d="M126 66 Q132.0 40.0 132 14" stroke="#5A4520" stroke-width="3.45" fill="none" stroke-linecap="round"/><g transform="translate(132 14)" fill="none" stroke-linecap="round"><path d="M0.0 0.0 Q-13.8 -11.5 -29.9 2.3" stroke="#4F7A2E" stroke-width="3.79"/><path d="M0.0 0.0 Q-9.2 -19.55 -23.0 -10.35" stroke="#3F6B24" stroke-width="3.79"/><path d="M0.0 0.0 Q2.3 -17.25 11.5 -24.15" stroke="#4F7A2E" stroke-width="3.79"/><path d="M0.0 0.0 Q13.8 -13.8 29.9 0.0" stroke="#3F6B24" stroke-width="3.79"/><path d="M0.0 0.0 Q9.2 -19.55 23.0 -10.35" stroke="#4F7A2E" stroke-width="3.79"/><path d="M0.0 0.0 Q-11.5 2.3 -25.3 16.1" stroke="#3F6B24" stroke-width="3.79"/><path d="M0.0 0.0 Q11.5 2.3 25.3 16.1" stroke="#4F7A2E" stroke-width="3.79"/><path d="M0.0 0.0 Q-2.3 -20.7 -10.35 -23.0" stroke="#3F6B24" stroke-width="3.79"/><circle cx="0" cy="3.45" r="2.76" fill="#7a4a1e" stroke="none"/><circle cx="-3.45" cy="4.6" r="2.53" fill="#6a3f19" stroke="none"/></g><path d="M152 66 Q153.5 47.0 149 28" stroke="#5A4520" stroke-width="2.7" fill="none" stroke-linecap="round"/><g transform="translate(149 28)" fill="none" stroke-linecap="round"><path d="M0.0 0.0 Q-10.8 -9.0 -23.4 1.8" stroke="#4F7A2E" stroke-width="2.97"/><path d="M0.0 0.0 Q-7.2 -15.3 -18.0 -8.1" stroke="#3F6B24" stroke-width="2.97"/><path d="M0.0 0.0 Q1.8 -13.5 9.0 -18.9" stroke="#4F7A2E" stroke-width="2.97"/><path d="M0.0 0.0 Q10.8 -10.8 23.4 0.0" stroke="#3F6B24" stroke-width="2.97"/><path d="M0.0 0.0 Q7.2 -15.3 18.0 -8.1" stroke="#4F7A2E" stroke-width="2.97"/><path d="M0.0 0.0 Q-9.0 1.8 -19.8 12.6" stroke="#3F6B24" stroke-width="2.97"/><path d="M0.0 0.0 Q9.0 1.8 19.8 12.6" stroke="#4F7A2E" stroke-width="2.97"/><path d="M0.0 0.0 Q-1.8 -16.2 -8.1 -18.0" stroke="#3F6B24" stroke-width="2.97"/><circle cx="0" cy="2.7" r="2.16" fill="#7a4a1e" stroke="none"/><circle cx="-2.7" cy="3.6" r="1.98" fill="#6a3f19" stroke="none"/></g><rect x="170" y="50" width="30" height="16" fill="#FFF1C9"/><polygon points="166,50 178.4,39.12 191.6,39.12 204,50" fill="#B9553A"/><polygon points="166,50 204,50 203,52.4 167,52.4" fill="#A94E30"/><rect x="176.0" y="56.08" width="6.6" height="9.92" fill="#8B5A2B"/><rect x="187.4" y="54.480000000000004" width="6.0" height="4.16" fill="#9CC9DD"/><path d="M222 66 Q223.5 46.0 219 26" stroke="#5A4520" stroke-width="2.85" fill="none" stroke-linecap="round"/><g transform="translate(219 26)" fill="none" stroke-linecap="round"><path d="M0.0 0.0 Q-11.4 -9.5 -24.7 1.9" stroke="#4F7A2E" stroke-width="3.13"/><path d="M0.0 0.0 Q-7.6 -16.15 -19.0 -8.55" stroke="#3F6B24" stroke-width="3.13"/><path d="M0.0 0.0 Q1.9 -14.25 9.5 -19.95" stroke="#4F7A2E" stroke-width="3.13"/><path d="M0.0 0.0 Q11.4 -11.4 24.7 0.0" stroke="#3F6B24" stroke-width="3.13"/><path d="M0.0 0.0 Q7.6 -16.15 19.0 -8.55" stroke="#4F7A2E" stroke-width="3.13"/><path d="M0.0 0.0 Q-9.5 1.9 -20.9 13.3" stroke="#3F6B24" stroke-width="3.13"/><path d="M0.0 0.0 Q9.5 1.9 20.9 13.3" stroke="#4F7A2E" stroke-width="3.13"/><path d="M0.0 0.0 Q-1.9 -17.1 -8.55 -19.0" stroke="#3F6B24" stroke-width="3.13"/><circle cx="0" cy="2.85" r="2.28" fill="#7a4a1e" stroke="none"/><circle cx="-2.85" cy="3.8" r="2.09" fill="#6a3f19" stroke="none"/></g></g></svg>
+          <svg class="ta-layer ta-near" width="1100" height="36" viewBox="-220 0 1100 36" xmlns="http://www.w3.org/2000/svg"><g transform="translate(-220 0)"><path d="M0 36 L0 31 C30 28 60 33 110 30 C160 27 190 33 220 31 L220 36 Z" fill="#6F8F3A"/><circle cx="34" cy="29" r="5" fill="#3F6B24"/><circle cx="40" cy="26" r="6.5" fill="#5E8C3A"/><circle cx="46" cy="29" r="5" fill="#3F6B24"/><circle cx="155.2" cy="30" r="4.0" fill="#3F6B24"/><circle cx="160" cy="27.6" r="5.2" fill="#5E8C3A"/><circle cx="164.8" cy="30" r="4.0" fill="#3F6B24"/><rect x="99" y="2" width="2.6" height="34" fill="#4A3A18"/><rect x="93.5" y="6" width="14" height="1.7" fill="#4A3A18"/><circle cx="95" cy="5.4" r="1.2" fill="#9CC9DD"/><circle cx="106" cy="5.4" r="1.2" fill="#9CC9DD"/><path d="M95 6.5 Q205 15 315 6.5" stroke="#4A3A18" stroke-width=".8" fill="none" opacity=".85"/><path d="M106 6.5 Q216 14 326 6.5" stroke="#4A3A18" stroke-width=".8" fill="none" opacity=".85"/></g><g transform="translate(0 0)"><path d="M0 36 L0 31 C30 28 60 33 110 30 C160 27 190 33 220 31 L220 36 Z" fill="#6F8F3A"/><circle cx="34" cy="29" r="5" fill="#3F6B24"/><circle cx="40" cy="26" r="6.5" fill="#5E8C3A"/><circle cx="46" cy="29" r="5" fill="#3F6B24"/><circle cx="155.2" cy="30" r="4.0" fill="#3F6B24"/><circle cx="160" cy="27.6" r="5.2" fill="#5E8C3A"/><circle cx="164.8" cy="30" r="4.0" fill="#3F6B24"/><rect x="99" y="2" width="2.6" height="34" fill="#4A3A18"/><rect x="93.5" y="6" width="14" height="1.7" fill="#4A3A18"/><circle cx="95" cy="5.4" r="1.2" fill="#9CC9DD"/><circle cx="106" cy="5.4" r="1.2" fill="#9CC9DD"/><path d="M95 6.5 Q205 15 315 6.5" stroke="#4A3A18" stroke-width=".8" fill="none" opacity=".85"/><path d="M106 6.5 Q216 14 326 6.5" stroke="#4A3A18" stroke-width=".8" fill="none" opacity=".85"/></g><g transform="translate(220 0)"><path d="M0 36 L0 31 C30 28 60 33 110 30 C160 27 190 33 220 31 L220 36 Z" fill="#6F8F3A"/><circle cx="34" cy="29" r="5" fill="#3F6B24"/><circle cx="40" cy="26" r="6.5" fill="#5E8C3A"/><circle cx="46" cy="29" r="5" fill="#3F6B24"/><circle cx="155.2" cy="30" r="4.0" fill="#3F6B24"/><circle cx="160" cy="27.6" r="5.2" fill="#5E8C3A"/><circle cx="164.8" cy="30" r="4.0" fill="#3F6B24"/><rect x="99" y="2" width="2.6" height="34" fill="#4A3A18"/><rect x="93.5" y="6" width="14" height="1.7" fill="#4A3A18"/><circle cx="95" cy="5.4" r="1.2" fill="#9CC9DD"/><circle cx="106" cy="5.4" r="1.2" fill="#9CC9DD"/><path d="M95 6.5 Q205 15 315 6.5" stroke="#4A3A18" stroke-width=".8" fill="none" opacity=".85"/><path d="M106 6.5 Q216 14 326 6.5" stroke="#4A3A18" stroke-width=".8" fill="none" opacity=".85"/></g><g transform="translate(440 0)"><path d="M0 36 L0 31 C30 28 60 33 110 30 C160 27 190 33 220 31 L220 36 Z" fill="#6F8F3A"/><circle cx="34" cy="29" r="5" fill="#3F6B24"/><circle cx="40" cy="26" r="6.5" fill="#5E8C3A"/><circle cx="46" cy="29" r="5" fill="#3F6B24"/><circle cx="155.2" cy="30" r="4.0" fill="#3F6B24"/><circle cx="160" cy="27.6" r="5.2" fill="#5E8C3A"/><circle cx="164.8" cy="30" r="4.0" fill="#3F6B24"/><rect x="99" y="2" width="2.6" height="34" fill="#4A3A18"/><rect x="93.5" y="6" width="14" height="1.7" fill="#4A3A18"/><circle cx="95" cy="5.4" r="1.2" fill="#9CC9DD"/><circle cx="106" cy="5.4" r="1.2" fill="#9CC9DD"/><path d="M95 6.5 Q205 15 315 6.5" stroke="#4A3A18" stroke-width=".8" fill="none" opacity=".85"/><path d="M106 6.5 Q216 14 326 6.5" stroke="#4A3A18" stroke-width=".8" fill="none" opacity=".85"/></g><g transform="translate(660 0)"><path d="M0 36 L0 31 C30 28 60 33 110 30 C160 27 190 33 220 31 L220 36 Z" fill="#6F8F3A"/><circle cx="34" cy="29" r="5" fill="#3F6B24"/><circle cx="40" cy="26" r="6.5" fill="#5E8C3A"/><circle cx="46" cy="29" r="5" fill="#3F6B24"/><circle cx="155.2" cy="30" r="4.0" fill="#3F6B24"/><circle cx="160" cy="27.6" r="5.2" fill="#5E8C3A"/><circle cx="164.8" cy="30" r="4.0" fill="#3F6B24"/><rect x="99" y="2" width="2.6" height="34" fill="#4A3A18"/><rect x="93.5" y="6" width="14" height="1.7" fill="#4A3A18"/><circle cx="95" cy="5.4" r="1.2" fill="#9CC9DD"/><circle cx="106" cy="5.4" r="1.2" fill="#9CC9DD"/><path d="M95 6.5 Q205 15 315 6.5" stroke="#4A3A18" stroke-width=".8" fill="none" opacity=".85"/><path d="M106 6.5 Q216 14 326 6.5" stroke="#4A3A18" stroke-width=".8" fill="none" opacity=".85"/></g></svg>
+          <div class="ta-road"></div>
+          <div class="ta-auto"><svg class="ta-svg" viewBox="0 0 160 92" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="ta-glass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#D8EEF7"/><stop offset="1" stop-color="#9CCBE0"/></linearGradient><clipPath id="ta-bodyclip"><path d="M16 63 L118 62 C128 61 138 62 144 68 C148 72 149 78 148 83 L16 83 C11 78 11 68 16 63 Z"/></clipPath></defs><ellipse cx="80" cy="90" rx="68" ry="3" fill="#000" opacity=".22"/><circle class="ta-puff" cx="30" cy="86" r="3.4" fill="#CDB77A"/><circle class="ta-puff p2" cx="30" cy="86" r="3.4" fill="#CDB77A"/><circle class="ta-puff p3" cx="30" cy="86" r="3.4" fill="#CDB77A"/><g class="ta-bodyg"><rect x="20" y="46" width="7" height="17" rx="3" fill="#0E6459"/><rect x="20" y="58" width="46" height="6" rx="3" fill="#0E6459"/><rect x="88" y="58" width="24" height="6" rx="3" fill="#0E6459"/><circle cx="40.6" cy="43.6" r="5.4" fill="#1c1a14"/><circle cx="35.4" cy="40.6" r="2.8" fill="#1c1a14"/><circle cx="43.2" cy="45.2" r="4.4" fill="#B9794A"/><path d="M33 62 L34 52 C34 48 40 47.5 44 47.5 C49 47.5 52 50 52 56 L54 62 Z" fill="#D6336C"/><path d="M44 47.5 L50 52 L51 62 L46 62 Z" fill="#F5A3C3" opacity=".75"/><circle cx="98.6" cy="43.8" r="5.4" fill="#1c1a14"/><circle cx="101.2" cy="45.4" r="4.4" fill="#B9794A"/><path d="M92 62 L94 52 C95 48 101 47.5 104 48.5 C108 49.5 110 53 110 58 L110 62 Z" fill="#BFA46B"/><path d="M103 51 Q110 55 115 55.5" stroke="#BFA46B" stroke-width="4.2" fill="none" stroke-linecap="round"/><circle cx="116" cy="55.6" r="2.2" fill="#B9794A"/><path d="M121 62 L117 53" stroke="#2B2410" stroke-width="2.6" stroke-linecap="round"/><path d="M117 53 L112 53" stroke="#2B2410" stroke-width="2.4" stroke-linecap="round"/><circle cx="111.5" cy="53" r="1.8" fill="#111"/><rect x="15" y="28" width="4" height="35" fill="#2B2410"/><rect x="68" y="31" width="3.5" height="32" fill="#2B2410"/><path d="M123 33 C128 34 131 38 133 44 L141 62 L121 62 Z" fill="url(#ta-glass)" opacity=".95"/><path d="M127.5 41 L134.5 58" stroke="#fff" stroke-width="2.2" opacity=".55" stroke-linecap="round"/><path d="M124 60 L136 52" stroke="#2B2410" stroke-width="1.1"/><path d="M13 30 C10 13 26 5 56 5 L100 5 C118 5 130 13 137 27 L143 35 L136 37 L13 30 Z" fill="#2B2410"/><path d="M20 12 C28 8 40 7 56 7 L96 7" stroke="#5a4a22" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M14 30.6 L136 37.6" stroke="#F2B705" stroke-width="1.4"/><path d="M123 33 C128 34 131 38 133 44 L141 62" stroke="#2B2410" stroke-width="2.4" fill="none" stroke-linecap="round"/><path d="M16 63 L118 62 C128 61 138 62 144 68 C148 72 149 78 148 83 L16 83 C11 78 11 68 16 63 Z" fill="#F2B705"/><g clip-path="url(#ta-bodyclip)"><rect x="8" y="76" width="150" height="10" fill="#D69E00" opacity=".6"/><rect x="8" y="73.6" width="150" height="2.2" fill="#2B2410"/><path d="M18 64.4 L116 63.4" stroke="#FFD84D" stroke-width="1.5" opacity=".9"/></g><text x="72" y="71.4" font-family="Poppins,Inter,sans-serif" font-size="8" font-weight="800" fill="#2B2410" letter-spacing=".6">NESH</text><path d="M31 80 A15 15 0 0 1 61 80 Z" fill="#3b2e08"/><rect x="10.6" y="64" width="3.2" height="6" rx="1.3" fill="#E03131"/><path d="M130 80 L126 63" stroke="#2B2410" stroke-width="2.6" stroke-linecap="round"/></g><g class="ta-wheel"><circle cx="46" cy="78" r="11.5" fill="#1c1a14"/><circle cx="46" cy="78" r="10.0" fill="none" stroke="#3a352a" stroke-width="2" stroke-dasharray="2.2 3"/><circle cx="46" cy="78" r="7.13" fill="#c9c9c9"/><circle cx="46" cy="78" r="5.75" fill="#8f8f8f"/><path d="M46 78 L52.90 78.00 M46 78 L49.45 83.98 M46 78 L42.55 83.98 M46 78 L39.10 78.00 M46 78 L42.55 72.02 M46 78 L49.45 72.02 " stroke="#d9d9d9" stroke-width="1.3" fill="none"/><circle cx="46" cy="78" r="2.07" fill="#4a4a4a"/></g><g class="ta-wheel"><circle cx="130" cy="80" r="10" fill="#1c1a14"/><circle cx="130" cy="80" r="8.5" fill="none" stroke="#3a352a" stroke-width="2" stroke-dasharray="2.2 3"/><circle cx="130" cy="80" r="6.20" fill="#c9c9c9"/><circle cx="130" cy="80" r="5.00" fill="#8f8f8f"/><path d="M130 80 L136.00 80.00 M130 80 L133.00 85.20 M130 80 L127.00 85.20 M130 80 L124.00 80.00 M130 80 L127.00 74.80 M130 80 L133.00 74.80 " stroke="#d9d9d9" stroke-width="1.3" fill="none"/><circle cx="130" cy="80" r="1.80" fill="#4a4a4a"/></g><g class="ta-bodyg"><path d="M116 80 A14 14 0 0 1 144 80 L141.5 80 A11.5 11.5 0 0 0 118.5 80 Z" fill="#D69E00"/><circle cx="143.2" cy="66.6" r="3.7" fill="#FFF6C0" stroke="#2B2410" stroke-width=".9"/><circle cx="142.2" cy="65.6" r="1" fill="#fff"/><circle cx="146.4" cy="72.4" r="1.4" fill="#F59F00"/></g></svg></div>
+        </div></div>
+      </div>
     <div class="taxi-body">
       <div class="taxi-route-card">
         <div class="taxi-route-line"></div>
         <div class="taxi-pin-row active" id="taxi-pickup-row">
           <div class="taxi-pin-dot pickup"></div>
-          <input id="taxi-pickup-input" type="text" placeholder="Search pickup location" autocomplete="off" />
+          <div class="taxi-pin-field"><span class="taxi-pin-label">PICKUP</span><input id="taxi-pickup-input" type="text" placeholder="Search pickup location" autocomplete="off" /></div>
           <button class="taxi-gps-btn" id="taxi-pickup-gps-btn">📍 GPS</button>
         </div>
         <div class="taxi-pin-row" id="taxi-drop-row">
           <div class="taxi-pin-dot drop"></div>
-          <input id="taxi-drop-input" type="text" placeholder="Where do you want to go?" autocomplete="off" />
+          <div class="taxi-pin-field"><span class="taxi-pin-label">DROP</span><input id="taxi-drop-input" type="text" placeholder="Where do you want to go?" autocomplete="off" /></div>
         </div>
       </div>
       <div class="loc-search-results" id="taxi-search-results"></div>
@@ -2802,6 +3106,10 @@
       <p class="order-summary-title">Your order</p>
       <p class="order-summary-rest" id="order-summary-rest"></p>
       <div class="order-summary-list" id="order-summary-list"></div>
+      <div id="order-summary-suggest" style="display:none; margin:12px 0 0;">
+        <p style="margin:0 0 8px; font-size:14px; font-weight:800; color:#2B2410;">🥤 Add something extra?</p>
+        <div id="order-summary-suggest-row" style="display:flex; gap:10px; overflow-x:auto; padding-bottom:4px; scrollbar-width:none;"></div>
+      </div>
       <div class="order-summary-totals">
         <div class="order-summary-total-row"><span>Item total</span><span id="order-summary-items-total">₹0</span></div>
         <div class="order-summary-grand-row"><span>Total</span><span id="order-summary-grand-total">₹0</span></div>
@@ -2954,6 +3262,10 @@
   // ids, so no name+unit key is needed). Empty/nameless categories and
   // categories with no items left are dropped here so the customer app
   // never shows a dead tab.
+  // "★ 4.6 (12)" from real customer ratings, or "New" while nobody has rated the item yet.
+  window.itemRatingLabel = function (it) {
+    return (it && Number(it.ratingCount) > 0 && it.rating) ? '★ ' + it.rating + ' (' + it.ratingCount + ')' : 'New';
+  };
   function parseItemCategories(raw) {
     if (!raw) return [];
     const list = Object.keys(raw).map(id => {
@@ -3004,8 +3316,14 @@
                 unit: v.menu[k].unit || 'piece', // 'piece' | 'gram' | 'kg' — set by the shop; for gram/kg, `price` is the rate per gram/kg, not a flat price
                 sizes: Array.isArray(v.menu[k].sizes) ? v.menu[k].sizes.filter(Boolean) : [], // e.g. ['S','M','L','XL','2XL'] — only set on "Sports" shop items
                 image: v.menu[k].photo || itemPhotoSet[di % itemPhotoSet.length],
-                rating: (4 + (di % 8) / 10).toFixed(1),
-                ratingCount: 2 + (di % 9)
+                // Starting rating (same as before) + real customer ratings added on top:
+                // restaurants/{shop}/menu/{item}/ratingSum + ratingCount (customers rate delivered items).
+                rating: (() => {
+                  const baseR = 4 + (di % 8) / 10, baseN = 2 + (di % 9);
+                  const realN = Number(v.menu[k].ratingCount) || 0, realS = Number(v.menu[k].ratingSum) || 0;
+                  return ((baseR * baseN + realS) / (baseN + realN)).toFixed(1);
+                })(),
+                ratingCount: (2 + (di % 9)) + (Number(v.menu[k].ratingCount) || 0)
               }))
           : [];
         const storePhotoSet = businessType === 'groceries' ? GROCERY_PHOTOS : businessType === 'online_shop' ? SHOP_PHOTOS : REST_PHOTOS;
@@ -3013,8 +3331,10 @@
           id: child.key,
           name: v.restaurantName || 'Restaurant',
           cuisine: v.address || (businessType === 'groceries' ? 'Local store' : businessType === 'online_shop' ? 'Other shop' : 'Local restaurant'),
-          rating: 4.5,
-          ratingCount: 40 + (i * 37) % 400,
+          // Starting rating (same as before) + real order ratings added on top
+          // (customers rate a delivered order; stored as restaurants/{shop}/ratingSum + ratingCount).
+          rating: Number(((4.5 * (40 + (i * 37) % 400) + (Number(v.ratingSum) || 0)) / ((40 + (i * 37) % 400) + (Number(v.ratingCount) || 0))).toFixed(1)),
+          ratingCount: (40 + (i * 37) % 400) + (Number(v.ratingCount) || 0),
           location: v.location || null,
           priceForTwo: 199 + (i * 23) % 300,
           image: v.photo || storePhotoSet[i % storePhotoSet.length],
@@ -3028,6 +3348,14 @@
           // Operator Panel → Stock Item Categories: this shop's own items
           // grouped into named categories, shown as tabs on its menu.
           itemCategories: parseItemCategories(v.itemCategories),
+          // Partner app -> Stock -> "Popular products": up to 5 item ids the shop picked, in rank order.
+          // Empty = the shop never set it, so the customer app falls back to the first 5 items.
+          suggestItems: v.suggestItems && typeof v.suggestItems === 'object'
+            ? Object.keys(v.suggestItems).sort((a, b) => (Number(v.suggestItems[a]) || 0) - (Number(v.suggestItems[b]) || 0)).slice(0, 8)
+            : [],
+          popularItems: v.popularItems && typeof v.popularItems === 'object'
+            ? Object.keys(v.popularItems).sort((a, b) => (Number(v.popularItems[a]) || 0) - (Number(v.popularItems[b]) || 0)).slice(0, 5)
+            : [],
           gpayNumber: v.gpayNumber || "",
           zone: Array.isArray(v.deliveryZone) && v.deliveryZone.length >= 3 ? v.deliveryZone : null,
           deliveryCharges: v.deliveryCharges || null,
@@ -3125,11 +3453,36 @@
     const added = [];
     want.forEach(id => { if (!shopUnsubs[id]) added.push(id); });
     if (added.length) { shopInitPending = shopInitPending || new Set(); added.forEach(id => shopInitPending.add(id)); }
+    // Speed: a shop's record also holds its whole `orders` history (plus chats, settlements...), which grows
+    // forever and was downloaded in full by every customer on every app open — only to be thrown away.
+    // So we listen only to the fields the customer app actually uses, never to `orders`.
+    const SHOP_FIELDS = ['address', 'businessType', 'closeTime', 'deliveryCharges', 'deliveryZone', 'discountAmount',
+      'discountCardImage', 'goSeries', 'gpayNumber', 'hoursEnabled', 'itemCategories', 'location', 'menu',
+      'minOrderAmount', 'opCategory', 'openTime', 'photo', 'popularItems', 'ratingCount', 'ratingSum', 'suggestItems',
+      'restaurantName', 'shopUnavailable', 'shopUnavailableMessage', 'status'];
     added.forEach(id => {
       const first = () => { if (shopInitPending) shopInitPending.delete(id); };
-      shopUnsubs[id] = onValue(ref(db, 'restaurants/' + id), (snap) => {
-        shopSnaps[id] = snap; first(); scheduleShopRebuild();
-      }, () => { first(); scheduleShopRebuild(); });
+      const fieldSnaps = {};
+      const unsubs = [];
+      let waiting = SHOP_FIELDS.length;
+      // Looks like a normal shop snapshot to rebuildRestaurantsFromSnapshot() (key / exists / forEach).
+      const publish = () => {
+        shopSnaps[id] = {
+          key: id,
+          exists: () => !!((fieldSnaps.status && fieldSnaps.status.exists()) || (fieldSnaps.restaurantName && fieldSnaps.restaurantName.exists())),
+          forEach(cb) {
+            SHOP_FIELDS.forEach(f => { const s = fieldSnaps[f]; if (s && s.exists()) cb({ key: f, val: () => s.val() }); });
+          }
+        };
+      };
+      SHOP_FIELDS.forEach(f => {
+        let got = false;
+        const done = () => { if (!got) { got = true; waiting--; } if (waiting <= 0) first(); };
+        unsubs.push(onValue(ref(db, 'restaurants/' + id + '/' + f), (snap) => {
+          fieldSnaps[f] = snap; publish(); done(); scheduleShopRebuild();
+        }, () => { done(); scheduleShopRebuild(); }));
+      });
+      shopUnsubs[id] = () => unsubs.forEach(u => { try { u(); } catch (e) {} });
     });
     if (removed || !added.length || !shopLoadRanOnce) scheduleShopRebuild();
     shopLoadRanOnce = true;
@@ -3624,6 +3977,56 @@ function neshAttachUserBlockListener(phone) {
 }
 neshAttachDeviceBlockListener();
 
+// ---------- Daily visit counter (for Operator Panel) ----------
+// 1 device = max 1 visit per day, however many times the app is opened.
+// Bandwidth: what was already sent today is remembered in localStorage, so
+// every re-open on the same day makes ZERO network calls. Network happens only:
+//  (a) first open of a new day: +1 on visitCounts/<day> and one tiny
+//      visitLog/<day>/<device> entry (name + phone if logged in), and
+//  (b) once more if the customer logs in later the same day (entry updated
+//      with name + phone; the counter is NOT incremented again).
+function neshTodayKey() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+function neshCountDailyVisit() {
+  let today, lastDay, lastPhone, user = null;
+  try {
+    today = neshTodayKey();
+    lastDay = localStorage.getItem('nesh_last_visit_day');
+    lastPhone = localStorage.getItem('nesh_last_visit_phone') || '';
+    user = JSON.parse(localStorage.getItem('asfood_customer_user') || 'null');
+  } catch (e) { return; }
+  const phone = (user && user.number) ? String(user.number) : '';
+  const name = (user && user.name) ? String(user.name) : '';
+  const newDay = lastDay !== today;
+  const loginChanged = !newDay && phone && phone !== lastPhone;
+  if (!newDay && !loginChanged) return;             // nothing new to tell the server
+  try {
+    // set first: stops double count from 2 tabs
+    localStorage.setItem('nesh_last_visit_day', today);
+    localStorage.setItem('nesh_last_visit_phone', phone);
+  } catch (e) { return; }
+  neshWaitForFb(() => {
+    const { db, ref, update, runTransaction } = window.fb;
+    const fail = () => {
+      // failed (offline etc.) -> allow a retry on next open
+      try {
+        if (newDay) localStorage.removeItem('nesh_last_visit_day');
+        localStorage.setItem('nesh_last_visit_phone', newDay ? '' : lastPhone);
+      } catch (e) {}
+    };
+    const entry = { t: Date.now() };
+    if (phone) { entry.phone = phone; entry.name = name; }
+    update(ref(db, 'visitLog/' + today + '/' + neshSanitizeFbKey(NESH_DEVICE_ID)), entry).catch(fail);
+    if (newDay) runTransaction(ref(db, 'visitCounts/' + today), v => (v || 0) + 1).catch(fail);
+  });
+}
+neshCountDailyVisit();
+// Covers an app left open overnight: re-check when it comes back to the foreground.
+document.addEventListener('visibilitychange', () => { if (!document.hidden) neshCountDailyVisit(); });
+
 // ---------- Resume-on-refresh bookkeeping ----------
 // `resumed` becomes true once we've successfully placed the customer back
 // on their saved screen. `pendingScreenResume` holds a saved screen that
@@ -3642,6 +4045,7 @@ function tryResumeScreen(saved) {
     const rest = resolveRestaurantById(saved.restaurantId);
     if (!rest) return false;
     state.selectedRestaurant = rest;
+    if (rest.businessType === 'hotel' || rest.businessType === 'online_shop') state.category = rest.businessType;
     state.cart = saved.cart && typeof saved.cart === 'object' ? saved.cart : {};
     state.cartGrams = saved.cartGrams && typeof saved.cartGrams === 'object' ? saved.cartGrams : {};
     state.cartSizes = saved.cartSizes && typeof saved.cartSizes === 'object' ? saved.cartSizes : {};
@@ -3654,6 +4058,7 @@ function tryResumeScreen(saved) {
     if (!rest) return false;
     if (!rest.items.some(i => i.id === saved.itemId)) { resumed = true; return true; }
     state.selectedRestaurant = rest;
+    if (rest.businessType === 'hotel' || rest.businessType === 'online_shop') state.category = rest.businessType;
     state.cart = saved.cart && typeof saved.cart === 'object' ? saved.cart : {};
     state.cartGrams = saved.cartGrams && typeof saved.cartGrams === 'object' ? saved.cartGrams : {};
     state.cartSizes = saved.cartSizes && typeof saved.cartSizes === 'object' ? saved.cartSizes : {};
@@ -3669,6 +4074,7 @@ function tryResumeScreen(saved) {
     const rest = resolveRestaurantById(saved.restaurantId);
     if (!rest) return false;
     state.selectedRestaurant = rest;
+    if (rest.businessType === 'hotel' || rest.businessType === 'online_shop') state.category = rest.businessType;
     state.cart = saved.cart && typeof saved.cart === 'object' ? saved.cart : {};
     state.cartGrams = saved.cartGrams && typeof saved.cartGrams === 'object' ? saved.cartGrams : {};
     state.cartSizes = saved.cartSizes && typeof saved.cartSizes === 'object' ? saved.cartSizes : {};
@@ -3759,6 +4165,7 @@ try { localStorage.removeItem('asfood_customer_pos'); } catch (e) {}
 function saveUserSession(user) {
   try { localStorage.setItem('asfood_customer_user', JSON.stringify(user)); } catch (e) {}
   neshAttachUserBlockListener(user && user.number);
+  try { neshCountDailyVisit(); } catch (e) {} // logged in -> attach name/phone to today's visit
 }
 // The "VERIFIED" badge (category screen eyebrow + account dropdown) should
 // only ever be visible once the customer has actually logged in with a
@@ -5273,11 +5680,11 @@ function runTaxiPlaceSearch(query) {
       const biasLng = (taxiPickup && taxiPickup.lng) ?? DEFAULT_MAP_CENTER.lng;
       const box = 0.35; // ~35km box around the pin
       const viewbox = [biasLng - box, biasLat + box, biasLng + box, biasLat - box].join(',');
-      const url = "https://nominatim.openstreetmap.org/search?format=json&addressdetails=0&limit=6&countrycodes=in&viewbox=" +
+      const url = "https://nominatim.openstreetmap.org/search?format=json&addressdetails=0&namedetails=1&limit=6&countrycodes=in&viewbox=" +
         viewbox + "&bounded=1&q=" + encodeURIComponent(query);
       const res = await fetch(url, { signal: taxiSearchAbort.signal, headers: { 'Accept-Language': 'ml' } });
       const data = await res.json();
-      remoteResults = Array.isArray(data) ? data : [];
+      remoteResults = filterResultsByName(Array.isArray(data) ? data : [], query);
     } catch (e) {
       if (e.name !== 'AbortError' && localMatches.length === 0) {
         taxiSearchResultsEl.innerHTML = `<p class="loc-search-empty">Search failed — check your connection.</p>`;
@@ -7128,6 +7535,7 @@ function processWatchedOrders(entries, queueLiveKeys) {
   }
   activeCandidates.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   setActiveOrderBar(activeCandidates[0] || null);
+  try { updateHomeRateCard(entries); } catch (e) {}
 }
 // Only orders from the last few days can still be "in progress".
 const ORDER_WATCH_WINDOW_MS = 3 * 24 * 3600 * 1000;
@@ -7609,6 +8017,33 @@ function refreshShopHoursState() {
 }
 setInterval(refreshShopHoursState, 30000);
 
+// NESH Mart only: Deliver-to goes up into the top row and "Your Orders" sits beside the bell.
+// Elements are moved (not copied) so their click handlers keep working, and put back for other categories.
+const martHdrOrig = {};
+function martHeaderLayout(isMart) {
+  const loc = document.getElementById('home-loc-row');
+  const orders = document.getElementById('your-orders-btn');
+  if (!loc || !orders) return;
+  if (!martHdrOrig.saved) {
+    martHdrOrig.locParent = loc.parentNode; martHdrOrig.locNext = loc.nextSibling;
+    martHdrOrig.ordParent = orders.parentNode; martHdrOrig.ordNext = orders.nextSibling;
+    martHdrOrig.saved = true;
+  }
+  const ordLabel = orders.querySelector('p');
+  if (isMart) {
+    const firstRow = document.querySelector('#screen-home .home-top-left > div:first-child');
+    const right = document.querySelector('#screen-home .top-row-right');
+    const acct = right && right.querySelector('.account-wrap');
+    if (firstRow && loc.parentNode !== firstRow) firstRow.appendChild(loc);
+    if (right && acct && orders.parentNode !== right) right.insertBefore(orders, acct);
+    if (ordLabel) ordLabel.textContent = 'Orders';
+  } else {
+    if (loc.parentNode !== martHdrOrig.locParent) martHdrOrig.locParent.insertBefore(loc, martHdrOrig.locNext);
+    if (orders.parentNode !== martHdrOrig.ordParent) martHdrOrig.ordParent.insertBefore(orders, martHdrOrig.ordNext);
+    if (ordLabel) ordLabel.textContent = 'Your Orders';
+  }
+}
+
 function renderHome() {
   updateHomeLocationLabel();
   const firstName = (state.user?.name || "friend").split(' ')[0];
@@ -7623,6 +8058,7 @@ function renderHome() {
   searchInput.placeholder = isGroceries ? "Search groceries or stores"
     : isOnlineShop ? "Search products or shops"
     : "Search dishes or restaurants";
+  martHeaderLayout(isOnlineShop || state.category === 'hotel');
   updateHomeTrackBtn();
   renderRestaurantList();
 }
@@ -7763,15 +8199,262 @@ window.onShopZonesUpdated = () => {
   try { renderRestaurantList(); } catch (e) {}
 };
 
+// ---------- NESH Mart home (online_shop only): chips, floors, deals, popular products, compact cards ----------
+const martState = { cat: 'All', sort: 'recommended', openOnly: false, trendShop: 'all' };
+
+function martShopInfo(r) {
+  const info = getShopClosedInfo(r);
+  const pos = parseLatLng(r.location);
+  const dist = (state.customerPos && pos)
+    ? haversineMeters(state.customerPos.lat, state.customerPos.lng, pos.lat, pos.lng) / 1000
+    : null;
+  return { r, closed: info.closed, msg: info.message, dist };
+}
+
+function martCardEl(x) {
+  const r = x.r;
+  const el = document.createElement('div');
+  el.className = 'mart-card' + (x.closed ? ' is-closed' : '');
+  const disc = Number(r.discountAmount) || 0;
+  const catLine = [r.opCategory, '₹' + r.priceForTwo + ' avg order'].filter(Boolean).join(' • ');
+  el.innerHTML = `
+    <div class="mart-card-img" style="background:${escapeHtml(r.color || '#F4EDD6')}">
+      <img src="${escapeHtml(r.image || '')}" alt="${escapeHtml(r.name)}" loading="lazy" onerror="this.onerror=null;this.style.visibility='hidden';" />
+    </div>
+    <div class="mart-card-info">
+      <p class="mart-card-name">${escapeHtml(r.name)}</p>
+      <div class="mart-card-meta">
+        <span class="mart-card-rating">★ ${escapeHtml(String(r.rating))} (${escapeHtml(String(r.ratingCount))})</span>
+        ${x.dist !== null ? `<span>${x.dist.toFixed(1)} km</span>` : ''}
+      </div>
+      <p class="mart-card-sub">${escapeHtml(catLine)}</p>
+      <div class="mart-card-tags">
+        <span class="mart-pill ${x.closed ? 'closed' : 'open'}">● ${x.closed ? 'Closed' : 'Open'}</span>
+        ${disc > 0 && !x.closed ? `<span class="mart-pill deal">₹${disc} OFF</span>` : ''}
+      </div>
+      ${x.closed && x.msg ? `<p class="mart-closed-msg">${escapeHtml(x.msg)}</p>` : ''}
+    </div>
+    <div class="mart-card-arrow">›</div>`;
+  el.addEventListener('click', () => openRestaurant(r.id));
+  return el;
+}
+
+function martChip(label, active, onClick) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'mart-chip' + (active ? ' active' : '');
+  b.textContent = label;
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+function buildMartTrend(container, withProds) {
+  container.innerHTML = '';
+  const strip = document.createElement('div');
+  strip.className = 'mart-logo-strip';
+  const head = document.createElement('div');
+  head.className = 'mart-trend-head';
+  const row = document.createElement('div');
+  row.className = 'mart-hscroll';
+  const chips = [];
+
+  const addChip = (id, innerImg, label) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'mart-logo-chip' + (martState.trendShop === id ? ' active' : '');
+    b.innerHTML = `<span class="mart-logo-img">${innerImg}</span><span class="mart-logo-name">${escapeHtml(label)}</span>`;
+    b.addEventListener('click', () => {
+      martState.trendShop = id;
+      chips.forEach(c => c.el.classList.toggle('active', c.id === id));
+      fillRow();
+    });
+    chips.push({ id, el: b });
+    strip.appendChild(b);
+  };
+  addChip('all', '🛍️', 'All');
+  withProds.forEach(o => addChip(o.r.id,
+    `<img src="${escapeHtml(o.r.image || '')}" alt="" loading="lazy" onerror="this.onerror=null;this.style.visibility='hidden';" />`, o.r.name));
+
+  function fillRow() {
+    row.innerHTML = '';
+    head.innerHTML = '';
+    let list;
+    if (martState.trendShop === 'all') {
+      // a few from every shop, interleaved so no single shop fills the row
+      list = [];
+      for (let i = 0; i < 3; i++) withProds.forEach(o => { if (o.prods[i]) list.push({ it: o.prods[i], r: o.r }); });
+      list = list.slice(0, 16);
+      head.style.display = 'none';
+    } else {
+      const o = withProds.find(w => w.r.id === martState.trendShop);
+      list = o.prods.map(it => ({ it, r: o.r }));
+      head.style.display = 'flex';
+      head.innerHTML = `<p class="mart-trend-shopname">${escapeHtml(o.r.name)}</p><button type="button" class="mart-see-all">View shop ›</button>`;
+      head.querySelector('button').addEventListener('click', () => openRestaurant(o.r.id));
+    }
+    list.forEach(({ it, r }) => {
+      const c = document.createElement('div');
+      c.className = 'mart-prod';
+      c.innerHTML = `
+        <div class="mart-prod-img"><img src="${escapeHtml(it.image)}" alt="${escapeHtml(it.name)}" loading="lazy" onerror="this.onerror=null;this.src='icon-192.png';" /></div>
+        <p class="mart-prod-name">${escapeHtml(it.name)}</p>
+        ${it.ratingCount > 0 ? `<p class="mart-prod-shop" style="color:#0E8A5C; font-weight:700;">${escapeHtml(itemRatingLabel(it))}</p>` : ''}
+        ${martState.trendShop === 'all' ? `<p class="mart-prod-shop">${escapeHtml(r.name)}</p>` : ''}
+        <p class="mart-prod-price">₹${escapeHtml(String(it.price))}${UNIT_SUFFIX[it.unit] || ''}</p>`;
+      c.addEventListener('click', () => { openRestaurant(r.id); openItemDetail(it.id, true); });
+      row.appendChild(c);
+    });
+    row.scrollLeft = 0;
+  }
+  container.appendChild(strip);
+  container.appendChild(head);
+  container.appendChild(row);
+  fillRow();
+}
+
+function renderMart(filtered, categoryFiltered, q, searchFiltered) {
+  const catChipsEl = document.getElementById('mart-cat-chips');
+  const sortChipsEl = document.getElementById('mart-sort-chips');
+  const dealsWrap = document.getElementById('mart-deals-wrap');
+  const dealsEl = document.getElementById('mart-deals');
+  const trendWrap = document.getElementById('mart-trend-wrap');
+  const trendEl = document.getElementById('mart-trend');
+
+  let list = filtered.map(martShopInfo);
+
+  // Category chips are built from the shops this customer can actually order from.
+  const cats = [];
+  list.forEach(x => { const c = x.r.opCategory || ''; if (c && !cats.includes(c)) cats.push(c); });
+  if (martState.cat !== 'All' && !cats.includes(martState.cat)) martState.cat = 'All';
+
+  catChipsEl.innerHTML = '';
+  if (cats.length > 0) {
+    catChipsEl.appendChild(martChip('All', martState.cat === 'All', () => { martState.cat = 'All'; renderRestaurantList(); }));
+    cats.forEach(c => catChipsEl.appendChild(martChip(c, martState.cat === c, () => { martState.cat = c; renderRestaurantList(); })));
+  }
+  catChipsEl.style.display = cats.length > 0 ? '' : 'none';
+
+  sortChipsEl.innerHTML = '';
+  [['recommended', 'Recommended'], ['nearest', 'Nearest'], ['rating', 'Top rated']].forEach(([k, label]) => {
+    sortChipsEl.appendChild(martChip(label, martState.sort === k, () => { martState.sort = k; renderRestaurantList(); }));
+  });
+  sortChipsEl.appendChild(martChip('🟢 Open now', martState.openOnly, () => { martState.openOnly = !martState.openOnly; renderRestaurantList(); }));
+
+  const searching = !!q;
+  const browsingAll = !searching && martState.cat === 'All';
+
+  // Deals + popular products (only on the plain "All" view, not while searching/filtering)
+  dealsEl.innerHTML = ''; trendEl.innerHTML = '';
+  const openShops = list.filter(x => !x.closed);
+  if (browsingAll) {
+    openShops.filter(x => (Number(x.r.discountAmount) || 0) > 0).forEach(x => {
+      const d = document.createElement('div');
+      d.className = 'mart-deal';
+      d.innerHTML = `<div class="mart-deal-amt">₹${Number(x.r.discountAmount)} <small>OFF</small></div><div class="mart-deal-name">${escapeHtml(x.r.name)}</div>`;
+      d.addEventListener('click', () => openRestaurant(x.r.id));
+      dealsEl.appendChild(d);
+    });
+
+    // Popular products: a logo strip of shops on top + ONE product row below (All, or the tapped shop).
+    // Each shop shows the (max 5) products it picked itself; if it picked none — or none of
+    // its picks is available any more — it defaults to its first 5 available items.
+    const withProds = openShops.map(x => {
+      const avail = (Array.isArray(x.r.items) ? x.r.items : []).filter(it => it && it.image && !it.soldOut && !it.outOfStock && it.available !== false);
+      const picked = (Array.isArray(x.r.popularItems) ? x.r.popularItems : [])
+        .map(id => avail.find(it => it.id === id)).filter(Boolean);
+      return { r: x.r, prods: (picked.length ? picked : avail).slice(0, 5) };
+    }).filter(o => o.prods.length > 0);
+    if (martState.trendShop !== 'all' && !withProds.some(o => o.r.id === martState.trendShop)) martState.trendShop = 'all';
+    if (withProds.length) buildMartTrend(trendEl, withProds);
+  }
+  dealsWrap.style.display = dealsEl.children.length ? 'block' : 'none';
+  trendWrap.style.display = trendEl.children.length ? 'block' : 'none';
+
+  // Apply chip + open-now filters (search ignores the category chip so it always searches everything)
+  if (!searching && martState.cat !== 'All') list = list.filter(x => (x.r.opCategory || '') === martState.cat);
+  if (martState.openOnly) list = list.filter(x => !x.closed);
+
+  // Sorting — closed shops always sink to the bottom; "recommended" keeps the operator's shop order.
+  const byOpen = (a, b) => (a.closed === b.closed) ? 0 : (a.closed ? 1 : -1);
+  if (martState.sort === 'nearest') {
+    list.sort((a, b) => byOpen(a, b) || ((a.dist ?? 1e9) - (b.dist ?? 1e9)));
+  } else if (martState.sort === 'rating') {
+    list.sort((a, b) => byOpen(a, b) || ((Number(b.r.rating) || 0) - (Number(a.r.rating) || 0)));
+  } else {
+    list.sort(byOpen);
+  }
+
+  restListEl.innerHTML = '';
+  if (list.length === 0) {
+    const p = document.createElement('p');
+    p.className = 'empty-text';
+    p.textContent = isAreaUnavailable(state.customerPos)
+      ? AREA_UNAVAILABLE_MSG
+      : martState.openOnly && filtered.length > 0
+      ? 'No shops are open right now.'
+      : state.customerPos && searchFiltered.length > 0
+      ? 'No shops deliver to your selected location yet.'
+      : 'No shops match "' + searchInput.value + '".';
+    restListEl.appendChild(p);
+    return;
+  }
+
+  // "Mall floors": group by category when browsing everything with the default sort and there is enough to group.
+  const groups = [];
+  list.forEach(x => {
+    const c = x.r.opCategory || 'More shops';
+    let g = groups.find(g => g.name === c);
+    if (!g) { g = { name: c, shops: [] }; groups.push(g); }
+    g.shops.push(x);
+  });
+  const useFloors = browsingAll && !martState.openOnly && martState.sort === 'recommended' && list.length >= 5 && groups.length >= 2;
+
+  if (useFloors) {
+    groups.forEach(g => {
+      const sec = document.createElement('div');
+      sec.className = 'mart-section';
+      const head = document.createElement('div');
+      head.className = 'mart-section-head';
+      head.innerHTML = `<p class="mart-section-title">${escapeHtml(g.name)}</p>`;
+      if (g.shops.length > 3 && g.name !== 'More shops') {
+        const more = document.createElement('button');
+        more.type = 'button';
+        more.className = 'mart-see-all';
+        more.textContent = 'See all ' + g.shops.length + ' ›';
+        more.addEventListener('click', () => { martState.cat = g.name; renderRestaurantList(); });
+        head.appendChild(more);
+      }
+      sec.appendChild(head);
+      const body = document.createElement('div');
+      body.className = 'mart-section-body';
+      g.shops.slice(0, 3).forEach(x => body.appendChild(martCardEl(x)));
+      sec.appendChild(body);
+      restListEl.appendChild(sec);
+    });
+  } else {
+    list.forEach(x => restListEl.appendChild(martCardEl(x)));
+  }
+}
+
 function renderRestaurantList() {
   const q = searchInput.value.toLowerCase();
-  { const hs = document.getElementById('screen-home'); if (hs) hs.dataset.cat = state.category || ''; } // lets CSS style NESH Mart (online_shop) separately
+  // No category picked and the shop list isn't on screen (e.g. the category picker is showing while shop data
+  // updates in the background): nothing to draw — skip the work and don't touch state.category.
+  if (!state.category || state.category === 'groceries') {
+    const hsEl = document.getElementById('screen-home');
+    if (!hsEl || !hsEl.classList.contains('active')) return;
+  }
   // Individual groceries shops are never shown to customers — groceries is
   // only ever ordered through the merged NESH Store (openNeshStore()).
   const visibleShops = RESTAURANTS.filter(r => r.businessType !== 'groceries');
-  const categoryFiltered = state.category
-    ? visibleShops.filter(r => r.businessType === state.category)
-    : visibleShops;
+  // If no category is set (e.g. app refreshed on a shop menu, then Back), infer it from the
+  // shop the customer was in, else default to Food — never mix Food + NESH Mart in one list.
+  if (!state.category || state.category === 'groceries') {
+    const sb = state.selectedRestaurant && state.selectedRestaurant.businessType;
+    state.category = (sb === 'hotel' || sb === 'online_shop') ? sb : 'hotel';
+  }
+  const categoryFiltered = visibleShops.filter(r => (r.businessType || 'hotel') === state.category);
+  { const hs = document.getElementById('screen-home'); if (hs) hs.dataset.cat = state.category || ''; } // lets CSS style NESH Mart (online_shop) / Food (hotel) separately
 
   // Apply the operator-set shop order for this category (Operator Panel →
   // Shop Order), if one has been saved. Shops in the saved order come
@@ -7792,7 +8475,8 @@ function renderRestaurantList() {
   // Shop list matches on shop name/cuisine only. Product matches are shown
   // separately below (see renderProductResults) as photo cards the
   // customer can tap straight into.
-  const searchFiltered = categoryFiltered.filter(r => (r.name + r.cuisine).toLowerCase().includes(q));
+  const searchFiltered = categoryFiltered.filter(r =>
+    (r.name + ' ' + r.cuisine + (state.category === 'online_shop' ? ' ' + (r.opCategory || '') : '')).toLowerCase().includes(q));
 
   // Once the customer has picked a location, only show restaurants whose
   // delivery zone covers that point. Restaurants that haven't drawn a zone
@@ -7801,6 +8485,12 @@ function renderRestaurantList() {
   const filtered = state.customerPos
     ? searchFiltered.filter(r => shopAllowedAtPoint(r.id, state.customerPos) && (!r.zone || isPointInZone(state.customerPos, r.zone)))
     : searchFiltered;
+
+  if (state.category === 'online_shop') {
+    renderMart(filtered, categoryFiltered, q, searchFiltered);
+    renderProductResults(q, categoryFiltered);
+    return;
+  }
 
   restListEl.innerHTML = "";
   if (filtered.length === 0) {
@@ -7815,6 +8505,7 @@ function renderRestaurantList() {
     restListEl.appendChild(p);
     return;
   }
+  if (state.category === 'hotel') { renderFoodList(filtered); renderProductResults(q, categoryFiltered); return; }
   filtered.forEach(r => {
     const card = document.createElement('div');
     card.className = "card rest-card2";
@@ -7860,6 +8551,63 @@ function renderRestaurantList() {
   });
   renderProductResults(q, categoryFiltered);
 }
+
+// ---------- Food home (hotel) — its own look: filter chips + full-photo cards ----------
+const foodState = { filter: 'all' };
+function renderFoodList(list) {
+  const info = list.map(r => {
+    const pos = parseLatLng(r.location);
+    const km = (state.customerPos && pos) ? haversineMeters(state.customerPos.lat, state.customerPos.lng, pos.lat, pos.lng) / 1000 : null;
+    return { r, km, closed: getShopClosedInfo(r) };
+  });
+  let rows = info.slice();
+  if (foodState.filter === 'open') rows = rows.filter(x => !x.closed.closed);
+  else if (foodState.filter === 'nearest') rows.sort((a, b) => (a.closed.closed - b.closed.closed) || ((a.km ?? 1e9) - (b.km ?? 1e9)));
+  else if (foodState.filter === 'rating') rows.sort((a, b) => (a.closed.closed - b.closed.closed) || ((Number(b.r.rating) || 0) - (Number(a.r.rating) || 0)));
+  restListEl.innerHTML = '';
+  const chips = document.createElement('div');
+  chips.className = 'food-chips';
+  [['all', 'All'], ['open', '🟢 Open now'], ['nearest', '📍 Nearest'], ['rating', '⭐ Top rated']].forEach(([k, label]) => {
+    const b = document.createElement('button');
+    b.className = 'food-chip' + (foodState.filter === k ? ' active' : '');
+    b.textContent = label;
+    b.addEventListener('click', () => { foodState.filter = k; renderRestaurantList(); });
+    chips.appendChild(b);
+  });
+  restListEl.appendChild(chips);
+  const openCount = info.filter(x => !x.closed.closed).length;
+  const cnt = document.createElement('p');
+  cnt.className = 'food-count';
+  cnt.textContent = '🍽️ ' + openCount + ' restaurant' + (openCount === 1 ? '' : 's') + ' open now';
+  restListEl.appendChild(cnt);
+  if (!rows.length) {
+    const p = document.createElement('p'); p.className = 'empty-text'; p.textContent = 'No restaurants are open right now.';
+    restListEl.appendChild(p); return;
+  }
+  rows.forEach(({ r, km, closed }) => {
+    const card = document.createElement('div');
+    card.className = 'food-card' + (closed.closed ? ' closed' : '');
+    const rating = Number(r.rating) ? Number(r.rating).toFixed(1) : '';
+    card.innerHTML = `
+      <img class="food-card-photo" src="${r.image}" alt="${escapeHtml(r.name)}" loading="lazy" onerror="this.onerror=null;this.style.background='${r.color}';this.src='';" />
+      <div class="food-card-top">
+        ${closed.closed ? '<span class="food-tag closed">Closed</span>' : (r.opCategory ? `<span class="food-tag">${escapeHtml(r.opCategory)}</span>` : '<span></span>')}
+        ${rating ? `<span class="food-rate">★ ${rating}</span>` : ''}
+      </div>
+      <div class="food-card-bottom">
+        <p class="food-name">${escapeHtml(r.name)}</p>
+        <p class="food-sub">${escapeHtml(r.cuisine || '')}</p>
+        <div class="food-pills">
+          ${km !== null ? `<span class="food-pill">📍 ${km.toFixed(1)} km</span>` : ''}
+          <span class="food-pill">₹${r.priceForTwo} for two</span>
+          ${r.ratingCount ? `<span class="food-pill">${r.ratingCount} ratings</span>` : ''}
+        </div>
+        ${closed.closed && closed.message ? `<p class="food-closed-msg">${escapeHtml(closed.message)}</p>` : ''}
+      </div>`;
+    card.addEventListener('click', () => openRestaurant(r.id));
+    restListEl.appendChild(card);
+  });
+}
 searchInput.addEventListener('input', renderRestaurantList);
 
 const productResultsWrap = document.getElementById('product-results-wrap');
@@ -7881,12 +8629,24 @@ function renderProductResults(q, categoryFiltered) {
     : categoryFiltered;
 
   const products = [];
+  const seenProd = new Set();
   deliverable.forEach(r => {
     if (!Array.isArray(r.items)) return;
     r.items.forEach(it => {
-      if (it.name.toLowerCase().includes(q)) products.push({ item: it, shop: r });
+      if (it.name.toLowerCase().includes(q)) { products.push({ item: it, shop: r }); seenProd.add(r.id + '|' + it.id); }
     });
   });
+  // NESH Mart: searching a shop's name or category (e.g. "sports") also lists that shop's items below the shops.
+  if (state.category === 'online_shop') {
+    deliverable.forEach(r => {
+      if (!Array.isArray(r.items)) return;
+      if (!(r.name + ' ' + (r.opCategory || '')).toLowerCase().includes(q)) return;
+      r.items.slice(0, 12).forEach(it => {
+        const key = r.id + '|' + it.id;
+        if (!seenProd.has(key)) { products.push({ item: it, shop: r }); seenProd.add(key); }
+      });
+    });
+  }
 
   if (products.length === 0) { productResultsWrap.style.display = 'none'; productListEl.innerHTML = ''; return; }
 
@@ -8085,6 +8845,7 @@ function menuBackClicked() {
     goToCategoryScreen();
     return;
   }
+  if (r && (r.businessType === 'hotel' || r.businessType === 'online_shop')) state.category = r.businessType;
   renderHome();
   showScreen('home');
   persistScreen('home', { category: state.category });
@@ -8351,11 +9112,12 @@ function renderMenu() {
       const qty = state.cart[it.id] || 0;
       const card = document.createElement('div');
       card.className = "item-card2";
+      card.dataset.itemId = it.id;
       card.innerHTML = `
         <div class="item-img-wrap">
           <img class="item-img" src="${it.image || ''}" alt="${it.name}" loading="lazy" onerror="this.onerror=null;this.src='icon-192.png';this.classList.add('img-fallback');" />
           <span class="item-veg"><span></span></span>
-          <span class="item-rating2">★ ${it.rating || '4.5'}${it.ratingCount ? ' (' + it.ratingCount + ')' : ''}</span>
+          <span class="item-rating2">${itemRatingLabel(it)}</span>
         </div>
         <p class="item-name2">${it.name}</p>
         ${it.desc ? `<p class="item-desc" style="margin-top:2px;">${it.desc}</p>` : ''}
@@ -8466,7 +9228,12 @@ function changeQty(itemId, delta) {
   const next = Math.max(0, current + delta);
   if (next === 0) delete state.cart[itemId];
   else state.cart[itemId] = next;
-  renderMenu();
+  // Instant: only swap this item's Add / − qty + control and refresh the cart bar. Re-rendering the whole
+  // menu on every tap (all cards + photos rebuilt) was what made Add feel slow.
+  const card = itemListEl.querySelector('.item-card2[data-item-id="' + (window.CSS && CSS.escape ? CSS.escape(String(itemId)) : String(itemId)) + '"]');
+  const slot = card && card.querySelector('.qty-slot');
+  if (slot) { renderQtyControl(slot, itemId, next); updateCartBar(); }
+  else renderMenu();
   if (state.selectedItem === itemId) renderItemDetail();
   if (orderSummaryOverlay.classList.contains('show')) {
     const count = Object.values(state.cart).reduce((a, b) => a + b, 0);
@@ -8497,11 +9264,13 @@ itemDetailWeightInput.addEventListener('input', () => {
 });
 document.getElementById('item-detail-back-btn').addEventListener('click', () => {
   renderMenu(); // pick up any weight/price change made on this screen
+  if (state.itemFromHome) { state.itemFromHome = false; renderHome(); showScreen('home'); persistScreen('home', { category: state.category }); return; } // opened from NESH Mart popular products -> back to the Mart list
   showScreen('menu');
   persistScreen('menu', { restaurantId: state.selectedRestaurant.id, cart: state.cart });
 });
 
-function openItemDetail(itemId) {
+function openItemDetail(itemId, fromHome) {
+  state.itemFromHome = !!fromHome;
   state.selectedItem = itemId;
   renderItemDetail();
   showScreen('item-detail');
@@ -8517,8 +9286,19 @@ function renderItemDetail() {
   itemDetailPhoto.alt = it.name || '';
   itemDetailPhoto.style.display = it.image ? 'block' : 'none';
   itemDetailPhoto.onerror = () => { itemDetailPhoto.style.display = 'none'; };
-  itemDetailRating.textContent = `★ ${it.rating || '4.5'}${it.ratingCount ? ' (' + it.ratingCount + ')' : ''}`;
+  itemDetailRating.textContent = itemRatingLabel(it);
   itemDetailName.textContent = it.name;
+  { const sh = document.getElementById('item-detail-shop'); // always say which shop this product is from; tap = open that shop
+    if (sh) {
+      document.getElementById('item-detail-shop-name').textContent = state.selectedRestaurant.name || 'Shop';
+      const lg = document.getElementById('item-detail-shop-logo');
+      lg.style.display = state.selectedRestaurant.image ? 'block' : 'none';
+      lg.onerror = () => { lg.style.display = 'none'; };
+      const wantSrc = state.selectedRestaurant.image || '';
+      if (lg.getAttribute('src') !== wantSrc) lg.src = wantSrc;
+      sh.style.display = 'flex';
+      sh.onclick = () => { state.itemFromHome = false; renderMenu(); showScreen('menu'); persistScreen('menu', { restaurantId: state.selectedRestaurant.id, cart: state.cart }); };
+    } }
   if (it.desc) {
     itemDetailDesc.textContent = it.desc;
     itemDetailDesc.style.display = 'block';
@@ -9709,11 +10489,11 @@ locSearchInput.addEventListener('input', () => {
       const biasLng = pendingLocation.lng ?? DEFAULT_MAP_CENTER.lng;
       const box = 0.35; // ~35km box around the pin
       const viewbox = [biasLng - box, biasLat + box, biasLng + box, biasLat - box].join(',');
-      const url = "https://nominatim.openstreetmap.org/search?format=json&addressdetails=0&limit=6&countrycodes=in&viewbox=" +
+      const url = "https://nominatim.openstreetmap.org/search?format=json&addressdetails=0&namedetails=1&limit=6&countrycodes=in&viewbox=" +
         viewbox + "&bounded=1&q=" + encodeURIComponent(query);
       const res = await fetch(url, { signal: locSearchAbort.signal, headers: { 'Accept-Language': 'ml' } });
       const data = await res.json();
-      remoteResults = Array.isArray(data) ? data : [];
+      remoteResults = filterResultsByName(Array.isArray(data) ? data : [], query);
     } catch (e) {
       if (e.name !== 'AbortError' && localMatches.length === 0) {
         locSearchResultsEl.innerHTML = `<p class="loc-search-empty">Search failed — check your connection.</p>`;
@@ -9968,10 +10748,22 @@ function fuzzyNameMatches(normName, normQuery) {
   return false;
 }
 
+// Keep only results whose own NAME contains what was typed (e.g. "aroor" -> Aroor...),
+// so unrelated places that merely sit nearby / in the same area don't show up.
+function filterResultsByName(results, query) {
+  const nq = normalizeForMatch(query);
+  if (!nq) return results;
+  return (results || []).filter(r => {
+    const names = [String(r.display_name || '').split(',')[0]];
+    if (r.namedetails) Object.values(r.namedetails).forEach(v => names.push(v));
+    return names.some(nm => normalizeForMatch(nm).includes(nq));
+  });
+}
+
 function searchLocalLandmarks(query) {
   const normQuery = normalizeForMatch(query);
   return (LOCAL_LANDMARKS || [])
-    .filter(p => p.named && fuzzyNameMatches(normalizeForMatch(p.n), normQuery))
+    .filter(p => p.named && normalizeForMatch(p.n).includes(normQuery))
     .slice(0, 6)
     .map(p => ({
       lat: p.lat,
@@ -10017,10 +10809,10 @@ browseLocSearchInput.addEventListener('input', () => {
     try {
       if (browseSearchAbort) browseSearchAbort.abort();
       browseSearchAbort = new AbortController();
-      const url = "https://nominatim.openstreetmap.org/search?format=json&addressdetails=0&limit=6&countrycodes=in&q=" + encodeURIComponent(query);
+      const url = "https://nominatim.openstreetmap.org/search?format=json&addressdetails=0&namedetails=1&limit=6&countrycodes=in&q=" + encodeURIComponent(query);
       const res = await fetch(url, { signal: browseSearchAbort.signal, headers: { 'Accept-Language': 'ml' } });
       const data = await res.json();
-      remoteResults = Array.isArray(data) ? data : [];
+      remoteResults = filterResultsByName(Array.isArray(data) ? data : [], query);
     } catch (e) {
       if (e.name !== 'AbortError' && localMatches.length === 0) {
         browseLocResultsEl.innerHTML = `<p class="loc-search-empty">Search failed — check your connection.</p>`;
@@ -10076,6 +10868,37 @@ const orderSummaryGrandTotalEl = document.getElementById('order-summary-grand-to
 const orderSummaryCloseBtn = document.getElementById('order-summary-close-btn');
 const orderSummaryProceedBtn = document.getElementById('order-summary-proceed-btn');
 
+// Food shops only: in the order summary, suggest the shop's own drinks (7 Up, Pepsi, juice…) the customer hasn't added yet.
+const DRINK_NAME_RE = /\b(7\s?up|seven\s?up|pepsi|coke|coca|cola|sprite|fanta|mirinda|thums\s?up|limca|maaza|slice|frooti|mountain\s?dew|soda|juice|lime|lemonade|shake|lassi|buttermilk|water|tea|coffee|milkshake|falooda|sarbath|sharbath|drink)\b/i;
+const DRINK_DESC_RE = /\b(drinks?|beverages?)\b/i; // description saying "drink" / "beverage"
+const DRINK_CAT_RE = /(drink|beverage|juice|soda|cool|shake|lassi|tea|coffee|water|soft)/i;
+function renderDrinkSuggestions(r) {
+  const wrap = document.getElementById('order-summary-suggest');
+  const row = document.getElementById('order-summary-suggest-row');
+  if (!wrap || !row) return;
+  row.innerHTML = ''; wrap.style.display = 'none';
+  if (!r || r.businessType !== 'hotel') return;
+  const drinkCatIds = new Set();
+  (r.itemCategories || []).forEach(c => { if (DRINK_CAT_RE.test(c.name)) c.itemIds.forEach(id => drinkCatIds.add(id)); });
+  const okItem = it => it && !state.cart[it.id] && !it.soldOut && !it.outOfStock && it.available !== false && !isWeightUnit(it.unit) && !hasSizes(it);
+  // The shop's own pick (Partner app -> Suggested add-ons) wins; if it picked none, fall back to auto-detected drinks.
+  const shopPick = (Array.isArray(r.suggestItems) ? r.suggestItems : []).map(id => (r.items || []).find(it => it.id === id)).filter(okItem);
+  const picks = shopPick.length ? shopPick
+    : (r.items || []).filter(it => okItem(it) && (drinkCatIds.has(it.id) || DRINK_NAME_RE.test(it.name || '') || DRINK_DESC_RE.test(it.desc || ''))).slice(0, 8);
+  if (!picks.length) return;
+  picks.forEach(it => {
+    const c = document.createElement('div');
+    c.style.cssText = 'flex:none; width:96px; text-align:center; background:#fff; border:1.5px solid #F1E3B5; border-radius:14px; padding:8px 6px;';
+    c.innerHTML = `<img src="${it.image || ''}" alt="" style="width:56px; height:56px; border-radius:12px; object-fit:cover; background:#f3efe2;" onerror="this.onerror=null;this.src='icon-192.png';" />
+      <p style="margin:6px 0 0; font-size:12px; font-weight:700; color:#2B2410; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(it.name)}</p>
+      <p style="margin:2px 0 6px; font-size:12px; color:#C97F00; font-weight:700;">₹${getUnitPrice(it)}</p>
+      <button type="button" style="border:1.5px solid #E6B422; background:#fff; color:#C97F00; font-weight:800; font-size:12px; padding:4px 14px; border-radius:10px; cursor:pointer;">+ Add</button>`;
+    c.querySelector('button').addEventListener('click', () => changeQty(it.id, 1));
+    row.appendChild(c);
+  });
+  wrap.style.display = 'block';
+}
+
 function openOrderSummary() {
   const r = state.selectedRestaurant;
   if (!r) return;
@@ -10105,6 +10928,7 @@ function openOrderSummary() {
     renderQtyControl(row.querySelector('.qty-slot'), it.id, qty);
     orderSummaryListEl.appendChild(row);
   });
+  renderDrinkSuggestions(r);
   orderSummaryItemsTotalEl.textContent = "₹" + itemsTotal;
   orderSummaryGrandTotalEl.textContent = "₹" + itemsTotal;
   const minNoteEl = document.getElementById('order-summary-min-note');
@@ -10528,6 +11352,94 @@ function normalizeStatus(raw) {
 
 // "Your items" card on the order tracking screen: every item of THIS order
 // (qty x name, customer price), plus fees / discount and the total.
+// ---- Rate the whole order (shows once the order is delivered; one rating per order, counts toward the SHOP's rating) ----
+function rateOrderHtml(o) {
+  if (!o || !trackCurrentRestId || trackCurrentRestId === 'NESH_STORE') return '';
+  if (o.fromNeshStoreQueue || trackBusinessType === 'groceries') return '';   // NESH Store never reveals the real shop
+  if (normalizeStatus(o.status) !== 'delivered') return '';
+  const done = o.orderRating;
+  let html = '<div style="margin-top:12px; padding-top:12px; border-top:1px dashed rgba(43,36,16,.2); text-align:center;">';
+  if (done) {
+    const s = Number(done.stars) || 0;
+    html += '<span style="font-size:13px; color:#C97F00; font-weight:700;">You rated this order: ' + '★'.repeat(s) + '☆'.repeat(5 - s) + '</span>';
+  } else {
+    let stars = '';
+    for (let i = 1; i <= 5; i++) stars += '<button type="button" data-rate-order="' + i + '" aria-label="' + i + ' star" style="background:none; border:none; padding:2px 5px; font-size:30px; line-height:1; color:#E0B84A; cursor:pointer;">☆</button>';
+    html += '<p style="margin:0 0 4px; font-size:13px; font-weight:700;">How was your order?</p><div>' + stars + '</div>';
+  }
+  return html + '</div>';
+}
+async function submitOrderRating(stars, restId = trackCurrentRestId, orderKey = trackCurrentOrderKey) {
+  if (!restId || restId === 'NESH_STORE' || !orderKey || !(stars >= 1 && stars <= 5)) return;
+  const { db, ref, runTransaction } = window.fb;
+  try {
+    // Only the first rating for this order counts (transaction aborts if one already exists).
+    const res = await runTransaction(
+      ref(db, 'restaurants/' + restId + '/orders/' + orderKey + '/orderRating'),
+      cur => cur ? undefined : { stars, at: Date.now() }
+    );
+    if (!res.committed) return;
+    runTransaction(ref(db, 'restaurants/' + restId + '/ratingSum'), v => (Number(v) || 0) + stars).catch(() => {});
+    runTransaction(ref(db, 'restaurants/' + restId + '/ratingCount'), v => (Number(v) || 0) + 1).catch(() => {});
+  } catch (e) {
+    showInfoModal('Oops', "Couldn't submit your rating. Please check your connection and try again.");
+  }
+}
+(function () {
+  const box = document.getElementById('track-items');
+  if (!box) return;
+  box.addEventListener('click', e => {
+    const b = e.target.closest('[data-rate-order]');
+    if (b) submitOrderRating(Number(b.dataset.rateOrder));
+  });
+})();
+
+// ---- Home rating reminder: a delivered, still-unrated order stays on Home for 2 days (from delivery),
+// even if the customer wasn't in the app when it was delivered. Disappears once rated, or after 2 days. ----
+const RATE_REMINDER_WINDOW_MS = 2 * 24 * 3600 * 1000;
+var homeRateOrder = null;
+var homeRateDismissed = {};   // orderKey -> true (✕ tapped; hidden until the app is reopened)
+function updateHomeRateCard(entries) {
+  const card = document.getElementById('home-rate-card');
+  if (!card) return;
+  const now = Date.now();
+  let best = null;
+  (entries || []).forEach(e => {
+    const o = e && e.o;
+    if (!o || normalizeStatus(o.status) !== 'delivered') return;
+    if (o.orderRating || o.fromNeshStoreQueue || e.businessType === 'groceries' || e.restId === 'NESH_STORE') return;
+    if (homeRateDismissed[e.orderKey]) return;
+    const t = Number(o.deliveredAt) || Number(o.createdAt) || 0;
+    if (!t || now - t > RATE_REMINDER_WINDOW_MS) return;
+    if (!best || t > best.t) best = { t, restId: e.restId, orderKey: e.orderKey, restName: e.restName, orderNumber: o.orderNumber };
+  });
+  homeRateOrder = best;
+  if (!best) { card.style.display = 'none'; return; }
+  document.getElementById('home-rate-sub').textContent = (best.restName || 'Your order') + (best.orderNumber ? ' · ' + best.orderNumber : '');
+  let stars = '';
+  for (let i = 1; i <= 5; i++) stars += '<button type="button" data-home-rate="' + i + '" aria-label="' + i + ' star" style="background:none; border:none; padding:2px 6px; font-size:32px; line-height:1; color:#E0B84A; cursor:pointer;">☆</button>';
+  document.getElementById('home-rate-stars').innerHTML = stars;
+  card.style.display = 'block';
+}
+(function () {
+  const card = document.getElementById('home-rate-card');
+  if (!card) return;
+  card.addEventListener('click', e => {
+    if (!homeRateOrder) return;
+    if (e.target.closest('#home-rate-close')) {
+      homeRateDismissed[homeRateOrder.orderKey] = true;
+      card.style.display = 'none';
+      return;
+    }
+    const b = e.target.closest('[data-home-rate]');
+    if (!b) return;
+    const o = homeRateOrder;
+    homeRateDismissed[o.orderKey] = true;     // hide right away; the live order update keeps it hidden
+    card.style.display = 'none';
+    submitOrderRating(Number(b.dataset.homeRate), o.restId, o.orderKey);
+  });
+})();
+
 function renderTrackItems(o) {
   const box = document.getElementById('track-items');
   if (!box) return;
@@ -10544,6 +11456,7 @@ function renderTrackItems(o) {
   if (shownDeliveryCharge > 0) html += row('Delivery charge', '₹' + shownDeliveryCharge);
   if (Number(o.shopDiscountApplied) > 0) html += row('Shop discount', '−₹' + o.shopDiscountApplied);
   if (o.total != null) html += row('Total', '₹' + o.total, true);
+  html += rateOrderHtml(o);
   box.innerHTML = html;
   box.style.display = 'block';
 }
@@ -11468,7 +12381,7 @@ if ('serviceWorker' in navigator) {
   // is still showing, so the posters are already on screen the moment it lifts.
   var keep = {};   // holds the decoded images in memory so the slider paints instantly
   function preload(list) {
-    return Promise.all(list.filter(function (b) { return b && b.img && (b.home || b.mart) && live(b); }).map(function (b) {
+    return Promise.all(list.filter(function (b) { return b && b.img && (b.home || b.mart || b.food || b.popup) && live(b); }).map(function (b) {
       return new Promise(function (res) {
         if (keep[b.img]) return res();
         var im = new Image(), t = setTimeout(res, 4000);   // one slow image never blocks the rest
@@ -11488,7 +12401,7 @@ if ('serviceWorker' in navigator) {
 
   // One slider instance per placement. p = element id prefix ('posters' = home, 'posters-mart' = NESH Mart)
   function makeSlider(p, wants) {
-    var posters = [], idx = 0, timer = null;
+    var posters = [], idx = 0, timer = null, activeIdx = -1, settleT = null, lastVT = -1, stuck = 0, looping = false, loopT = null;
     function render(all) {
       var list = all.filter(wants);
       posters = list;
@@ -11498,8 +12411,22 @@ if ('serviceWorker' in navigator) {
       wrap.classList.toggle('has', list.length > 0);
       list.forEach(function (b) {
         var d = document.createElement('div'); d.className = 'poster-slide';
-        var im = document.createElement('img'); im.src = b.img; im.alt = 'Offer'; im.loading = 'eager';
-        d.appendChild(im);
+        if (b.video) {
+          var vd = document.createElement('video');
+          vd.muted = true; vd.defaultMuted = true; vd.playsInline = true; vd.setAttribute('playsinline', ''); vd.setAttribute('webkit-playsinline', '');
+          vd.preload = 'metadata'; vd.poster = b.img; vd.src = b.video; vd.loop = false;
+          vd.addEventListener('ended', function () {                       // video finished -> next poster
+            if (posters[idx] === b) { if (posters.length > 1) go(idx + 1); else { try { vd.currentTime = 0; vd.play(); } catch (e) {} } }
+          });
+          vd.addEventListener('error', function () { if (posters[idx] === b && posters.length > 1) setTimeout(function () { if (posters[idx] === b) go(idx + 1); }, 1000); });
+          d.appendChild(vd);
+          var sb = document.createElement('button'); sb.type = 'button'; sb.className = 'poster-snd'; sb.textContent = '🔇'; sb.setAttribute('aria-label', 'Sound');
+          sb.addEventListener('click', function (ev) { ev.stopPropagation(); vd.muted = !vd.muted; sb.textContent = vd.muted ? '🔇' : '🔊'; });
+          d.appendChild(sb);
+        } else {
+          var im = document.createElement('img'); im.src = b.img; im.alt = 'Offer'; im.loading = 'eager';
+          d.appendChild(im);
+        }
         if (b.shopId || b.cardId || b.link) d.style.cursor = 'pointer';
         d.addEventListener('click', function () {
           if (b.shopId && window.neshOpenShop && window.neshOpenShop(b.shopId)) return;   // operator picked a shop for this poster
@@ -11512,8 +12439,17 @@ if ('serviceWorker' in navigator) {
         track.appendChild(d);
         var dot = document.createElement('i'); dots.appendChild(dot);
       });
+      // Endless forward loop: a look-alike of the FIRST poster is placed after the LAST one. Going "next"
+      // from the last poster slides forward onto this copy, then silently jumps to the real first poster
+      // (see finishLoop) — so the slider never rewinds backwards through all the posters.
+      looping = false; clearTimeout(loopT);
+      if (list.length > 1) {
+        var fp = list[0], cd = document.createElement('div'); cd.className = 'poster-slide poster-clone'; cd.setAttribute('aria-hidden', 'true');
+        var ci = document.createElement('img'); ci.src = fp.img; ci.alt = ''; ci.loading = 'eager'; cd.appendChild(ci);
+        track.appendChild(cd);
+      }
       dots.style.display = list.length > 1 ? '' : 'none';
-      idx = 0; mark(); autoplay();
+      idx = 0; activeIdx = -1; mark(); activate(0);
     }
     function mark() {
       var n = posters.length, c = $(p + '-count');
@@ -11523,26 +12459,71 @@ if ('serviceWorker' in navigator) {
     }
     function go(i) {
       var t = $(p + '-track'); if (!t || !t.children.length) return;
-      idx = (i + posters.length) % posters.length;
-      t.scrollTo({ left: t.children[idx].offsetLeft - t.children[0].offsetLeft, behavior: 'smooth' });
-      mark();
+      var n = posters.length, wrapFwd = n > 1 && i >= n && t.children.length > n;
+      idx = ((i % n) + n) % n;
+      var target = wrapFwd ? t.children[n] : t.children[idx];
+      if (wrapFwd) { looping = true; clearTimeout(loopT); loopT = setTimeout(finishLoop, 1400); }   // fallback if no scroll-end is seen
+      t.scrollTo({ left: target.offsetLeft - t.children[0].offsetLeft, behavior: 'smooth' });
+      mark(); activate(idx);
+    }
+    // After sliding forward onto the copy of poster 1: jump (instantly, invisible) to the real poster 1.
+    function finishLoop() {
+      clearTimeout(loopT);
+      if (!looping) return;
+      looping = false;
+      var t = $(p + '-track'); if (!t) return;
+      t.style.scrollSnapType = 'none';
+      t.scrollTo({ left: 0, behavior: 'auto' });
+      requestAnimationFrame(function () { t.style.scrollSnapType = ''; });
+    }
+    function vids() { var t = $(p + '-track'); return t ? Array.prototype.slice.call(t.querySelectorAll('video')) : []; }
+    function curVideo() { var t = $(p + '-track'); var c = t && t.children[idx]; return c ? c.querySelector('video') : null; }
+    // Make slide i the active one: stop other videos, play this one from the start (video) or start the 4s timer (photo)
+    function activate(i) {
+      activeIdx = i; clearTimeout(timer); lastVT = -1; stuck = 0;
+      vids().forEach(function (v) { if (v !== curVideo()) { try { v.pause(); v.currentTime = 0; } catch (e) {} } });
+      var v = curVideo();
+      if (v) {
+        v.loop = posters.length === 1;
+        try { v.currentTime = 0; } catch (e) {}
+        var pr = v.play(); if (pr && pr.catch) pr.catch(function () {});
+      } else autoplay();
     }
     function autoplay() {
-      clearInterval(timer);
-      if (posters.length > 1) timer = setInterval(function () {
-        var t = $(p + '-track'); if (t && t.offsetParent) go(idx + 1);
+      clearTimeout(timer);
+      if (posters.length < 2 || curVideo()) return;      // a video slide moves on by itself when it ends
+      timer = setTimeout(function () {
+        var t = $(p + '-track');
+        if (t && t.offsetParent && !document.hidden) go(idx + 1); else autoplay();
       }, 4000);
     }
+    // Watchdog: pause video when the slider is off-screen / app in background, resume when back; skip a video stuck loading
+    setInterval(function () {
+      var v = curVideo(), t = $(p + '-track'); if (!v || !t) return;
+      var visible = !!t.offsetParent && !document.hidden;
+      if (!visible) { if (!v.paused) v.pause(); return; }
+      if (v.paused && !v.ended) { var pr = v.play(); if (pr && pr.catch) pr.catch(function () {}); }
+      if (posters.length > 1 && !v.ended) {
+        if (v.currentTime === lastVT) { if (++stuck >= 20) { stuck = 0; go(idx + 1); } } else { lastVT = v.currentTime; stuck = 0; }
+      }
+    }, 700);
     function wireScroll() {
       var t = $(p + '-track'); if (!t) return;
       t.addEventListener('scroll', function () {
         if (!t.children.length) return;
         var w = t.children[0].offsetWidth + 12;
-        var i = Math.round(t.scrollLeft / w);
-        if (i !== idx && i >= 0 && i < posters.length) { idx = i; mark(); }
+        var i = Math.round(t.scrollLeft / w), n = posters.length;
+        if (!looping && i !== idx && i >= 0 && i < n) { idx = i; mark(); }
+        else if (!looping && i >= n && n > 1) { idx = 0; mark(); }             // swiped forward onto the copy of poster 1
+        clearTimeout(settleT);
+        settleT = setTimeout(function () {                                      // scroll finished
+          if (i >= n && n > 1) { looping = true; finishLoop(); idx = 0; mark(); }   // resting on the copy -> jump to the real poster 1
+          else if (looping) { looping = false; clearTimeout(loopT); }
+          if (idx !== activeIdx) activate(idx);                                 // swipe finished -> start that poster
+        }, 150);
       }, { passive: true });
-      t.addEventListener('touchstart', function () { clearInterval(timer); }, { passive: true });
-      t.addEventListener('touchend', function () { setTimeout(autoplay, 5000); }, { passive: true });
+      t.addEventListener('touchstart', function () { clearTimeout(timer); }, { passive: true });
+      t.addEventListener('touchend', function () { clearTimeout(timer); if (!curVideo()) timer = setTimeout(autoplay, 5000); }, { passive: true });
     }
     wireScroll();
     return render;
@@ -11561,11 +12542,76 @@ if ('serviceWorker' in navigator) {
   }
   var renderHome = makeSlider('posters', function (b) { return b.home && live(b) && zoneOk(b); });
   var renderMart = makeSlider('posters-mart', function (b) { return b.mart && live(b) && zoneOk(b); });
+  var renderFood = makeSlider('posters-food', function (b) { return b.food && live(b) && zoneOk(b); });
   var lastList = [], lastSig = '';
-  function sig(list) { return list.filter(function (b) { return live(b) && zoneOk(b); }).map(function (b) { return b.id + b.img.length + b.link + b.home + b.mart; }).join('|'); }
-  function renderAll(list) { lastList = list; lastSig = sig(list); renderHome(list); renderMart(list); }
+  function sig(list) { return list.filter(function (b) { return live(b) && zoneOk(b); }).map(function (b) { return b.id + b.img.length + b.video + b.link + b.home + b.mart + b.food + b.popup; }).join('|'); }
+  function renderAll(list) { lastList = list; lastSig = sig(list); renderHome(list); renderMart(list); renderFood(list); }
   // drop a poster from the screen the moment its time is over (re-render only if something expired)
-  setInterval(function () { if (sig(lastList) !== lastSig) renderAll(lastList); }, 400);   // also re-checks when the customer's location/zone changes
+  setInterval(function () { if (document.hidden) return; if (sig(lastList) !== lastSig) renderAll(lastList); }, 400);   // also re-checks when the customer's location/zone changes
+
+
+  // ---- NESH Mart POPUP poster (Spotify-style): pops up over the NESH Mart home screen, closes by itself after 4s
+  // (or with ✕ / tap outside), and each popup poster is shown to a customer only ONCE — never again after it was seen.
+  // Operator Panel -> Home screen posters -> tick "📣 NESH Mart popup". Poster keeps its own shape (any size works).
+  (function () {
+    var KEY = 'nesh_popup_seen', SHOW_MS = 4000, popEl = null, popTimer = null, busy = false;
+    var st = document.createElement('style');
+    st.textContent =
+      '.nesh-pop{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;transition:opacity .22s}' +
+      '.nesh-pop.show{opacity:1}' +
+      '.nesh-pop-card{position:relative;border-radius:20px;overflow:hidden;line-height:0;box-shadow:0 18px 50px rgba(0,0,0,.55);transform:scale(.94);transition:transform .25s}' +
+      '.nesh-pop.show .nesh-pop-card{transform:scale(1)}' +
+      '.nesh-pop-card img{display:block;max-width:min(92vw,420px);max-height:78vh;width:auto;height:auto}' +
+      '.nesh-pop-x{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:16px;line-height:34px;text-align:center;cursor:pointer;padding:0;z-index:2}' +
+      '.nesh-pop-bar{position:absolute;left:0;right:0;bottom:0;height:4px;background:rgba(255,255,255,.9);transform-origin:left;animation:neshPopBar ' + SHOW_MS + 'ms linear forwards}' +
+      '@keyframes neshPopBar{from{transform:scaleX(1)}to{transform:scaleX(0)}}';
+    document.head.appendChild(st);
+    function seenMap() { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; } }
+    function markSeen(id) { var m = seenMap(); m[id] = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(m)); } catch (e) {} }
+    function closePopup() {
+      clearTimeout(popTimer);
+      if (!popEl) return;
+      var e = popEl; popEl = null; e.classList.remove('show');
+      setTimeout(function () { try { e.remove(); } catch (x) {} }, 260);
+    }
+    function showPopup(b) {
+      busy = true;
+      var im = new Image();
+      im.onerror = function () { busy = false; };            // broken image: skip silently, try again later
+      im.onload = function () {
+        busy = false;
+        if (popEl) return;
+        markSeen(b.id);                                      // seen once -> never shown again
+        var o = document.createElement('div'); o.className = 'nesh-pop';
+        o.innerHTML = '<div class="nesh-pop-card"><button type="button" class="nesh-pop-x" aria-label="Close">✕</button><i class="nesh-pop-bar"></i></div>';
+        var card = o.firstChild; card.insertBefore(im, card.firstChild); im.alt = 'Offer';
+        o.addEventListener('click', function (ev) {
+          if (ev.target.closest('.nesh-pop-x') || ev.target === o) { closePopup(); return; }
+          closePopup();                                      // tapped the poster itself -> do what the operator set for it
+          if (b.shopId && window.neshOpenShop && window.neshOpenShop(b.shopId)) return;
+          if (b.cardId) { var cc = document.getElementById('cat-card-' + b.cardId); if (cc && cc.style.display !== 'none') { cc.click(); return; } }
+          if (b.link) window.open(b.link, '_blank', 'noopener');
+        });
+        document.body.appendChild(o); popEl = o;
+        requestAnimationFrame(function () { requestAnimationFrame(function () { o.classList.add('show'); }); });
+        popTimer = setTimeout(closePopup, SHOW_MS);
+      };
+      im.src = b.img;
+    }
+    function tick() {
+      if (popEl || busy || document.hidden) return;
+      var sp = document.getElementById('nesh-splash'); if (sp && sp.classList.contains('show')) return;
+      var hs = document.getElementById('screen-home'); if (!hs || !hs.classList.contains('active')) return;
+      try { if (!(state && state.category === 'online_shop')) return; } catch (e) { return; }   // only inside NESH Mart
+      var seen = seenMap(), best = null;
+      lastList.forEach(function (b) {
+        if (!b.popup || !live(b) || !zoneOk(b) || seen[b.id]) return;
+        if (!best || b.ts > best.ts) best = b;
+      });
+      if (best) showPopup(best);
+    }
+    setInterval(tick, 900);
+  })();
 
   // ---- load (cached first for instant paint, then live from Firebase)
   try { var c = JSON.parse(localStorage.getItem(LS) || '[]'); if (c.length) { renderAll(c); preload(c); } } catch (e) {}
@@ -11575,8 +12621,8 @@ if ('serviceWorker' in navigator) {
     var a = []; Object.keys(v || {}).forEach(function (k) {
       var o = v[k]; if (!o || !o.img || o.del) return;
       var t = o.targets;
-      a.push({ id: k, img: o.img, link: o.link || '', shopId: o.shopId || '', cardId: o.cardId || '', ts: o.ts || 0,
-        home: t ? !!t.home : true, mart: t ? !!t.mart : false, exp: +o.expiresAt || 0,
+      a.push({ id: k, img: o.img, video: o.video || '', link: o.link || '', shopId: o.shopId || '', cardId: o.cardId || '', ts: o.ts || 0,
+        home: t ? !!t.home : true, mart: t ? !!t.mart : false, food: t ? !!t.food : false, popup: t ? !!t.popup : false, exp: +o.expiresAt || 0,
         zones: Object.keys(o.zones || {}).filter(function (z) { return o.zones[z]; }) });
     });
     return a.sort(function (x, y) { return x.ts - y.ts; });
