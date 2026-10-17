@@ -115,6 +115,37 @@ jobs:
           PYEOF
           du -sh www/web-assets
 
+      # App-only "native feel" tweaks. Patches ONLY the www/ copy (the one packed into
+      # the APK/AAB), so the website (repo index.html) is not changed:
+      #  - no text selection / long-press highlight (inputs still work normally)
+      #  - no "save image" long-press menu on photos
+      #  - short slide+fade when moving between screens, like a native app
+      - name: App-only native feel (no text select, no image menu, screen transition)
+        run: |
+          python3 - << 'PYEOF'
+          p = "www/index.html"
+          h = open(p, encoding="utf-8").read()
+          inject = """<style id="nesh-app-feel">
+          html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+          input,textarea,[contenteditable="true"]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default;}
+          img{-webkit-user-drag:none;-webkit-touch-callout:none;}
+          @keyframes neshScreenIn{from{opacity:0;transform:translateX(16px);}to{opacity:1;transform:none;}}
+          .screen.active{animation:neshScreenIn .2s ease-out;}
+          @media (prefers-reduced-motion:reduce){.screen.active{animation:none;}}
+          </style>
+          <script>
+          document.addEventListener('contextmenu', function (e) {
+            var t = e.target;
+            if (t && t.tagName !== 'INPUT' && t.tagName !== 'TEXTAREA') e.preventDefault();
+          });
+          </script>
+          """.replace("\n          ", "\n")
+          assert "</head>" in h, "no </head> found"
+          h = h.replace("</head>", inject + "</head>", 1)
+          open(p, "w", encoding="utf-8").write(h)
+          print("app-feel injected")
+          PYEOF
+
       - name: Init npm + install Capacitor
         run: |
           npm init -y
@@ -123,6 +154,7 @@ jobs:
           npm install @capacitor/geolocation
           npm install @capacitor/push-notifications
           npm install @capacitor/local-notifications
+          npm install @capacitor/share
           npm install @capacitor/assets --save-dev
 
       # IMPORTANT: appId must stay exactly the same as the package name
@@ -311,6 +343,15 @@ jobs:
                       return WindowInsetsCompat.CONSUMED;
                   });
                   ViewCompat.requestApplyInsets(content);
+
+                  // The page must never slide sideways (left part cut off + yellow strip on the right).
+                  // If the WebView's horizontal scroll ever becomes non-zero, snap it straight back to 0.
+                  try {
+                      final android.webkit.WebView wv = getBridge().getWebView();
+                      wv.setHorizontalScrollBarEnabled(false);
+                      wv.setOverScrollMode(View.OVER_SCROLL_NEVER);
+                      wv.setOnScrollChangeListener((v, sx, sy, ox, oy) -> { if (sx != 0) v.scrollTo(0, sy); });
+                  } catch (Throwable t) { }
               }
           }
           """.replace("\n          ", "\n"))
@@ -405,6 +446,29 @@ jobs:
       - name: Add location + notification permissions to AndroidManifest.xml
         run: |
           sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />#' android/app/src/main/AndroidManifest.xml
+
+      # Android App Links: tapping a shared product/shop link
+      # (https://nesh-group.github.io/NESH-APP/?shop=..&item=..) opens THIS app
+      # straight on that product when it is installed. Needs
+      # https://nesh-group.github.io/.well-known/assetlinks.json to be live
+      # (see assetlinks.json) or Android will keep opening the browser.
+      - name: Add App Links intent filter
+        run: |
+          python3 - << 'PYEOF'
+          p = "android/app/src/main/AndroidManifest.xml"
+          s = open(p).read()
+          f = """
+              <intent-filter android:autoVerify="true">
+                  <action android:name="android.intent.action.VIEW" />
+                  <category android:name="android.intent.category.DEFAULT" />
+                  <category android:name="android.intent.category.BROWSABLE" />
+                  <data android:scheme="https" android:host="nesh-group.github.io" android:pathPrefix="/NESH-APP" />
+              </intent-filter>
+          """
+          i = s.index("</activity>")
+          s = s[:i] + f + "        " + s[i:]
+          open(p, "w").write(s)
+          PYEOF
 
       # @capacitor/local-notifications auto-merges SCHEDULE_EXACT_ALARM into
       # the manifest via its own library AndroidManifest.xml, even though
