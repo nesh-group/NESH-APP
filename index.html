@@ -4104,6 +4104,22 @@ function neshCountDailyVisit() {
   });
 }
 neshCountDailyVisit();
+// Visitor location (for Operator Panel -> Visits: which zone / nearest landmark). Sent at most ONCE per day per device,
+// as soon as the app knows where the customer is. Rounded to 4 decimals (~11 m) — enough for zone + landmark, not a house address.
+(function neshLogVisitLocation() {
+  let tries = 0;
+  const iv = setInterval(() => {
+    if (++tries > 120) { clearInterval(iv); return; }        // give up after ~8 min of this session
+    let today; try { today = neshTodayKey(); if (localStorage.getItem('nesh_visit_loc_day') === today) { clearInterval(iv); return; } } catch (e) { clearInterval(iv); return; }
+    const p = state && state.customerPos;
+    if (!p || typeof p.lat !== 'number' || typeof p.lng !== 'number' || !window.fb) return;
+    try { localStorage.setItem('nesh_visit_loc_day', today); } catch (e) {}
+    clearInterval(iv);
+    const { db, ref, update } = window.fb;
+    update(ref(db, 'visitLog/' + today + '/' + neshSanitizeFbKey(NESH_DEVICE_ID)), { lat: +p.lat.toFixed(4), lng: +p.lng.toFixed(4) })
+      .catch(() => { try { localStorage.removeItem('nesh_visit_loc_day'); } catch (e) {} });
+  }, 4000);
+})();
 // Covers an app left open overnight: re-check when it comes back to the foreground.
 document.addEventListener('visibilitychange', () => { if (!document.hidden) neshCountDailyVisit(); });
 
