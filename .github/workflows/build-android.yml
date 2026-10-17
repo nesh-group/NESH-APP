@@ -96,13 +96,15 @@ jobs:
               except Exception as e:
                   print(n, "skipped:", e)
 
-          # Fixed Unsplash images
+          # Fixed Unsplash images (downloaded at 1200px wide so they stay sharp on phones)
           urls = sorted(set(re.findall(r'https://images\.unsplash\.com/[^"\'\s)`<>]+', html)), key=len, reverse=True)
           ok = 0
           for u in urls:
               try:
-                  name = "img/" + hashlib.sha1(u.encode()).hexdigest()[:12] + ".jpg"
-                  open(B + "/" + name, "wb").write(get(u))
+                  big = re.sub(r"w=\d+", "w=1200", u)
+                  name = "img/" + hashlib.sha1(big.encode()).hexdigest()[:12] + ".jpg"
+                  if not os.path.exists(B + "/" + name):
+                      open(B + "/" + name, "wb").write(get(big))
                   html = html.replace(u, "web-assets/" + name)
                   ok += 1
               except Exception as e:
