@@ -42,6 +42,77 @@ jobs:
           cp icon-512.png www/ || true
           cp icon-1024.png www/ || true
 
+      # Downloads fonts, Leaflet, Firebase compat scripts and the fixed
+      # Unsplash stock images at build time and bundles them INTO THE APP
+      # only (www/ copy). The repo's index.html (website) is not changed.
+      # Shop/item photos from Firebase stay online. Each download is
+      # wrapped in try/except: if one fails, that link just stays online.
+      - name: Bundle fonts, Leaflet, Firebase and stock images
+        run: |
+          python3 - << 'PYEOF'
+          import re, os, hashlib, urllib.request
+          UA = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36"
+          def get(u):
+              r = urllib.request.Request(u, headers={"User-Agent": UA})
+              return urllib.request.urlopen(r, timeout=60).read()
+          B = "www/web-assets"
+          for d in ("fonts", "leaflet/images", "firebase", "img"):
+              os.makedirs(B + "/" + d, exist_ok=True)
+          html = open("www/index.html", encoding="utf-8").read()
+
+          # Google Fonts
+          try:
+              gf = re.search(r'https://fonts\.googleapis\.com/css2\?[^"\'\s]+', html).group(0)
+              css = get(gf.replace("&amp;", "&")).decode()
+              for i, u in enumerate(sorted(set(re.findall(r'url\((https://fonts\.gstatic\.com/[^)]+)\)', css)))):
+                  name = "f%d.woff2" % i
+                  open(B + "/fonts/" + name, "wb").write(get(u))
+                  css = css.replace(u, name)
+              open(B + "/fonts/fonts.css", "w").write(css)
+              html = html.replace(gf, "web-assets/fonts/fonts.css")
+              print("fonts ok")
+          except Exception as e:
+              print("fonts skipped:", e)
+
+          # Leaflet
+          L = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/"
+          try:
+              for n in ("leaflet.min.css", "leaflet.min.js"):
+                  open(B + "/leaflet/" + n, "wb").write(get(L + n))
+                  html = html.replace(L + n, "web-assets/leaflet/" + n)
+              for n in ("layers.png", "layers-2x.png", "marker-icon.png", "marker-icon-2x.png", "marker-shadow.png"):
+                  open(B + "/leaflet/images/" + n, "wb").write(get(L + "images/" + n))
+              print("leaflet ok")
+          except Exception as e:
+              print("leaflet skipped:", e)
+
+          # Firebase (compat scripts only)
+          G = "https://www.gstatic.com/firebasejs/10.12.0/"
+          for n in ("firebase-app-compat.js", "firebase-messaging-compat.js"):
+              try:
+                  open(B + "/firebase/" + n, "wb").write(get(G + n))
+                  html = html.replace(G + n, "web-assets/firebase/" + n)
+                  print(n, "ok")
+              except Exception as e:
+                  print(n, "skipped:", e)
+
+          # Fixed Unsplash images
+          urls = sorted(set(re.findall(r'https://images\.unsplash\.com/[^"\'\s)`<>]+', html)), key=len, reverse=True)
+          ok = 0
+          for u in urls:
+              try:
+                  name = "img/" + hashlib.sha1(u.encode()).hexdigest()[:12] + ".jpg"
+                  open(B + "/" + name, "wb").write(get(u))
+                  html = html.replace(u, "web-assets/" + name)
+                  ok += 1
+              except Exception as e:
+                  print("skip", u, e)
+          print("images", ok, "of", len(urls))
+
+          open("www/index.html", "w", encoding="utf-8").write(html)
+          PYEOF
+          du -sh www/web-assets
+
       - name: Init npm + install Capacitor
         run: |
           npm init -y
