@@ -67,6 +67,28 @@
   .food-sub{ font-size:12.5px; margin:0 0 8px; opacity:.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .food-pills{ display:flex; gap:6px; flex-wrap:wrap; }
   .food-pill{ background:rgba(0,0,0,.38); color:#fff; font-size:11.5px; font-weight:700; padding:4px 9px; border-radius:999px; }
+  .food-card-first{ margin-bottom:16px; }
+  /* Item strip between 1st and 2nd shop (Food home) — compact dish tiles; each carries its shop's logo */
+  .food-card-photo{ height:172px; }
+  .food-card{ margin-bottom:12px; }
+  .food-items-wrap{ margin:0 0 12px; padding:2px 0 0; }
+  .food-items-head{ display:flex; align-items:center; gap:8px; margin:0 2px 8px; }
+  .food-items-badge{ background:#2B2410; color:#FFD54A; font-size:10px; font-weight:800; letter-spacing:.8px; padding:3px 8px; border-radius:6px; }
+  .food-items-title{ font-size:14px; font-weight:800; color:#2B2410; margin:0; }
+  .food-items-hint{ margin-left:auto; font-size:11px; font-weight:700; color:#9a8a5a; }
+  .food-items-row{ display:flex; gap:14px; overflow-x:auto; padding:9px 10px 8px 9px; margin:0 -2px; scrollbar-width:none; }
+  .food-items-row::-webkit-scrollbar{ display:none; }
+  .food-item-tile{ flex:none; width:104px; cursor:pointer; transition:transform .15s; }
+  .food-item-tile:active{ transform:scale(.95); }
+  .food-item-photo{ position:relative; width:104px; height:92px; border-radius:16px; background:#eee; box-shadow:0 5px 12px rgba(43,36,16,.22); border:3px solid #fff; box-sizing:border-box; }
+  .food-item-photo img.food-item-img{ width:100%; height:100%; object-fit:cover; display:block; border-radius:13px; }
+  .food-item-logo{ position:absolute; left:-7px; top:-7px; width:34px; height:34px; border-radius:50%; background:#fff; border:2.5px solid #FFD54A; box-shadow:0 2px 6px rgba(43,36,16,.35); overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:15px; }
+  .food-item-logo img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .food-item-price{ position:absolute; right:-6px; bottom:-8px; background:#FFD54A; color:#2B2410; font-size:11.5px; font-weight:800; padding:2px 8px; border-radius:999px; border:2px solid #fff; box-shadow:0 2px 6px rgba(43,36,16,.25); }
+  .food-item-name{ font-size:12px; font-weight:800; color:#2B2410; line-height:1.2; margin:12px 0 0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .food-item-shop{ display:flex; align-items:center; gap:4px; margin:3px 0 0; font-size:10.5px; font-weight:700; color:#8a6d00; }
+  .food-item-shop span{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .food-item-shop::before{ content:"🏪"; font-size:10px; flex:none; }
   .food-closed-msg{ font-size:12px; margin:6px 0 0; color:#ffd9a0; font-weight:600; }
 </style>
 <script>
@@ -167,6 +189,9 @@
      overflow-x on <html> is applied to the viewport, so it blocks sideways page-scroll without
      breaking position:sticky. overflow-x:clip on #app hides stray overflow without making a scroll container. */
   html{ overflow-x:hidden; max-width:100%; }
+  /* The page itself may only pan up/down. Rows that scroll sideways (overflow-x:auto, e.g. banners/chips) are their own
+     scroll containers, so they still swipe normally; this just stops a finger drag from sliding the whole page sideways. */
+  html, body{ touch-action:pan-y; overscroll-behavior-x:none; }
   body{ max-width:100%; }
   #app{ overflow-x:clip; }
   .cat-wrap{ min-width:0; overflow-x:clip; }
@@ -258,6 +283,22 @@
   }
 
   .btn-back{ background:none; border:none; color:var(--chili); cursor:pointer; padding:0; display:flex; }
+
+  /* Product page share button: attractive pill, always visible to customers */
+  #item-detail-share-btn{
+    display:inline-flex !important; align-items:center; gap:7px;
+    padding:9px 16px 9px 13px; border-radius:999px;
+    background:linear-gradient(135deg, var(--marigold) 0%, var(--marigold-dark) 100%);
+    color:#2B2410; font-weight:800; font-size:13.5px; letter-spacing:.2px;
+    box-shadow:0 6px 16px rgba(214,158,0,.45);
+    transition:transform .15s ease, box-shadow .15s ease;
+    -webkit-tap-highlight-color:transparent;
+  }
+  #item-detail-share-btn svg{ stroke:#2B2410; }
+  #item-detail-share-btn:active{ transform:scale(.94); box-shadow:0 3px 8px rgba(214,158,0,.4); }
+  #item-detail-share-btn::after{ content:none; }
+  @keyframes shareGlow{ 0%,100%{ box-shadow:0 6px 16px rgba(214,158,0,.45); } 50%{ box-shadow:0 6px 22px rgba(242,183,5,.85); } }
+  #item-detail-share-btn{ animation:shareGlow 2.4s ease-in-out infinite; }
 
   .btn-link-inline{
     background:none; border:none; color:var(--chili); font-size:12px; font-weight:700;
@@ -1590,6 +1631,15 @@
     border:none; background:transparent; color:#2B2410; opacity:.55; font-size:22px; line-height:1;
     padding:2px 4px; cursor:pointer;
   }
+  /* Opened from a shared shop/product link on the website (Android Chrome, app not open): "Open in app / get it on Google Play" */
+  .shared-install{ display:none; align-items:center; gap:12px; margin:10px 16px 0; padding:10px 12px;
+    background:#FFF4D6; border:1.5px solid #F2D98A; border-radius:16px; color:#2B2410; }
+  html.shared-visit .shared-install{ display:flex; }
+  .shared-install .pb-text{ flex:1; min-width:0; line-height:1.25; }
+  .shared-install .pb-title{ font-weight:700; font-size:14px; margin:0; }
+  .shared-install .pb-sub{ font-size:12px; margin:2px 0 0; opacity:.75; }
+  .shared-install .pb-btn{ background:#2B2410; color:#fff; text-decoration:none; font-weight:700; font-size:13px; padding:9px 14px; border-radius:999px; white-space:nowrap; }
+  .shared-install .pb-x{ border:none; background:transparent; color:#2B2410; opacity:.55; font-size:22px; line-height:1; padding:2px 4px; cursor:pointer; }
   /* Play Store links: only inside the Android app */
   .native-only{ display:none; }
   html.is-native .native-only{ display:flex; }
@@ -2263,7 +2313,8 @@
       <p style="margin:0 0 16px; color:var(--muted-2); font-size:12.5px; line-height:1.5;">Once it is on, tap the button to try again.</p>
       <p id="loc-off-help" style="display:none; margin:0 0 14px; padding:10px 12px; background:var(--cloud); border-radius:10px; color:var(--ink); font-size:12.5px; line-height:1.55; text-align:left;"></p>
       <button type="button" class="loc-gps-btn" id="loc-off-enable-btn" style="background:var(--marigold);">Turn on location</button>
-      <button type="button" class="loc-cancel-btn" id="loc-off-later-btn" style="width:100%; flex:none;">Not now — select manually</button>
+      <button type="button" class="loc-gps-btn" id="loc-off-last-btn" style="display:none; background:#fff; color:var(--ink); border:1.5px solid var(--marigold-dark); margin-top:2px;"></button>
+      <button type="button" class="loc-cancel-btn" id="loc-off-later-btn" style="width:100%; flex:none;">🔍 Search another location</button>
     </div>
   </div>
 
@@ -2462,11 +2513,13 @@
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1BA672" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
             VERIFIED
           </div>
+          <button class="account-btn" id="cat-settings-icon-btn" title="Settings" aria-label="Settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
           <div class="account-wrap">
             <button class="account-btn" id="cat-account-btn" title="Account">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </button>
             <div class="account-dropdown" id="cat-account-dropdown">
+              <button type="button" class="account-dropdown-support" id="cat-settings-btn" style="margin-top:0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2B7A78" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</button>
               <a class="account-dropdown-support hidden" id="cat-support-call-btn" href="tel:">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2B7A78" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                 Call Support
@@ -2606,7 +2659,8 @@
         <button class="home-track-btn hidden" id="home-track-btn" title="Track your order">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2B2410" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
         </button>
-        <div class="account-wrap">
+        <button class="account-btn" id="home-settings-icon-btn" title="Settings" aria-label="Settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+          <div class="account-wrap">
           <button class="account-btn" id="account-btn" title="Account">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           </button>
@@ -2615,6 +2669,7 @@
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1BA672" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
               VERIFIED
             </div>
+            <button type="button" class="account-dropdown-support" id="settings-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2B7A78" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</button>
             <a class="account-dropdown-support hidden" id="support-call-btn" href="tel:">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2B7A78" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
               Call Support
@@ -2709,6 +2764,14 @@
 
   <!-- MENU -->
   <section class="screen" id="screen-menu">
+    <div class="shared-install" role="region" aria-label="Open in the NESH app">
+      <div class="pb-text">
+        <p class="pb-title">Open in the NESH app</p>
+        <p class="pb-sub">Not installed? You'll be taken to Google Play</p>
+      </div>
+      <a class="pb-btn shared-install-link" href="https://play.google.com/store/apps/details?id=com.neshgroup.nesh">Open</a>
+      <button type="button" class="pb-x shared-install-x" aria-label="Close">&times;</button>
+    </div>
     <div class="menu-header">
       <button class="btn-back" onclick="menuBackClicked()">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
@@ -2745,9 +2808,21 @@
 
   <!-- ITEM DETAIL -->
   <section class="screen" id="screen-item-detail">
-    <div class="item-detail-back-row">
+    <div class="shared-install" role="region" aria-label="Open in the NESH app">
+      <div class="pb-text">
+        <p class="pb-title">Open in the NESH app</p>
+        <p class="pb-sub">Not installed? You'll be taken to Google Play</p>
+      </div>
+      <a class="pb-btn shared-install-link" href="https://play.google.com/store/apps/details?id=com.neshgroup.nesh">Open</a>
+      <button type="button" class="pb-x shared-install-x" aria-label="Close">&times;</button>
+    </div>
+    <div class="item-detail-back-row" style="display:flex; align-items:center; justify-content:space-between;">
       <button class="btn-back" id="item-detail-back-btn">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <button class="btn-back" id="item-detail-share-btn" aria-label="Share this product">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B2410" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>
+        <span>Share</span>
       </button>
     </div>
     <div class="item-detail-photo-wrap">
@@ -2866,6 +2941,95 @@
       <p class="empty-text" id="orders-empty" style="display:none;">No orders yet — your placed orders will show up here.</p>
       <div id="orders-live-section"></div>
       <div id="orders-past-section"></div>
+    </div>
+  </section>
+
+  <style id="nesh-settings-css">
+  .set-row{ width:100%; display:flex; align-items:center; justify-content:space-between; padding:14px 14px;
+    border-radius:12px; border:1.5px solid var(--field-border); background:var(--field-bg); color:var(--ink);
+    font-weight:700; font-size:15px; font-family:'Inter',sans-serif; cursor:pointer; text-align:left; }
+  .set-row:active{ transform:scale(0.99); }
+  .set-chev{ color:#C97F00; font-size:22px; line-height:1; }
+  .set-card{ border:1.5px solid var(--field-border); background:var(--field-bg); border-radius:14px; padding:14px; }
+  .set-label{ font-size:12px; font-weight:700; color:var(--muted-2); letter-spacing:.04em; margin:0 0 8px; }
+  .set-lang{ display:flex; gap:10px; }
+  .set-lang-btn{ flex:1; padding:12px 8px; border-radius:12px; border:2px solid var(--field-border); background:#fff;
+    color:var(--ink); font-weight:700; font-size:15px; font-family:'Inter',sans-serif; cursor:pointer; }
+  .set-lang-btn.on{ border-color:#C97F00; background:#FFF6E3; color:#8A5800; }
+  #screen-account .stack > a, #screen-account .stack > button{ margin-top:0; }
+  .set-prof-card{ display:flex; align-items:center; gap:14px; }
+  .set-avatar{ width:52px; height:52px; border-radius:50%; background:#C97F00; color:#fff; display:flex;
+    align-items:center; justify-content:center; font-size:22px; font-weight:800; flex-shrink:0; }
+  .set-name{ margin:0; font-size:17px; font-weight:800; color:var(--ink); word-break:break-word; }
+  .set-sub{ margin:2px 0 0; font-size:13px; color:var(--muted-2); word-break:break-all; }
+</style>
+  <!-- SETTINGS -->
+  <section class="screen" id="screen-settings">
+    <div class="px" style="padding-top:32px;">
+      <button class="btn-back" id="settings-back-btn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
+    </div>
+    <div class="header">
+      <p class="eyebrow">NESH</p>
+      <h1 class="title">Settings</h1>
+    </div>
+    <div class="px stack">
+      <button type="button" class="set-row" id="settings-account-row"><span>Account</span><span class="set-chev">&rsaquo;</span></button>
+      <div class="set-card">
+        <p class="set-label">Language</p>
+        <div class="set-lang">
+          <button type="button" class="set-lang-btn" id="lang-en-btn">English</button>
+          <button type="button" class="set-lang-btn" id="lang-ml-btn">മലയാളം</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ACCOUNT (full screen: profile + every account option) -->
+  <section class="screen" id="screen-account">
+    <div class="px" style="padding-top:32px;">
+      <button class="btn-back" id="account-back-btn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
+    </div>
+    <div class="header">
+      <p class="eyebrow">SETTINGS</p>
+      <h1 class="title">Account</h1>
+    </div>
+    <div class="px stack">
+      <p class="subtitle" id="acct-guest-note" style="display:none;">Login to manage your account</p>
+      <div class="set-card set-prof-card" id="acct-profile-card">
+        <div class="set-avatar" id="acct-avatar">?</div>
+        <div>
+          <p class="set-name" id="acct-name"></p>
+          <p class="set-sub" id="acct-number"></p>
+          <p class="set-sub" id="acct-email"></p>
+        </div>
+      </div>
+      <button type="button" class="set-row" id="acct-edit-btn"><span>Edit profile</span><span class="set-chev">&rsaquo;</span></button>
+      <a class="account-dropdown-support hidden" id="acct-support-call-btn" href="tel:">Call Support</a>
+      <a class="account-dropdown-support" href="https://nesh-group.github.io/NESH-APP/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>
+      <a class="account-dropdown-support update-only" href="https://play.google.com/store/apps/details?id=com.neshgroup.nesh" target="_blank" rel="noopener">Rate NESH on Play Store</a>
+      <a class="account-dropdown-support native-only" href="https://play.google.com/store/apps/details?id=com.neshgroup.nesh" target="_blank" rel="noopener">Update available — tap to update</a>
+      <button type="button" class="account-dropdown-logout" id="acct-logout-btn">Logout</button>
+      <button type="button" class="account-dropdown-logout" id="acct-login-btn" style="display:none;">Login</button>
+      <button type="button" class="account-dropdown-delete" id="acct-delete-btn" style="margin-top:0;">Delete Account</button>
+    </div>
+  </section>
+
+  <!-- EDIT PROFILE (name + optional email; never asked at login) -->
+  <section class="screen" id="screen-edit-profile">
+    <div class="px" style="padding-top:32px;">
+      <button class="btn-back" id="edit-profile-back-btn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
+    </div>
+    <div class="header">
+      <p class="eyebrow">MY ACCOUNT</p>
+      <h1 class="title">Edit profile</h1>
+    </div>
+    <div class="px stack">
+      <p class="set-label" style="margin-bottom:0;">Name</p>
+      <div class="field"><input id="ep-name" type="text" maxlength="60" placeholder="Full name" autocomplete="name" /></div>
+      <p class="set-label" style="margin-bottom:0;">Email (optional)</p>
+      <div class="field"><input id="ep-email" type="email" maxlength="100" placeholder="you@example.com" autocomplete="email" inputmode="email" /></div>
+      <p class="error-text" id="ep-error" style="display:none;"></p>
+      <button class="btn-primary" id="ep-save-btn">Save</button>
     </div>
   </section>
 
@@ -3674,6 +3838,18 @@
     try { window.neshSplash && window.neshSplash.done('zones'); } catch (e) {}
   });
 
+  // Shop id index (shopIds/{id}: true), kept by the Operator Panel. With no zones configured it lets
+  // us load shops one-by-one (public fields only) instead of downloading the whole `restaurants`
+  // node incl. every order. Empty / missing / unreadable index = old behaviour (load everything).
+  (function () {
+    const setIdx = v => { window.SHOP_INDEX = v; try { if (window.syncShopLoading) window.syncShopLoading(); } catch (e) {} };
+    onValue(ref(db, 'shopIds'), (snapshot) => {
+      const v = snapshot.val();
+      setIdx(v && typeof v === 'object' ? Object.keys(v).filter(k => v[k]) : []);
+    }, () => setIdx(null));
+    setTimeout(() => { if (window.SHOP_INDEX === undefined) setIdx(null); }, 5000);
+  })();
+
   // Live-listens to the operator-set LOCATION ZONES (Operator Panel →
   // Location Setup): each is { name, bounds:[{lat,lng}...] }. When a
   // customer's pin falls inside one of these, "Place / Area" is filled with
@@ -3876,7 +4052,11 @@ let pendingShopLinkId = null;
 try {
   const shopParam = new URLSearchParams(window.location.search).get('shop');
   if (shopParam) pendingShopLinkId = shopParam;
+  window.__neshLinkSearch = shopParam ? window.location.search : '';
 } catch (e) {}
+// Product links: .../?shop=<restId>&item=<itemId> -> shop opens, then that product's page.
+let pendingItemLinkId = null;
+try { pendingItemLinkId = new URLSearchParams(window.location.search).get('item') || null; } catch (e) {}
 let shopLinkHandled = false;
 function tryOpenPendingShopLink() {
   if (!pendingShopLinkId || shopLinkHandled) return false;
@@ -3893,11 +4073,50 @@ function tryOpenPendingShopLink() {
   }
   shopLinkHandled = true;
   pendingShopLinkId = null;
-  state.category = rest.businessType || 'hotel';
-  openRestaurant(rest.id);
+  const linkItemId = pendingItemLinkId; pendingItemLinkId = null;
+  extraShopIds.add(rest.id);   // keep this shop loaded even while the customer's location is still unknown
+  const openIt = () => {
+    // Customer's area must be served by this shop, otherwise say so instead of opening it.
+    if (!shopAllowedAtPoint(rest.id, state.customerPos)) {
+      try { goToCategoryScreen(); } catch (e) {}
+      showInfoModal('Shop not available', 'This shop is not available in your area.');
+      return;
+    }
+    state.category = rest.businessType || 'hotel';
+    openRestaurant(rest.id);
+    if (linkItemId) {
+      // Only if the shop really opened (area/delivery checks can block it) and the product still exists.
+      if (state.selectedRestaurant && state.selectedRestaurant.id === rest.id && (rest.items || []).some(i => i && i.id === linkItemId)) {
+        try { openItemDetail(linkItemId); } catch (e) {}
+      }
+    }
+  };
+  if (state.customerPos) openIt();
+  else { try { goToCategoryScreen(); } catch (e) {} requireLocationThen(openIt); }   // no location yet: ask for it first, then check the area
   try { window.history.replaceState({}, '', window.location.pathname); } catch (e) {}
   return true;
 }
+
+// A link tapped while the native app is installed (Android App Link) or already running:
+// same ?shop= / ?item= handling as a link opened in the browser.
+let _lastAppLink = { url: '', t: 0 };
+function neshOpenAppLink(url) {
+  try {
+    if (!url) return;
+    const now = Date.now();
+    if (_lastAppLink.url === url && now - _lastAppLink.t < 4000) return;
+    _lastAppLink = { url, t: now };
+    const q = new URL(url).searchParams;
+    const shop = q.get('shop');
+    if (!shop) return;
+    pendingShopLinkId = shop;
+    pendingItemLinkId = q.get('item') || null;
+    shopLinkHandled = false;
+    try { syncShopLoading(); } catch (e) {}   // make sure that shop's data is being loaded
+    tryOpenPendingShopLink();                 // otherwise it opens as soon as the shop data arrives
+  } catch (e) {}
+}
+window.neshOpenAppLink = neshOpenAppLink;
 
 // ---------- State ----------
 let state = {
@@ -3955,6 +4174,18 @@ function syncShopLoading() {
     } catch (e) {}
     extraShopIds.forEach(id => set.add(id));
     ids = Array.from(set).sort();
+  } else {
+    // No zones: wait for the shop index to answer (or fail / time out), then load only the listed shops.
+    if (window.SHOP_INDEX === undefined) return;
+    if (Array.isArray(window.SHOP_INDEX) && window.SHOP_INDEX.length) {
+      mode = 'ids';
+      const set = new Set(window.SHOP_INDEX);
+      if (pendingShopLinkId) set.add(pendingShopLinkId);
+      if (state.selectedRestaurant && state.selectedRestaurant.id && state.selectedRestaurant.id !== 'NESH_STORE') set.add(state.selectedRestaurant.id);
+      if (state.lastOrder && state.lastOrder.restId && state.lastOrder.restId !== 'NESH_STORE') set.add(state.lastOrder.restId);
+      extraShopIds.forEach(id => set.add(id));
+      ids = Array.from(set).sort();
+    }
   }
   const key = mode + ':' + ids.join(',');
   if (key === _shopLoadKey) return;
@@ -4321,7 +4552,7 @@ function persistCart() {
   try {
     const raw = localStorage.getItem('asfood_screen');
     const saved = raw ? JSON.parse(raw) : {};
-    if (saved.id === 'menu') {
+    if (saved.id === 'menu' || saved.id === 'item-detail') {
       saved.cart = state.cart;
       saved.cartGrams = state.cartGrams;
       saved.cartSizes = state.cartSizes;
@@ -4459,8 +4690,8 @@ function showOfflineNotice() {
   showInfoModal('No internet connection', 'Please turn on Wi-Fi or mobile data and try again.');
 }
 let _probeBusy = null;
-function confirmReallyOffline() {
-  if (navigator.onLine !== false) return Promise.resolve(false);
+function confirmReallyOffline(force) {
+  if (!force && navigator.onLine !== false) return Promise.resolve(false);
   if (_probeBusy) return _probeBusy;
   _probeBusy = new Promise(resolve => {
     const ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
@@ -4473,34 +4704,51 @@ function confirmReallyOffline() {
 }
 (function setupOfflineGuard() {
   try {
+    // Android-style Snackbar: floats at the bottom with rounded corners, slides up,
+    // and has a RETRY action. (Replaces the old full-width website-style top bar.)
+    const st = document.createElement('style');
+    st.textContent = '@keyframes neshSnackUp{from{transform:translateY(28px);opacity:0}to{transform:none;opacity:1}}' +
+      '#offline-bar{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:99999;display:none;' +
+      'align-items:center;gap:10px;max-width:460px;margin:0 auto;padding:12px 14px;border-radius:10px;color:#fff;background:#323232;' +
+      'box-shadow:0 6px 20px rgba(0,0,0,.35);font:500 14px/1.3 system-ui,-apple-system,Roboto,sans-serif;animation:neshSnackUp .22s ease-out;}' +
+      '#offline-bar .ob-icon{font-size:18px;flex:none;}#offline-bar .ob-text{flex:1;min-width:0;}' +
+      '#offline-bar .ob-retry{flex:none;border:none;background:transparent;color:#F2B705;font:700 13px/1 system-ui,Roboto,sans-serif;letter-spacing:.6px;padding:8px 6px;cursor:pointer;text-transform:uppercase;}';
+    document.head.appendChild(st);
     const bar = document.createElement('div');
     bar.id = 'offline-bar';
     bar.setAttribute('role', 'status');
-    bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;display:none;' +
-      'padding:calc(env(safe-area-inset-top,0px) + 8px) 12px 8px;text-align:center;' +
-      'font:600 13px/1.3 system-ui,sans-serif;color:#fff;background:#c0392b;';
+    bar.setAttribute('aria-live', 'polite');
+    bar.innerHTML = '<span class="ob-icon"></span><span class="ob-text"></span><button type="button" class="ob-retry">Retry</button>';
     document.body.appendChild(bar);
+    const barIcon = bar.querySelector('.ob-icon'), barText = bar.querySelector('.ob-text'), barRetry = bar.querySelector('.ob-retry');
+    function showBar(icon, text, bg, withRetry) {
+      const wasHidden = bar.style.display !== 'flex';
+      barIcon.textContent = icon; barText.textContent = text; bar.style.background = bg;
+      barRetry.style.display = withRetry ? 'block' : 'none';
+      bar.style.display = 'flex';
+      if (wasHidden) { bar.style.animation = 'none'; void bar.offsetWidth; bar.style.animation = ''; }
+    }
     let hideTimer = null, wasOffline = false;
-    async function sync() {
+    async function sync(force) {
       clearTimeout(hideTimer);
-      const off = await confirmReallyOffline();
+      const off = await confirmReallyOffline(force === true);
       if (off) {
         wasOffline = true;
-        bar.textContent = 'No internet connection';
-        bar.style.background = '#c0392b';
-        bar.style.display = 'block';
+        showBar('📡', 'No internet connection', '#323232', true);
       } else if (wasOffline) {
         wasOffline = false;
-        bar.textContent = 'Back online';
-        bar.style.background = '#1e8e3e';
-        bar.style.display = 'block';
-        hideTimer = setTimeout(() => { bar.style.display = 'none'; }, 2000);
+        showBar('✅', 'Back online', '#1e7e34', false);
+        hideTimer = setTimeout(() => { bar.style.display = 'none'; }, 2500);
       } else {
         bar.style.display = 'none';
       }
     }
-    window.addEventListener('offline', sync);
-    window.addEventListener('online', sync);
+    barRetry.addEventListener('click', () => {
+      barText.textContent = 'Checking…';
+      sync(true);
+    });
+    window.addEventListener('offline', () => sync());
+    window.addEventListener('online', () => sync());
     sync(); // app opened while offline -> banner shows once confirmed
 
     // Capture phase: only when the browser claims offline do we step in. We
@@ -4523,6 +4771,693 @@ function confirmReallyOffline() {
     guard(document.getElementById('cat-loc-card'));
   } catch (err) { console.warn('offline guard failed', err); }
 })();
+// ---------- LANGUAGE (English default / Malayalam) ----------
+// English is the default and the page is left completely untouched in English.
+// Only when the customer picks Malayalam in Settings do we swap known UI texts
+// (exact-match dictionary below) and keep swapping texts the app renders later.
+// Anything not in the dictionary (shop/item names, order messages...) stays as is.
+const NESH_ML = {
+ "Get the NESH app": "NESH ആപ്പ് നേടൂ",
+ "Faster ordering, live tracking & notifications": "വേഗത്തിലുള്ള ഓർഡർ, ലൈവ് ട്രാക്കിംഗ്, അറിയിപ്പുകൾ",
+ "Install": "ഇൻസ്റ്റാൾ",
+ "HELLO": "ഹലോ",
+ "VERIFIED": "പരിശോധിച്ചത്",
+ "Settings": "സെറ്റിംഗ്സ്",
+ "Call Support": "സപ്പോർട്ടിനെ വിളിക്കൂ",
+ "Privacy Policy": "സ്വകാര്യതാ നയം",
+ "Rate NESH on Play Store": "Play Store-ൽ NESH-നെ റേറ്റ് ചെയ്യൂ",
+ "Update available — tap to update": "അപ്ഡേറ്റ് ലഭ്യമാണ് — അപ്ഡേറ്റ് ചെയ്യാൻ ടാപ്പ് ചെയ്യൂ",
+ "Logout": "ലോഗൗട്ട്",
+ "Login": "ലോഗിൻ",
+ "Delete Account": "അക്കൗണ്ട് ഡിലീറ്റ് ചെയ്യുക",
+ "What are you looking for?": "നിങ്ങൾ എന്താണ് തിരയുന്നത്?",
+ "📍 Location is off — turn it on to see nearby shops": "📍 ലൊക്കേഷൻ ഓഫാണ് — അടുത്തുള്ള കടകൾ കാണാൻ ഓൺ ചെയ്യൂ",
+ "Turn on": "ഓൺ ചെയ്യൂ",
+ "Deliver to": "ഡെലിവറി ചെയ്യേണ്ടത്",
+ "DELIVER TO": "ഡെലിവറി ചെയ്യേണ്ടത്",
+ "Select your location": "നിങ്ങളുടെ ലൊക്കേഷൻ തിരഞ്ഞെടുക്കൂ",
+ "Your Orders": "നിങ്ങളുടെ ഓർഡറുകൾ",
+ "Track live orders & view order history": "ലൈവ് ഓർഡറുകൾ ട്രാക്ക് ചെയ്യൂ, ഓർഡർ ചരിത്രം കാണൂ",
+ "Food": "ഭക്ഷണം",
+ "Order from restaurants near you": "അടുത്തുള്ള റസ്റ്റോറന്റുകളിൽ നിന്ന് ഓർഡർ ചെയ്യൂ",
+ "Groceries": "പലചരക്ക്",
+ "Daily essentials, delivered fast": "ദൈനംദിന അവശ്യസാധനങ്ങൾ, വേഗത്തിൽ വീട്ടിലെത്തും",
+ "Shop products, delivered to you": "ഉൽപ്പന്നങ്ങൾ വാങ്ങൂ, വീട്ടിലെത്തിക്കും",
+ "Taxi": "ടാക്സി",
+ "Book a ride, anywhere you go": "എവിടെ പോകാനും റൈഡ് ബുക്ക് ചെയ്യൂ",
+ "Bus": "ബസ്",
+ "See live bus location & stops": "ലൈവ് ബസ് ലൊക്കേഷനും സ്റ്റോപ്പുകളും കാണൂ",
+ "Login or Sign up": "ലോഗിൻ അല്ലെങ്കിൽ സൈൻ അപ്പ്",
+ "Enter your mobile number to continue with your order.": "ഓർഡർ തുടരാൻ നിങ്ങളുടെ മൊബൈൽ നമ്പർ നൽകൂ.",
+ "Mobile number": "മൊബൈൽ നമ്പർ",
+ "Continue": "തുടരുക",
+ "NEW ORDER TICKET": "പുതിയ ഓർഡർ ടിക്കറ്റ്",
+ "What's your name?": "നിങ്ങളുടെ പേര് എന്താണ്?",
+ "Mobile:": "മൊബൈൽ:",
+ "Full name": "മുഴുവൻ പേര്",
+ "ORDER HISTORY": "ഓർഡർ ചരിത്രം",
+ "No orders yet — your placed orders will show up here.": "ഇതുവരെ ഓർഡറുകൾ ഇല്ല — നിങ്ങൾ നൽകിയ ഓർഡറുകൾ ഇവിടെ കാണാം.",
+ "Hungry, friend?": "വിശക്കുന്നുണ്ടോ, സുഹൃത്തേ?",
+ "How was your order?": "നിങ്ങളുടെ ഓർഡർ എങ്ങനെയുണ്ടായിരുന്നു?",
+ "Search restaurants or cuisine": "റസ്റ്റോറന്റുകളോ വിഭവങ്ങളോ തിരയൂ",
+ "⚡ Today's deals": "⚡ ഇന്നത്തെ ഓഫറുകൾ",
+ "🔥 Popular products": "🔥 ജനപ്രിയ ഉൽപ്പന്നങ്ങൾ",
+ "Products": "ഉൽപ്പന്നങ്ങൾ",
+ "How to use": "എങ്ങനെ ഉപയോഗിക്കാം",
+ "Search items in this menu": "ഈ മെനുവിൽ തിരയൂ",
+ "This shop isn't taking orders right now": "ഈ കട ഇപ്പോൾ ഓർഡർ സ്വീകരിക്കുന്നില്ല",
+ "Items": "ഇനങ്ങൾ",
+ "No items match your search": "തിരഞ്ഞതുമായി ഒത്തുപോകുന്ന ഇനങ്ങൾ ഇല്ല",
+ "No internet connection": "ഇന്റർനെറ്റ് കണക്ഷൻ ഇല്ല",
+ "Please turn on Wi-Fi or mobile data and try again.": "Wi-Fi അല്ലെങ്കിൽ മൊബൈൽ ഡാറ്റ ഓൺ ചെയ്ത് വീണ്ടും ശ്രമിക്കൂ.",
+ "Back online": "വീണ്ടും ഓൺലൈൻ",
+ "OK": "ശരി",
+ "Cancel": "റദ്ദാക്കുക",
+ "Delete": "ഡിലീറ്റ്",
+ "⚠️ Delete account": "⚠️ അക്കൗണ്ട് ഡിലീറ്റ് ചെയ്യുക",
+ "This permanently deletes your account and saved details (name, number, address). This can't be undone. Are you sure?": "ഇത് നിങ്ങളുടെ അക്കൗണ്ടും സേവ് ചെയ്ത വിവരങ്ങളും (പേര്, നമ്പർ, വിലാസം) എന്നെന്നേക്കുമായി ഡിലീറ്റ് ചെയ്യും. ഇത് തിരിച്ചെടുക്കാൻ കഴിയില്ല. ഉറപ്പാണോ?",
+ "Account deleted": "അക്കൗണ്ട് ഡിലീറ്റ് ചെയ്തു",
+ "Your account and saved details have been deleted.": "നിങ്ങളുടെ അക്കൗണ്ടും സേവ് ചെയ്ത വിവരങ്ങളും ഡിലീറ്റ് ചെയ്തു.",
+ "Account": "അക്കൗണ്ട്",
+ "SETTINGS": "സെറ്റിംഗ്സ്",
+ "MY ACCOUNT": "എന്റെ അക്കൗണ്ട്",
+ "Language": "ഭാഷ",
+ "Edit profile": "പ്രൊഫൈൽ എഡിറ്റ് ചെയ്യുക",
+ "Name": "പേര്",
+ "Email (optional)": "ഇമെയിൽ (ഓപ്ഷണൽ)",
+ "No email added": "ഇമെയിൽ ചേർത്തിട്ടില്ല",
+ "Save": "സേവ് ചെയ്യുക",
+ "Login to manage your account": "അക്കൗണ്ട് നിയന്ത്രിക്കാൻ ലോഗിൻ ചെയ്യൂ",
+ "Please enter your name.": "നിങ്ങളുടെ പേര് നൽകൂ.",
+ "Please enter a valid email address.": "ശരിയായ ഇമെയിൽ വിലാസം നൽകൂ.",
+ "Couldn't save — check your connection and try again.": "സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല — കണക്ഷൻ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കൂ.",
+ "Profile updated": "പ്രൊഫൈൽ അപ്ഡേറ്റ് ചെയ്തു",
+ "Your details have been saved.": "നിങ്ങളുടെ വിവരങ്ങൾ സേവ് ചെയ്തു."
+};
+Object.assign(NESH_ML, {
+ "Language, account & more": "ഭാഷ, അക്കൗണ്ട് & കൂടുതൽ",
+ "Account deleted": "അക്കൗണ്ട് ഡിലീറ്റ് ചെയ്തു",
+ "Your account and saved details have been deleted.": "നിങ്ങളുടെ അക്കൗണ്ടും സേവ് ചെയ്ത വിവരങ്ങളും ഡിലീറ്റ് ചെയ്തു.",
+ "No internet connection": "ഇന്റർനെറ്റ് കണക്ഷൻ ഇല്ല",
+ "Please turn on Wi-Fi or mobile data and try again.": "Wi-Fi അല്ലെങ്കിൽ മൊബൈൽ ഡാറ്റ ഓൺ ചെയ്ത് വീണ്ടും ശ്രമിക്കൂ.",
+ "Back online": "വീണ്ടും ഓൺലൈൻ ആയി",
+ "😞 Poor": "😞 മോശം",
+ "😕 Could be better": "😕 കുറച്ചുകൂടി നന്നാക്കാം",
+ "🙂 Good": "🙂 നല്ലത്",
+ "😀 Great": "😀 വളരെ നല്ലത്",
+ "🤩 Loved it!": "🤩 ഇഷ്ടപ്പെട്ടു!",
+ "Delete": "ഡിലീറ്റ്",
+ "Cancel": "റദ്ദാക്കൂ",
+ "📍 Location captured": "📍 ലൊക്കേഷൻ എടുത്തു",
+ "Skip ✕": "ഒഴിവാക്കൂ ✕",
+ "30-35 min": "30-35 മിനിറ്റ്",
+ "Loading stores…": "സ്റ്റോറുകൾ ലോഡ് ചെയ്യുന്നു…",
+ "ITEMS": "ഐറ്റംസ്",
+ "🍽️ Dishes you’ll love": "🍽️ ഇഷ്ടപ്പെടും ഈ വിഭവങ്ങൾ",
+ "Dishes you’ll love": "ഇഷ്ടപ്പെടും ഈ വിഭവങ്ങൾ",
+ "Swipe →": "സ്വൈപ്പ് ചെയ്യൂ →",
+ "🟢 Open now": "🟢 ഇപ്പോൾ തുറന്നത്",
+ "📍 Nearest": "📍 അടുത്തുള്ളത്",
+ "⭐ Top rated": "⭐ ടോപ് റേറ്റഡ്",
+ "Top rated": "ടോപ് റേറ്റഡ്",
+ "Nearest": "അടുത്തുള്ളത്",
+ "Recommended": "നിർദ്ദേശിക്കുന്നത്",
+ "All": "എല്ലാം",
+ "Restaurant": "റസ്റ്റോറന്റ്",
+ "Closed": "അടച്ചു",
+ "Cancelled": "റദ്ദാക്കി",
+ "OFF": "ഓഫ്",
+ "More shops": "കൂടുതൽ കടകൾ",
+ "See all": "എല്ലാം കാണൂ",
+ "NESH Store": "NESH സ്റ്റോർ",
+ "NESH Mart": "NESH മാർട്ട്",
+ "NESH": "NESH",
+ "Orders": "ഓർഡറുകൾ",
+ "GROCERIES": "പലചരക്ക്",
+ "SHOPPING": "ഷോപ്പിംഗ്",
+ "FOOD": "ഭക്ഷണം",
+ "Shopping": "ഷോപ്പിംഗ്",
+ "Search groceries or stores": "പലചരക്കോ കടകളോ തിരയൂ",
+ "Search products or shops": "ഉൽപ്പന്നങ്ങളോ കടകളോ തിരയൂ",
+ "Search dishes or restaurants": "വിഭവങ്ങളോ റസ്റ്റോറന്റുകളോ തിരയൂ",
+ "No shops are open right now.": "ഇപ്പോൾ കടകളൊന്നും തുറന്നിട്ടില്ല.",
+ "No shops deliver to your selected location yet.": "നിങ്ങൾ തിരഞ്ഞെടുത്ത സ്ഥലത്തേക്ക് ഇതുവരെ ഒരു കടയും ഡെലിവറി ചെയ്യുന്നില്ല.",
+ "No restaurants are open right now.": "ഇപ്പോൾ റസ്റ്റോറന്റുകളൊന്നും തുറന്നിട്ടില്ല.",
+ "Groceries from every NESH Store partner shop": "എല്ലാ NESH സ്റ്റോർ പങ്കാളി കടകളിൽ നിന്നുമുള്ള പലചരക്ക്",
+ "Loading stores…": "സ്റ്റോറുകൾ ലോഡ് ചെയ്യുന്നു…",
+ "Stores are still loading. Please try again in a moment.": "സ്റ്റോറുകൾ ഇപ്പോഴും ലോഡ് ചെയ്യുകയാണ്. കുറച്ച് കഴിഞ്ഞ് വീണ്ടും ശ്രമിക്കൂ.",
+ "Out of delivery area": "ഡെലിവറി ഏരിയയ്ക്ക് പുറത്താണ്",
+ "This shop doesn't deliver to your selected location.": "ഈ കട നിങ്ങൾ തിരഞ്ഞെടുത്ത സ്ഥലത്തേക്ക് ഡെലിവറി ചെയ്യുന്നില്ല.",
+ "Delivering to selected location": "തിരഞ്ഞെടുത്ത സ്ഥലത്തേക്ക് ഡെലിവറി",
+ "Tap to set your location": "ലൊക്കേഷൻ സെറ്റ് ചെയ്യാൻ ടാപ്പ് ചെയ്യൂ",
+ "Please check back soon.": "ദയവായി കുറച്ച് കഴിഞ്ഞ് നോക്കൂ.",
+ "Not available in your area": "നിങ്ങളുടെ പ്രദേശത്ത് ലഭ്യമല്ല",
+ "Sorry, NESH isn't available at this location yet. Please pick a different location.": "ക്ഷമിക്കണം, ഈ സ്ഥലത്ത് NESH ഇതുവരെ ലഭ്യമല്ല. മറ്റൊരു ലൊക്കേഷൻ തിരഞ്ഞെടുക്കൂ.",
+ "Not available here — please pick a different location": "ഇവിടെ ലഭ്യമല്ല — മറ്റൊരു ലൊക്കേഷൻ തിരഞ്ഞെടുക്കൂ",
+ "Shop": "കട",
+ "Shop closed": "കട അടച്ചിരിക്കുന്നു",
+ "This shop": "ഈ കട",
+ "Shop unavailable": "കട ലഭ്യമല്ല",
+ "This shop isn't available right now.": "ഈ കട ഇപ്പോൾ ലഭ്യമല്ല.",
+ "Items unavailable": "ഐറ്റംസ് ലഭ്യമല്ല",
+ "Those items aren't on this shop's menu any more. You can pick from the menu.": "ആ ഐറ്റംസ് ഈ കടയുടെ മെനുവിൽ ഇപ്പോഴില്ല. മെനുവിൽ നിന്ന് തിരഞ്ഞെടുക്കാം.",
+ "Not available": "ലഭ്യമല്ല",
+ "Notifications": "അറിയിപ്പുകൾ",
+ "Notification": "അറിയിപ്പ്",
+ "🔔 Turn on notifications": "🔔 അറിയിപ്പുകൾ ഓൺ ചെയ്യൂ",
+ "🔔 Stay updated with NESH": "🔔 NESH-ൽ അപ്ഡേറ്റ് ആയിരിക്കൂ",
+ "Turn on notifications to get live order updates, new shops and offers, and important announcements.": "ലൈവ് ഓർഡർ അപ്ഡേറ്റുകൾ, പുതിയ കടകൾ, ഓഫറുകൾ, പ്രധാന അറിയിപ്പുകൾ എന്നിവ ലഭിക്കാൻ അറിയിപ്പുകൾ ഓൺ ചെയ്യൂ.",
+ "🔔 Track your order": "🔔 ഓർഡർ ട്രാക്ക് ചെയ്യൂ",
+ "Turn on notifications to get live updates on your order — accepted, prepared, out for delivery.": "ഓർഡറിന്റെ ലൈവ് അപ്ഡേറ്റുകൾ ലഭിക്കാൻ അറിയിപ്പുകൾ ഓൺ ചെയ്യൂ — സ്വീകരിച്ചു, തയ്യാറായി, ഡെലിവറിക്ക് പുറപ്പെട്ടു.",
+ "Enable": "ഓൺ ചെയ്യൂ",
+ "Not now": "ഇപ്പോൾ വേണ്ട",
+ "Yes": "അതെ",
+ "Just now": "ഇപ്പോൾ",
+ "No notifications yet.": "ഇതുവരെ അറിയിപ്പുകളൊന്നുമില്ല.",
+ "To get notifications on iPhone: tap Share → Add to Home Screen, then open NESH from your home screen.": "iPhone-ൽ അറിയിപ്പുകൾ ലഭിക്കാൻ: Share → Add to Home Screen ടാപ്പ് ചെയ്യൂ, എന്നിട്ട് ഹോം സ്ക്രീനിൽ നിന്ന് NESH തുറക്കൂ.",
+ "Notifications turned on": "അറിയിപ്പുകൾ ഓൺ ആയി",
+ "You'll now get order updates and offers.": "ഇനി ഓർഡർ അപ്ഡേറ്റുകളും ഓഫറുകളും ലഭിക്കും.",
+ "Notifications are off": "അറിയിപ്പുകൾ ഓഫാണ്",
+ "Notifications are blocked for this site. Tap the lock icon next to the address bar → Notifications → Allow.": "ഈ സൈറ്റിന് അറിയിപ്പുകൾ ബ്ലോക്ക് ചെയ്തിരിക്കുന്നു. അഡ്രസ് ബാറിനടുത്തുള്ള ലോക്ക് ഐക്കൺ ടാപ്പ് ചെയ്യൂ → Notifications → Allow.",
+ "Notifications were turned off for this app. To turn them on, go to your phone's Settings → Apps → NESH → Notifications.": "ഈ ആപ്പിന് അറിയിപ്പുകൾ ഓഫ് ചെയ്തിരിക്കുന്നു. ഓൺ ചെയ്യാൻ ഫോണിന്റെ Settings → Apps → NESH → Notifications പോകൂ.",
+ "Could not turn on notifications": "അറിയിപ്പുകൾ ഓൺ ചെയ്യാൻ കഴിഞ്ഞില്ല",
+ "Could not get a notification token. Please try again.": "നോട്ടിഫിക്കേഷൻ ടോക്കൺ ലഭിച്ചില്ല. വീണ്ടും ശ്രമിക്കൂ.",
+ "Order update!": "ഓർഡർ അപ്ഡേറ്റ്!",
+ "Tap to view your order.": "ഓർഡർ കാണാൻ ടാപ്പ് ചെയ്യൂ.",
+ "Locating": "ലൊക്കേറ്റ് ചെയ്യുന്നു",
+ "Access blocked": "ആക്സസ് ബ്ലോക്ക് ചെയ്തു",
+ "Your access has been blocked. Please contact support.": "നിങ്ങളുടെ ആക്സസ് ബ്ലോക്ക് ചെയ്തിരിക്കുന്നു. സപ്പോർട്ടിനെ ബന്ധപ്പെടൂ.",
+ "Close": "അടയ്ക്കൂ",
+ "Skip": "ഒഴിവാക്കൂ",
+ "Skip ad": "പരസ്യം ഒഴിവാക്കൂ",
+ "Sound": "ശബ്ദം",
+ "Offer": "ഓഫർ",
+ "Try again": "വീണ്ടും ശ്രമിക്കൂ",
+ "Checking…": "പരിശോധിക്കുന്നു…",
+ "Oops": "ക്ഷമിക്കണം",
+ "Submit": "സമർപ്പിക്കൂ",
+ "Submitting…": "സമർപ്പിക്കുന്നു…",
+ "Got it": "ശരി",
+ "Don't show this again": "ഇത് വീണ്ടും കാണിക്കരുത്",
+ "Customer": "കസ്റ്റമർ",
+ "Guest": "ഗസ്റ്റ്",
+ "Auto": "ഓട്ടോ",
+ "English": "English",
+ "Tap back again to exit": "പുറത്തുകടക്കാൻ വീണ്ടും ബാക്ക് ടാപ്പ് ചെയ്യൂ",
+ "Order accepted!": "ഓർഡർ സ്വീകരിച്ചു!",
+ "Order in progress": "ഓർഡർ പുരോഗമിക്കുന്നു",
+ "Order confirmed": "ഓർഡർ ഉറപ്പിച്ചു",
+ "ORDER CONFIRMED": "ഓർഡർ ഉറപ്പിച്ചു",
+ "It's on its way": "ഇത് വരുന്ന വഴിയിലാണ്",
+ "KITCHEN ORDER TICKET": "കിച്ചൺ ഓർഡർ ടിക്കറ്റ്",
+ "🛵 Track your Order": "🛵 ഓർഡർ ട്രാക്ക് ചെയ്യൂ",
+ "Track your Order": "ഓർഡർ ട്രാക്ക് ചെയ്യൂ",
+ "Back to home": "ഹോമിലേക്ക് മടങ്ങൂ",
+ "LIVE STATUS": "ലൈവ് സ്റ്റാറ്റസ്",
+ "CURRENT STATUS": "ഇപ്പോഴത്തെ സ്റ്റാറ്റസ്",
+ "Order received": "ഓർഡർ ലഭിച്ചു",
+ "Reason": "കാരണം",
+ "Cancel order": "ഓർഡർ റദ്ദാക്കൂ",
+ "Cancel this order?": "ഈ ഓർഡർ റദ്ദാക്കണോ?",
+ "Are you sure you want to cancel this order?": "ഈ ഓർഡർ റദ്ദാക്കണമെന്ന് ഉറപ്പാണോ?",
+ "Cancelled by customer": "കസ്റ്റമർ റദ്ദാക്കി",
+ "Couldn't cancel the order. Please check your connection and try again.": "ഓർഡർ റദ്ദാക്കാൻ കഴിഞ്ഞില്ല. കണക്ഷൻ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കൂ.",
+ "Order": "ഓർഡർ",
+ "Order cancelled": "ഓർഡർ റദ്ദാക്കി",
+ "The restaurant wasn't able to take this order.": "റസ്റ്റോറന്റിന് ഈ ഓർഡർ സ്വീകരിക്കാൻ കഴിഞ്ഞില്ല.",
+ "Enjoy your meal!": "ഭക്ഷണം ആസ്വദിക്കൂ!",
+ "Your order has been delivered!": "നിങ്ങളുടെ ഓർഡർ ഡെലിവറി ചെയ്തു!",
+ "Your order is on the way": "നിങ്ങളുടെ ഓർഡർ വരുന്ന വഴിയിലാണ്",
+ "A rider has been assigned and is heading to the shop": "ഒരു റൈഡറെ നിയോഗിച്ചു, കടയിലേക്ക് പോകുന്നു",
+ "Past orders": "കഴിഞ്ഞ ഓർഡറുകൾ",
+ "In progress": "പുരോഗമിക്കുന്നു",
+ "Order picked up · on the way to you": "ഓർഡർ എടുത്തു · നിങ്ങളുടെ അടുത്തേക്ക് വരുന്നു",
+ "Rider is heading to the shop": "റൈഡർ കടയിലേക്ക് പോകുന്നു",
+ "On the way to you": "നിങ്ങളുടെ അടുത്തേക്ക് വരുന്നു",
+ "Heading to the shop": "കടയിലേക്ക് പോകുന്നു",
+ "Waiting for payment confirmation": "പേയ്മെന്റ് സ്ഥിരീകരണത്തിനായി കാത്തിരിക്കുന്നു",
+ "Preparing your food": "നിങ്ങളുടെ ഭക്ഷണം തയ്യാറാക്കുന്നു",
+ "Preparing your order": "നിങ്ങളുടെ ഓർഡർ തയ്യാറാക്കുന്നു",
+ "Your food is ready": "നിങ്ങളുടെ ഭക്ഷണം തയ്യാറാണ്",
+ "Your order is ready": "നിങ്ങളുടെ ഓർഡർ തയ്യാറാണ്",
+ "Out for delivery": "ഡെലിവറിക്ക് പുറപ്പെട്ടു",
+ "Delivered": "ഡെലിവറി ചെയ്തു",
+ "Finding a store for your order": "നിങ്ങളുടെ ഓർഡറിന് ഒരു സ്റ്റോർ കണ്ടെത്തുന്നു",
+ "We're picking the best NESH Store shop to prepare this — hang tight.": "ഇത് തയ്യാറാക്കാൻ ഏറ്റവും നല്ല NESH സ്റ്റോർ കടയെ തിരഞ്ഞെടുക്കുന്നു — ഒരു നിമിഷം കാത്തിരിക്കൂ.",
+ "Locating your rider…": "നിങ്ങളുടെ റൈഡറെ കണ്ടെത്തുന്നു…",
+ "ARRIVING": "എത്തിച്ചേരുന്നു",
+ "Then": "പിന്നെ",
+ "Your rider": "നിങ്ങളുടെ റൈഡർ",
+ "Last seen": "അവസാനം കണ്ടത്",
+ "How was the shop?": "കട എങ്ങനെയുണ്ടായിരുന്നു?",
+ "How was your rider?": "റൈഡർ എങ്ങനെയായിരുന്നു?",
+ "Calculating…": "കണക്കാക്കുന്നു…",
+ "Calculating delivery distance…": "ഡെലിവറി ദൂരം കണക്കാക്കുന്നു…",
+ "Placing order…": "ഓർഡർ ചെയ്യുന്നു…",
+ "Failed to place order:": "ഓർഡർ ചെയ്യാൻ കഴിഞ്ഞില്ല:",
+ "Couldn't place the order. Please check your connection and try again.": "ഓർഡർ ചെയ്യാൻ കഴിഞ്ഞില്ല. കണക്ഷൻ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കൂ.",
+ "Complete payment to continue": "തുടരാൻ പേയ്മെന്റ് പൂർത്തിയാക്കൂ",
+ "One more step": "ഇനി ഒരു ഘട്ടം കൂടി",
+ "Please complete the UPI payment and tick \"I've completed the payment\" before placing the order.": "ഓർഡർ ചെയ്യുന്നതിന് മുമ്പ് UPI പേയ്മെന്റ് പൂർത്തിയാക്കി \"പേയ്മെന്റ് പൂർത്തിയാക്കി\" എന്ന് ടിക്ക് ചെയ്യൂ.",
+ "Check your details": "വിവരങ്ങൾ പരിശോധിക്കൂ",
+ "Please enter a valid 10-digit contact number for this order.": "ഈ ഓർഡറിന് 10 അക്ക ശരിയായ കോൺടാക്ട് നമ്പർ നൽകൂ.",
+ "Please enter a landmark near your delivery location.": "ഡെലിവറി സ്ഥലത്തിനടുത്തുള്ള ഒരു ലാൻഡ്മാർക്ക് നൽകൂ.",
+ "Please set a delivery location first": "ആദ്യം ഒരു ഡെലിവറി ലൊക്കേഷൻ സെറ്റ് ചെയ്യൂ",
+ "Please tap the map or use GPS to set a location first": "ആദ്യം മാപ്പിൽ ടാപ്പ് ചെയ്യുകയോ GPS ഉപയോഗിക്കുകയോ ചെയ്ത് ലൊക്കേഷൻ സെറ്റ് ചെയ്യൂ",
+ "These items aren't available for delivery to this location:": "ഈ ഐറ്റംസ് ഈ സ്ഥലത്തേക്ക് ഡെലിവറിക്ക് ലഭ്യമല്ല:",
+ "Minimum order": "മിനിമം ഓർഡർ",
+ "This restaurant hasn't set up UPI payment yet": "ഈ റസ്റ്റോറന്റ് ഇതുവരെ UPI പേയ്മെന്റ് സെറ്റ് ചെയ്തിട്ടില്ല",
+ "Cash on Delivery": "ക്യാഷ് ഓൺ ഡെലിവറി",
+ "UPI (Scanner)": "UPI (സ്കാനർ)",
+ "DELIVERY LOCATION": "ഡെലിവറി ലൊക്കേഷൻ",
+ "Where should this go?": "ഇത് എവിടേക്ക് എത്തിക്കണം?",
+ "Search for your location": "നിങ്ങളുടെ ലൊക്കേഷൻ തിരയൂ",
+ "Tap or drag the pin to set the exact spot": "കൃത്യമായ സ്ഥലം സെറ്റ് ചെയ്യാൻ പിൻ ടാപ്പ് ചെയ്യുകയോ വലിച്ചിടുകയോ ചെയ്യൂ",
+ "Delivering to": "ഡെലിവറി ചെയ്യുന്നത്",
+ "Set location": "ലൊക്കേഷൻ സെറ്റ് ചെയ്യൂ",
+ "📍 Use my current location": "📍 എന്റെ ഇപ്പോഴത്തെ ലൊക്കേഷൻ ഉപയോഗിക്കൂ",
+ "Place / Area": "സ്ഥലം / പ്രദേശം",
+ "Landmark": "ലാൻഡ്മാർക്ക്",
+ "Contact number for this order": "ഈ ഓർഡറിനുള്ള കോൺടാക്ട് നമ്പർ",
+ "Proceed →": "തുടരൂ →",
+ "PAYMENT": "പേയ്മെന്റ്",
+ "Review & pay": "പരിശോധിച്ച് പണമടയ്ക്കൂ",
+ "Edit address": "വിലാസം എഡിറ്റ് ചെയ്യൂ",
+ "Item total": "ഐറ്റം ആകെ",
+ "Platform fee": "പ്ലാറ്റ്ഫോം ഫീസ്",
+ "Delivery charge": "ഡെലിവറി ചാർജ്",
+ "Shop discount": "കട ഡിസ്കൗണ്ട്",
+ "Coupon": "കൂപ്പൺ",
+ "🎟️ Offers for you": "🎟️ നിങ്ങൾക്കുള്ള ഓഫറുകൾ",
+ "Apply": "പ്രയോഗിക്കൂ",
+ "Total": "ആകെ",
+ "Payment method": "പേയ്മെന്റ് രീതി",
+ "💵 Cash on Delivery": "💵 ക്യാഷ് ഓൺ ഡെലിവറി",
+ "📱 UPI Scanner": "📱 UPI സ്കാനർ",
+ "Scan & complete the payment in your UPI app first": "ആദ്യം നിങ്ങളുടെ UPI ആപ്പിൽ സ്കാൻ ചെയ്ത് പേയ്മെന്റ് പൂർത്തിയാക്കൂ",
+ "I've completed the payment": "ഞാൻ പേയ്മെന്റ് പൂർത്തിയാക്കി",
+ "Confirm & place order": "സ്ഥിരീകരിച്ച് ഓർഡർ ചെയ്യൂ",
+ "Added to your bill": "നിങ്ങളുടെ ബില്ലിൽ ചേർത്തു",
+ "Claim reward": "സമ്മാനം നേടൂ",
+ "🎁 Discount for you": "🎁 നിങ്ങൾക്കുള്ള ഡിസ്കൗണ്ട്",
+ "Scratch the card — it comes straight off this bill.": "കാർഡ് സ്ക്രാച്ച് ചെയ്യൂ — തുക നേരിട്ട് ഈ ബില്ലിൽ നിന്ന് കുറയും.",
+ "SCRATCH HERE": "ഇവിടെ സ്ക്രാച്ച് ചെയ്യൂ",
+ "0 items": "0 ഐറ്റംസ്",
+ "Your order": "നിങ്ങളുടെ ഓർഡർ",
+ "🥤 Add something extra?": "🥤 കൂടെ എന്തെങ്കിലും വേണോ?",
+ "Proceed to checkout →": "ചെക്കൗട്ടിലേക്ക് →",
+ "Sold by": "വിൽക്കുന്നത്",
+ "View shop ›": "കട കാണൂ ›",
+ "Select size": "സൈസ് തിരഞ്ഞെടുക്കൂ",
+ "Size:": "സൈസ്:",
+ "UPI ID:": "UPI ID:",
+ "This coupon has expired.": "ഈ കൂപ്പണിന്റെ കാലാവധി കഴിഞ്ഞു.",
+ "This coupon is not valid at this shop.": "ഈ കൂപ്പൺ ഈ കടയിൽ സാധുവല്ല.",
+ "You have already used this coupon.": "ഈ കൂപ്പൺ നിങ്ങൾ ഇതിനകം ഉപയോഗിച്ചു.",
+ "Sorry, this coupon is fully claimed.": "ക്ഷമിക്കണം, ഈ കൂപ്പൺ പൂർണ്ണമായും ഉപയോഗിച്ചുകഴിഞ്ഞു.",
+ "Coupon removed.": "കൂപ്പൺ നീക്കം ചെയ്തു.",
+ "This code is not valid for this shop.": "ഈ കോഡ് ഈ കടയ്ക്ക് സാധുവല്ല.",
+ "Have a coupon code?": "കൂപ്പൺ കോഡ് ഉണ്ടോ?",
+ "Ends soon": "ഉടൻ അവസാനിക്കും",
+ "No minimum order": "മിനിമം ഓർഡർ ഇല്ല",
+ "Fully claimed": "പൂർണ്ണമായും ഉപയോഗിച്ചു",
+ "APPLIED ✓ (tap to remove)": "പ്രയോഗിച്ചു ✓ (നീക്കാൻ ടാപ്പ് ചെയ്യൂ)",
+ "🛒 How to use Groceries": "🛒 പലചരക്ക് എങ്ങനെ ഉപയോഗിക്കാം",
+ "Find items": "ഐറ്റംസ് കണ്ടെത്തൂ",
+ "— use the category tabs or the search box.": "— കാറ്റഗറി ടാബുകളോ സെർച്ച് ബോക്സോ ഉപയോഗിക്കൂ.",
+ "Set the weight": "തൂക്കം സെറ്റ് ചെയ്യൂ",
+ "— type grams in the box, or tap": "— ബോക്സിൽ ഗ്രാം ടൈപ്പ് ചെയ്യൂ, അല്ലെങ്കിൽ ടാപ്പ് ചെയ്യൂ",
+ "100g / 250g / 500g / 1kg": "100g / 250g / 500g / 1kg",
+ ". The price updates instantly.": ". വില ഉടൻ അപ്ഡേറ്റ് ആകും.",
+ "Add to cart": "കാർട്ടിൽ ചേർക്കൂ",
+ "— tap": "— ടാപ്പ് ചെയ്യൂ",
+ "Add": "ചേർക്കൂ",
+ "(or": "(അല്ലെങ്കിൽ",
+ "for more of the same weight).": "അതേ തൂക്കത്തിൽ കൂടുതൽ വേണമെങ്കിൽ).",
+ "Check out": "ചെക്കൗട്ട്",
+ "— open the cart bar at the bottom, review the total and place your order.": "— താഴെയുള്ള കാർട്ട് ബാർ തുറന്ന് ആകെ തുക നോക്കി ഓർഡർ ചെയ്യൂ.",
+ "Turn on location": "ലൊക്കേഷൻ ഓൺ ചെയ്യൂ",
+ "Please turn on your location to find nearby shops, taxis and delivery.": "അടുത്തുള്ള കടകൾ, ടാക്സി, ഡെലിവറി എന്നിവ കണ്ടെത്താൻ ലൊക്കേഷൻ ഓൺ ചെയ്യൂ.",
+ "Once it is on, tap the button to try again.": "ഓൺ ആയ ശേഷം വീണ്ടും ശ്രമിക്കാൻ ബട്ടൺ ടാപ്പ് ചെയ്യൂ.",
+ "Not now — select manually": "ഇപ്പോൾ വേണ്ട — സ്വയം തിരഞ്ഞെടുക്കാം",
+ "YOUR LOCATION": "നിങ്ങളുടെ ലൊക്കേഷൻ",
+ "Search for your area": "നിങ്ങളുടെ പ്രദേശം തിരയൂ",
+ "Tap or drag the pin to set your location": "ലൊക്കേഷൻ സെറ്റ് ചെയ്യാൻ പിൻ ടാപ്പ് ചെയ്യുകയോ വലിച്ചിടുകയോ ചെയ്യൂ",
+ "Selected": "തിരഞ്ഞെടുത്തത്",
+ "No location selected": "ലൊക്കേഷൻ തിരഞ്ഞെടുത്തിട്ടില്ല",
+ "No location selected — tap the map or use GPS below": "ലൊക്കേഷൻ തിരഞ്ഞെടുത്തിട്ടില്ല — മാപ്പിൽ ടാപ്പ് ചെയ്യൂ അല്ലെങ്കിൽ താഴെ GPS ഉപയോഗിക്കൂ",
+ "No saved location — tap the map or use GPS below": "സേവ് ചെയ്ത ലൊക്കേഷൻ ഇല്ല — മാപ്പിൽ ടാപ്പ് ചെയ്യൂ അല്ലെങ്കിൽ താഴെ GPS ഉപയോഗിക്കൂ",
+ "Confirm location": "ലൊക്കേഷൻ സ്ഥിരീകരിക്കൂ",
+ "Delivery address set": "ഡെലിവറി വിലാസം സെറ്റ് ചെയ്തു",
+ "Finding nearby landmarks…": "അടുത്തുള്ള ലാൻഡ്മാർക്കുകൾ കണ്ടെത്തുന്നു…",
+ "Couldn't load nearby landmarks — check your connection.": "അടുത്തുള്ള ലാൻഡ്മാർക്കുകൾ ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല — കണക്ഷൻ പരിശോധിക്കൂ.",
+ "Location unavailable on this device": "ഈ ഡിവൈസിൽ ലൊക്കേഷൻ ലഭ്യമല്ല",
+ "Locating…": "ലൊക്കേറ്റ് ചെയ്യുന്നു…",
+ "Location permission denied — enable it in browser settings": "ലൊക്കേഷൻ അനുമതി നിഷേധിച്ചു — ബ്രൗസർ സെറ്റിംഗ്സിൽ ഓൺ ചെയ്യൂ",
+ "Location unavailable — check GPS/network": "ലൊക്കേഷൻ ലഭ്യമല്ല — GPS/നെറ്റ്വർക്ക് പരിശോധിക്കൂ",
+ "Location request timed out — try again": "ലൊക്കേഷൻ അഭ്യർത്ഥനയുടെ സമയം കഴിഞ്ഞു — വീണ്ടും ശ്രമിക്കൂ",
+ "Waiting for location…": "ലൊക്കേഷനായി കാത്തിരിക്കുന്നു…",
+ "Search failed — check your connection.": "തിരയൽ പരാജയപ്പെട്ടു — കണക്ഷൻ പരിശോധിക്കൂ.",
+ "Searching…": "തിരയുന്നു…",
+ "No matches found — try a different search.": "ഒന്നും കണ്ടെത്തിയില്ല — മറ്റൊന്ന് തിരയൂ.",
+ "BOOK A RIDE": "റൈഡ് ബുക്ക് ചെയ്യൂ",
+ "Where to?": "എവിടേക്ക്?",
+ "PICKUP": "പിക്കപ്പ്",
+ "📍 GPS": "📍 GPS",
+ "DROP": "ഡ്രോപ്പ്",
+ "Tap the map (or drag the pin) to set your pickup point": "പിക്കപ്പ് പോയിന്റ് സെറ്റ് ചെയ്യാൻ മാപ്പിൽ ടാപ്പ് ചെയ്യൂ (അല്ലെങ്കിൽ പിൻ വലിച്ചിടൂ)",
+ "Tap the map (or drag the pin) to set your drop point": "ഡ്രോപ്പ് പോയിന്റ് സെറ്റ് ചെയ്യാൻ മാപ്പിൽ ടാപ്പ് ചെയ്യൂ (അല്ലെങ്കിൽ പിൻ വലിച്ചിടൂ)",
+ "Set pickup & drop to continue": "തുടരാൻ പിക്കപ്പും ഡ്രോപ്പും സെറ്റ് ചെയ്യൂ",
+ "👤 Choose your own driver": "👤 ഡ്രൈവറെ സ്വയം തിരഞ്ഞെടുക്കൂ",
+ "CHOOSE YOUR OWN DRIVER": "ഡ്രൈവറെ സ്വയം തിരഞ്ഞെടുക്കൂ",
+ "Pick a zone": "ഒരു സോൺ തിരഞ്ഞെടുക്കൂ",
+ "Loading zones near your pickup point…": "പിക്കപ്പ് പോയിന്റിനടുത്തുള്ള സോണുകൾ ലോഡ് ചെയ്യുന്നു…",
+ "ZONE": "സോൺ",
+ "Zone": "സോൺ",
+ "Pick a driver": "ഒരു ഡ്രൈവറെ തിരഞ്ഞെടുക്കൂ",
+ "Loading drivers in this zone…": "ഈ സോണിലെ ഡ്രൈവർമാരെ ലോഡ് ചെയ്യുന്നു…",
+ "Your ride": "നിങ്ങളുടെ റൈഡ്",
+ "Ride": "റൈഡ്",
+ "RIDE STATUS": "റൈഡ് സ്റ്റാറ്റസ്",
+ "Finding a nearby driver": "അടുത്തുള്ള ഡ്രൈവറെ കണ്ടെത്തുന്നു",
+ "This usually takes a minute or two": "സാധാരണ ഒന്നോ രണ്ടോ മിനിറ്റ് എടുക്കും",
+ "NEARBY AUTO DRIVER": "അടുത്തുള്ള ഓട്ടോ ഡ്രൈവർ",
+ "Accept this driver": "ഈ ഡ്രൈവറെ സ്വീകരിക്കൂ",
+ "CHOICE DRIVER": "തിരഞ്ഞെടുത്ത ഡ്രൈവർ",
+ "That driver didn't respond, so the ride stopped there — it wasn't sent to anyone else. Pick another driver to try again.": "ആ ഡ്രൈവർ പ്രതികരിച്ചില്ല, അതുകൊണ്ട് റൈഡ് അവിടെ നിന്നു — മറ്റാർക്കും അയച്ചിട്ടില്ല. വീണ്ടും ശ്രമിക്കാൻ മറ്റൊരു ഡ്രൈവറെ തിരഞ്ഞെടുക്കൂ.",
+ "Pick another driver": "മറ്റൊരു ഡ്രൈവറെ തിരഞ്ഞെടുക്കൂ",
+ "STILL SEARCHING": "ഇപ്പോഴും തിരയുന്നു",
+ "We haven't found a nearby driver yet. You can keep waiting, or stop the search now.": "അടുത്തുള്ള ഡ്രൈവറെ ഇതുവരെ കണ്ടെത്തിയില്ല. കാത്തിരിക്കാം, അല്ലെങ്കിൽ തിരയൽ നിർത്താം.",
+ "Keep waiting": "കാത്തിരിക്കൂ",
+ "Stop searching": "തിരയൽ നിർത്തൂ",
+ "SHARE THIS OTP WITH YOUR DRIVER": "ഈ OTP ഡ്രൈവറോട് പറയൂ",
+ "Your driver will ask for this at pickup to start the trip.": "യാത്ര തുടങ്ങാൻ പിക്കപ്പിൽ ഡ്രൈവർ ഇത് ചോദിക്കും.",
+ "How was your trip?": "യാത്ര എങ്ങനെയുണ്ടായിരുന്നു?",
+ "Rate your driver": "ഡ്രൈവറെ റേറ്റ് ചെയ്യൂ",
+ "Submit rating": "റേറ്റിംഗ് സമർപ്പിക്കൂ",
+ "Thanks for rating your trip!": "യാത്ര റേറ്റ് ചെയ്തതിന് നന്ദി!",
+ "Cancel ride": "റൈഡ് റദ്ദാക്കൂ",
+ "CHAT WITH DRIVER": "ഡ്രൈവറുമായി ചാറ്റ് ചെയ്യൂ",
+ "Driver": "ഡ്രൈവർ",
+ "Driver assigned": "ഡ്രൈവറെ നിയോഗിച്ചു",
+ "Driver is arriving": "ഡ്രൈവർ എത്തിക്കൊണ്ടിരിക്കുന്നു",
+ "On the way to your drop": "ഡ്രോപ്പ് സ്ഥലത്തേക്കുള്ള വഴിയിൽ",
+ "Trip completed": "യാത്ര പൂർത്തിയായി",
+ "Your driver": "നിങ്ങളുടെ ഡ്രൈവർ",
+ "Driver busy": "ഡ്രൈവർ തിരക്കിലാണ്",
+ "This driver": "ഈ ഡ്രൈവർ",
+ "Ride cancelled": "റൈഡ് റദ്ദാക്കി",
+ "This ride was cancelled.": "ഈ റൈഡ് റദ്ദാക്കി.",
+ "Waiting for your chosen driver to accept": "തിരഞ്ഞെടുത്ത ഡ്രൈവർ സ്വീകരിക്കാൻ കാത്തിരിക്കുന്നു",
+ "Driver didn't respond": "ഡ്രൈവർ പ്രതികരിച്ചില്ല",
+ "Waiting for the driver to confirm": "ഡ്രൈവർ സ്ഥിരീകരിക്കാൻ കാത്തിരിക്കുന്നു",
+ "Loading your ride status…": "റൈഡ് സ്റ്റാറ്റസ് ലോഡ് ചെയ്യുന്നു…",
+ "Couldn't send — check your connection and try again.": "അയയ്ക്കാൻ കഴിഞ്ഞില്ല — കണക്ഷൻ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കൂ.",
+ "Too late": "വൈകിപ്പോയി",
+ "A driver has already accepted this ride — it can no longer be cancelled from here.": "ഒരു ഡ്രൈവർ ഈ റൈഡ് ഇതിനകം സ്വീകരിച്ചു — ഇവിടെ നിന്ന് ഇനി റദ്ദാക്കാൻ കഴിയില്ല.",
+ "Cancel this ride?": "ഈ റൈഡ് റദ്ദാക്കണോ?",
+ "Are you sure you want to cancel this ride request?": "ഈ റൈഡ് അഭ്യർത്ഥന റദ്ദാക്കണമെന്ന് ഉറപ്പാണോ?",
+ "Yes, cancel": "അതെ, റദ്ദാക്കൂ",
+ "No, keep it": "വേണ്ട, നിലനിർത്തൂ",
+ "Book": "ബുക്ക് ചെയ്യൂ",
+ "Booking…": "ബുക്ക് ചെയ്യുന്നു…",
+ "Couldn't book your ride — check your connection and try again.": "റൈഡ് ബുക്ക് ചെയ്യാൻ കഴിഞ്ഞില്ല — കണക്ഷൻ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കൂ.",
+ "Couldn't load zones — check your connection and try again.": "സോണുകൾ ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല — കണക്ഷൻ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കൂ.",
+ "No zones have been set up yet — ask the operator to add one.": "ഇതുവരെ സോണുകളൊന്നും സെറ്റ് ചെയ്തിട്ടില്ല — ഓപ്പറേറ്ററോട് ചേർക്കാൻ പറയൂ.",
+ "You're in": "നിങ്ങൾ ഇപ്പോൾ ഉള്ളത്",
+ "Pick a zone to see drivers there.": "ഡ്രൈവർമാരെ കാണാൻ ഒരു സോൺ തിരഞ്ഞെടുക്കൂ.",
+ "Couldn't load drivers — check your connection and try again.": "ഡ്രൈവർമാരെ ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല — കണക്ഷൻ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കൂ.",
+ "No online drivers in this zone right now — try another zone.": "ഈ സോണിൽ ഇപ്പോൾ ഓൺലൈൻ ഡ്രൈവർമാരില്ല — മറ്റൊരു സോൺ നോക്കൂ.",
+ "Not-busy drivers, nearest first. Tap a driver to send them your ride directly.": "തിരക്കില്ലാത്ത ഡ്രൈവർമാർ, അടുത്തുള്ളവർ ആദ്യം. റൈഡ് നേരിട്ട് അയയ്ക്കാൻ ഒരു ഡ്രൈവറെ ടാപ്പ് ചെയ്യൂ.",
+ "Couldn't send this ride to the driver — check your connection and try again.": "ഈ റൈഡ് ഡ്രൈവർക്ക് അയയ്ക്കാൻ കഴിഞ്ഞില്ല — കണക്ഷൻ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കൂ.",
+ "Couldn't submit your rating. Please check your connection and try again.": "റേറ്റിംഗ് സമർപ്പിക്കാൻ കഴിഞ്ഞില്ല. കണക്ഷൻ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കൂ.",
+ "Couldn't check that number — check your connection and try again.": "ആ നമ്പർ പരിശോധിക്കാൻ കഴിഞ്ഞില്ല — കണക്ഷൻ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കൂ.",
+ "Couldn't create your account — check your connection and try again.": "അക്കൗണ്ട് ഉണ്ടാക്കാൻ കഴിഞ്ഞില്ല — കണക്ഷൻ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കൂ.",
+ "Couldn't delete your account — check your connection and try again.": "അക്കൗണ്ട് ഡിലീറ്റ് ചെയ്യാൻ കഴിഞ്ഞില്ല — കണക്ഷൻ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കൂ.",
+ "BUS TRIPS": "ബസ് ട്രിപ്പുകൾ",
+ "Find a trip": "ട്രിപ്പ് കണ്ടെത്തൂ",
+ "✕ Clear route, show all trips": "✕ റൂട്ട് നീക്കൂ, എല്ലാ ട്രിപ്പുകളും കാണിക്കൂ",
+ "Today": "ഇന്ന്",
+ "Tomorrow": "നാളെ",
+ "Trips": "ട്രിപ്പുകൾ",
+ "No trips scheduled right now. Check back later.": "ഇപ്പോൾ ട്രിപ്പുകളൊന്നും ഷെഡ്യൂൾ ചെയ്തിട്ടില്ല. പിന്നീട് നോക്കൂ.",
+ "No trip on this route right now.": "ഈ റൂട്ടിൽ ഇപ്പോൾ ട്രിപ്പില്ല.",
+ "NEW STOP": "പുതിയ സ്റ്റോപ്പ്",
+ "Add a stop": "സ്റ്റോപ്പ് ചേർക്കൂ",
+ "Save stop": "സ്റ്റോപ്പ് സേവ് ചെയ്യൂ",
+ "Bus operators will see this and can add it to their route.": "ബസ് ഓപ്പറേറ്റർമാർ ഇത് കണ്ട് അവരുടെ റൂട്ടിൽ ചേർക്കാം.",
+ "TRIP": "ട്രിപ്പ്",
+ "Other trips today": "ഇന്നത്തെ മറ്റ് ട്രിപ്പുകൾ",
+ "Route": "റൂട്ട്",
+ "Request a stop": "സ്റ്റോപ്പ് ആവശ്യപ്പെടൂ",
+ "📍 Request stop at my location": "📍 എന്റെ ലൊക്കേഷനിൽ സ്റ്റോപ്പ് ആവശ്യപ്പെടൂ",
+ "Trip not found.": "ട്രിപ്പ് കണ്ടെത്തിയില്ല.",
+ "SCHEDULED": "ഷെഡ്യൂൾ ചെയ്തത്",
+ "UPCOMING TRIP": "വരാനിരിക്കുന്ന ട്രിപ്പ്",
+ "Live now": "ഇപ്പോൾ ലൈവ്",
+ "Trip started — waiting for location…": "ട്രിപ്പ് തുടങ്ങി — ലൊക്കേഷനായി കാത്തിരിക്കുന്നു…",
+ "TRIP ENDED": "ട്രിപ്പ് അവസാനിച്ചു",
+ "This trip has ended for today.": "ഈ ട്രിപ്പ് ഇന്നത്തേക്ക് അവസാനിച്ചു.",
+ "From": "എവിടെ നിന്ന്",
+ "Starts": "തുടങ്ങുന്നത്",
+ "Starts at": "തുടങ്ങുന്ന സമയം",
+ "Near": "സമീപം",
+ "Enter": "നൽകൂ",
+ "Type a message…": "സന്ദേശം ടൈപ്പ് ചെയ്യൂ…",
+ "Request അയച്ചു — ഡ്രൈവർ accept ചെയ്താൽ stop ലിസ്റ്റിൽ വരും.": "Request അയച്ചു — ഡ്രൈവർ accept ചെയ്താൽ stop ലിസ്റ്റിൽ വരും.",
+ "Search area, street, landmark…": "പ്രദേശം, തെരുവ്, ലാൻഡ്മാർക്ക് തിരയൂ…",
+ "e.g. Vazhayur, Kodiyammal…": "ഉദാ. വാഴയൂർ, കൊടിയമ്മൽ…",
+ "e.g. Near St. Mary's Church, opposite bakery": "ഉദാ. സെന്റ് മേരീസ് പള്ളിക്ക് സമീപം, ബേക്കറിക്ക് എതിർവശം",
+ "10-digit mobile number": "10 അക്ക മൊബൈൽ നമ്പർ",
+ "you@example.com": "you@example.com",
+ "Search pickup location": "പിക്കപ്പ് ലൊക്കേഷൻ തിരയൂ",
+ "Where do you want to go?": "എവിടേക്കാണ് പോകേണ്ടത്?",
+ "Anything you'd like to add? (optional)": "എന്തെങ്കിലും ചേർക്കാനുണ്ടോ? (ഓപ്ഷണൽ)",
+ "From — evide ninn?": "എവിടെ നിന്ന്?",
+ "To — evide ekk?": "എവിടേക്ക്?",
+ "Stop name": "സ്റ്റോപ്പിന്റെ പേര്",
+ "Stop name (e.g. near XYZ)": "സ്റ്റോപ്പിന്റെ പേര് (ഉദാ. XYZ-ന് സമീപം)"
+});
+// Dynamic texts that contain numbers/names (exact-match can't cover these)
+const NESH_ML_PAT = [
+ [/^₹(\d+) for two$/, "രണ്ടുപേർക്ക് ₹$1"],
+ [/^(\d+) ratings?$/, "$1 റേറ്റിംഗ്"],
+ [/^📍 (\d+(?:\.\d+)?) km$/, "📍 $1 കി.മീ"],
+ [/^(\d+(?:\.\d+)?) km away$/, "$1 കി.മീ അകലെ"],
+ [/^Order picked up · (.+)$/, "ഓർഡർ എടുത്തു · $1"],
+ [/^Rider is heading to the shop · (.+)$/, "റൈഡർ കടയിലേക്ക് പോകുന്നു · $1"],
+ [/^TAP TO APPLY — save ₹(\d+)(.*)$/, "പ്രയോഗിക്കാൻ ടാപ്പ് ചെയ്യൂ — ₹$1 ലാഭിക്കാം$2"],
+ [/^Skip in (\d+)s?$/, "$1 സെക്കൻഡിൽ ഒഴിവാക്കാം"],
+ [/^(.+) accepts orders of ₹(\d+) or more\. Please add items worth ₹(\d+) more\.$/, "$1-ൽ ₹$2 അല്ലെങ്കിൽ അതിൽ കൂടുതലുള്ള ഓർഡറുകൾ മാത്രമേ സ്വീകരിക്കൂ. ₹$3-ന്റെ ഐറ്റംസ് കൂടി ചേർക്കൂ."],
+ [/^(\d+) min$/, "$1 മിനിറ്റ്"],
+ [/^(\d+(?:\.\d+)?) km$/, "$1 കി.മീ"],
+ [/^(\d+) items?$/, "$1 ഐറ്റംസ്"],
+ [/^Place order · (.+)$/, "ഓർഡർ ചെയ്യൂ · $1"],
+ [/^Add (₹.+)$/, "ചേർക്കൂ $1"],
+ [/^(🍽️ )?(\d+) restaurants? open now$/, "$1$2 റസ്റ്റോറന്റ് ഇപ്പോൾ തുറന്നിരിക്കുന്നു"],
+ [/^Hungry, (.+)\?$/, "വിശക്കുന്നുണ്ടോ, $1?"],
+ [/^Stock up, (.+)\?$/, "സാധനങ്ങൾ വാങ്ങിവെക്കണോ, $1?"],
+ [/^Shop something, (.+)\?$/, "എന്തെങ്കിലും വാങ്ങണോ, $1?"],
+ [/^Products \((\d+)\)$/, "ഉൽപ്പന്നങ്ങൾ ($1)"],
+ [/^Items \((\d+)\)$/, "ഐറ്റംസ് ($1)"],
+ [/^Search results \((\d+)\)$/, "തിരയൽ ഫലങ്ങൾ ($1)"],
+ [/^Trips · (.+)$/, "ട്രിപ്പുകൾ · $1"],
+ [/^Other trips · (.+)$/, "മറ്റ് ട്രിപ്പുകൾ · $1"],
+ [/^Other trips today$/, "ഇന്നത്തെ മറ്റ് ട്രിപ്പുകൾ"],
+ [/^Closed now\. Opens at (.+)$/, "ഇപ്പോൾ അടച്ചിരിക്കുന്നു. $1-ന് തുറക്കും"],
+ [/^No shops match "(.*)"\.$/, "\"$1\" എന്ന പേരിൽ കടകളൊന്നും ഇല്ല."],
+ [/^No restaurants match "(.*)"\.$/, "\"$1\" എന്ന പേരിൽ റസ്റ്റോറന്റുകളൊന്നും ഇല്ല."],
+ [/^Near (.+)$/, "$1-ന് സമീപം"],
+ [/^Arriving in (\d+) min$/, "$1 മിനിറ്റിൽ എത്തും"],
+ [/^🛵 Arriving in (\d+) min(.*)$/, "🛵 $1 മിനിറ്റിൽ എത്തും$2"],
+ [/^🏪 Rider heading to the shop · (\d+) min(.*)$/, "🏪 റൈഡർ കടയിലേക്ക് പോകുന്നു · $1 മിനിറ്റ്$2"],
+ [/^Ends in (\d+) days?$/, "$1 ദിവസത്തിൽ അവസാനിക്കും"],
+ [/^Ends in (\d+) h$/, "$1 മണിക്കൂറിൽ അവസാനിക്കും"],
+ [/^Min order ₹(\d+)(.*)$/, "മിനിമം ഓർഡർ ₹$1$2"],
+ [/^Only (\d+) left$/, "$1 എണ്ണം മാത്രം ബാക്കി"],
+ [/^Add items worth ₹(\d+).*$/, "₹$1-ന്റെ ഐറ്റംസ് കൂടി ചേർക്കൂ"],
+ [/^Auto-accepts in (\d+)s if you don't respond$/, "പ്രതികരിച്ചില്ലെങ്കിൽ $1 സെക്കൻഡിൽ ഓട്ടോ-സ്വീകരിക്കും"],
+ [/^Trip complete — (.+)$/, "യാത്ര പൂർത്തിയായി — $1"],
+ [/^Rate your trip with (.+)$/, "$1-നൊപ്പമുള്ള യാത്ര റേറ്റ് ചെയ്യൂ"],
+ [/^📍 Nearest stop: (.+)$/, "📍 അടുത്തുള്ള സ്റ്റോപ്പ്: $1"],
+ [/^Starts at (.+?) · in (.+?) — trip hasn't started yet$/, "$1-ന് തുടങ്ങും · $2 കഴിഞ്ഞ് — ട്രിപ്പ് തുടങ്ങിയിട്ടില്ല"],
+ [/^New NESH Store order #(.+)$/, "പുതിയ NESH സ്റ്റോർ ഓർഡർ #$1"],
+ [/^Order at (.+)$/, "$1-ൽ ഓർഡർ"]
+];
+function neshLookup(key) {
+  const hit = NESH_ML[key];
+  if (hit) return hit;
+  for (const [re, rep] of NESH_ML_PAT) {
+    if (re.test(key)) return key.replace(re, rep).replace(/(\d+) min\b/g, '$1 മിനിറ്റ്').replace(/(\d+(?:\.\d+)?) km\b/g, '$1 കി.മീ');
+  }
+  return null;
+}
+let neshLang = 'en';
+try { neshLang = localStorage.getItem('nesh_lang') === 'ml' ? 'ml' : 'en'; } catch (e) {}
+const _neshTxt = new WeakMap();   // text node  -> { orig, tr }
+const _neshPh = new WeakMap();    // element    -> { orig, tr } (placeholder)
+function _neshKey(x) { return String(x).replace(/\s+/g, ' ').trim(); }
+function neshTrText(n) {
+  const cur = n.nodeValue, rec = _neshTxt.get(n);
+  if (rec && cur === rec.tr) return;
+  const tr = neshLookup(_neshKey(cur));
+  if (!tr) return;
+  const lead = cur.match(/^\s*/)[0], trail = cur.match(/\s*$/)[0];
+  const out = lead + tr + trail;
+  _neshTxt.set(n, { orig: cur, tr: out });
+  n.nodeValue = out;
+}
+function neshTrPh(el) {
+  const cur = el.getAttribute('placeholder');
+  if (cur == null) return;
+  const rec = _neshPh.get(el);
+  if (rec && cur === rec.tr) return;
+  const tr = neshLookup(_neshKey(cur));
+  if (!tr) return;
+  _neshPh.set(el, { orig: cur, tr });
+  el.setAttribute('placeholder', tr);
+}
+function neshWalkText(root, fn) {
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(n) {
+      const t = n.parentNode && n.parentNode.nodeName;
+      return (t === 'SCRIPT' || t === 'STYLE' || t === 'TEXTAREA' || t === 'NOSCRIPT') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  let n; while ((n = w.nextNode())) fn(n);
+}
+function neshTranslateTree(node) {
+  if (!node) return;
+  if (node.nodeType === 3) { neshTrText(node); return; }
+  if (node.nodeType !== 1) return;
+  if (node.hasAttribute && node.hasAttribute('placeholder')) neshTrPh(node);
+  node.querySelectorAll && node.querySelectorAll('[placeholder]').forEach(neshTrPh);
+  neshWalkText(node, neshTrText);
+}
+function neshRestoreTree(root) {
+  neshWalkText(root, n => { const r = _neshTxt.get(n); if (r && n.nodeValue === r.tr) n.nodeValue = r.orig; });
+  root.querySelectorAll('[placeholder]').forEach(el => {
+    const r = _neshPh.get(el);
+    if (r && el.getAttribute('placeholder') === r.tr) el.setAttribute('placeholder', r.orig);
+  });
+}
+let _neshMO = null, _neshQ = new Set(), _neshRaf = 0;
+function neshObserverStart() {
+  if (_neshMO) return;
+  _neshMO = new MutationObserver(muts => {
+    for (const m of muts) {
+      if (m.type === 'childList') m.addedNodes.forEach(n => _neshQ.add(n));
+      else _neshQ.add(m.target);
+    }
+    if (!_neshRaf) _neshRaf = requestAnimationFrame(() => {
+      _neshRaf = 0;
+      const items = Array.from(_neshQ); _neshQ.clear();
+      items.forEach(n => { if (n.isConnected) neshTranslateTree(n); });
+    });
+  });
+  _neshMO.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['placeholder'] });
+}
+function neshObserverStop() { if (_neshMO) { _neshMO.disconnect(); _neshMO = null; } _neshQ.clear(); }
+function neshApplyLang() {
+  try {
+    document.documentElement.setAttribute('lang', neshLang === 'ml' ? 'ml' : 'en');
+    if (neshLang === 'ml') { neshTranslateTree(document.body); neshObserverStart(); }
+    else { neshObserverStop(); neshRestoreTree(document.body); }
+  } catch (err) { console.warn('language apply failed', err); }
+}
+function neshUpdateLangButtons() {
+  document.getElementById('lang-en-btn').classList.toggle('on', neshLang === 'en');
+  document.getElementById('lang-ml-btn').classList.toggle('on', neshLang === 'ml');
+}
+function neshSetLang(l) {
+  neshLang = (l === 'ml') ? 'ml' : 'en';
+  try { localStorage.setItem('nesh_lang', neshLang); } catch (e) {}
+  neshApplyLang();
+  neshUpdateLangButtons();
+}
+document.getElementById('lang-en-btn').addEventListener('click', () => neshSetLang('en'));
+document.getElementById('lang-ml-btn').addEventListener('click', () => neshSetLang('ml'));
+
+// ---------- SETTINGS / ACCOUNT / EDIT PROFILE ----------
+let neshSettingsReturn = 'category';
+function openSettings() {
+  const a = document.querySelector('.screen.active');
+  const id = a ? a.id.replace('screen-', '') : 'category';
+  neshSettingsReturn = (id === 'home') ? 'home' : 'category';
+  neshUpdateLangButtons();
+  showScreen('settings');
+}
+function openAccountScreen() {
+  const u = (state.user && state.user.number) ? state.user : null;
+  document.getElementById('acct-profile-card').style.display = u ? '' : 'none';
+  document.getElementById('acct-edit-btn').style.display = u ? '' : 'none';
+  document.getElementById('acct-logout-btn').style.display = u ? '' : 'none';
+  document.getElementById('acct-delete-btn').style.display = u ? '' : 'none';
+  document.getElementById('acct-login-btn').style.display = u ? 'none' : '';
+  document.getElementById('acct-guest-note').style.display = u ? 'none' : '';
+  if (u) {
+    const nm = (u.name || '').trim();
+    document.getElementById('acct-avatar').textContent = (nm.charAt(0) || '?').toUpperCase();
+    document.getElementById('acct-name').textContent = nm || '—';
+    document.getElementById('acct-number').textContent = '+91 ' + u.number;
+    document.getElementById('acct-email').textContent = u.email ? u.email : 'No email added';
+  }
+  try { if (window.updateSupportCallBtn) window.updateSupportCallBtn(); } catch (e) {}
+  showScreen('account');
+}
+function openEditProfile() {
+  if (!(state.user && state.user.number)) return;
+  document.getElementById('ep-name').value = state.user.name || '';
+  document.getElementById('ep-email').value = state.user.email || '';
+  document.getElementById('ep-error').style.display = 'none';
+  showScreen('edit-profile');
+}
+document.getElementById('settings-btn').addEventListener('click', () => { closeAllAccountDropdowns(); openSettings(); });
+document.getElementById('cat-settings-btn').addEventListener('click', () => { closeAllAccountDropdowns(); openSettings(); });
+document.getElementById('settings-back-btn').addEventListener('click', () => {
+  if (neshSettingsReturn === 'home' && state.category) showScreen('home'); else goToCategoryScreen();
+});
+document.getElementById('settings-account-row').addEventListener('click', openAccountScreen);
+document.getElementById('account-back-btn').addEventListener('click', () => showScreen('settings'));
+document.getElementById('acct-edit-btn').addEventListener('click', openEditProfile);
+document.getElementById('edit-profile-back-btn').addEventListener('click', openAccountScreen);
+document.getElementById('acct-logout-btn').addEventListener('click', () => { logoutUser(); });
+document.getElementById('acct-login-btn').addEventListener('click', () => { showScreen('login'); });
+document.getElementById('acct-delete-btn').addEventListener('click', () => { deleteAccountUser(); });
+
+document.getElementById('ep-save-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('ep-save-btn');
+  const err = document.getElementById('ep-error');
+  const name = document.getElementById('ep-name').value.trim();
+  const email = document.getElementById('ep-email').value.trim();
+  const fail = msg => { err.textContent = msg; err.style.display = 'block'; };
+  err.style.display = 'none';
+  if (!name) { fail('Please enter your name.'); return; }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { fail('Please enter a valid email address.'); return; }
+  const number = state.user && state.user.number;
+  if (!number) return;
+  btn.disabled = true;
+  try {
+    if (navigator.onLine === false) throw new Error('offline');
+    const { db, ref, update } = window.fb;
+    await Promise.race([
+      update(ref(db, 'customers/' + number), { name: name, email: email || null }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))
+    ]);
+    state.user = Object.assign({}, state.user, { name: name, email: email });
+    try { localStorage.setItem('asfood_customer_user', JSON.stringify(state.user)); } catch (e) {}
+    const eyebrow = document.getElementById('cat-greeting-eyebrow');
+    if (eyebrow && /^HI,/.test(eyebrow.textContent)) eyebrow.textContent = 'HI, ' + name.split(' ')[0].toUpperCase();
+    openAccountScreen();
+    showInfoModal('Profile updated', 'Your details have been saved.');
+  } catch (e) {
+    fail("Couldn't save — check your connection and try again.");
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+neshApplyLang(); // apply the saved language (English = no changes)
 document.getElementById('cat-card-food').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); requireLocationThen(() => { openCategory('hotel'); offerWebNotificationOnce(); }); });
 document.getElementById('cat-card-groceries').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); requireLocationThen(() => { openNeshStore(); offerWebNotificationOnce(); }); });
 document.getElementById('cat-card-online-shop').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); requireLocationThen(() => { openCategory('online_shop'); offerWebNotificationOnce(); }); });
@@ -4530,6 +5465,10 @@ document.getElementById('home-cat-back-btn').addEventListener('click', goToCateg
 document.getElementById('cat-card-taxi').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); goToTaxiBooking(); offerWebNotificationOnce(); });
 document.getElementById('cat-card-bus').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); openBusList(); offerWebNotificationOnce(); });
 document.getElementById('cat-card-orders').addEventListener('click', () => { openOrdersScreen(); offerWebNotificationOnce(); });
+['cat-settings-icon-btn', 'home-settings-icon-btn'].forEach(id => {
+  const b = document.getElementById(id);
+  if (b) b.addEventListener('click', (e) => { e.stopPropagation(); closeAllAccountDropdowns(); openSettings(); });
+});
 document.getElementById('cat-loc-card').addEventListener('click', () => openBrowseLocationPicker());
 
 // ---------- TAXI (Uber-style ride booking) ----------
@@ -4827,6 +5766,8 @@ function formatDateLabel(dateStr) {
 let busTrackUnsub = null;
 let busTrackStopsUnsub = null;
 let busTrackTripsUnsub = null;
+let busTrackRouteStartUnsub = null;
+let busTrackRouteEndUnsub = null;
 let busTrackCurrentId = null;
 let busTrackCurrentTripId = null;    // which of the bus's trips is open on the track screen
 let busListTickInterval = null;      // re-renders trip list periodically so countdowns/live
@@ -5472,6 +6413,8 @@ function openBusTrack(busId, tripId, dateStr) {
   if (busTrackUnsub) { busTrackUnsub(); busTrackUnsub = null; }
   if (busTrackStopsUnsub) { busTrackStopsUnsub(); busTrackStopsUnsub = null; }
   if (busTrackTripsUnsub) { busTrackTripsUnsub(); busTrackTripsUnsub = null; }
+  if (busTrackRouteStartUnsub) { busTrackRouteStartUnsub(); busTrackRouteStartUnsub = null; }
+  if (busTrackRouteEndUnsub) { busTrackRouteEndUnsub(); busTrackRouteEndUnsub = null; }
   if (busTrackTickInterval) { clearInterval(busTrackTickInterval); busTrackTickInterval = null; }
   busTrackStopsCache = [];
   busTrackLastLoc = null;
@@ -5572,12 +6515,12 @@ function openBusTrack(busId, tripId, dateStr) {
     refreshTripStatus();
   });
 
-  onValue(ref(db, 'buses/' + busId + '/routeStart'), snap => {
+  busTrackRouteStartUnsub = onValue(ref(db, 'buses/' + busId + '/routeStart'), snap => {
     const v = snap.val();
     busTrackStart = (v && typeof v.lat === 'number') ? v : null;
     rebuildBusRouteList();
   });
-  onValue(ref(db, 'buses/' + busId + '/routeEnd'), snap => {
+  busTrackRouteEndUnsub = onValue(ref(db, 'buses/' + busId + '/routeEnd'), snap => {
     const v = snap.val();
     busTrackEnd = (v && typeof v.lat === 'number') ? v : null;
     rebuildBusRouteList();
@@ -5652,6 +6595,8 @@ document.getElementById('bus-track-back-btn').addEventListener('click', () => {
   if (busTrackUnsub) { busTrackUnsub(); busTrackUnsub = null; }
   if (busTrackStopsUnsub) { busTrackStopsUnsub(); busTrackStopsUnsub = null; }
   if (busTrackTripsUnsub) { busTrackTripsUnsub(); busTrackTripsUnsub = null; }
+  if (busTrackRouteStartUnsub) { busTrackRouteStartUnsub(); busTrackRouteStartUnsub = null; }
+  if (busTrackRouteEndUnsub) { busTrackRouteEndUnsub(); busTrackRouteEndUnsub = null; }
   if (busTrackTickInterval) { clearInterval(busTrackTickInterval); busTrackTickInterval = null; }
   openBusList();
 });
@@ -5895,7 +6840,7 @@ function useTaxiGps() {
       taxiActivePin = 'drop';
       updateTaxiPinRows();
     },
-    (err) => { btn.textContent = prevLabel; showLocationOffPopup(err && err.code); },
+    (err) => { btn.textContent = prevLabel; showLocationOffPopup(err && err.code, { taxi: true }); },
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
   );
 }
@@ -7044,6 +7989,13 @@ function neshHandleBack() {
   });
 })();
 
+(function () {
+  const CapApp = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+  if (!(CapApp && CapApp.addListener)) return;
+  CapApp.addListener('appUrlOpen', ev => { try { window.neshOpenAppLink(ev && ev.url); } catch (e) {} });
+  try { if (CapApp.getLaunchUrl) CapApp.getLaunchUrl().then(r => { if (r && r.url) window.neshOpenAppLink(r.url); }).catch(() => {}); } catch (e) {}
+})();
+
 taxiCancelBtn.addEventListener('click', async () => {
   if (!currentRideKey) return;
   // Server-side of truth check — a driver may have accepted the instant
@@ -7097,7 +8049,7 @@ loginSubmitBtn.addEventListener('click', async () => {
     const snap = await get(ref(db, 'customers/' + number));
     if (snap.exists()) {
       const record = snap.val() || {};
-      state.user = { name: record.name, number: number };
+      state.user = { name: record.name, number: number, email: record.email || '' };
       saveUserSession(state.user);
       attachScratchListener(state.user.number);
       attachOrderStatusWatcher(state.user.number);
@@ -8791,7 +9743,7 @@ function renderFoodList(list) {
     const p = document.createElement('p'); p.className = 'empty-text'; p.textContent = 'No restaurants are open right now.';
     restListEl.appendChild(p); return;
   }
-  rows.forEach(({ r, km, closed }) => {
+  rows.forEach(({ r, km, closed }, idx) => {
     const card = document.createElement('div');
     card.className = 'food-card' + (closed.closed ? ' closed' : '');
     const rating = Number(r.rating) ? Number(r.rating).toFixed(1) : '';
@@ -8814,7 +9766,49 @@ function renderFoodList(list) {
       </div>`;
     card.addEventListener('click', () => openRestaurant(r.id));
     restListEl.appendChild(card);
+    // After the 1st shop (which stays on top), show one item from each shop
+    if (idx === 0) {
+      const strip = buildFoodItemStrip(rows);
+      if (strip) restListEl.appendChild(strip);
+    }
   });
+}
+// One item per shop, shown as a swipeable row between the 1st and 2nd shop. No offers/prices.
+function buildFoodItemStrip(rows) {
+  const tiles = [];
+  rows.forEach(({ r, closed }) => {
+    const items = Array.isArray(r.items) ? r.items : [];
+    const avail = items.filter(x => x && x.image && !x.soldOut && !x.outOfStock && x.available !== false);
+    // Shop's own "Popular products" pick (Partner app -> Stock, rank order) comes first;
+    // only if none is set/available do we fall back to the shop's first item.
+    const popId = (Array.isArray(r.popularItems) ? r.popularItems : []).find(id => avail.some(x => x.id === id));
+    const it = (popId !== undefined && avail.find(x => x.id === popId)) || avail[0];
+    if (it) tiles.push({ r, it, closed });
+  });
+  if (!tiles.length) return null;
+  const wrap = document.createElement('div');
+  wrap.className = 'food-items-wrap';
+  wrap.innerHTML = '<div class="food-items-head"><span class="food-items-badge">ITEMS</span><p class="food-items-title">🍽️ Dishes you’ll love</p><span class="food-items-hint">Swipe →</span></div>';
+  const row = document.createElement('div');
+  row.className = 'food-items-row';
+  tiles.forEach(({ r, it, closed }) => {
+    const rating = Number(r.rating) ? Number(r.rating).toFixed(1) : '';
+    const t = document.createElement('div');
+    t.className = 'food-item-tile';
+    const logo = r.image ? `<img src="${escapeHtml(r.image)}" alt="" loading="lazy" onerror="this.onerror=null;this.remove();" />` : '🍽️';
+    t.innerHTML = `
+      <div class="food-item-photo">
+        <img class="food-item-img" src="${escapeHtml(it.image)}" alt="${escapeHtml(it.name)}" loading="lazy" onerror="this.onerror=null;this.src='icon-192.png';" />
+        <span class="food-item-logo" title="${escapeHtml(r.name)}">${logo}</span>
+        <span class="food-item-price">₹${escapeHtml(String(it.price))}${UNIT_SUFFIX[it.unit] || ''}</span>
+      </div>
+      <p class="food-item-name">${escapeHtml(it.name)}</p>
+      <p class="food-item-shop"><span>${escapeHtml(r.name)}</span></p>`;
+    t.addEventListener('click', () => openRestaurantAtItem(r.id, it.id));
+    row.appendChild(t);
+  });
+  wrap.appendChild(row);
+  return wrap;
 }
 searchInput.addEventListener('input', renderRestaurantList);
 
@@ -9073,6 +10067,20 @@ function openRestaurant(id) {
   renderMenu();
   showScreen('menu');
   persistScreen('menu', { restaurantId: id, cart: state.cart });
+}
+// Home food tile -> open the shop's menu, scroll to the tapped item and flash it
+// (no single-item full view).
+function openRestaurantAtItem(restId, itemId) {
+  openRestaurant(restId);
+  if (!state.selectedRestaurant || state.selectedRestaurant.id !== restId) return; // shop was blocked (area/delivery)
+  setTimeout(() => {
+    const card = document.querySelector('#screen-menu .item-card2[data-item-id="' + String(itemId).replace(/"/g, '\\"') + '"]');
+    if (!card) return;
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    card.style.transition = 'box-shadow .3s, background .3s';
+    card.style.boxShadow = '0 0 0 3px var(--marigold-dark)';
+    setTimeout(() => { card.style.boxShadow = ''; }, 1800);
+  }, 150);
 }
 // Used by the home posters: tap a poster -> open the shop the operator picked for it.
 window.neshOpenShop = function (id) {
@@ -9477,12 +10485,33 @@ document.getElementById('item-detail-back-btn').addEventListener('click', () => 
   persistScreen('menu', { restaurantId: state.selectedRestaurant.id, cart: state.cart });
 });
 
+// Share the product currently open: opens the phone's share sheet with a link that
+// opens the NESH app (if installed) straight on this product, else the website.
+// Goes through the Cloudflare preview Worker (cloudflare-worker-shop-preview.js) so WhatsApp etc. show the product's
+// photo + name; the Worker then sends people on to https://nesh-group.github.io/NESH-APP/?shop=..&item=..
+const NESH_SHARE_BASE = 'https://shop-preview.raise3715.workers.dev/';
+document.getElementById('item-detail-share-btn').addEventListener('click', async () => {
+  const r = state.selectedRestaurant;
+  const it = r && state.selectedItem ? (r.items || []).find(i => i.id === state.selectedItem) : null;
+  if (!r || !it) return;
+  const url = NESH_SHARE_BASE + '?shop=' + encodeURIComponent(r.id) + '&item=' + encodeURIComponent(it.id);
+  const title = (it.name || 'Product') + (r.name ? ' - ' + r.name : '');
+  const text = title + ' on NESH';
+  try {
+    const cap = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Share;
+    if (cap && cap.share) { await cap.share({ title, text, url, dialogTitle: 'Share product' }); return; }
+    if (navigator.share) { await navigator.share({ title, text, url }); return; }
+  } catch (e) { return; }   // person closed the share sheet
+  try { await navigator.clipboard.writeText(url); showInfoModal('Link copied', 'Product link copied. Paste it in WhatsApp or anywhere to share.'); }
+  catch (e) { showInfoModal('Share link', url); }
+});
+
 function openItemDetail(itemId, fromHome) {
   state.itemFromHome = !!fromHome;
   state.selectedItem = itemId;
   renderItemDetail();
   showScreen('item-detail');
-  persistScreen('item-detail', { restaurantId: state.selectedRestaurant.id, itemId, cart: state.cart });
+  persistScreen('item-detail', { restaurantId: state.selectedRestaurant.id, itemId, cart: state.cart, cartGrams: state.cartGrams, cartSizes: state.cartSizes });
 }
 
 function renderItemDetail() {
@@ -11257,6 +12286,7 @@ browseLocConfirmBtn.addEventListener('click', () => {
   }
   state.customerPos = pendingBrowsePos;
   try { localStorage.setItem('asfood_customer_pos', JSON.stringify(state.customerPos)); } catch (e) {}
+  try { localStorage.setItem('nesh_last_gps', JSON.stringify({ lat: state.customerPos.lat, lng: state.customerPos.lng, t: Date.now() })); } catch (e) {}   // remembered as "last location"
   closeBrowseLocationPicker();
   updateHomeLocationLabel();
   renderRestaurantList();
@@ -12626,7 +13656,7 @@ function closeAllAccountDropdowns() {
 // is configured, so there's nothing to tap into a dead "tel:" link.
 function updateSupportCallBtn() {
   const phone = window.SUPPORT_PHONE;
-  ['support-call-btn', 'track-support-btn', 'taxi-track-support-btn', 'cat-support-call-btn'].forEach(id => {
+  ['support-call-btn', 'track-support-btn', 'taxi-track-support-btn', 'cat-support-call-btn', 'acct-support-call-btn'].forEach(id => {
     const btn = document.getElementById(id);
     if (!btn) return;
     if (phone) {
@@ -12712,13 +13742,17 @@ const locOffEnableBtn = document.getElementById('loc-off-enable-btn');
 const locOffLaterBtn = document.getElementById('loc-off-later-btn');
 const locOffHelp = document.getElementById('loc-off-help');
 
-function showLocationOffPopup(errCode) {
+function showLocationOffPopup(errCode, opts) {
   try { window.neshSplash && window.neshSplash.done('loc'); } catch (e) {}
   if (!locOffOverlay || locOffOverlay.classList.contains('show')) return;
+  // Taxi pickup uses this popup too: there "last location" / the shop-location picker don't apply, so keep the old plain behaviour.
+  const taxiMode = !!(opts && opts.taxi);
+  if (locOffLaterBtn) { locOffLaterBtn.dataset.mode = taxiMode ? 'taxi' : ''; locOffLaterBtn.textContent = taxiMode ? 'Not now — select manually' : '🔍 Search another location'; }
   locOffHelp.style.display = 'none';
   locOffEnableBtn.disabled = false;
   locOffEnableBtn.textContent = 'Turn on location';
   if (errCode === 1) { locOffHelp.innerHTML = locBlockedHelpHtml(); locOffHelp.style.display = 'block'; locOffEnableBtn.textContent = 'Try again'; }
+  try { if (taxiMode) { if (locOffLastBtn) locOffLastBtn.style.display = 'none'; } else neshRefreshLastLocBtn(); } catch (e) {}
   locOffOverlay.classList.add('show');
   // When the customer allows location from the browser's site settings,
   // continue automatically without needing another tap.
@@ -12737,6 +13771,56 @@ function locBlockedHelpHtml() {
 function hideLocationOffPopup() {
   if (locOffOverlay) locOffOverlay.classList.remove('show');
 }
+
+// ---------- "Use last location" option inside the location popup ----------
+// The last location (last GPS fix, or the last one the customer picked on the map) is kept in
+// localStorage 'nesh_last_gps'. It is only OFFERED here when a fresh fix is not possible;
+// the customer taps once to continue with it, or searches another location.
+const locOffLastBtn = document.getElementById('loc-off-last-btn');
+function neshReadLastLoc() {
+  try {
+    const g = JSON.parse(localStorage.getItem('nesh_last_gps') || 'null');
+    if (g && typeof g.lat === 'number' && typeof g.lng === 'number') return { lat: g.lat, lng: g.lng };
+  } catch (e) {}
+  return null;
+}
+async function neshPlaceNameFor(lat, lng) {
+  try {
+    await loadLocalLandmarks();
+    let name = findLocationZoneName(lat, lng);
+    if (!name) { const n = findNearestLocality(lat, lng, 3000); name = n ? n.name : await fetchPlaceAreaFromNominatim(lat, lng); }
+    return name || null;
+  } catch (e) { return null; }
+}
+function neshRefreshLastLocBtn() {
+  if (!locOffLastBtn) return;
+  const last = neshReadLastLoc();
+  if (!last) { locOffLastBtn.style.display = 'none'; return; }
+  locOffLastBtn.dataset.lat = String(last.lat);
+  locOffLastBtn.dataset.lng = String(last.lng);
+  locOffLastBtn.textContent = '📍 Continue with last location';
+  locOffLastBtn.style.display = 'block';
+  Promise.race([neshPlaceNameFor(last.lat, last.lng), new Promise(r => setTimeout(() => r(null), 3000))]).then(name => {
+    if (name && locOffLastBtn.dataset.lat === String(last.lat)) locOffLastBtn.textContent = '📍 Continue with last location: ' + name;
+  });
+}
+if (locOffLastBtn) locOffLastBtn.addEventListener('click', () => {
+  const lat = parseFloat(locOffLastBtn.dataset.lat), lng = parseFloat(locOffLastBtn.dataset.lng);
+  if (!isFinite(lat) || !isFinite(lng)) return;
+  state.customerPos = { lat, lng };
+  state.locationDetectFailed = false;
+  hideLocationOffPopup();
+  try { renderHome(); } catch (e) {}
+  try { updateHomeLocationLabel(); } catch (e) {}
+  try { renderRestaurantList(); } catch (e) {}
+  try { closeBrowseLocationPicker(); } catch (e) {}   // if the picker was open underneath, it is no longer needed
+  // If something was waiting on a location (e.g. a shared shop link), continue it.
+  if (pendingLocationRequiredAction) {
+    const action = pendingLocationRequiredAction;
+    pendingLocationRequiredAction = null;
+    action();
+  }
+});
 
 function onLocationGranted(pos) {
   try { neshRevealPlaceThenDone(pos.coords.latitude, pos.coords.longitude); } catch (e) { try { window.neshSplash && window.neshSplash.done('loc'); } catch (e2) {} }
@@ -12837,7 +13921,12 @@ function tryEnableLocationCore(silent) {
   }).observe(ov, { attributes: true, attributeFilter: ['class'] });
 });
 if (locOffEnableBtn) locOffEnableBtn.addEventListener('click', () => tryEnableLocation(false));
-if (locOffLaterBtn) locOffLaterBtn.addEventListener('click', hideLocationOffPopup);
+if (locOffLaterBtn) locOffLaterBtn.addEventListener('click', () => {
+  hideLocationOffPopup();
+  if (locOffLaterBtn.dataset.mode === 'taxi') return;                                   // taxi: just close, as before
+  if (browseLocOverlay && browseLocOverlay.classList.contains('show')) return;          // picker already open underneath
+  try { openBrowseLocationPicker(); } catch (e) {}
+});
 // Customer switched GPS on in Settings and returned to the app → retry quietly.
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && locOffOverlay && locOffOverlay.classList.contains('show')) tryEnableLocation(true);
@@ -13018,9 +14107,7 @@ if ('serviceWorker' in navigator) {
           });
           vd.addEventListener('error', function () { if (posters[idx] === b && posters.length > 1) setTimeout(function () { if (posters[idx] === b) go(idx + 1); }, 1000); });
           d.appendChild(vd);
-          var sb = document.createElement('button'); sb.type = 'button'; sb.className = 'poster-snd'; sb.textContent = '🔇'; sb.setAttribute('aria-label', 'Sound');
-          sb.addEventListener('click', function (ev) { ev.stopPropagation(); vd.muted = !vd.muted; sb.textContent = vd.muted ? '🔇' : '🔊'; });
-          d.appendChild(sb);
+          // No sound button on the home poster video: it always plays muted (vd.muted = true above).
         } else {
           var im = document.createElement('img'); im.src = b.img; im.alt = 'Offer'; im.loading = 'eager';
           d.appendChild(im);
@@ -13466,6 +14553,49 @@ if ('serviceWorker' in navigator) {
   }
   ['scroll', 'resize', 'orientationchange', 'focusin', 'touchend', 'pageshow'].forEach(function (e) { window.addEventListener(e, snap, { passive: true }); });
   setInterval(snap, 1500);
+})();
+</script>
+<script>
+/* Shared shop/product link opened in the browser on Android: offer "Open in the NESH app".
+   The button is an Android intent link: opens the installed app on this same link, or Google Play if it isn't installed. */
+(function () {
+  var search = window.__neshLinkSearch || '';
+  var ua = navigator.userAgent || '';
+  var inAppWebView = /; wv\)/.test(ua) || !!window.Capacitor;
+  var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  if (!search || !/Android/i.test(ua) || inAppWebView || standalone) return;
+  var play = 'https://play.google.com/store/apps/details?id=com.neshgroup.nesh';
+  var href = 'intent://' + location.host + location.pathname + search +
+    '#Intent;scheme=https;package=com.neshgroup.nesh;S.browser_fallback_url=' + encodeURIComponent(play) + ';end';
+  document.querySelectorAll('.shared-install-link').forEach(function (a) { a.setAttribute('href', href); });
+  document.querySelectorAll('.shared-install-x').forEach(function (b) {
+    b.addEventListener('click', function () { document.documentElement.classList.remove('shared-visit'); });
+  });
+  document.documentElement.classList.add('shared-visit');
+})();
+</script>
+<script>
+/* FIX (older Android WebViews): without overflow-x:clip, #app / .cat-wrap / .screen are overflow:hidden SCROLL CONTAINERS.
+   Focus, scrollIntoView or a stray drag can slide them sideways (left part cut off + yellow strip on the right) and the
+   window/body snap above never reset them. Reset them straight away (scroll events don't bubble, so listen in capture). */
+(function () {
+  function guards() {
+    var a = [document.documentElement, document.body, document.getElementById('app')];
+    return a.concat([].slice.call(document.querySelectorAll('.cat-wrap, .screen.active')));
+  }
+  function reset() {
+    guards().forEach(function (el) { if (el && el.scrollLeft > 0) el.scrollLeft = 0; });
+    if (window.scrollX) window.scrollTo(0, window.scrollY || 0);
+  }
+  window.addEventListener('scroll', function (e) {
+    var t = e.target;
+    if (t === document || t === document.documentElement || t === document.body || (t && t.id === 'app') ||
+        (t && t.classList && (t.classList.contains('cat-wrap') || t.classList.contains('screen')))) reset();
+  }, true);
+  ['focusin', 'touchend', 'resize', 'orientationchange', 'pageshow'].forEach(function (ev) {
+    window.addEventListener(ev, function () { setTimeout(reset, 0); setTimeout(reset, 300); }, { passive: true });
+  });
+  setInterval(reset, 1000);
 })();
 </script>
 </body>
