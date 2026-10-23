@@ -155,6 +155,7 @@ jobs:
           npm install @capacitor/push-notifications
           npm install @capacitor/local-notifications
           npm install @capacitor/share
+          npm install @capawesome/capacitor-app-update
           npm install @capacitor/assets --save-dev
 
       # IMPORTANT: appId must stay exactly the same as the package name
@@ -491,13 +492,13 @@ jobs:
       - name: Sync web assets into Android project
         run: npx cap sync android
 
-      # versionCode 9 (1.0.8) is already uploaded to Play Console, and every
+      # versionCode 10 (1.0.9) is already uploaded to Play Console, and every
       # new upload must have a strictly higher versionCode, so this build
-      # uses 10. versionName is only the label users see (1.0.9).
+      # uses 11. versionName is only the label users see (1.0.10).
       - name: Set version code and name
         run: |
-          sed -i "s/versionCode 1/versionCode 10/" android/app/build.gradle
-          sed -i 's/versionName "1.0"/versionName "1.0.9"/' android/app/build.gradle
+          sed -i "s/versionCode 1/versionCode 11/" android/app/build.gradle
+          sed -i 's/versionName "1.0"/versionName "1.0.10"/' android/app/build.gradle
           grep -E "versionCode|versionName" android/app/build.gradle
 
       - name: Fix Kotlin stdlib duplicate class conflict
