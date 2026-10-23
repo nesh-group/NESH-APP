@@ -1,4 +1,5 @@
 {
   "latestBuild": 10,
-  "latestVersion": "1.0.9"
+  "latestVersion": "1.0.9",
+  "forceUpdate": false
 }
