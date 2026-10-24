@@ -15573,6 +15573,11 @@ function cpPlaceCod() {
   sheet.classList.remove('show'); pb.classList.remove('run');
   setPaymentMethod('cod');
   updateLocConfirmGate();
+  if (payConfirmBtn.disabled) {   // clicking a disabled button does nothing: tell the customer instead of silently dropping the order
+    pb.disabled = false;
+    showInfoModal('Please wait a moment', 'Delivery charge is still being calculated. Please tap the Pay button again in a few seconds.');
+    return;
+  }
   payConfirmBtn.click();
   pb.disabled = false;
 }
@@ -15593,6 +15598,10 @@ document.getElementById('cp-online-place').addEventListener('click', () => {
   if (!gpayPaidCheckbox.checked) return;
   document.getElementById('cp-online-sheet').classList.remove('show');
   updateLocConfirmGate();
+  if (payConfirmBtn.disabled) {
+    showInfoModal('Please wait a moment', 'Delivery charge is still being calculated. Please try again in a few seconds.');
+    return;
+  }
   payConfirmBtn.click();
 });
 document.getElementById('cp-online-close').addEventListener('click', cpCloseSheets);
@@ -18275,6 +18284,17 @@ if ('serviceWorker' in navigator) {
     })();
   }
 
+  function specRoute(list, pc) {
+    try {
+      if (!pc || typeof pc.lat !== 'number' || typeof pc.lng !== 'number' || !list || list.length < 2) return;
+      if (list.some(function (b) { return !b || !b.pos; })) return;
+      var prov = list.map(function (b) { return { id: b.id, pos: b.pos, km: haversineMeters(b.pos.lat, b.pos.lng, pc.lat, pc.lng) }; });
+      var po = routeOrder(prov), pk = routeKey(po, pc);
+      if (RC[pk] != null) return;
+      var c = rcGet(pk); if (c != null) { RC[pk] = c; return; }
+      fetchRoute(po, pc, pk);
+    } catch (e) {}
+  }
   var rt = null;
   function schedule() { if (!M) return; clearTimeout(rt); rt = setTimeout(refresh, 30); }
 
@@ -18299,6 +18319,7 @@ if ('serviceWorker' in navigator) {
     }
     var all = liveIds.map(billFor).filter(Boolean);
     Object.keys(M.need).forEach(function (k) { fetchKm(M.need[k], k); });
+    specRoute(all, M.pc);
     var cov = coverage(all);
     var ovKey = JSON.stringify(cov.ov);
     if (ovKey !== JSON.stringify(M.override || {})) {          // the normal bill / order code reads M.override (see currentDeliveryFee below)
@@ -18367,7 +18388,7 @@ if ('serviceWorker' in navigator) {
     html += '<div style="height:4px"></div>';   // grand total is shown in Bill Summary and the bottom bar
     if (box.getAttribute('data-h') !== html) { box.setAttribute('data-h', html); box.innerHTML = html; }
     box.style.display = '';
-    applyBar();
+    try { cpSyncBar(); } catch (e) { applyBar(); }   // resets the Pay button, then applies the multi-shop state (was: applyBar only -> button stayed disabled)
   }
 
   function mainTotal() {
@@ -18608,6 +18629,7 @@ if ('serviceWorker' in navigator) {
       try { bills = ids.map(billFor).filter(Boolean); }
       finally { M = null; state.pendingCheckout = keepPC; }
       var need = Object.keys(tmp.need);
+      specRoute(bills, tmp.pc);
       if (need.length) { need.forEach(function (k) { fetchKm(tmp.need[k], k); }); return; }   // re-runs when these arrive
       if (bills.length < 2 || bills.some(function (b) { return !b.ready || !b.pos; })) return;
       var order = routeOrder(bills), key = routeKey(order, tmp.pc);
