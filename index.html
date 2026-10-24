@@ -13489,8 +13489,8 @@ async function ensureRoadDistance() {
 
   const mySeq = ++roadReqSeq;
   state.roadDistanceLoading = true;
-  updateLocSummary();
-  updateLocConfirmGate();
+  try { updateLocSummary(); } catch (e) {}
+  try { updateLocConfirmGate(); } catch (e) {}
 
   let km = null;
   try {
@@ -15871,6 +15871,8 @@ payConfirmBtn.addEventListener('click', async () => {
     }
     await set(orderRef, orderPayload);
     orderSaved = true;
+    state.lastOrder = { restId: r.id, orderKey: orderRef.key, orderNumber, restName: r.name, businessType: r.businessType };
+    try { localStorage.setItem('asfood_last_order', JSON.stringify(state.lastOrder)); } catch (e) {}
     window.neshTip = 0; try { renderTipUI(); } catch (e) {}   // tip is per-order
 
     // Per-customer order index (see ensureOrderIndex): lets the app find this
@@ -18229,7 +18231,7 @@ if ('serviceWorker' in navigator) {
     }
     var tries = 0;
     (function attempt() {
-      osrmMeters(pts, 8000).then(function (m) {
+      osrmMeters(pts, tries === 0 ? 3500 : 8000).then(function (m) {
         if (m != null) { RC[key] = m / 1000; rcPut(key, m / 1000); if (M) refresh(); else schedulePrewarm(); return; }
         // slow / offline: show the estimate now (never block checkout), keep trying quietly for the real road distance
         if (RC[key] == null) { RC[key] = fallback(); if (M) refresh(); else schedulePrewarm(); }
@@ -18264,7 +18266,8 @@ if ('serviceWorker' in navigator) {
     var est = function () { return (haversineMeters(n.pos.lat, n.pos.lng, n.pc.lat, n.pc.lng) / 1000) * 1.25; };   // same fallback as the normal checkout
     var tries = 0;
     (function attempt() {
-      roadKmShared(n.pos, n.pc).then(function (km) {
+      var first = tries === 0;
+      Promise.race([roadKmShared(n.pos, n.pc), first ? wait(3500).then(function () { return null; }) : new Promise(function () {})]).then(function (km) {
         if (typeof km === 'number') { KM_CACHE[key] = km; if (M) refresh(); else schedulePrewarm(); return; }
         if (KM_CACHE[key] == null) { KM_CACHE[key] = est(); if (M) refresh(); else schedulePrewarm(); }
         if (++tries <= 3) setTimeout(attempt, 6000);   // keep trying quietly; the real road distance replaces the estimate when it arrives
@@ -18285,7 +18288,15 @@ if ('serviceWorker' in navigator) {
     if (state.pendingCheckout) M.pc = Object.assign({}, state.pendingCheckout);
     M.need = {};
     var liveIds = M.ids.filter(function (id) { return saved()[id]; });
-    if (liveIds.length < 2) { box.style.display = 'none'; M.block = ''; M.pending = false; M.override = {}; M.bills = null; try { setBill(false); } catch (e) {} return; }
+    if (liveIds.length < 2) {
+      var wasMulti = !!(M.bills || M.pending || M.block || (M.override && Object.keys(M.override).length));
+      box.style.display = 'none'; M.block = ''; M.pending = false; M.override = {}; M.bills = null; M.othersSum = 0; M.allReady = true;
+      try { setBill(false); } catch (e) {}
+      // Recompute the single-shop bill, bottom bar and Pay button (they still showed the old multi-shop total / "Calculating delivery…").
+      // Only once (wasMulti), otherwise updateLocSummary -> schedule -> refresh would loop.
+      if (wasMulti) { try { updateLocSummary(); } catch (e) {} try { cpSyncBar(); } catch (e) {} }
+      return;
+    }
     var all = liveIds.map(billFor).filter(Boolean);
     Object.keys(M.need).forEach(function (k) { fetchKm(M.need[k], k); });
     var cov = coverage(all);
