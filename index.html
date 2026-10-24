@@ -16,6 +16,10 @@
   }
   #nesh-splash:not(.show){ opacity:0; visibility:hidden; pointer-events:none; }
   #nesh-splash .sp-top{ margin-top:17vh; display:flex; flex-direction:column; align-items:center; }
+  #nesh-splash.no-loc .sp-top{ visibility:hidden; }
+  /* no "Locating..." text: centre logo + tagline on the screen */
+  #nesh-splash.no-loc .sp-logo{ top:47%; }
+  #nesh-splash.no-loc .sp-tag{ top:calc(47% + min(32vw,136px) + 22px); }
   #nesh-splash .sp-pin{
     width:68px; height:68px; border-radius:20px; background:rgba(43,36,16,.14);
     display:flex; align-items:center; justify-content:center;
@@ -968,6 +972,42 @@
   }
   .loc-sheet .field{ margin-bottom:10px; }
   .loc-field-label{ color:var(--muted-2); font-size:11px; font-family:'IBM Plex Mono',monospace; letter-spacing:1px; margin:0 0 6px; text-transform:uppercase; }
+
+  /* ---- Select delivery location: full-screen (Zepto-style) ---- */
+  #browse-loc-overlay{ align-items:stretch; background:#fff; }
+  #browse-loc-overlay .loc-sheet{
+    max-width:none; width:100%; height:100%; max-height:none; border-radius:0; padding:0;
+    background:#fff; display:flex; flex-direction:column; animation:none;
+  }
+  #browse-loc-overlay .blp-head{
+    position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:10px;
+    padding:calc(env(safe-area-inset-top, 0px) + 12px) 14px 12px; background:#fff; border-bottom:1px solid #EFEBDD;
+  }
+  #browse-loc-overlay .blp-back{
+    flex:none; width:40px; height:40px; border-radius:50%; border:none; background:#F4F1E6; color:#2B2410;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  #browse-loc-overlay .blp-title{ margin:0; font-size:17px; font-weight:800; color:#2B2410; font-family:'Inter',sans-serif; line-height:1.2; }
+  #browse-loc-overlay .blp-sub{ margin:2px 0 0; font-size:12px; color:var(--muted-2); font-family:'Inter',sans-serif; }
+  #browse-loc-overlay .blp-body{ flex:1; padding:14px 16px 8px; }
+  #browse-loc-overlay .blp-search{
+    background:#fff; border:1.5px solid #F2B705; border-radius:14px; margin-bottom:0;
+    box-shadow:0 4px 14px rgba(205,152,0,.14);
+  }
+  #browse-loc-overlay #browse-loc-gps-btn, #browse-loc-overlay #browse-loc-test-btn{
+    display:block; width:100%; text-align:left; margin:12px 0 4px; padding:15px 16px; border-radius:14px; font-size:15px; font-weight:700;
+  }
+  #browse-loc-overlay #browse-loc-gps-btn{
+    background:rgba(27,166,114,.08); color:var(--leaf); border:1.5px solid rgba(27,166,114,.28);
+  }
+  #browse-loc-overlay .blp-label{
+    margin:16px 0 8px; font-size:12px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--muted-2); font-family:'Inter',sans-serif;
+  }
+  #browse-loc-overlay .loc-map{ height:230px; }
+  #browse-loc-overlay .blp-bar{
+    position:sticky; bottom:0; z-index:5; background:#fff; border-top:1px solid #EFEBDD;
+    padding:12px 16px calc(env(safe-area-inset-bottom, 0px) + 12px);
+  }
 
   .pay-method-row{ display:flex; gap:10px; margin-bottom:10px; }
   .pay-method-btn{
@@ -3047,6 +3087,112 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
 /* Add button: solid yellow, no glow / gradient */
 #screen-menu[data-store="1"] .add-btn,
 #screen-menu[data-store="1"] .item-row2 .add-btn{ background:#F2B705; color:#2B2410; border:0; border-radius:8px; box-shadow:none; font-weight:700; letter-spacing:0; }
+
+/* ===== Food header = same layout as NESH Mart (mirrored) ===== */
+/* ---- Header row: back · NESH Mart · bell · settings · Orders · account, then a dashed Deliver-to ticket ---- */
+#screen-home[data-cat="hotel"] .home-top-row{
+  position:relative; z-index:6; display:grid; padding:14px 14px 10px; column-gap:5px; row-gap:10px;
+  grid-template-columns:auto auto minmax(0,1fr) auto auto auto auto auto; align-items:center;
+  background:#F2B705;
+}
+#screen-home[data-cat="hotel"] .top-row-right{ display:contents; }
+#screen-home[data-cat="hotel"] .home-top-left > div:first-child{ display:contents !important; }
+#screen-home[data-cat="hotel"] .home-back-btn{
+  grid-column:1; grid-row:1; width:36px; height:36px; margin:0; padding:0; border-radius:50%; background:#2B2410;
+  justify-content:center; box-shadow:0 3px 8px rgba(43,36,16,.28);
+}
+#screen-home[data-cat="hotel"] .home-back-btn svg{ width:19px; height:19px; stroke:#FFD54A; stroke-width:2.8; }
+#screen-home[data-cat="hotel"] .home-brand-mark{
+  display:block !important; grid-column:2; grid-row:1; margin:0 0 0 6px; padding:0; white-space:nowrap;
+  font-family:'Fraunces',serif; font-weight:800; font-size:21px; letter-spacing:1px; color:#2B2410;
+}
+#screen-home[data-cat="hotel"] .home-track-btn{ grid-column:4; grid-row:1; width:36px; height:36px; background:#fff; }
+#screen-home[data-cat="hotel"] .home-notif-btn{ grid-column:5; grid-row:1; }
+#screen-home[data-cat="hotel"] #home-settings-icon-btn{ grid-column:6; grid-row:1; }
+#screen-home[data-cat="hotel"] .top-row-right .your-orders-pill{
+  grid-column:7; grid-row:1; margin:0; padding:8px 12px 8px 10px; gap:5px; border-radius:18px;
+  background:#fff; border:2px solid #2B2410; box-shadow:2px 2px 0 #2B2410;
+}
+#screen-home[data-cat="hotel"] .top-row-right .your-orders-pill p{ color:#2B2410 !important; font-weight:800 !important; font-size:13px !important; }
+#screen-home[data-cat="hotel"] .top-row-right .account-wrap{ grid-column:8; grid-row:1; margin:0; position:relative; }
+#screen-home[data-cat="hotel"] .home-notif-btn,
+#screen-home[data-cat="hotel"] .top-row-right .account-btn{
+  width:36px; height:36px; border:none; background:#2B2410; box-shadow:0 3px 8px rgba(43,36,16,.28);
+}
+#screen-home[data-cat="hotel"] .home-notif-btn svg,
+#screen-home[data-cat="hotel"] .top-row-right .account-btn svg{ stroke:#FFD54A; }
+#screen-home[data-cat="hotel"] .account-dropdown{ top:44px; z-index:90; }
+
+/* Deliver-to: dashed "ticket" */
+#screen-home[data-cat="hotel"] .home-top-row .home-loc-card{
+  grid-column:1 / -1; grid-row:2; display:flex; align-items:center; gap:10px; margin:0; padding:7px 12px 7px 8px;
+  background:rgba(255,255,255,.35); border:2px dashed rgba(43,36,16,.55); border-radius:16px; box-shadow:none;
+}
+#screen-home[data-cat="hotel"] .home-top-row .home-loc-card-icon{
+  display:flex; width:32px; height:32px; font-size:16px; border-radius:50%; background:#2B2410; filter:none; box-shadow:none;
+}
+#screen-home[data-cat="hotel"] .home-top-row .home-loc-card-label{ font-size:10.5px; font-weight:800; letter-spacing:.9px; color:#5A4400; }
+#screen-home[data-cat="hotel"] .home-top-row .home-loc-card-label::before{ content:''; }
+#screen-home[data-cat="hotel"] .home-top-row .home-loc-card-value{ font-size:14.5px; font-weight:800; color:#2B2410; margin-top:1px; }
+#screen-home[data-cat="hotel"] .home-top-row .home-loc-card > svg{ display:block; flex:none; stroke:#2B2410; }
+
+/* header: flat yellow, no ticket / no glow */
+#screen-home[data-cat="hotel"] .home-top-row{ background:#F2B705; }
+#screen-home[data-cat="hotel"] .home-back-btn,
+#screen-home[data-cat="hotel"] .home-notif-btn,
+#screen-home[data-cat="hotel"] .top-row-right .account-btn{ box-shadow:none; }
+#screen-home[data-cat="hotel"] .home-track-btn{ box-shadow:none; }
+#screen-home[data-cat="hotel"] .home-brand-mark{ letter-spacing:.3px; font-weight:700; }
+#screen-home[data-cat="hotel"] .top-row-right .your-orders-pill{
+  border:0; box-shadow:none; border-radius:10px; background:rgba(255,255,255,.9);
+}
+/* search: plain rounded rectangle, hairline, no pill / no dark icon blob */
+#screen-home[data-cat="hotel"] .search-wrap{ background:#F2B705; }
+#screen-home[data-cat="hotel"] .search-wrap .field{
+  border-radius:10px; box-shadow:none; border:1px solid rgba(43,36,16,.12); background:#fff;
+}
+
+/* Food: old full-width green Orders strip rules neutralised so Orders sits in the top row like NESH Mart */
+#screen-home[data-cat="hotel"] .home-top-row .your-orders-pill{ justify-self:auto; }
+#screen-home[data-cat="hotel"] .home-top-row .your-orders-pill p{ flex:none; color:#2B2410 !important; font-size:13px !important; font-weight:800 !important; }
+#screen-home[data-cat="hotel"] .home-top-row .your-orders-pill svg{ display:none; }
+#screen-home[data-cat="hotel"] .home-back-btn{ background:#2B2410; }
+#screen-home[data-cat="hotel"] .home-back-btn svg{ stroke:#FFD54A; }
+#screen-home[data-cat="hotel"] .home-notif-btn,
+#screen-home[data-cat="hotel"] .top-row-right .account-btn{ background:#2B2410; }
+#screen-home[data-cat="hotel"] .home-notif-btn svg,
+#screen-home[data-cat="hotel"] .top-row-right .account-btn svg{ stroke:#FFD54A; }
+
+/* Header location = eye-catching white pill (pin + "Deliver to" + place name + CHANGE chip) */
+#screen-home[data-cat="hotel"] .home-top-row .home-loc-card,
+#screen-home[data-cat="online_shop"] .home-top-row .home-loc-card{
+  background:#fff !important; border:0 !important; border-radius:999px !important;
+  padding:5px 8px 5px 5px !important; gap:9px !important; align-items:center;
+  box-shadow:0 4px 14px rgba(43,36,16,.22) !important;
+}
+#screen-home[data-cat="hotel"] .home-top-row .home-loc-card-icon,
+#screen-home[data-cat="online_shop"] .home-top-row .home-loc-card-icon{
+  display:flex !important; width:34px !important; height:34px !important; font-size:16px !important; border-radius:50% !important;
+  background:#2B2410 !important; flex:none; animation:locPinPulse 2.2s ease-in-out infinite;
+}
+@keyframes locPinPulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(43,36,16,.35); } 50%{ box-shadow:0 0 0 6px rgba(43,36,16,0); } }
+#screen-home[data-cat="hotel"] .home-top-row .home-loc-card-label,
+#screen-home[data-cat="online_shop"] .home-top-row .home-loc-card-label{
+  color:#A66600 !important; opacity:1 !important; font-size:9.5px !important; font-weight:800 !important; letter-spacing:.9px !important; line-height:1.1; text-shadow:none !important;
+}
+#screen-home[data-cat="hotel"] .home-top-row .home-loc-card-label::before,
+#screen-home[data-cat="online_shop"] .home-top-row .home-loc-card-label::before{ content:'' !important; }
+#screen-home[data-cat="hotel"] .home-top-row .home-loc-card-value,
+#screen-home[data-cat="online_shop"] .home-top-row .home-loc-card-value{
+  color:#2B2410 !important; font-size:14px !important; font-weight:800 !important; margin-top:1px !important; text-shadow:none !important;
+}
+#screen-home[data-cat="hotel"] .home-top-row .home-loc-card > svg,
+#screen-home[data-cat="online_shop"] .home-top-row .home-loc-card > svg{ display:none !important; }
+#screen-home[data-cat="hotel"] .home-top-row .home-loc-card::after,
+#screen-home[data-cat="online_shop"] .home-top-row .home-loc-card::after{
+  content:'CHANGE'; flex:none; padding:6px 9px; border-radius:999px; background:#F2B705; color:#2B2410;
+  font:800 10px/1 'Inter',sans-serif; letter-spacing:.6px;
+}
 </style>
 </head>
 <body>
@@ -3086,6 +3232,15 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
   } catch (e) {}
   // Last-known operator config (card order, Bus switch, shop order, zones).
   // Applied instantly on the next launch, refreshed live from Firebase.
+  // Opened again within 10 minutes of leaving, and a location is already saved: keep it, go straight to Home.
+  try {
+    var la = parseInt(localStorage.getItem('nesh_last_active') || '0', 10);
+    var lg = JSON.parse(localStorage.getItem('nesh_last_gps') || 'null');
+    if (la && Date.now() - la < 10 * 60 * 1000 && lg && typeof lg.lat === 'number' && typeof lg.lng === 'number') {
+      window.__neshQuickReopen = { lat: lg.lat, lng: lg.lng };
+      el.classList.add('no-loc'); delete pending.loc;
+    }
+  } catch (e) {}
   window.neshCfg = {
     live: {},
     save: function (k, v) {
@@ -3101,7 +3256,7 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
   function show(keys) {
     clearTimeout(hideT); shownAt = Date.now();
     pending = {}; (keys || ['loc']).forEach(function (k) { pending[k] = 1; });
-    gen++; resetText(); el.classList.add('show'); arm();
+    gen++; resetText(); el.classList.remove('no-loc'); el.classList.add('show'); arm();
   }
   var gen = 0, txtEl = el.querySelector('.sp-text'), txtOrig = txtEl ? txtEl.innerHTML : '';
   function resetText() { if (txtEl) { txtEl.innerHTML = txtOrig; txtEl.style.fontSize = ''; } }
@@ -3272,13 +3427,26 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
     </div>
   </div>
 
+  <!-- Full-screen "Choose your location" shown on every open for returning customers -->
+  <div id="nesh-open-choice" style="display:none; position:fixed; inset:0; z-index:3300; flex-direction:column; align-items:center; padding:calc(env(safe-area-inset-top) + 9vh) 24px calc(env(safe-area-inset-bottom) + 28px); background:linear-gradient(180deg,#A87B00 0%,#CD9800 22%,#F2B705 58%,#F7C61F 100%); color:#2B2410; font-family:'Poppins','Inter',sans-serif; overflow:hidden; overscroll-behavior:none; touch-action:none; height:100vh; height:100dvh; box-sizing:border-box;">
+    <div style="width:92px; height:92px; border-radius:28px; background:rgba(43,36,16,.14); display:flex; align-items:center; justify-content:center; font-size:46px; box-shadow:0 10px 30px rgba(43,36,16,.18);">📍</div>
+    <h1 style="margin:26px 0 8px; font-size:30px; font-weight:800; letter-spacing:-.5px; text-align:center; line-height:1.15;">Where should we deliver?</h1>
+    <p style="margin:0; font-size:15px; line-height:1.5; text-align:center; opacity:.8; max-width:300px;">Pick a location to see shops, groceries and delivery near you.</p>
+    <div style="flex:1; min-height:24px;"></div>
+    <div style="width:100%; max-width:380px; display:flex; flex-direction:column; gap:12px;">
+      <button type="button" id="oc-current-btn" style="width:100%; padding:17px 16px; border:0; border-radius:16px; background:#2B2410; color:#FFF8DF; font-size:16px; font-weight:700; font-family:inherit; box-shadow:0 8px 20px rgba(43,36,16,.28); cursor:pointer;">📍 Use my current location</button>
+      <button type="button" id="oc-last-btn" style="width:100%; padding:17px 16px; border:2px solid #2B2410; border-radius:16px; background:rgba(255,248,223,.92); color:#2B2410; font-size:15px; font-weight:700; font-family:inherit; cursor:pointer; line-height:1.3;">📍 Continue with last location</button>
+      <button type="button" id="oc-search-btn" style="width:100%; padding:15px 16px; border:0; border-radius:16px; background:rgba(43,36,16,.12); color:#2B2410; font-size:15px; font-weight:600; font-family:inherit; cursor:pointer;">🔍 Search new location</button>
+    </div>
+  </div>
+
   <!-- Location OFF popup — shown when GPS/permission is off so the customer can turn it on -->
   <div class="loc-overlay" id="loc-off-overlay" style="align-items:center; z-index:3200;">
     <div class="loc-sheet" style="border-radius:20px; max-width:340px; animation:locUp .2s ease-out; padding:24px; text-align:center;">
       <div style="font-size:44px; line-height:1; margin-bottom:8px;">📍</div>
-      <p class="loc-title" style="margin:0 0 8px; font-size:19px;">Turn on location</p>
-      <p style="margin:0 0 4px; color:var(--ink); font-size:14px; line-height:1.5;">Please turn on your location to find nearby shops, taxis and delivery.</p>
-      <p style="margin:0 0 16px; color:var(--muted-2); font-size:12.5px; line-height:1.5;">Once it is on, tap the button to try again.</p>
+      <p class="loc-title" id="loc-off-title" style="margin:0 0 8px; font-size:19px;">Turn on location</p>
+      <p id="loc-off-msg" style="margin:0 0 4px; color:var(--ink); font-size:14px; line-height:1.5;">Please turn on your location to find nearby shops, taxis and delivery.</p>
+      <p id="loc-off-sub" style="margin:0 0 16px; color:var(--muted-2); font-size:12.5px; line-height:1.5;">Once it is on, tap the button to try again.</p>
       <p id="loc-off-help" style="display:none; margin:0 0 14px; padding:10px 12px; background:var(--cloud); border-radius:10px; color:var(--ink); font-size:12.5px; line-height:1.55; text-align:left;"></p>
       <button type="button" class="loc-gps-btn" id="loc-off-enable-btn" style="background:var(--marigold);">Turn on location</button>
       <button type="button" class="loc-gps-btn" id="loc-off-last-btn" style="display:none; background:#fff; color:var(--ink); border:1.5px solid var(--marigold-dark); margin-top:2px;"></button>
@@ -3302,31 +3470,52 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
   <!-- SELECT YOUR LOCATION (filters restaurant list) -->
   <div class="loc-overlay" id="browse-loc-overlay">
     <div class="loc-sheet">
-      <p class="loc-eyebrow">YOUR LOCATION</p>
-      <h2 class="loc-title">Select your location</h2>
-
-      <p class="loc-field-label">Search for your area</p>
-      <div class="field" style="background:#fff; border:1px solid #E4DFD2; margin-bottom:0;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A66600" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="browse-loc-search" type="text" placeholder="Search area, street, landmark…" style="color:var(--ink);" autocomplete="off" />
-      </div>
-      <div class="loc-search-results" id="browse-loc-results"></div>
-
-      <div class="loc-map-wrap" style="margin-top:10px;">
-        <div class="loc-map" id="browse-loc-map"></div>
-        <p class="loc-map-hint">Tap or drag the pin to set your location</p>
+      <div class="blp-head">
+        <button type="button" class="blp-back" aria-label="Back" onclick="document.getElementById('browse-loc-cancel-btn').click()">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div>
+          <p class="blp-title">Select delivery location</p>
+          <p class="blp-sub">Search, use GPS or pick a recent place</p>
+        </div>
       </div>
 
-      <div class="loc-current">
-        <p class="loc-current-label">Selected</p>
-        <p class="loc-current-value" id="browse-loc-current-value">No location selected</p>
-      </div>
-      <button class="loc-gps-btn" id="browse-loc-gps-btn">📍 Use my current location</button>
-      <!-- Shown ONLY while the operator has switched a test location ON (Operator Panel → Test Location). -->
-      <button class="loc-gps-btn" id="browse-loc-test-btn" style="display:none; background:#6B4EFF;">🧪 Use test location</button>
+      <div class="blp-body">
+        <div class="field blp-search">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A66600" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="browse-loc-search" type="text" placeholder="Search area, street, landmark…" style="color:var(--ink);" autocomplete="off" />
+        </div>
+        <div class="loc-search-results" id="browse-loc-results"></div>
 
-      <div class="loc-btn-row">
-        <button class="loc-cancel-btn" id="browse-loc-cancel-btn">Cancel</button>
+        <button class="loc-gps-btn" id="browse-loc-gps-btn">📍 Use my current location</button>
+        <!-- Shown ONLY while the operator has switched a test location ON (Operator Panel → Test Location). -->
+        <button class="loc-gps-btn" id="browse-loc-test-btn" style="display:none; background:#6B4EFF; color:#fff;">Use default location</button>
+
+        <div id="browse-loc-recent" style="display:none; margin:6px 0 4px;"></div>
+
+        <button type="button" class="loc-gps-btn" id="browse-loc-map-toggle" style="background:#fff; color:var(--ink); border:1.5px solid #E4DFD2;">🗺️ Adjust pin on map</button>
+        <div id="browse-loc-mapbox">
+          <p class="blp-label">Or pin it on the map</p>
+          <div class="loc-map-wrap">
+            <div class="loc-map" id="browse-loc-map"></div>
+            <p class="loc-map-hint">Tap or drag the pin to set your location</p>
+          </div>
+        </div>
+
+        <div class="loc-current">
+          <p class="loc-current-label">Selected</p>
+          <p class="loc-current-value" id="browse-loc-current-value">No location selected</p>
+        </div>
+
+        <!-- Only shown when opened from checkout: place / landmark / contact live on this same page -->
+        <div id="browse-loc-extra" style="display:none;">
+          <p class="blp-label">Delivery details</p>
+        </div>
+        <p id="browse-loc-extra-err" style="display:none; margin:8px 2px 0; color:var(--chili); font-size:13px; font-weight:600;"></p>
+      </div>
+
+      <div class="loc-btn-row blp-bar">
+        <button class="loc-cancel-btn" id="browse-loc-cancel-btn" style="display:none;">Cancel</button>
         <button class="btn-primary" id="browse-loc-confirm-btn" style="flex:1;">Confirm location</button>
       </div>
     </div>
@@ -3811,6 +4000,8 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
       </div>
       <button type="button" id="menu-howto-btn" style="display:none; margin-left:auto; padding:6px 12px; border-radius:999px; border:1.5px solid var(--marigold); background:#fff; color:#C97F00; font-size:12px; font-weight:700; cursor:pointer;">How to use</button>
     </div>
+    <div id="loyalty-card" style="display:none"></div>
+    <div id="loyalty-card-s" style="display:none"></div>
     <div class="posters" id="posters-store" aria-label="NESH Store offers">
       <div class="posters-track" id="posters-store-track"></div>
       <button type="button" class="posters-store-x" id="posters-store-x" aria-label="Hide offer">&times;</button>
@@ -3997,6 +4188,39 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
     align-items:center; justify-content:center; font-size:22px; font-weight:800; flex-shrink:0; }
   .set-name{ margin:0; font-size:17px; font-weight:800; color:var(--ink); word-break:break-word; }
   .set-sub{ margin:2px 0 0; font-size:13px; color:var(--muted-2); word-break:break-all; }
+
+/* NESH Mart: green Orders button */
+#screen-home[data-cat="online_shop"] .top-row-right .your-orders-pill{
+  background:linear-gradient(135deg,#1BA672 0%,#0C6E4A 100%) !important;
+  box-shadow:0 3px 8px rgba(12,110,74,.35) !important;
+}
+#screen-home[data-cat="online_shop"] .top-row-right .your-orders-pill p{ color:#fff !important; }
+
+/* Food: green Orders button */
+#screen-home[data-cat="hotel"] .top-row-right .your-orders-pill,
+#screen-home[data-cat="hotel"] .home-top-row .your-orders-pill{
+  background:linear-gradient(135deg,#1BA672 0%,#0C6E4A 100%) !important;
+  box-shadow:0 3px 8px rgba(12,110,74,.35) !important;
+}
+#screen-home[data-cat="hotel"] .top-row-right .your-orders-pill p,
+#screen-home[data-cat="hotel"] .home-top-row .your-orders-pill p{ color:#fff !important; }
+
+/* Location picker (home AND checkout): search / GPS / recents first, map only when asked via "Adjust pin on map" */
+#browse-loc-overlay .blp-body{ display:flex; flex-direction:column; }
+#browse-loc-overlay .blp-body > *{ order:2; }
+#browse-loc-overlay .blp-body > .blp-search, #browse-loc-overlay .blp-body > #browse-loc-results{ order:1; }
+#browse-loc-overlay #browse-loc-extra{ order:3; }
+#browse-loc-overlay #browse-loc-extra-err{ order:4; }
+#browse-loc-overlay #browse-loc-map-toggle{ order:5; }
+#browse-loc-overlay #browse-loc-mapbox{ order:6; display:none; }
+#browse-loc-overlay.cp-map-open #browse-loc-mapbox{ display:block; }
+#browse-loc-overlay .blp-body > .loc-current{ order:7; }
+
+/* Loading shops (slow network) */
+.shops-loading{ padding:6px 4px 18px; }
+.shops-loading-text{ margin:6px 4px 12px; color:var(--muted-2); font-size:13.5px; font-weight:600; text-align:center; }
+.shops-skel{ height:112px; border-radius:18px; margin:0 0 14px; background:linear-gradient(100deg,#EFEBDD 30%,#F8F5EC 50%,#EFEBDD 70%); background-size:300% 100%; animation:shopsSkel 1.3s ease-in-out infinite; }
+@keyframes shopsSkel{ 0%{ background-position:100% 0; } 100%{ background-position:0 0; } }
 </style>
   <!-- SETTINGS -->
   <section class="screen" id="screen-settings">
@@ -4455,7 +4679,7 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
             <span class="cp-ic">📍</span>
             <div style="flex:1; min-width:0;">
               <p class="cp-card-title">Delivery address</p>
-              <p class="cp-card-sub">Tap to change pin, landmark &amp; contact</p>
+              <p class="cp-card-sub">Tap to change location, landmark &amp; contact</p>
             </div>
             <span class="cp-cpn-arrow" id="cp-addr-arrow">⌄</span>
           </div>
@@ -5219,6 +5443,25 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
 // ---------- Live data (populated from Firebase, see module script above) ----------
 let RESTAURANTS = [];
 let restaurantsLoadedOnce = false; // true once the FIRST real snapshot has arrived from Firebase
+// Instant start: show the last-known shop list right away (from the previous launch) while the live data loads.
+// restaurantsLoadedOnce stays false until the REAL snapshot arrives, and ordering waits for it (see payConfirmBtn).
+let restaurantsFromCache = false;
+try {
+  const o = JSON.parse(localStorage.getItem('nesh_shops_v1') || 'null');
+  if (o && Array.isArray(o.list) && o.list.length && (Date.now() - o.t) < 24 * 3600 * 1000) {
+    RESTAURANTS = o.list; window.RESTAURANTS = o.list; restaurantsFromCache = true;
+  }
+} catch (e) {}
+let shopCacheSaveT = null;
+function saveShopCacheSoon() {
+  clearTimeout(shopCacheSaveT);
+  shopCacheSaveT = setTimeout(() => {
+    try {
+      const str = JSON.stringify({ t: Date.now(), list: window.RESTAURANTS || [] });
+      if (str.length < 2500000) localStorage.setItem('nesh_shops_v1', str);   // skip if too big for localStorage
+    } catch (e) {}
+  }, 2500);
+}
 let SHOP_ORDER = {}; // operator-set per-category shop order, see app_config/shopOrder
 let NESH_ITEM_ORDER = []; // operator-set item order within the merged NESH Store catalog, see app_config/neshStoreItemOrder
 
@@ -5282,6 +5525,8 @@ window.onRestaurantsUnchanged = () => {
 window.onRestaurantsUpdated = () => {
   RESTAURANTS = window.RESTAURANTS || [];
   restaurantsLoadedOnce = true;
+  restaurantsFromCache = false;
+  saveShopCacheSoon();
   renderRestaurantList();
   try { neshSyncBottomNav(); } catch (e) {}
   if (state.selectedRestaurant) {
@@ -10101,6 +10346,7 @@ function processWatchedOrders(entries, queueLiveKeys) {
   entries.forEach(({ restId, orderKey, o, restName, businessType }) => {
     if (!o) return;
     const status = normalizeStatus(o.status);
+    if (status === 'delivered') { try { window.neshLoyaltyDelivered && window.neshLoyaltyDelivered(orderKey); window.neshLoyaltySDelivered && window.neshLoyaltySDelivered(orderKey); } catch (e) {} }
     const shownName = o.fromNeshStoreQueue ? 'NESH Store' : (restName || 'Restaurant');
     if ((status === 'preparing' || status === 'ready') && !seen[orderKey]) {
       seen[orderKey] = true;
@@ -10538,6 +10784,42 @@ document.querySelectorAll('[data-loc-suggest-btn]').forEach(b => b.addEventListe
   e.stopPropagation();
   showLocationOffPopup(0);
 }));
+// Place name for the header label: the name the customer picked (Recent list) if it is the same spot,
+// otherwise the area name looked up from the coordinates.
+const neshLabelCache = {};
+async function neshLabelFor(pos) {
+  try {
+    const rec = (typeof neshReadRecentLocs === 'function' ? neshReadRecentLocs() : []).find(x => x.name && neshDistM(x, pos) < 150);
+    if (rec) return rec.name;
+    const key = pos.lat.toFixed(4) + ',' + pos.lng.toFixed(4);
+    if (neshLabelCache[key]) return neshLabelCache[key];
+    const name = await neshPlaceNameFor(pos.lat, pos.lng);
+    if (name) { neshLabelCache[key] = name; try { localStorage.setItem('nesh_loc_label', JSON.stringify({ lat: pos.lat, lng: pos.lng, name })); } catch (e) {} }
+    return name;
+  } catch (e) { return null; }
+}
+// Best address text we already know for this spot, same style as the checkout header ("Near X, Place").
+function neshAddrLabelSync(pos) {
+  try {
+    const ha = neshHomeAddrFor(pos);
+    if (ha && (ha.landmark || ha.place)) return [ha.landmark, ha.place].filter(Boolean).join(', ');
+  } catch (e) {}
+  try {
+    if (typeof pendingLocation === 'object' && typeof pendingLocation.lat === 'number' && neshDistM(pendingLocation, pos) < 150) {
+      const lm = locLandmarkInput.value.trim(), pl = locPlaceInput.value.trim();
+      if (lm || pl) return [lm, pl].filter(Boolean).join(', ');
+    }
+  } catch (e) {}
+  try {
+    const key = pos.lat.toFixed(4) + ',' + pos.lng.toFixed(4);
+    if (neshLabelCache[key]) return neshLabelCache[key];
+    const rec = (typeof neshReadRecentLocs === 'function' ? neshReadRecentLocs() : []).find(x => x.name && neshDistM(x, pos) < 150);
+    if (rec) return rec.name;
+    const c = JSON.parse(localStorage.getItem('nesh_loc_label') || 'null');
+    if (c && c.name && neshDistM(c, pos) < 150) return c.name;
+  } catch (e) {}
+  return null;
+}
 function updateHomeLocationLabel() {
   try { syncAreaUnavailScreen(); } catch (e) {}
   updateLocSuggestBanners();
@@ -10545,10 +10827,19 @@ function updateHomeLocationLabel() {
     ? "Delivering to selected location"
     : (state.locationDetectFailed ? "Tap to set your location" : "Select your location");
   updateCatLocationLabel();
+  if (state.customerPos) {
+    const pos = { lat: state.customerPos.lat, lng: state.customerPos.lng };
+    neshLabelFor(pos).then(name => {
+      if (!name || !state.customerPos || state.customerPos.lat !== pos.lat || state.customerPos.lng !== pos.lng) return;
+      const full = neshAddrLabelSync(pos) || name;
+      homeLocation.textContent = full;
+      const el = document.getElementById('cat-loc-card-value'); if (el) el.textContent = full;
+    });
+  }
 }
 function updateCatLocationLabel() {
   const el = document.getElementById('cat-loc-card-value');
-  if (el) el.textContent = state.customerPos ? "Delivering to selected location" : "Select your location";
+  if (el) el.textContent = state.customerPos ? (neshAddrLabelSync(state.customerPos) || "Delivering to selected location") : "Select your location";
 }
 
 // ---------- Shop opening/closing time (set by the shop in the partner app)
@@ -11016,6 +11307,7 @@ function renderMart(filtered, categoryFiltered, q, searchFiltered) {
 
   restListEl.innerHTML = '';
   if (list.length === 0) {
+    if (!isAreaUnavailable(state.customerPos) && shopsStillLoading()) { restListEl.appendChild(shopsLoadingEl()); return; }
     const p = document.createElement('p');
     p.className = 'empty-text';
     p.textContent = isAreaUnavailable(state.customerPos)
@@ -11065,6 +11357,23 @@ function renderMart(filtered, categoryFiltered, q, searchFiltered) {
     list.forEach(x => restListEl.appendChild(martCardEl(x)));
   }
 }
+
+// ---- Slow network: show "Loading shops..." (skeleton cards) instead of "No shops" until the first shop data arrives ----
+const shopsLoadT0 = Date.now();
+function shopsStillLoading() {
+  if (restaurantsLoadedOnce && Array.isArray(window.SHOP_ZONES)) return false;
+  return (Date.now() - shopsLoadT0) < 20000;   // after 20s fall back to the normal message so it never spins forever
+}
+function shopsLoadingEl() {
+  const w = document.createElement('div');
+  w.className = 'shops-loading';
+  const slow = (Date.now() - shopsLoadT0) > 6000;
+  w.innerHTML = '<p class="shops-loading-text">' + (slow ? 'Slow connection \u2014 still loading shops\u2026' : 'Loading shops\u2026') + '</p>' +
+    '<div class="shops-skel"></div><div class="shops-skel"></div><div class="shops-skel"></div>';
+  return w;
+}
+setTimeout(() => { try { if (!restaurantsLoadedOnce) renderRestaurantList(); } catch (e) {} }, 6200);
+setTimeout(() => { try { if (!restaurantsLoadedOnce) renderRestaurantList(); } catch (e) {} }, 20200);
 
 function renderRestaurantList() {
   const q = searchInput.value.toLowerCase();
@@ -11124,6 +11433,7 @@ function renderRestaurantList() {
 
   restListEl.innerHTML = "";
   if (filtered.length === 0) {
+    if (!isAreaUnavailable(state.customerPos) && shopsStillLoading()) { restListEl.appendChild(shopsLoadingEl()); return; }
     const p = document.createElement('p');
     p.className = "empty-text";
     const noun = state.category === 'groceries' ? 'stores' : state.category === 'online_shop' ? 'shops' : 'restaurants';
@@ -11766,6 +12076,8 @@ function renderMenu() {
   menuRestLogo.src = r.logo || r.image || '';
   if (menuMiniLogo) { menuMiniLogo.src = r.logo || r.image || ''; menuMiniLogo.style.display = (r.logo || r.image) ? 'block' : 'none'; menuMiniLogo.onerror = () => { menuMiniLogo.style.display = 'none'; }; }
   menuRestLogo.alt = r.name || '';
+  try { renderLoyaltyCard(); } catch (e) {}
+  try { renderLoyaltySCard(); } catch (e) {}
   menuRestLogo.style.display = r.image ? 'block' : 'none';
   const menuHeaderEl = menuRestLogo.closest('.menu-header');
   if (menuHeaderEl) {
@@ -12131,7 +12443,7 @@ function openFreeGiftPopup() {
     const won = fi.next ? null : fi.won, x = fi.next || fi.won; if (!x) return;
     const it = x.item, q = Number(x.offer.qty) || 1, min = Number(x.offer.minAmount) || 0;
     let was = ''; try { const up = Number(getUnitPrice(it)) || 0; if (up > 0) was = '<s>₹' + Math.round(up * q * 100) / 100 + '</s>'; } catch (e) {}
-    const photo = it.image ? '<img src="' + escapeHtml(it.image) + '" alt="" onerror="this.style.display=\'none\'" />' : '<span style="font-size:60px">🎁</span>';
+    const photo = it.image ? '<img src="' + escapeHtml(it.image) + '" alt="" loading="lazy" decoding="async" onerror="this.style.display=\'none\'" />' : '<span style="font-size:60px">🎁</span>';
     const cols = ['#F2B705','#E5252A','#1BA672','#FF8A00','#4C7DFF'];
     const conf = won ? Array.from({length:22}, (_, i) => '<i style="left:' + (i * 4.6 + 2) + '%;background:' + cols[i % 5] + ';animation-delay:' + ((i % 7) * 0.3) + 's"></i>').join('') : '';
     const left = Math.max(0, Math.round((min - total) * 100) / 100);
@@ -12173,7 +12485,7 @@ function renderFreeOfferBanner(query) {
     const min = Number(x.offer.minAmount) || 0, q = Number(x.offer.qty) || 1, got = total >= min;
     const left = Math.max(0, Math.round((min - total) * 100) / 100);
     return '<div class="fob-card' + (got ? ' got' : '') + '">' +
-      '<div class="fob-photo"><img src="' + escapeHtml(x.item.image || '') + '" alt="" onerror="this.onerror=null;this.src=\'icon-192.png\'" /><span class="fob-free">FREE</span></div>' +
+      '<div class="fob-photo"><img src="' + escapeHtml(x.item.image || '') + '" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=\'icon-192.png\'" /><span class="fob-free">FREE</span></div>' +
       '<div class="fob-txt"><div class="fob-small">' + (got ? '✅ Unlocked!' : 'Shop for <b>₹' + min + '</b> or more') + '</div>' +
       '<div class="fob-name">Get ' + escapeHtml(x.item.name) + (q > 1 ? ' × ' + q : '') + ' <span>FREE</span></div>' +
       (got ? '' : (total > 0 ? '<div class="fob-prog"><i style="width:' + Math.min(100, total / min * 100) + '%"></i></div><div class="fob-small">Add ₹' + left + ' more</div>' : '')) +
@@ -12307,6 +12619,20 @@ function couponPhoneKey() { try { return String((state.user && state.user.number
 function couponLocalUsed(id) { try { return (JSON.parse(localStorage.getItem('nesh_coupon_used') || '{}') || {})[id] || 0; } catch (e) { return 0; } }
 function couponUsed(id) { return Math.max(window.neshCouponUses[id] || 0, couponLocalUsed(id)); }
 function couponMarkUsed(id) {
+  if (id === 'LOYALTY_S') {   // Groceries reward claimed
+    window.NESH_LOYALTYS_PROG.claimed = (window.NESH_LOYALTYS_PROG.claimed || 0) + 1;
+    const ph1 = couponPhoneKey();
+    if (ph1 && window.fb) { try { window.fb.runTransaction(window.fb.ref(window.fb.db, 'loyaltyStore/' + ph1 + '/claimed'), n => (n || 0) + 1); } catch (e) {} }
+    try { renderLoyaltySCard(); } catch (e) {}
+    return;
+  }
+  if (id === 'LOYALTY') {   // reward claimed: uses up one unlocked reward (count stays, claimed goes up)
+    window.NESH_LOYALTY_PROG.claimed = (window.NESH_LOYALTY_PROG.claimed || 0) + 1;
+    const ph0 = couponPhoneKey();
+    if (ph0 && window.fb) { try { window.fb.runTransaction(window.fb.ref(window.fb.db, 'loyalty/' + ph0 + '/claimed'), n => (n || 0) + 1); } catch (e) {} }
+    try { renderLoyaltyCard(); } catch (e) {}
+    return;
+  }
   try { const m = JSON.parse(localStorage.getItem('nesh_coupon_used') || '{}') || {}; m[id] = (m[id] || 0) + 1; localStorage.setItem('nesh_coupon_used', JSON.stringify(m)); } catch (e) {}
   window.neshCouponUses[id] = (window.neshCouponUses[id] || 0) + 1;
   const ph = couponPhoneKey();
@@ -12341,6 +12667,18 @@ function couponMarkUsed(id) {
 })();
 function couponsForShop(restId) { return window.neshCoupons.filter(c => !c.off && (!c.exp || c.exp > Date.now()) && (c.allShops || (c.shops && c.shops[restId]))); }
 function couponCheck(c, restId, items) {   // '' = fine, otherwise the reason it can't be used
+  if (c.loyaltyS) {
+    if (restId !== 'NESH_STORE') return 'This reward is only for Groceries.';
+    if (loyaltySAvail() <= 0) return 'Complete ' + loyaltySN() + ' Groceries orders to unlock this reward.';
+    if (c.minOrder > 0 && items < c.minOrder) return 'Add items worth \u20B9' + c.minOrder + ' or more to use this reward.';
+    return '';
+  }
+  if (c.loyalty) {   // loyalty reward: unlocked by the customer's order count, not by couponUses
+    if (restId === 'NESH_STORE' || (!c.allShops && !(c.shops && c.shops[restId]))) return 'This reward is not valid at this shop.';
+    if (loyaltyAvail() <= 0) return 'Complete ' + loyaltyN() + ' orders to unlock this reward.';
+    if (c.minOrder > 0 && items < c.minOrder) return 'Add items worth \u20B9' + c.minOrder + ' or more to use this reward.';
+    return '';
+  }
   if (c.off || (c.exp && c.exp <= Date.now())) return 'This coupon has expired.';
   if (!c.allShops && !(c.shops && c.shops[restId])) return 'This coupon is not valid at this shop.';
   if (c.minOrder > 0 && items < c.minOrder) return 'Add items worth \u20B9' + c.minOrder + ' or more to use this coupon.';
@@ -12454,10 +12792,312 @@ function renderCouponCards() {
         minOrder: +v[k].minOrder || 0, maxDiscount: +v[k].maxDiscount || 0, exp: +v[k].expiresAt || 0, off: !!v[k].off,
         desc: String(v[k].desc || '').slice(0, 40), allShops: !!v[k].allShops, secret: !!v[k].secret, shops: v[k].shops || {}, perCustomer: Math.max(1, +v[k].perCustomer || 1), maxUses: Math.max(0, +v[k].maxUses || 0)
       }));
+      try { window.neshLoyaltyRebuild && window.neshLoyaltyRebuild(); window.neshLoyaltySRebuild && window.neshLoyaltySRebuild(); } catch (e) {}
       refreshCouponUI();
     }, () => {});
   } catch (e) {}
 })();
+// ---------- Loyalty reward (Operator Panel -> Loyalty Reward): "order N times, get a coupon / free product" ----------
+// app_config/loyalty = { on, ordersNeeded, title, rewardType:'discount'|'product', type:'flat'|'percent', value, maxDiscount, minOrder, productName, allShops, shops:{id:true} }
+// Per-customer progress lives at loyalty/{phone} = { count, claimed, g:{orderKey:groupId}, counted:{groupId:ts} }. A group (multi-shop) checkout counts as ONE order.
+// The reward is applied through the normal coupon engine as a built-in coupon with id 'LOYALTY'.
+window.NESH_LOYALTY = null;
+window.NESH_LOYALTY_PROG = { count: 0, claimed: 0 };
+function loyaltyOn() { const c = window.NESH_LOYALTY; return !!(c && c.on !== false && Number(c.ordersNeeded) > 0); }
+function loyaltyN() { return Math.max(1, Math.round(Number(window.NESH_LOYALTY && window.NESH_LOYALTY.ordersNeeded) || 5)); }
+function loyaltyAvail() { if (!loyaltyOn()) return 0; const p = window.NESH_LOYALTY_PROG; return Math.max(0, Math.floor((p.count || 0) / loyaltyN()) - (p.claimed || 0)); }
+function loyaltyShopOk(restId) { const c = window.NESH_LOYALTY; return !!(c && restId !== 'NESH_STORE' && (c.allShops || (c.shops && c.shops[restId]))); }   // Groceries (NESH Store) has its own reward
+function loyaltyRewardText(c) {
+  c = c || window.NESH_LOYALTY || {};
+  if (c.rewardType === 'product') return '\uD83C\uDF81 FREE ' + String(c.productName || 'gift');
+  const v = Number(c.value) || 0;
+  return c.type === 'percent' ? (v + '% OFF' + (Number(c.maxDiscount) > 0 ? ' (up to \u20B9' + c.maxDiscount + ')' : '')) : ('\u20B9' + v + ' OFF');
+}
+window.neshLoyaltyRebuild = function () {
+  window.neshCoupons = (window.neshCoupons || []).filter(x => x.id !== 'LOYALTY');
+  if (loyaltyOn()) {
+    const c = window.NESH_LOYALTY, gift = c.rewardType === 'product';
+    window.neshCoupons.push({
+      id: 'LOYALTY', code: 'LOYALTY', loyalty: true, gift, giftName: String(c.productName || 'Free gift').slice(0, 60),
+      type: c.type === 'percent' ? 'percent' : 'flat', value: gift ? 0 : (Number(c.value) || 0),
+      minOrder: Number(c.minOrder) || 0, maxDiscount: Number(c.maxDiscount) || 0, exp: 0, off: false,
+      desc: 'Loyalty reward', allShops: !!c.allShops, secret: true, shops: c.shops || {}, perCustomer: 1, maxUses: 0
+    });
+  }
+  try { refreshCouponUI(); } catch (e) {}
+};
+// Free product reward: returns the gift name when the customer has applied the loyalty reward at this shop and it's valid.
+function neshLoyaltyGiftFor(r, itemsTotal) {
+  const sel = window.neshCoupon;
+  if (!r || !sel || sel.id !== 'LOYALTY' || sel.restId !== r.id) return null;
+  const c = (window.neshCoupons || []).find(x => x.id === 'LOYALTY');
+  if (!c || !c.gift || couponCheck(c, r.id, itemsTotal)) return null;
+  return c.giftName;
+}
+// ---- counting: an order counts only once it is DELIVERED; a group order over several shops = 1 ----
+// At placement each order is tagged with its checkout group (loyalty/{phone}/g/{orderKey} = groupId). When an order is seen
+// as delivered, its group is counted once (loyalty/{phone}/counted/{groupId}) and count goes up by 1.
+(function () {
+  let seen = null;
+  const LS = 'nesh_loy_seen';
+  const lsGet = () => { try { return JSON.parse(localStorage.getItem(LS) || '[]') || []; } catch (e) { return []; } };
+  const lsAdd = k => { try { const a = lsGet(); if (a.indexOf(k) < 0) a.push(k); localStorage.setItem(LS, JSON.stringify(a.slice(-80))); } catch (e) {} };
+  const busy = () => Date.now() - (window.__neshMultiBusy || 0) < 120000;
+  function record(key, group) {
+    const ph = couponPhoneKey();
+    if (!key || !ph || !window.fb || !loyaltyOn()) return;
+    if (lsGet().indexOf(key) >= 0) return;
+    lsAdd(key);
+    try { const { db, ref, set } = window.fb; set(ref(db, 'loyalty/' + ph + '/g/' + key), group || key).catch(() => {}); } catch (e) {}
+  }
+  window.neshLoyaltyCount = function (key) { window.__neshLoyGroup = key; record(key, key); };   // first order of a group checkout
+  window.neshLoyaltySync = function () { try { seen = (state.lastOrder && state.lastOrder.orderKey) || seen; } catch (e) {} };
+  setInterval(() => {
+    let k = ''; try { k = (state.lastOrder && state.lastOrder.orderKey) || ''; } catch (e) {}
+    if (seen === null) { seen = k; return; }
+    if (!k || k === seen) return;
+    seen = k;
+    if (busy()) record(k, window.__neshLoyGroup || k);   // other shops of a group order share the first order's group
+    else { window.__neshLoyGroup = k; record(k, k); }
+  }, 500);
+  const checked = {};
+  window.neshLoyaltyDelivered = function (orderKey) {
+    const ph = couponPhoneKey();
+    if (!orderKey || !ph || !window.fb || checked[orderKey] || !loyaltyOn()) return;
+    checked[orderKey] = true;
+    const { db, ref, get, set, runTransaction } = window.fb;
+    get(ref(db, 'loyalty/' + ph + '/g/' + orderKey)).then(gs => {
+      if (!gs.exists()) return;   // order placed before the reward existed: not counted
+      const group = String(gs.val()), cRef = ref(db, 'loyalty/' + ph + '/counted/' + group);
+      return get(cRef).then(cs => {
+        if (cs.exists()) return;
+        return set(cRef, Date.now()).then(() => runTransaction(ref(db, 'loyalty/' + ph + '/count'), n => (n || 0) + 1));
+      });
+    }).catch(() => { delete checked[orderKey]; });
+  };
+})();
+// ---- config + progress listeners ----
+(function w() {
+  if (!window.fb) return setTimeout(w, 300);
+  try {
+    window.fb.onValue(window.fb.ref(window.fb.db, 'app_config/loyalty'), snap => {
+      window.NESH_LOYALTY = snap.val() || null;
+      window.neshLoyaltyRebuild(); try { renderLoyaltyCard(); } catch (e) {}
+    }, () => {});
+  } catch (e) {}
+})();
+(function () {
+  let subPhone = '', unsub = null;
+  setInterval(() => {
+    const ph = couponPhoneKey();
+    if (!window.fb || ph === subPhone) return;
+    subPhone = ph; if (unsub) { try { unsub(); } catch (e) {} unsub = null; }
+    window.NESH_LOYALTY_PROG = { count: 0, claimed: 0 };
+    if (!ph) { try { renderLoyaltyCard(); } catch (e) {} return; }
+    try {
+      unsub = window.fb.onValue(window.fb.ref(window.fb.db, 'loyalty/' + ph), snap => {
+        const v = snap.val() || {};
+        window.NESH_LOYALTY_PROG = { count: Number(v.count) || 0, claimed: Number(v.claimed) || 0 };
+        window.neshLoyaltyRebuild(); try { renderLoyaltyCard(); } catch (e) {}
+      }, () => {});
+    } catch (e) {}
+  }, 2000);
+})();
+// ---- the attractive card at the top of every eligible shop ----
+function renderLoyaltyCard() {
+  const el = document.getElementById('loyalty-card'); if (!el) return;
+  const r = state.selectedRestaurant, c = window.NESH_LOYALTY;
+  if (!r || !loyaltyOn() || !loyaltyShopOk(r.id)) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  if (!document.getElementById('nesh-loy-css')) {
+    const st = document.createElement('style'); st.id = 'nesh-loy-css';
+    st.textContent = '#loyalty-card{margin:10px 12px 4px}.loy{position:relative;overflow:hidden;border-radius:20px;padding:14px 14px 12px;background:linear-gradient(135deg,#2B2410 0%,#4a3a0c 55%,#7a5a00 100%);color:#FFF8DF;box-shadow:0 8px 20px rgba(43,36,16,.28)}' +
+      '.loy:before{content:"";position:absolute;top:0;left:0;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.22),transparent);animation:loyShine 3.2s ease-in-out infinite}' +
+      '@keyframes loyShine{0%,55%{transform:translateX(-130%) skewX(-18deg)}100%{transform:translateX(420%) skewX(-18deg)}}@keyframes loyPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}' +
+      '.loy-top{display:flex;align-items:center;gap:10px;position:relative}.loy-ic{font-size:30px;line-height:1}.loy-t{font-weight:800;font-size:15px;line-height:1.2}.loy-s{font-size:12px;opacity:.85;margin-top:2px}' +
+      '.loy-rw{margin-left:auto;background:#F2B705;color:#2B2410;font-weight:800;font-size:12px;padding:6px 10px;border-radius:999px;white-space:nowrap}' +
+      '.loy-dots{display:flex;gap:6px;margin:12px 0 8px;position:relative;flex-wrap:wrap}.loy-d{width:26px;height:26px;border-radius:50%;border:2px dashed rgba(255,248,223,.45);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}' +
+      '.loy-d.on{background:#F2B705;border:2px solid #F2B705;color:#2B2410}.loy-d.gift{border-style:solid;border-color:#F2B705}' +
+      '.loy-bar{height:8px;border-radius:99px;background:rgba(255,248,223,.2);margin:12px 0 8px;overflow:hidden;position:relative}.loy-bar i{display:block;height:100%;background:#F2B705;border-radius:99px}' +
+      '.loy-f{font-size:12px;position:relative}.loy-btn{position:relative;width:100%;margin-top:8px;border:0;border-radius:12px;padding:11px;background:#F2B705;color:#2B2410;font-weight:800;font-size:14px;cursor:pointer;animation:loyPulse 1.4s ease-in-out infinite}';
+    document.head.appendChild(st);
+  }
+  const n = loyaltyN(), p = window.NESH_LOYALTY_PROG, avail = loyaltyAvail();
+  const done = avail > 0 ? n : Math.max(0, (p.count || 0) - (p.claimed || 0) * n), left = Math.max(0, n - done);
+  const applied = !!(window.neshCoupon && window.neshCoupon.id === 'LOYALTY' && window.neshCoupon.restId === r.id);
+  let prog;
+  if (n <= 10) {
+    prog = '<div class="loy-dots">';
+    for (let i = 1; i <= n; i++) prog += '<span class="loy-d' + (i <= done ? ' on' : '') + (i === n ? ' gift' : '') + '">' + (i === n ? '\uD83C\uDF81' : (i <= done ? '\u2713' : i)) + '</span>';
+    prog += '</div>';
+  } else prog = '<div class="loy-bar"><i style="width:' + Math.min(100, done / n * 100) + '%"></i></div>';
+  const title = escapeHtml(String(c.title || 'Loyalty Reward').slice(0, 40));
+  let foot, btn = '';
+  if (avail > 0) {
+    foot = '\uD83C\uDF89 <b>Unlocked!</b> ' + (applied ? 'Applied to your order \u2705' : 'Claim it on this order.') + (Number(c.minOrder) > 0 ? ' (min order \u20B9' + c.minOrder + ')' : '');
+    if (!applied) btn = '<button type="button" class="loy-btn" data-loy-claim>\uD83C\uDF81 Claim ' + escapeHtml(loyaltyRewardText(c)) + '</button>';
+  } else foot = '<b>' + done + ' of ' + n + '</b> orders done \u00B7 ' + left + ' more to unlock <span style="opacity:.7">(group order = 1 order)</span>';
+  el.innerHTML = '<div class="loy"><div class="loy-top"><span class="loy-ic">' + (avail > 0 ? '\uD83C\uDF89' : '\uD83C\uDFC6') + '</span><div><div class="loy-t">' + title + '</div><div class="loy-s">Order ' + n + ' times, get a reward</div></div><span class="loy-rw">' + escapeHtml(loyaltyRewardText(c)) + '</span></div>' + prog + '<div class="loy-f">' + foot + '</div>' + btn + '</div>';
+  el.style.display = 'block';
+  const b = el.querySelector('[data-loy-claim]');
+  if (b) b.addEventListener('click', () => {
+    window.neshCoupon = { id: 'LOYALTY', restId: r.id };
+    try { updateLocSummary(); } catch (e) {}
+    renderLoyaltyCard();
+    try { showInfoModal('Reward added \uD83C\uDF89', c.rewardType === 'product' ? 'Your free gift will be added to this order at checkout.' : 'Your discount will be applied at checkout.'); } catch (e) {}
+  });
+}
+// ---------- GROCERIES (NESH Store) loyalty reward (Operator Panel -> Groceries Reward): same idea, only for NESH Store orders, own progress
+// app_config/loyaltyStore = { on, ordersNeeded, title, rewardType, type, value, maxDiscount, minOrder, productName, itemKey, qty }; progress at loyaltyStore/{phone}
+// (old text follows) ----------
+// app_config/loyalty = { on, ordersNeeded, title, rewardType:'discount'|'product', type:'flat'|'percent', value, maxDiscount, minOrder, productName, allShops, shops:{id:true} }
+// Per-customer progress lives at loyalty/{phone} = { count, claimed, g:{orderKey:groupId}, counted:{groupId:ts} }. A group (multi-shop) checkout counts as ONE order.
+// The reward is applied through the normal coupon engine as a built-in coupon with id 'LOYALTY_S'.
+window.NESH_LOYALTYS = null;
+window.NESH_LOYALTYS_PROG = { count: 0, claimed: 0 };
+function loyaltySOn() { const c = window.NESH_LOYALTYS; return !!(c && c.on !== false && Number(c.ordersNeeded) > 0); }
+function loyaltySN() { return Math.max(1, Math.round(Number(window.NESH_LOYALTYS && window.NESH_LOYALTYS.ordersNeeded) || 5)); }
+function loyaltySAvail() { if (!loyaltySOn()) return 0; const p = window.NESH_LOYALTYS_PROG; return Math.max(0, Math.floor((p.count || 0) / loyaltySN()) - (p.claimed || 0)); }
+function loyaltySShopOk(restId) { return restId === 'NESH_STORE' && !!window.NESH_LOYALTYS; }
+function loyaltySRewardText(c) {
+  c = c || window.NESH_LOYALTYS || {};
+  if (c.rewardType === 'product') return '\uD83C\uDF81 FREE ' + String(c.productName || 'gift');
+  const v = Number(c.value) || 0;
+  return c.type === 'percent' ? (v + '% OFF' + (Number(c.maxDiscount) > 0 ? ' (up to \u20B9' + c.maxDiscount + ')' : '')) : ('\u20B9' + v + ' OFF');
+}
+window.neshLoyaltySRebuild = function () {
+  window.neshCoupons = (window.neshCoupons || []).filter(x => x.id !== 'LOYALTY_S');
+  if (loyaltySOn()) {
+    const c = window.NESH_LOYALTYS, gift = c.rewardType === 'product';
+    window.neshCoupons.push({
+      id: 'LOYALTY_S', code: 'LOYALTYSTORE', loyaltyS: true, gift, giftName: String(c.productName || 'Free gift').slice(0, 60),
+      type: c.type === 'percent' ? 'percent' : 'flat', value: gift ? 0 : (Number(c.value) || 0),
+      minOrder: Number(c.minOrder) || 0, maxDiscount: Number(c.maxDiscount) || 0, exp: 0, off: false,
+      desc: 'Loyalty reward', allShops: false, secret: true, shops: { NESH_STORE: true }, perCustomer: 1, maxUses: 0
+    });
+  }
+  try { refreshCouponUI(); } catch (e) {}
+};
+// Free product reward (a Groceries catalog item): returns { item, qty } when the reward is applied on NESH Store and valid.
+function neshLoyaltySGiftFor(r, itemsTotal) {
+  const sel = window.neshCoupon, cfg = window.NESH_LOYALTYS;
+  if (!r || r.id !== 'NESH_STORE' || !cfg || !sel || sel.id !== 'LOYALTY_S' || sel.restId !== r.id) return null;
+  const c = (window.neshCoupons || []).find(x => x.id === 'LOYALTY_S');
+  if (!c || !c.gift || couponCheck(c, r.id, itemsTotal)) return null;
+  const item = (r.items || []).find(it => neshItemKey(it) === cfg.itemKey && !it.soldOut && !it.outOfStock && it.available !== false);
+  return item ? { item, qty: Math.max(1, Number(cfg.qty) || 1) } : null;
+}
+// ---- counting: an order counts only once it is DELIVERED; a group order over several shops = 1 ----
+// At placement each order is tagged with its checkout group (loyalty/{phone}/g/{orderKey} = groupId). When an order is seen
+// as delivered, its group is counted once (loyalty/{phone}/counted/{groupId}) and count goes up by 1.
+(function () {
+  let seen = null;
+  const LS = 'nesh_loyS_seen';
+  const lsGet = () => { try { return JSON.parse(localStorage.getItem(LS) || '[]') || []; } catch (e) { return []; } };
+  const lsAdd = k => { try { const a = lsGet(); if (a.indexOf(k) < 0) a.push(k); localStorage.setItem(LS, JSON.stringify(a.slice(-80))); } catch (e) {} };
+  const busy = () => Date.now() - (window.__neshMultiBusy || 0) < 120000;
+  function record(key, group) {
+    const ph = couponPhoneKey();
+    if (!key || !ph || !window.fb || !loyaltySOn()) return;
+    if (lsGet().indexOf(key) >= 0) return;
+    lsAdd(key);
+    try { const { db, ref, set } = window.fb; set(ref(db, 'loyaltyStore/' + ph + '/g/' + key), group || key).catch(() => {}); } catch (e) {}
+  }
+  const isStore = () => { try { return !!(state.lastOrder && state.lastOrder.restId === 'NESH_STORE'); } catch (e) { return false; } };
+  window.neshLoyaltySCount = function (key) { if (isStore()) record(key, key); };   // called for the first order of a group checkout
+  window.neshLoyaltySSync = function () { try { seen = (state.lastOrder && state.lastOrder.orderKey) || seen; } catch (e) {} };
+  setInterval(() => {
+    let k = ''; try { k = (state.lastOrder && state.lastOrder.orderKey) || ''; } catch (e) {}
+    if (seen === null) { seen = k; return; }
+    if (!k || k === seen) return;
+    seen = k;
+    if (isStore()) record(k, k);
+  }, 500);
+  const checked = {};
+  window.neshLoyaltySDelivered = function (orderKey) {
+    const ph = couponPhoneKey();
+    if (!orderKey || !ph || !window.fb || checked[orderKey] || !loyaltySOn()) return;
+    checked[orderKey] = true;
+    const { db, ref, get, set, runTransaction } = window.fb;
+    get(ref(db, 'loyaltyStore/' + ph + '/g/' + orderKey)).then(gs => {
+      if (!gs.exists()) return;   // order placed before the reward existed: not counted
+      const group = String(gs.val()), cRef = ref(db, 'loyaltyStore/' + ph + '/counted/' + group);
+      return get(cRef).then(cs => {
+        if (cs.exists()) return;
+        return set(cRef, Date.now()).then(() => runTransaction(ref(db, 'loyaltyStore/' + ph + '/count'), n => (n || 0) + 1));
+      });
+    }).catch(() => { delete checked[orderKey]; });
+  };
+})();
+// ---- config + progress listeners ----
+(function w() {
+  if (!window.fb) return setTimeout(w, 300);
+  try {
+    window.fb.onValue(window.fb.ref(window.fb.db, 'app_config/loyaltyStore'), snap => {
+      window.NESH_LOYALTYS = snap.val() || null;
+      window.neshLoyaltySRebuild(); try { renderLoyaltySCard(); } catch (e) {}
+    }, () => {});
+  } catch (e) {}
+})();
+(function () {
+  let subPhone = '', unsub = null;
+  setInterval(() => {
+    const ph = couponPhoneKey();
+    if (!window.fb || ph === subPhone) return;
+    subPhone = ph; if (unsub) { try { unsub(); } catch (e) {} unsub = null; }
+    window.NESH_LOYALTYS_PROG = { count: 0, claimed: 0 };
+    if (!ph) { try { renderLoyaltySCard(); } catch (e) {} return; }
+    try {
+      unsub = window.fb.onValue(window.fb.ref(window.fb.db, 'loyaltyStore/' + ph), snap => {
+        const v = snap.val() || {};
+        window.NESH_LOYALTYS_PROG = { count: Number(v.count) || 0, claimed: Number(v.claimed) || 0 };
+        window.neshLoyaltySRebuild(); try { renderLoyaltySCard(); } catch (e) {}
+      }, () => {});
+    } catch (e) {}
+  }, 2000);
+})();
+// ---- the attractive card at the top of every eligible shop ----
+function renderLoyaltySCard() {
+  const el = document.getElementById('loyalty-card-s'); if (!el) return;
+  const r = state.selectedRestaurant, c = window.NESH_LOYALTYS;
+  if (!r || !loyaltySOn() || !loyaltySShopOk(r.id)) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  if (!document.getElementById('nesh-loy-css')) {
+    const st = document.createElement('style'); st.id = 'nesh-loy-css';
+    st.textContent = '#loyalty-card{margin:10px 12px 4px}.loy{position:relative;overflow:hidden;border-radius:20px;padding:14px 14px 12px;background:linear-gradient(135deg,#2B2410 0%,#4a3a0c 55%,#7a5a00 100%);color:#FFF8DF;box-shadow:0 8px 20px rgba(43,36,16,.28)}' +
+      '.loy:before{content:"";position:absolute;top:0;left:0;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.22),transparent);animation:loyShine 3.2s ease-in-out infinite}' +
+      '@keyframes loyShine{0%,55%{transform:translateX(-130%) skewX(-18deg)}100%{transform:translateX(420%) skewX(-18deg)}}@keyframes loyPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}' +
+      '.loy-top{display:flex;align-items:center;gap:10px;position:relative}.loy-ic{font-size:30px;line-height:1}.loy-t{font-weight:800;font-size:15px;line-height:1.2}.loy-s{font-size:12px;opacity:.85;margin-top:2px}' +
+      '.loy-rw{margin-left:auto;background:#F2B705;color:#2B2410;font-weight:800;font-size:12px;padding:6px 10px;border-radius:999px;white-space:nowrap}' +
+      '.loy-dots{display:flex;gap:6px;margin:12px 0 8px;position:relative;flex-wrap:wrap}.loy-d{width:26px;height:26px;border-radius:50%;border:2px dashed rgba(255,248,223,.45);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}' +
+      '.loy-d.on{background:#F2B705;border:2px solid #F2B705;color:#2B2410}.loy-d.gift{border-style:solid;border-color:#F2B705}' +
+      '.loy-bar{height:8px;border-radius:99px;background:rgba(255,248,223,.2);margin:12px 0 8px;overflow:hidden;position:relative}.loy-bar i{display:block;height:100%;background:#F2B705;border-radius:99px}' +
+      '.loy-f{font-size:12px;position:relative}.loy-btn{position:relative;width:100%;margin-top:8px;border:0;border-radius:12px;padding:11px;background:#F2B705;color:#2B2410;font-weight:800;font-size:14px;cursor:pointer;animation:loyPulse 1.4s ease-in-out infinite}';
+    document.head.appendChild(st);
+  }
+  const n = loyaltySN(), p = window.NESH_LOYALTYS_PROG, avail = loyaltySAvail();
+  const done = avail > 0 ? n : Math.max(0, (p.count || 0) - (p.claimed || 0) * n), left = Math.max(0, n - done);
+  const applied = !!(window.neshCoupon && window.neshCoupon.id === 'LOYALTY_S' && window.neshCoupon.restId === r.id);
+  let prog;
+  if (n <= 10) {
+    prog = '<div class="loy-dots">';
+    for (let i = 1; i <= n; i++) prog += '<span class="loy-d' + (i <= done ? ' on' : '') + (i === n ? ' gift' : '') + '">' + (i === n ? '\uD83C\uDF81' : (i <= done ? '\u2713' : i)) + '</span>';
+    prog += '</div>';
+  } else prog = '<div class="loy-bar"><i style="width:' + Math.min(100, done / n * 100) + '%"></i></div>';
+  const title = escapeHtml(String(c.title || 'Groceries Reward').slice(0, 40));
+  let foot, btn = '';
+  if (avail > 0) {
+    foot = '\uD83C\uDF89 <b>Unlocked!</b> ' + (applied ? 'Applied to your order \u2705' : 'Claim it on this order.') + (Number(c.minOrder) > 0 ? ' (min order \u20B9' + c.minOrder + ')' : '');
+    if (!applied) btn = '<button type="button" class="loy-btn" data-loy-claim>\uD83C\uDF81 Claim ' + escapeHtml(loyaltySRewardText(c)) + '</button>';
+  } else foot = '<b>' + done + ' of ' + n + '</b> orders done \u00B7 ' + left + ' more to unlock';
+  el.innerHTML = '<div class="loy"><div class="loy-top"><span class="loy-ic">' + (avail > 0 ? '\uD83C\uDF89' : '\uD83C\uDFC6') + '</span><div><div class="loy-t">' + title + '</div><div class="loy-s">Order ' + n + ' times, get a reward</div></div><span class="loy-rw">' + escapeHtml(loyaltySRewardText(c)) + '</span></div>' + prog + '<div class="loy-f">' + foot + '</div>' + btn + '</div>';
+  el.style.display = 'block';
+  const b = el.querySelector('[data-loy-claim]');
+  if (b) b.addEventListener('click', () => {
+    window.neshCoupon = { id: 'LOYALTY_S', restId: r.id };
+    try { updateLocSummary(); } catch (e) {}
+    renderLoyaltySCard();
+    try { showInfoModal('Reward added \uD83C\uDF89', c.rewardType === 'product' ? 'Your free item will be added to this order at checkout.' : 'Your discount will be applied at checkout.'); } catch (e) {}
+  });
+}
 // Platform fee for the currently selected shop: the operator-set Go Series
 // platform fee (Operator Panel → Go Series) for any shop flagged
 // restaurants/{id}.goSeries === true, otherwise the app-wide platform fee
@@ -13603,10 +14243,11 @@ function openLocationConfirm(prefill) {
   locGpsBtn.textContent = "📍 Use my current location";
   locProceedBtn.disabled = false;
   locProceedBtn.textContent = "Proceed →";
-  locLandmarkInput.value = pc?.landmark || "";
-  locPlaceInput.value = pc?.place || "";
+  const haPre = pc ? null : neshHomeAddrFor({ lat: startPosLat, lng: startPosLng });
+  locLandmarkInput.value = pc?.landmark || haPre?.landmark || "";
+  locPlaceInput.value = pc?.place || haPre?.place || "";
   locSearchInput.value = "";
-  locContactInput.value = pc?.contact || digitsOnly(state.user?.number || "");
+  locContactInput.value = pc?.contact || haPre?.contact || digitsOnly(state.user?.number || "");
   hideLandmarkSuggestions();
   hideLocSearchResults();
   locOverlay.classList.add('show');
@@ -13839,7 +14480,11 @@ const browseLocResultsEl = document.getElementById('browse-loc-results');
 
 let browseLocMap = null;
 let browseLocMarker = null;
+let cpPickerOrigin = null, cpPickerCleared = false;
+let browseDetailsMode = false;   // picker open (home or checkout): Place / Landmark / Contact shown on the same page
+let browseFromCheckout = false; // true while the picker is opened from the checkout address card
 let pendingBrowsePos = null; // { lat, lng }
+let pendingBrowseName = null; // name the customer picked from search / recent list (kept as-is in Recent locations)
 
 // Set by requireLocationThen() when a category tap needed a location first;
 // run once the customer confirms one in the picker, then cleared. Cleared
@@ -13859,7 +14504,9 @@ function requireLocationThen(next) {
 
 function setPendingBrowsePos(lat, lng) {
   pendingBrowsePos = { lat, lng };
+  pendingBrowseName = null;   // map tap / drag / GPS: no picked name (set again by search result / recent tap)
   browseLocCurrentValue.textContent = lat.toFixed(5) + ", " + lng.toFixed(5);
+  if (browseFromCheckout || browseDetailsMode) cpBrowseSync(lat, lng);
 }
 
 
@@ -13886,6 +14533,8 @@ function openBrowseLocationPicker() {
   browseLocGpsBtn.textContent = "📍 Use my current location";
   browseLocSearchInput.value = "";
   hideBrowseSearchResults();
+  try { neshRenderRecentLocs(); } catch (e) {}
+  try { cpPrepDetails(); } catch (e) {}
   browseLocOverlay.classList.add('show');
 
   setTimeout(() => {
@@ -13908,8 +14557,87 @@ function openBrowseLocationPicker() {
   }, 60);
 }
 
+// ---------- Recent locations (last 2 the customer used / picked) ----------
+const NESH_RECENT_KEY = 'nesh_loc_history';
+function neshReadRecentLocs() {
+  try {
+    const a = JSON.parse(localStorage.getItem(NESH_RECENT_KEY) || '[]');
+    return Array.isArray(a) ? a.filter(x => x && typeof x.lat === 'number' && typeof x.lng === 'number').slice(0, 2) : [];
+  } catch (e) { return []; }
+}
+function neshDistM(a, b) {
+  const R = 6371000, r = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * r, dLng = (b.lng - a.lng) * r;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function neshAddRecentLoc(lat, lng, pickedName) {
+  if (typeof lat !== 'number' || typeof lng !== 'number') return;
+  try {
+    let list = neshReadRecentLocs();
+    const same = list.find(x => neshDistM(x, { lat, lng }) < 150);
+    list = list.filter(x => x !== same);
+    list.unshift({ lat, lng, name: pickedName || (same ? same.name : null), t: Date.now() });
+    list = list.slice(0, 2);   // only the last 2 locations are kept
+    localStorage.setItem(NESH_RECENT_KEY, JSON.stringify(list));
+    if (!list[0].name) {
+      neshPlaceNameFor(lat, lng).then(name => {
+        if (!name) return;
+        try {
+          const cur = neshReadRecentLocs();
+          const it = cur.find(x => neshDistM(x, { lat, lng }) < 1);
+          if (it) { it.name = name; localStorage.setItem(NESH_RECENT_KEY, JSON.stringify(cur)); }
+        } catch (e) {}
+      });
+    }
+  } catch (e) {}
+}
+function neshAgo(t) {
+  if (!t) return 'Saved location';
+  const d = Math.floor((Date.now() - t) / 86400000);
+  return d <= 0 ? 'Used today' : d === 1 ? 'Used yesterday' : 'Used ' + d + ' days ago';
+}
+function neshRenderRecentLocs() {
+  const box = document.getElementById('browse-loc-recent');
+  if (!box) return;
+  const list = neshReadRecentLocs();
+  if (!list.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.innerHTML = '<p style="margin:14px 0 8px; font-size:12px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--muted-2); font-family:\'Inter\',sans-serif;">Recent locations</p>';
+  const card = document.createElement('div');
+  card.style.cssText = 'background:#fff; border:1px solid #EFEBDD; border-radius:16px; overflow:hidden; box-shadow:0 2px 10px rgba(43,36,16,.06);';
+  list.forEach((it, idx) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.style.cssText = 'display:flex; align-items:center; gap:12px; width:100%; text-align:left; padding:13px 14px; border:none; background:#fff; color:#2B2410; font-family:inherit; cursor:pointer;' + (idx ? ' border-top:1px solid #F1EDE0;' : '');
+    const name = it.name || (it.lat.toFixed(4) + ', ' + it.lng.toFixed(4));
+    b.innerHTML = '<span style="flex:none; width:38px; height:38px; border-radius:50%; background:#F4F1E6; display:flex; align-items:center; justify-content:center;">'
+      + '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#6B5A1E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg></span>'
+      + '<span style="flex:1; min-width:0;"><span class="nrl-name" style="display:block; font-size:15px; font-weight:700; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></span>'
+      + '<span style="display:block; font-size:12px; font-weight:500; opacity:.6; margin-top:2px;">Recent location · ' + neshAgo(it.t).replace('Used ', '') + '</span></span>'
+      + '<span style="flex:none; font-size:22px; font-weight:700; opacity:.35;">›</span>';
+    const nameEl = b.querySelector('.nrl-name');
+    nameEl.textContent = name;
+    if (!it.name) neshPlaceNameFor(it.lat, it.lng).then(n => { if (n) nameEl.textContent = n; });
+    b.addEventListener('click', () => {
+      setPendingBrowsePos(it.lat, it.lng);
+      pendingBrowseName = it.name || null;
+      try { if (browseLocMap) { browseLocMap.setView([it.lat, it.lng], 15); browseLocMarker.setLatLng([it.lat, it.lng]); } } catch (e) {}
+      browseLocConfirmBtn.click();
+    });
+    card.appendChild(b);
+  });
+  box.appendChild(card);
+  box.style.display = 'block';
+}
+
 function closeBrowseLocationPicker() {
   browseLocOverlay.classList.remove('show');
+  browseLocOverlay.style.zIndex = '';
+  browseLocOverlay.classList.remove('cp-mode', 'cp-map-open');
+  { const mt = document.getElementById('browse-loc-map-toggle'); if (mt) mt.textContent = '🗺️ Adjust pin on map'; }
+  browseFromCheckout = false;
+  browseDetailsMode = false;
+  { const ex = document.getElementById('browse-loc-extra'); if (ex) ex.style.display = 'none'; }
 }
 
 document.getElementById('home-loc-row').addEventListener('click', openBrowseLocationPicker);
@@ -13924,7 +14652,7 @@ function syncTestLocBtn() {
   try { out = isAreaUnavailable(state.customerPos); } catch (e) {}
   const t = (out && window.TEST_LOCATION) ? window.TEST_LOCATION : null;
   browseLocTestBtn.style.display = t ? '' : 'none';
-  if (t) browseLocTestBtn.textContent = '🧪 Use test location' + (t.name ? ' (' + t.name + ')' : '');
+  if (t) browseLocTestBtn.textContent = 'Use default location';
 }
 window.onTestLocationUpdated = syncTestLocBtn;
 syncTestLocBtn();
@@ -13936,34 +14664,70 @@ browseLocTestBtn.addEventListener('click', () => {
   browseLocConfirmBtn.click();
 });
 
+// "Use my current location" in the picker (home AND checkout): take a FAST fix first (cached / network, max 5 s) so the pin
+// jumps immediately, then quietly sharpen it with real GPS. If the quick fix fails, fall back to the full GPS request.
+let browseGpsToken = 0;
 browseLocGpsBtn.addEventListener('click', () => {
   if (!navigator.geolocation) {
     browseLocCurrentValue.textContent = "Location unavailable on this device";
     return;
   }
+  if (browseLocGpsBtn.disabled) return;
+  const token = ++browseGpsToken;
+  const GPS_LABEL = "📍 Use my current location";
   browseLocGpsBtn.disabled = true;
   browseLocGpsBtn.textContent = "Locating…";
+  const applyFix = (pos, zoom) => {
+    const lat = pos.coords.latitude, lng = pos.coords.longitude;
+    setPendingBrowsePos(lat, lng);
+    if (browseLocMap && browseLocMarker) {
+      browseLocMap.setView([lat, lng], zoom);
+      browseLocMarker.setLatLng([lat, lng]);
+    }
+  };
+  const onFail = (err) => {
+    browseLocCurrentValue.textContent =
+      err.code === 1 ? "Location permission denied — enable it in browser settings" :
+      err.code === 2 ? "Location unavailable — check GPS/network" :
+      "Location request timed out — try again";
+    showLocationOffPopup(err.code, browseFromCheckout ? { checkout: true } : undefined);
+    browseLocGpsBtn.disabled = false;
+    browseLocGpsBtn.textContent = GPS_LABEL;
+  };
+  const fullGps = () => {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        applyFix(pos, 15);
+        browseLocGpsBtn.disabled = false;
+        browseLocGpsBtn.textContent = GPS_LABEL;
+      },
+      onFail,
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+    );
+  };
   navigator.geolocation.getCurrentPosition(
     pos => {
-      const lat = pos.coords.latitude, lng = pos.coords.longitude;
-      setPendingBrowsePos(lat, lng);
-      if (browseLocMap) {
-        browseLocMap.setView([lat, lng], 15);
-        browseLocMarker.setLatLng([lat, lng]);
-      }
+      applyFix(pos, 15);
       browseLocGpsBtn.disabled = false;
-      browseLocGpsBtn.textContent = "📍 Use my current location";
+      browseLocGpsBtn.textContent = GPS_LABEL;
+      // Background refine: only if the picker is still open, the customer hasn't moved the pin themselves,
+      // and the GPS fix is clearly better and clearly somewhere else.
+      const first = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: Number(pos.coords.accuracy) || 99999 };
+      try {
+        navigator.geolocation.getCurrentPosition(p2 => {
+          if (token !== browseGpsToken || !browseLocOverlay.classList.contains('show')) return;
+          if (!pendingBrowsePos || pendingBrowsePos.lat !== first.lat || pendingBrowsePos.lng !== first.lng) return;
+          const acc = Number(p2.coords.accuracy) || 99999;
+          if (acc >= first.acc || haversineMeters(first.lat, first.lng, p2.coords.latitude, p2.coords.longitude) < 40) return;
+          applyFix(p2, 16);
+        }, () => {}, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+      } catch (e) {}
     },
-    (err) => {
-      browseLocCurrentValue.textContent =
-        err.code === 1 ? "Location permission denied — enable it in browser settings" :
-        err.code === 2 ? "Location unavailable — check GPS/network" :
-        "Location request timed out — try again";
-      showLocationOffPopup(err.code);
-      browseLocGpsBtn.disabled = false;
-      browseLocGpsBtn.textContent = "📍 Use my current location";
+    err => {
+      if (err && err.code === 1) { onFail(err); return; }   // permission denied: report straight away
+      fullGps();                                            // timeout / unavailable: try the full GPS request
     },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+    { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
   );
 });
 
@@ -13978,6 +14742,7 @@ function hideBrowseSearchResults() {
 function selectSearchResult(place) {
   const lat = parseFloat(place.lat), lng = parseFloat(place.lon);
   setPendingBrowsePos(lat, lng);
+  try { pendingBrowseName = String(place.display_name || '').split(',')[0].trim() || null; } catch (e) {}
   browseLocSearchInput.value = place.display_name;
   hideBrowseSearchResults();
   if (browseLocMap) {
@@ -14103,21 +14868,53 @@ browseLocConfirmBtn.addEventListener('click', () => {
     browseLocCurrentValue.textContent = "Please tap the map or use GPS to set a location first";
     return;
   }
+  if (browseFromCheckout) {
+    if (isAreaUnavailable(pendingBrowsePos)) {
+      showInfoModal("We don't deliver here yet", "Please pick a spot inside our delivery area.");
+      return;
+    }
+    const errEl = document.getElementById('browse-loc-extra-err');
+    const lmField = locLandmarkInput.closest('.field'), ctField = locContactInput.closest('.field');
+    const bad = (fld, msg, inp) => {
+      if (fld) { fld.style.border = '2px solid var(--chili)'; fld.scrollIntoView({ behavior: 'smooth', block: 'center' }); inp.addEventListener('input', () => { fld.style.border = '1px solid #E4DFD2'; }, { once: true }); }
+      errEl.textContent = msg; errEl.style.display = 'block';
+    };
+    if (!locLandmarkInput.value.trim()) { bad(lmField, 'Please pick or type a landmark near your home.', locLandmarkInput); return; }
+    if (digitsOnly(locContactInput.value).length !== 10) { bad(ctField, 'Please enter a valid 10-digit contact number.', locContactInput); return; }
+    errEl.style.display = 'none';
+    try { neshAddRecentLoc(pendingBrowsePos.lat, pendingBrowsePos.lng, pendingBrowseName); } catch (e) {}
+    closeBrowseLocationPicker();                   // resets browseFromCheckout, hides the details block
+    try { cpLive(true); } catch (e) {}             // back on checkout with address, km and bill refreshed
+    try { updateCatLocationLabel(); } catch (e) {}
+    return;
+  }
   if (isAreaUnavailable(pendingBrowsePos)) {
     // Not delivering here: save the location (shops may be added to this
     // area later), close the picker and let the "We haven't reached you yet"
     // screen take over — no popup.
     state.customerPos = pendingBrowsePos;
     try { localStorage.setItem('asfood_customer_pos', JSON.stringify(state.customerPos)); } catch (e) {}
+    try { neshAddRecentLoc(state.customerPos.lat, state.customerPos.lng, pendingBrowseName); } catch (e) {}
     try { closeBrowseLocationPicker(); } catch (e) {}
     try { updateHomeLocationLabel(); } catch (e) {}
     try { renderRestaurantList(); } catch (e) {}
     try { syncAreaUnavailScreen(); } catch (e) {}
     return;
   }
+  if (browseDetailsMode) {
+    const ct = digitsOnly(locContactInput.value);
+    if (ct.length && ct.length !== 10) {
+      const er = document.getElementById('browse-loc-extra-err'), f = locContactInput.closest('.field');
+      if (f) { f.style.border = '2px solid var(--chili)'; f.scrollIntoView({ behavior: 'smooth', block: 'center' }); locContactInput.addEventListener('input', () => { f.style.border = '1px solid #E4DFD2'; }, { once: true }); }
+      if (er) { er.textContent = 'Please enter a valid 10-digit contact number (or leave it empty).'; er.style.display = 'block'; }
+      return;
+    }
+    try { localStorage.setItem('nesh_home_addr', JSON.stringify({ lat: pendingBrowsePos.lat, lng: pendingBrowsePos.lng, place: locPlaceInput.value.trim(), landmark: locLandmarkInput.value.trim(), contact: ct })); } catch (e) {}
+  }
   state.customerPos = pendingBrowsePos;
   try { localStorage.setItem('asfood_customer_pos', JSON.stringify(state.customerPos)); } catch (e) {}
   try { localStorage.setItem('nesh_last_gps', JSON.stringify({ lat: state.customerPos.lat, lng: state.customerPos.lng, t: Date.now() })); } catch (e) {}   // remembered as "last location"
+  try { neshAddRecentLoc(state.customerPos.lat, state.customerPos.lng, pendingBrowseName); } catch (e) {}
   closeBrowseLocationPicker();
   updateHomeLocationLabel();
   renderRestaurantList();
@@ -14174,7 +14971,7 @@ function renderDrinkSuggestions(r) {
   picks.forEach(it => {
     const c = document.createElement('div');
     c.style.cssText = 'flex:none; width:96px; text-align:center; background:#fff; border:1.5px solid #F1E3B5; border-radius:14px; padding:8px 6px;';
-    c.innerHTML = `<img src="${it.image || ''}" alt="" style="width:56px; height:56px; border-radius:12px; object-fit:cover; background:#f3efe2;" onerror="this.onerror=null;this.src='icon-192.png';" />
+    c.innerHTML = `<img src="${it.image || ''}" alt="" loading="lazy" decoding="async" style="width:56px; height:56px; border-radius:12px; object-fit:cover; background:#f3efe2;" onerror="this.onerror=null;this.src='icon-192.png';" />
       <p style="margin:6px 0 0; font-size:12px; font-weight:700; color:#2B2410; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(it.name)}</p>
       <p style="margin:2px 0 6px; font-size:12px; color:#C97F00; font-weight:700;">₹${getUnitPrice(it)}</p>
       <button type="button" style="border:1.5px solid #E6B422; background:#fff; color:#C97F00; font-weight:800; font-size:12px; padding:4px 14px; border-radius:10px; cursor:pointer;">+ Add</button>`;
@@ -14230,7 +15027,7 @@ function openOrderSummary() {
       const grow = document.createElement('div');
       grow.className = 'order-summary-row gift-row';
       grow.innerHTML = `
-        <img class="order-summary-row-img" src="${escapeHtml(fit.image || '')}" alt="" onerror="this.onerror=null;this.src='icon-192.png';" />
+        <img class="order-summary-row-img" src="${escapeHtml(fit.image || '')}" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='icon-192.png';" />
         <div class="order-summary-row-mid">
           <span class="fg-tag">🎁 FREE GIFT</span>
           <p class="order-summary-row-name">${escapeHtml(fit.name)}</p>
@@ -14401,20 +15198,90 @@ function cpSyncHeader() {
   if (apId && apId !== cpLastCoupon) document.getElementById('cp-coupon-sheet').classList.remove('show');
   cpLastCoupon = apId;
 }
-function cpToggleAddr(force) {
-  const card = document.getElementById('cp-addr-card'), head = document.querySelector('.cp-head');
-  const open = force === undefined ? card.classList.contains('cp-collapsed') : !!force;
-  card.classList.toggle('cp-collapsed', !open);
-  head.classList.toggle('open', open);
-  if (open) {
+// Zepto-style: tapping the address opens the full-screen "Select delivery location" page;
+// Confirm brings the customer straight back to this card with the new pin applied.
+// Move the place / landmark / contact fields out of the old expandable card body into the picker page,
+// so everything is set on ONE screen. (Same elements, so suggestions, auto-fill and validation keep working.)
+// Address details saved from the home "Deliver to" picker (landmark / place / contact for that spot).
+function neshHomeAddrFor(pos) {
+  try {
+    const a = JSON.parse(localStorage.getItem('nesh_home_addr') || 'null');
+    if (a && pos && typeof pos.lat === 'number' && neshDistM(a, pos) < 150) return a;
+  } catch (e) {}
+  return null;
+}
+// Called whenever the picker opens: show the details block and fill it (home mode loads the saved spot's details).
+function cpPrepDetails() {
+  browseDetailsMode = true;
+  const ex = document.getElementById('browse-loc-extra'), er = document.getElementById('browse-loc-extra-err');
+  if (ex) ex.style.display = 'block';
+  if (er) er.style.display = 'none';
+  if (browseFromCheckout) return;                  // checkout: fields already hold this order's details
+  const pos = state.customerPos;
+  cpPickerOrigin = pos ? { lat: pos.lat, lng: pos.lng } : null;
+  cpPickerCleared = false;
+  const ha = neshHomeAddrFor(pos);
+  locLandmarkInput.value = ha ? (ha.landmark || '') : '';
+  locPlaceInput.value = ha ? (ha.place || '') : '';
+  locContactInput.value = (ha && ha.contact) ? ha.contact : digitsOnly((state.user && state.user.number) || '');
+  if (pos) { try { pendingLocation = { text: pos.lat.toFixed(5) + ', ' + pos.lng.toFixed(5), lat: pos.lat, lng: pos.lng }; scheduleNearbyLandmarks(pos.lat, pos.lng); if (!ha) schedulePlaceArea(pos.lat, pos.lng); } catch (e) {} }
+}
+(function cpMoveDetailsIntoPicker() {
+  const extra = document.getElementById('browse-loc-extra');
+  const body = document.querySelector('#cp-addr-card .cp-body');
+  if (!extra || !body) return;
+  const nodes = [];
+  const placeField = locPlaceInput.closest('.field');
+  const prevLabel = el => { let p = el.previousElementSibling; return p && p.classList.contains('loc-field-label') ? p : null; };
+  const lmLabel = document.getElementById('loc-landmark-label'), lmHint = document.getElementById('loc-landmark-hint');
+  const lmField = locLandmarkInput.closest('.field'), ctField = locContactInput.closest('.field');
+  [prevLabel(placeField), placeField, lmLabel, lmHint, lmField, locLandmarkSuggestionsEl, prevLabel(ctField), ctField]
+    .forEach(n => { if (n) extra.appendChild(n); });
+  body.style.display = 'none';                     // the card is now just a tappable summary row
+})();
+
+function cpOpenAddrPicker() {
+  browseFromCheckout = true;
+  pendingLocationRequiredAction = null;
+  browseLocOverlay.style.zIndex = '2100';          // above the checkout sheet (2050)
+  browseLocOverlay.classList.add('cp-mode'); browseLocOverlay.classList.remove('cp-map-open');
+  document.getElementById('browse-loc-map-toggle').textContent = '🗺️ Adjust pin on map';
+  document.getElementById('browse-loc-extra').style.display = 'block';
+  document.getElementById('browse-loc-extra-err').style.display = 'none';
+  openBrowseLocationPicker();
+  cpPickerOrigin = (typeof pendingLocation.lat === 'number') ? { lat: pendingLocation.lat, lng: pendingLocation.lng } : null;
+  cpPickerCleared = false;
+  if (cpPickerOrigin) {
+    pendingBrowsePos = { lat: cpPickerOrigin.lat, lng: cpPickerOrigin.lng };   // start from this order's pin
+    browseLocCurrentValue.textContent = pendingLocation.text || (cpPickerOrigin.lat.toFixed(5) + ", " + cpPickerOrigin.lng.toFixed(5));
     setTimeout(() => {
-      if (locMap) { locMap.invalidateSize(); if (typeof pendingLocation.lat === 'number') locMap.setView([pendingLocation.lat, pendingLocation.lng], 16); }
-      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 60);
+      if (browseLocMap && browseLocMarker) { browseLocMap.setView([cpPickerOrigin.lat, cpPickerOrigin.lng], 16); browseLocMarker.setLatLng([cpPickerOrigin.lat, cpPickerOrigin.lng]); }
+    }, 140);
   }
 }
-document.getElementById('cp-loc-toggle').addEventListener('click', () => cpToggleAddr());
-document.getElementById('cp-addr-head').addEventListener('click', () => cpToggleAddr());
+// While the picker is open from checkout, every pin move (tap, drag, GPS, search, recent) updates this order's
+// location live, refreshes Place/Area + nearby landmarks, and drops an old landmark if the pin moved far from it.
+function cpBrowseSync(lat, lng) {
+  if (cpPickerOrigin && !cpPickerCleared && haversineMeters(cpPickerOrigin.lat, cpPickerOrigin.lng, lat, lng) > 50) {
+    cpPickerCleared = true;
+    locLandmarkInput.value = ""; locPlaceInput.value = "";
+  }
+  try { setPendingFromLatLng(lat, lng); } catch (e) {}
+}
+function cpToggleAddr(force) { if (force === false) return; cpOpenAddrPicker(); }
+document.getElementById('browse-loc-map-toggle').addEventListener('click', () => {
+  const open = browseLocOverlay.classList.toggle('cp-map-open');
+  document.getElementById('browse-loc-map-toggle').textContent = open ? '✕ Hide map' : '🗺️ Adjust pin on map';
+  if (!open) return;
+  setTimeout(() => {
+    if (!browseLocMap) return;
+    browseLocMap.invalidateSize();
+    if (pendingBrowsePos) { browseLocMap.setView([pendingBrowsePos.lat, pendingBrowsePos.lng], 16); browseLocMarker.setLatLng([pendingBrowsePos.lat, pendingBrowsePos.lng]); }
+    document.getElementById('browse-loc-mapbox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 80);
+});
+document.getElementById('cp-loc-toggle').addEventListener('click', () => cpOpenAddrPicker());
+document.getElementById('cp-addr-head').addEventListener('click', () => cpOpenAddrPicker());
 document.getElementById('cp-coupon-open').addEventListener('click', () => { refreshCouponUI(); document.getElementById('cp-coupon-sheet').classList.add('show'); });
 document.getElementById('cp-coupon-close').addEventListener('click', () => document.getElementById('cp-coupon-sheet').classList.remove('show'));
 document.getElementById('cp-coupon-sheet').addEventListener('click', (e) => { if (e.target.id === 'cp-coupon-sheet') e.target.classList.remove('show'); });
@@ -14616,6 +15483,7 @@ payConfirmBtn.addEventListener('click', async () => {
   const r = state.selectedRestaurant;
   const pc = state.pendingCheckout;
   if (!r || !pc) { closePaymentConfirm(); return; }
+  if (restaurantsFromCache) { showInfoModal('Updating shop details', 'Please wait a moment while we fetch the latest prices, then try again.'); return; }
   const closedInfo = getShopClosedInfo(r);
   if (closedInfo.closed) {
     showInfoModal('Shop closed', closedInfo.message);
@@ -14680,6 +15548,16 @@ payConfirmBtn.addEventListener('click', async () => {
       orderItems.push({ name: fit.name + ' (FREE)', desc: fit.desc || '', price: 0, qty: Number(fiO.won.offer.qty) || 1, unit: fit.unit || 'piece', freeItem: true, ...(fit._shopOptions ? { shopOptions: fit._shopOptions } : {}) });
     }
   } catch (e) {}
+  // Loyalty reward = free product: add it to the order at ₹0 so the shop sees and hands it over.
+  window.__loyaltyGiftPending = false;
+  try {
+    const lg = neshLoyaltyGiftFor(r, itemsTotal);
+    if (lg) { orderItems.push({ name: '🎁 ' + lg + ' (FREE)', desc: 'Loyalty reward', price: 0, qty: 1, unit: 'piece', freeItem: true, loyaltyGift: true }); window.__loyaltyGiftPending = 'LOYALTY'; }
+  } catch (e) {}
+  try {   // Groceries reward = free catalog item (shop's own rate is stamped on it when the operator assigns the order)
+    const lgs = neshLoyaltySGiftFor(r, itemsTotal);
+    if (lgs) { const fit = lgs.item; orderItems.push({ name: fit.name + ' (FREE)', desc: fit.desc || '', price: 0, qty: lgs.qty, unit: fit.unit || 'piece', freeItem: true, loyaltyGift: true, ...(fit._shopOptions ? { shopOptions: fit._shopOptions } : {}) }); window.__loyaltyGiftPending = 'LOYALTY_S'; }
+  } catch (e) {}
   // Platform fee is a flat amount added once per order/transaction (not per
   // item, not multiplied by quantity) — captured now so it stays fixed for
   // this order even if the operator changes the fee later. This is what
@@ -14693,7 +15571,7 @@ payConfirmBtn.addEventListener('click', async () => {
   const shopDiscount = currentOrderShopDiscount();
   const couponDiscount = currentCouponDiscount();
   const couponDef = couponDiscount > 0 ? window.neshCoupons.find(x => x.id === window.neshCoupon.id) : null;
-  window.__couponPending = couponDef ? couponDef.id : null;
+  window.__couponPending = couponDef ? couponDef.id : (window.__loyaltyGiftPending || null);
   const rainSurgeInfo = currentRainSurge();
   const tipAmount = currentTipAmount();
   const total = Math.max(0, itemsTotal + platformFee + deliveryFee - shopDiscount - couponDiscount) + (rainSurgeInfo ? rainSurgeInfo.amount : 0) + tipAmount;
@@ -15876,15 +16754,21 @@ const locOffHelp = document.getElementById('loc-off-help');
 
 function showLocationOffPopup(errCode, opts) {
   try { window.neshSplash && window.neshSplash.done('loc'); } catch (e) {}
+  // Location is OFF at app open and the customer has a saved location: show the Choose-location screen first.
+  // "Use my current location" there tries GPS again and, if still off, THEN the Turn-on-location popup appears.
+  if (!(opts && (opts.taxi || opts.checkout)) && !window.__neshChoiceDone && neshShowOpenChoice()) return;
   if (!locOffOverlay || locOffOverlay.classList.contains('show')) return;
   // Taxi pickup uses this popup too: there "last location" / the shop-location picker don't apply, so keep the old plain behaviour.
-  const taxiMode = !!(opts && opts.taxi);
-  if (locOffLaterBtn) { locOffLaterBtn.dataset.mode = taxiMode ? 'taxi' : ''; locOffLaterBtn.textContent = taxiMode ? 'Not now — select manually' : '🔍 Search another location'; }
+  const taxiMode = !!(opts && (opts.taxi || opts.checkout));   // checkout picker: same plain popup + a "Not now" button
+  if (locOffLaterBtn) { locOffLaterBtn.dataset.mode = taxiMode ? 'taxi' : 'dismiss'; locOffLaterBtn.textContent = taxiMode ? 'Not now — select manually' : 'Not now'; }
   locOffHelp.style.display = 'none';
+  locOffEnableBtn.dataset.mode = '';
+  neshSetLocPopupTexts(false);
   locOffEnableBtn.disabled = false;
   locOffEnableBtn.textContent = 'Turn on location';
   if (errCode === 1) { locOffHelp.innerHTML = locBlockedHelpHtml(); locOffHelp.style.display = 'block'; locOffEnableBtn.textContent = 'Try again'; }
-  try { if (taxiMode) { if (locOffLastBtn) locOffLastBtn.style.display = 'none'; } else neshRefreshLastLocBtn(); } catch (e) {}
+  // Turn-on-location popup: only "Turn on location / Try again" (no last-location or search buttons). Taxi keeps its "Not now" button.
+  try { if (locOffLastBtn) locOffLastBtn.style.display = 'none'; if (locOffLaterBtn) locOffLaterBtn.style.display = ''; } catch (e) {}
   locOffOverlay.classList.add('show');
   // When the customer allows location from the browser's site settings,
   // continue automatically without needing another tap.
@@ -15897,6 +16781,94 @@ function showLocationOffPopup(errCode, opts) {
     }
   } catch (e) {}
 }
+function neshSetLocPopupTexts(open) {
+  const t = document.getElementById('loc-off-title'), m = document.getElementById('loc-off-msg'), sb = document.getElementById('loc-off-sub');
+  if (t) t.textContent = open ? 'Choose your location' : 'Turn on location';
+  if (m) m.textContent = open ? 'Where should we show shops and delivery for?' : 'Please turn on your location to find nearby shops, taxis and delivery.';
+  if (sb) sb.style.display = open ? 'none' : '';
+}
+// Shown on every app open / resume for a returning customer INSTEAD of the "Locating..." splash:
+// Use my current location (-> Locating screen + fresh GPS) / Continue with last location / Search new location.
+function neshShowOpenChoice() {
+  const last = neshReadLastLoc();
+  const ov = document.getElementById('nesh-open-choice');
+  if (!ov) return false;
+  if (ov.style.display === 'flex') return true;
+  const lastBtn = document.getElementById('oc-last-btn');
+  lastBtn.style.display = last ? '' : 'none';   // first-time customer: no last location to continue with
+  lastBtn.textContent = '📍 Continue with last location';
+  if (last) Promise.race([neshPlaceNameFor(last.lat, last.lng), new Promise(r => setTimeout(() => r(null), 3000))]).then(name => {
+    if (name) lastBtn.textContent = '📍 Continue with ' + name;
+  });
+  ov.style.display = 'flex';
+  try { document.documentElement.style.overflow = 'hidden'; document.body.style.overflow = 'hidden'; } catch (e) {}   // lock the page behind
+  try { window.neshSplash && window.neshSplash.done('loc'); } catch (e) {}
+  return true;
+}
+(function () {
+  const ov = document.getElementById('nesh-open-choice');
+  if (!ov) return;
+  const close = () => { ov.style.display = 'none'; try { document.documentElement.style.overflow = ''; document.body.style.overflow = ''; } catch (e) {} };
+  // "Use my current location": stay on this screen (button says "Locating…"), take a FAST fix right here
+  // (no separate Locating splash), then go straight to Home. If the quick fix fails, fall back to the
+  // full GPS flow (splash + Turn-on-location popup) exactly as before.
+  document.getElementById('oc-current-btn').addEventListener('click', () => {
+    window.__neshChoiceDone = true;
+    const btn = document.getElementById('oc-current-btn');
+    if (btn.disabled) return;
+    const label = btn.textContent;
+    const restore = () => { btn.disabled = false; btn.textContent = label; };
+    const slowFlow = () => {
+      restore(); close();
+      try { window.neshSplash && window.neshSplash.show(['loc']); } catch (e) {}
+      detectLocationOnOpen();
+    };
+    const secure = window.isSecureContext || location.protocol === 'https:' || location.hostname === 'localhost';
+    if (!navigator.geolocation || !secure) { slowFlow(); return; }
+    btn.disabled = true; btn.textContent = 'Locating…';
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        restore(); close();
+        try { onLocationGranted(pos); } catch (e) {}
+        try { renderRestaurantList(); } catch (e) {}
+        if (pendingLocationRequiredAction) { const a = pendingLocationRequiredAction; pendingLocationRequiredAction = null; a(); }
+        // Quietly sharpen the position in the background; only update if it clearly moved.
+        const first = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: Number(pos.coords.accuracy) || 99999 };
+        try {
+          navigator.geolocation.getCurrentPosition((p2) => {
+            const lat = p2.coords.latitude, lng = p2.coords.longitude, acc = Number(p2.coords.accuracy) || 99999;
+            const cur = state.customerPos;
+            if (!cur || cur.lat !== first.lat || cur.lng !== first.lng) return;     // customer already picked something else
+            if (acc >= first.acc || haversineMeters(first.lat, first.lng, lat, lng) < 150) return;
+            state.customerPos = { lat, lng };
+            try { localStorage.setItem('nesh_last_gps', JSON.stringify({ lat, lng, t: Date.now() })); } catch (e) {}
+            try { updateHomeLocationLabel(); } catch (e) {}
+            try { renderRestaurantList(); } catch (e) {}
+          }, () => {}, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+        } catch (e) {}
+      },
+      () => { slowFlow(); },
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+    );
+  });
+  document.getElementById('oc-last-btn').addEventListener('click', () => {
+    window.__neshChoiceDone = true;
+    const last = neshReadLastLoc();
+    if (!last) { close(); detectLocationOnOpen(); return; }
+    state.customerPos = { lat: last.lat, lng: last.lng };
+    state.locationDetectFailed = false;
+    close();
+    try { renderHome(); } catch (e) {}
+    try { updateHomeLocationLabel(); } catch (e) {}
+    try { renderRestaurantList(); } catch (e) {}
+    if (pendingLocationRequiredAction) { const a = pendingLocationRequiredAction; pendingLocationRequiredAction = null; a(); }
+  });
+  document.getElementById('oc-search-btn').addEventListener('click', () => {
+    window.__neshChoiceDone = true;
+    close();
+    try { openBrowseLocationPicker(); } catch (e) {}
+  });
+})();
 function locBlockedHelpHtml() {
   return '<b>Location is blocked.</b> Tap the 🔒 (or ⓘ) icon in the browser address bar → <b>Permissions / Site settings</b> → <b>Location</b> → <b>Allow</b>. Then tap <b>Try again</b> (reload the page if needed).';
 }
@@ -15955,9 +16927,21 @@ if (locOffLastBtn) locOffLastBtn.addEventListener('click', () => {
 });
 
 function onLocationGranted(pos) {
+  if (browseFromCheckout && browseLocOverlay && browseLocOverlay.classList.contains('show')) {
+    // Opened from checkout: use the fix for THIS order's pin only (don't change the home "Deliver to").
+    try { window.neshSplash && window.neshSplash.done('loc'); } catch (e) {}
+    hideLocationOffPopup();
+    const glat = pos.coords.latitude, glng = pos.coords.longitude;
+    setPendingBrowsePos(glat, glng);
+    if (browseLocMap && browseLocMarker) { browseLocMap.setView([glat, glng], 16); browseLocMarker.setLatLng([glat, glng]); }
+    browseLocGpsBtn.disabled = false;
+    browseLocGpsBtn.textContent = "📍 Use my current location";
+    return;
+  }
   try { neshRevealPlaceThenDone(pos.coords.latitude, pos.coords.longitude); } catch (e) { try { window.neshSplash && window.neshSplash.done('loc'); } catch (e2) {} }
   try { localStorage.setItem('nesh_last_gps', JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude, t: Date.now() })); } catch (e) {}
   state.customerPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+  try { neshAddRecentLoc(pos.coords.latitude, pos.coords.longitude); } catch (e) {}
   state.locationDetectFailed = false;
   hideLocationOffPopup();
   renderHome();
@@ -16052,16 +17036,26 @@ function tryEnableLocationCore(silent) {
     if (ov.classList.contains('show')) { const sh = ov.querySelector('.loc-sheet'); if (sh) sh.scrollTop = 0; }
   }).observe(ov, { attributes: true, attributeFilter: ['class'] });
 });
-if (locOffEnableBtn) locOffEnableBtn.addEventListener('click', () => tryEnableLocation(false));
+if (locOffEnableBtn) locOffEnableBtn.addEventListener('click', () => {
+  if (locOffEnableBtn.dataset.mode === 'open') {
+    // "Use my current location": show the Locating screen and take a fresh GPS fix.
+    locOffEnableBtn.dataset.mode = '';
+    hideLocationOffPopup();
+    try { window.neshSplash && window.neshSplash.show(['loc']); } catch (e) {}
+    detectLocationOnOpen();
+    return;
+  }
+  tryEnableLocation(false);
+});
 if (locOffLaterBtn) locOffLaterBtn.addEventListener('click', () => {
   hideLocationOffPopup();
-  if (locOffLaterBtn.dataset.mode === 'taxi') return;                                   // taxi: just close, as before
+  if (locOffLaterBtn.dataset.mode === 'taxi' || locOffLaterBtn.dataset.mode === 'dismiss') return;   // taxi / Not now: just close
   if (browseLocOverlay && browseLocOverlay.classList.contains('show')) return;          // picker already open underneath
   try { openBrowseLocationPicker(); } catch (e) {}
 });
 // Customer switched GPS on in Settings and returned to the app → retry quietly.
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && locOffOverlay && locOffOverlay.classList.contains('show')) tryEnableLocation(true);
+  if (!document.hidden && locOffOverlay && locOffOverlay.classList.contains('show') && locOffEnableBtn.dataset.mode !== 'open') tryEnableLocation(true);
 });
 // Only asks for location permission once the customer actually taps into
 // a category (Food/Groceries/Other Shop/Taxi/Bus) — never automatically
@@ -16124,8 +17118,8 @@ try {
     if (Array.isArray(cfg.zones) && !live.zones) { window.SHOP_ZONES = cfg.zones; if (sp) sp.done('zones'); try { syncShopLoading(); } catch (e) {} }
   }
   const g = JSON.parse(localStorage.getItem('nesh_last_gps') || 'null');
-  if (g && typeof g.lat === 'number' && typeof g.lng === 'number' && !state.customerPos) {
-    state.customerPos = { lat: g.lat, lng: g.lng };   // provisional; replaced by the fresh fix below
+  if (false && g && typeof g.lat === 'number' && typeof g.lng === 'number' && !state.customerPos) {
+    state.customerPos = { lat: g.lat, lng: g.lng };   // disabled: returning customers choose first, shops load after   // provisional; replaced by the fresh fix below
     // NOTE: do NOT mark the splash 'loc' step done here. The splash must stay on
     // "Locating..." until the FRESH GPS fix (or a failure/popup) arrives, so the
     // customer never sees groceries/shops loaded for an old location.
@@ -16133,7 +17127,17 @@ try {
 } catch (e) {}
 try { updateLocSuggestBanners(); } catch (e) {}
 if (state.category) renderHome();
-detectLocationOnOpen();
+window.__neshChoiceDone = false;
+if (window.__neshQuickReopen) {
+  // Reopened within 10 min: same location as before, no location screen.
+  state.customerPos = { lat: window.__neshQuickReopen.lat, lng: window.__neshQuickReopen.lng };
+  state.locationDetectFailed = false;
+  locationDetectAttempted = true;
+  try { window.neshSplash && window.neshSplash.done('loc'); } catch (e) {}
+  try { renderHome(); } catch (e) {}
+  try { updateHomeLocationLabel(); } catch (e) {}
+} else
+detectLocationOnOpen();   // location ON -> Locating screen; OFF -> Choose-location screen (returning customer) / Turn-on popup (new)
 
 // ---- Re-open (app was in background / minimised, then opened again) ----
 // Cold start is covered by detectLocationOnOpen() above. When the app is
@@ -16142,18 +17146,24 @@ detectLocationOnOpen();
 // while a detection / the "Turn on location" popup is already in progress
 // (the Android permission dialog itself pauses/resumes the app).
 (function () {
-  const RESUME_MIN_AWAY_MS = 5000;
+  const RESUME_MIN_AWAY_MS = 10 * 60 * 1000;   // away < 10 min: keep the same location, go straight back to the app
   let leftAt = 0;
-  function onLeave() { if (!leftAt) leftAt = Date.now(); }
+  function touchActive() { try { localStorage.setItem('nesh_last_active', String(Date.now())); } catch (e) {} }
+  touchActive();
+  setInterval(() => { if (!document.hidden) touchActive(); }, 20000);
+  window.addEventListener('pagehide', touchActive);
+  function onLeave() { touchActive(); if (!leftAt) leftAt = Date.now(); }
   function onReturn() {
     const away = leftAt ? Date.now() - leftAt : 0;
     leftAt = 0;
-    if (away < RESUME_MIN_AWAY_MS) return;
+    if (away < 5000) return;
     // Notifications may have been switched on in phone Settings meanwhile:
     // re-register quietly (no-op if still off) so this device gets pushes.
     try { registerCustomerPush(state.user && state.user.number); } catch (e) {}
+    if (away < RESUME_MIN_AWAY_MS) return;   // back within 10 min: same location, straight to the app
     if (window.neshSplash && window.neshSplash.isActive()) return;
     if (locOffOverlay && locOffOverlay.classList.contains('show')) return;
+    window.__neshChoiceDone = false;   // new open: location-off case shows the Choose-location screen again
     if (window.neshSplash) { window.neshSplash.show(['loc']); }   // wait for the fresh fix, even if an old position exists
     detectLocationOnOpen();
   }
@@ -16370,7 +17380,7 @@ if ('serviceWorker' in navigator) {
   function sig(list) { return list.filter(function (b) { return live(b) && zoneOk(b); }).map(function (b) { return b.id + b.img.length + b.video + b.link + b.home + b.mart + b.food + b.groceries + b.trending + b.popup + (b.zoneShopId || ''); }).join('|'); }
   function renderAll(list) { lastList = list; lastSig = sig(list); renderHome(list); renderMart(list); renderFood(list); renderStore(list); renderTrendingP(list); }
   // drop a poster from the screen the moment its time is over (re-render only if something expired)
-  setInterval(function () { if (document.hidden) return; if (sig(lastList) !== lastSig) renderAll(lastList); }, 400);   // also re-checks when the customer's location/zone changes
+  setInterval(function () { if (document.hidden) return; if (sig(lastList) !== lastSig) renderAll(lastList); }, 1000);   // also re-checks when the customer's location/zone changes
 
 
   // ---- NESH Mart POPUP poster (Spotify-style): pops up over the NESH Mart home screen, closes by itself after 4s
@@ -17200,6 +18210,7 @@ if ('serviceWorker' in navigator) {
     }
     state.selectedRestaurant = null; state.cart = {}; state.cartGrams = {}; state.cartSizes = {}; state.pendingCheckout = null;
     if (M === mm) M = null;
+    window.__neshMultiBusy = 0; try { window.neshLoyaltySync && window.neshLoyaltySync(); window.neshLoyaltySSync && window.neshLoyaltySSync(); } catch (e) {}
     try { setBill(false); } catch (e) {}
     try { var bx = panel(); if (bx) { bx.style.display = 'none'; bx.removeAttribute('data-h'); } } catch (e) {}
   }
@@ -17210,6 +18221,8 @@ if ('serviceWorker' in navigator) {
       if (lo && lo !== mm.baseKey) {            // first shop's order was placed
         clearInterval(mm.watch);
         mm.placing = true;
+        window.__neshMultiBusy = Date.now();   // loyalty: the whole group checkout counts as ONE order
+        try { window.neshLoyaltyCount && window.neshLoyaltyCount(lo); window.neshLoyaltySCount && window.neshLoyaltySCount(lo); } catch (e) {}
         placeOthers(mm);
       }
     }, 300);
