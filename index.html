@@ -1909,35 +1909,82 @@
     const nativeWatchPosition = navigator.geolocation.watchPosition.bind(navigator.geolocation);
     const nativeClearWatch = navigator.geolocation.clearWatch.bind(navigator.geolocation);
 
+    // Capacitor errors have no numeric code; map them so "permission denied" (code 1) is detected like in a browser.
+    function geoErr(err) {
+      if (err && typeof err.code === 'number') return err;
+      const m = String((err && err.message) || err || '').toLowerCase();
+      return { code: /denied|permission/.test(m) ? 1 : (/time/.test(m) ? 3 : 2), message: m };
+    }
     navigator.geolocation.getCurrentPosition = function (success, error, options) {
       const CapGeo = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation;
       if (!CapGeo) { nativeGetCurrentPosition(success, error, options); return; }
       CapGeo.requestPermissions()
         .then(() => CapGeo.getCurrentPosition(options || {}))
-        .then(success)
-        .catch(err => { if (error) error(err); });
+        .then(pos => { try { success(pos); } catch (e) { console.error(e); } },
+              err => { if (error) error(geoErr(err)); });
     };
 
+    let _wid = 0; const _wmap = {};
     navigator.geolocation.watchPosition = function (success, error, options) {
       const CapGeo = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation;
       if (!CapGeo) return nativeWatchPosition(success, error, options);
-      let capWatchId = null;
+      // Return a real id straight away (the plugin hands its id back asynchronously), so clearWatch() can stop it.
+      const id = ++_wid; const w = _wmap[id] = { cap: null, dead: false };
       CapGeo.requestPermissions()
         .then(() => CapGeo.watchPosition(options || {}, (pos, err) => {
-          if (err) { if (error) error(err); return; }
-          if (pos) success(pos);
+          if (w.dead) return;
+          if (err) { if (error) error(geoErr(err)); return; }
+          if (pos) { try { success(pos); } catch (e) { console.error(e); } }
         }))
-        .then(id => { capWatchId = id; })
-        .catch(err => { if (error) error(err); });
-      return capWatchId;
+        .then(cid => { if (w.dead) { try { CapGeo.clearWatch({ id: cid }); } catch (e) {} delete _wmap[id]; } else w.cap = cid; })
+        .catch(err => { if (!w.dead && error) error(geoErr(err)); });
+      return id;
     };
 
     navigator.geolocation.clearWatch = function (id) {
       const CapGeo = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation;
-      if (CapGeo && id != null) { CapGeo.clearWatch({ id }); return; }
+      if (CapGeo) {
+        const w = _wmap[id];
+        if (w) { w.dead = true; if (w.cap != null) { try { CapGeo.clearWatch({ id: w.cap }); } catch (e) {} delete _wmap[id]; } }
+        return;
+      }
       nativeClearWatch(id);
     };
   })();
+
+  // ---- Fast + accurate "where is the customer right now" ----
+  // Runs a live high-accuracy GPS watch AND a quick network fix at the same time, and uses the BEST fix seen:
+  //   * accuracy <= 30 m          -> accept immediately (usually 1-3 s outdoors)
+  //   * after 4 s                 -> accept the best fix if it is <= 200 m
+  //   * after 6.5 s               -> accept whatever best fix exists (before the 8 s splash safety timer)
+  //   * after 15 s with no fix    -> onFail(lastError)
+  // onUpdate(pos) fires every time a better fix arrives (use it to move a pin early); onDone(pos) fires once.
+  window.neshFastFix = function (o) {
+    o = o || {};
+    const GOOD = o.good || 30, SOFT = o.soft || 4000, MID = o.mid || 6500, HARD = o.hard || 15000;
+    const geo = navigator.geolocation;
+    let best = null, done = false, watchId = null, lastErr = null; const timers = [];
+    const acc = p => { const a = Number(p && p.coords && p.coords.accuracy); return isFinite(a) && a > 0 ? a : 99999; };
+    function finish() {
+      if (done) return; done = true;
+      timers.forEach(clearTimeout);
+      try { if (watchId != null) geo.clearWatch(watchId); } catch (e) {}
+      try { if (best) { if (o.onDone) o.onDone(best); } else if (o.onFail) o.onFail(lastErr || { code: 3, message: 'timeout' }); } catch (e) {}
+    }
+    function consider(p) {
+      if (done || !p || !p.coords) return;
+      if (!best || acc(p) < acc(best)) { best = p; try { if (o.onUpdate) o.onUpdate(p); } catch (e) {} }
+      if (acc(best) <= GOOD) finish();
+    }
+    function onErr(e) { lastErr = e; if (e && e.code === 1) finish(); }   // permission denied: stop straight away
+    if (!geo) { onErr({ code: 2, message: 'no geolocation' }); finish(); return function () {}; }
+    try { watchId = geo.watchPosition(consider, onErr, { enableHighAccuracy: true, timeout: HARD, maximumAge: 0 }); } catch (e) { onErr(e); }
+    try { geo.getCurrentPosition(consider, onErr, { enableHighAccuracy: false, timeout: 6000, maximumAge: 15000 }); } catch (e) {}
+    timers.push(setTimeout(() => { if (best && acc(best) <= 200) finish(); }, SOFT));
+    timers.push(setTimeout(() => { if (best) finish(); }, MID));
+    timers.push(setTimeout(finish, HARD));
+    return function cancel() { if (done) return; done = true; timers.forEach(clearTimeout); try { if (watchId != null) geo.clearWatch(watchId); } catch (e) {} };
+  };
 </script>
 <script>
   // The compat SDK above (used for firebase.messaging()) is a separate
@@ -4219,6 +4266,7 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
 /* Loading shops (slow network) */
 .shops-loading{ padding:6px 4px 18px; }
 .shops-loading-text{ margin:6px 4px 12px; color:var(--muted-2); font-size:13.5px; font-weight:600; text-align:center; }
+.shops-retry-btn{ border:0; background:#2B2410; color:#FFD54A; font:700 14px 'Inter',sans-serif; padding:10px 22px; border-radius:999px; cursor:pointer; margin:0 0 16px; }
 .shops-skel{ height:112px; border-radius:18px; margin:0 0 14px; background:linear-gradient(100deg,#EFEBDD 30%,#F8F5EC 50%,#EFEBDD 70%); background-size:300% 100%; animation:shopsSkel 1.3s ease-in-out infinite; }
 @keyframes shopsSkel{ 0%{ background-position:100% 0; } 100%{ background-position:0 0; } }
 </style>
@@ -5735,7 +5783,7 @@ function syncShopLoading() {
   Object.defineProperty(state, 'customerPos', {
     configurable: true, enumerable: true,
     get() { return _pos; },
-    set(v) { _pos = v; try { syncShopLoading(); } catch (e) {} }
+    set(v) { _pos = v; try { syncShopLoading(); } catch (e) {} try { if (typeof neshPrefetchSoon === 'function') neshPrefetchSoon(); } catch (e) {} }
   });
 })();
 
@@ -8535,8 +8583,8 @@ function useTaxiGps() {
   const btn = document.getElementById('taxi-pickup-gps-btn');
   const prevLabel = btn.textContent;
   btn.textContent = '…';
-  navigator.geolocation.getCurrentPosition(
-    async (pos) => {
+  window.neshFastFix({
+    onDone: async (pos) => {
       btn.textContent = prevLabel;
       const { latitude, longitude } = pos.coords;
       ensureTaxiMap();
@@ -8549,9 +8597,8 @@ function useTaxiGps() {
       taxiActivePin = 'drop';
       updateTaxiPinRows();
     },
-    (err) => { btn.textContent = prevLabel; showLocationOffPopup(err && err.code, { taxi: true }); },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-  );
+    onFail: (err) => { btn.textContent = prevLabel; showLocationOffPopup(err && err.code, { taxi: true }); }
+  });
 }
 document.getElementById('taxi-pickup-gps-btn').addEventListener('click', useTaxiGps);
 
@@ -9785,7 +9832,14 @@ loginBackBtn.addEventListener('click', () => {
   // Back out of the login step to wherever browsing was happening. Clear
   // the pending resume so a later, unrelated login doesn't auto-book a
   // stale taxi ride or auto-open checkout.
+  const wasCheckout = state.authReturnTo === 'checkout';
+  const prev = state.authPrevScreen;
   state.authReturnTo = null;
+  state.authPrevScreen = null;
+  if (wasCheckout && prev && prev !== 'login' && prev !== 'register' && state.selectedRestaurant && document.getElementById('screen-' + prev)) {
+    showScreen(prev);   // their cart and shop are still there: back to the menu they were on
+    return;
+  }
   if (!tryOpenPendingShopLink()) goToCategoryScreen();
 });
 
@@ -9835,6 +9889,13 @@ function finishAuthFlow() {
   updateVerifiedBadges();
   if (state.authReturnTo === "checkout") {
     state.authReturnTo = null;
+    // The checkout sheet is an overlay: if the login screen is still the active screen underneath it,
+    // pressing Back closes the sheet and drops the customer onto the phone-number screen again.
+    // Put the screen they came from (the shop menu) back first.
+    { let prev = state.authPrevScreen; state.authPrevScreen = null;
+      if (!prev || prev === 'login' || prev === 'register' || !document.getElementById('screen-' + prev)) prev = (state.selectedRestaurant ? 'menu' : 'category');
+      if (!document.getElementById('screen-' + prev)) prev = 'category';
+      try { showScreen(prev); } catch (e) {} }
     openOrderSummary();
   } else if (state.authReturnTo === "taxi") {
     state.authReturnTo = null;
@@ -10015,6 +10076,7 @@ async function handlePushToken(token) {
   if (!token) return;
   subscribeToBroadcastTopic(token);
   const phone = state.user && state.user.number;
+  try { localStorage.setItem('nesh_fcm_token', token); } catch (e) {}
   if (phone) {
     try {
       const { db, ref, update } = window.fb;
@@ -10263,6 +10325,7 @@ if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Pus
     if (!token) return;
     subscribeToBroadcastTopic(token);   // guests too — not tied to login
     const phone = state.user && state.user.number;
+    try { localStorage.setItem('nesh_fcm_token', token); } catch (e) {}
     if (phone) {
       try {
         const { db, ref, update } = window.fb;
@@ -11307,7 +11370,7 @@ function renderMart(filtered, categoryFiltered, q, searchFiltered) {
 
   restListEl.innerHTML = '';
   if (list.length === 0) {
-    if (!isAreaUnavailable(state.customerPos) && shopsStillLoading()) { restListEl.appendChild(shopsLoadingEl()); return; }
+    if (!isAreaUnavailable(state.customerPos) && (shopsStillLoading() || shopsLoadFailed())) { restListEl.appendChild(shopsLoadingEl()); return; }
     const p = document.createElement('p');
     p.className = 'empty-text';
     p.textContent = isAreaUnavailable(state.customerPos)
@@ -11362,18 +11425,30 @@ function renderMart(filtered, categoryFiltered, q, searchFiltered) {
 const shopsLoadT0 = Date.now();
 function shopsStillLoading() {
   if (restaurantsLoadedOnce && Array.isArray(window.SHOP_ZONES)) return false;
-  return (Date.now() - shopsLoadT0) < 20000;   // after 20s fall back to the normal message so it never spins forever
+  return (Date.now() - shopsLoadT0) < SHOPS_GIVEUP_MS;   // very slow network: keep showing the loading state; after that, offer "Try again"
+}
+const SHOPS_GIVEUP_MS = 45000;
+function shopsLoadFailed() {
+  return !(restaurantsLoadedOnce && Array.isArray(window.SHOP_ZONES)) && (Date.now() - shopsLoadT0) >= SHOPS_GIVEUP_MS;
 }
 function shopsLoadingEl() {
   const w = document.createElement('div');
   w.className = 'shops-loading';
   const slow = (Date.now() - shopsLoadT0) > 6000;
+  if (shopsLoadFailed()) {
+    w.innerHTML = '<p class="shops-loading-text">Couldn\u2019t load shops \u2014 your internet looks very slow or offline.</p>' +
+      '<div style="text-align:center"><button type="button" class="shops-retry-btn">Try again</button></div>';
+    const rb = w.querySelector('.shops-retry-btn');
+    if (rb) rb.addEventListener('click', () => { try { location.reload(); } catch (e) {} });
+    return w;
+  }
   w.innerHTML = '<p class="shops-loading-text">' + (slow ? 'Slow connection \u2014 still loading shops\u2026' : 'Loading shops\u2026') + '</p>' +
     '<div class="shops-skel"></div><div class="shops-skel"></div><div class="shops-skel"></div>';
   return w;
 }
 setTimeout(() => { try { if (!restaurantsLoadedOnce) renderRestaurantList(); } catch (e) {} }, 6200);
 setTimeout(() => { try { if (!restaurantsLoadedOnce) renderRestaurantList(); } catch (e) {} }, 20200);
+setTimeout(() => { try { if (!restaurantsLoadedOnce) renderRestaurantList(); } catch (e) {} }, 45200);
 
 function renderRestaurantList() {
   const q = searchInput.value.toLowerCase();
@@ -11433,7 +11508,7 @@ function renderRestaurantList() {
 
   restListEl.innerHTML = "";
   if (filtered.length === 0) {
-    if (!isAreaUnavailable(state.customerPos) && shopsStillLoading()) { restListEl.appendChild(shopsLoadingEl()); return; }
+    if (!isAreaUnavailable(state.customerPos) && (shopsStillLoading() || shopsLoadFailed())) { restListEl.appendChild(shopsLoadingEl()); return; }
     const p = document.createElement('p');
     p.className = "empty-text";
     const noun = state.category === 'groceries' ? 'stores' : state.category === 'online_shop' ? 'shops' : 'restaurants';
@@ -11797,6 +11872,7 @@ function openNeshStore() {
   if (!store) { showInfoModal('Loading stores…', 'Stores are still loading. Please try again in a moment.'); return; } // RESTAURANTS hasn't loaded yet
   state.category = 'groceries';
   state.selectedRestaurant = store;
+  try { neshPrefetchDelivery(store, state.customerPos); } catch (e) {}
   state.cart = {};
   state.cartGrams = {};
   state.cartSizes = {};
@@ -11856,6 +11932,7 @@ function openRestaurant(id) {
   if (isAreaUnavailable(state.customerPos)) { handleAreaUnavailable(() => openRestaurant(id)); return; }
   if (!shopAllowedAtPoint(id, state.customerPos)) { showInfoModal('Out of delivery area', "This shop doesn't deliver to your selected location."); return; }
   state.selectedRestaurant = RESTAURANTS.find(r => r.id === id);
+  try { neshPrefetchDelivery(state.selectedRestaurant, state.customerPos); } catch (e) {}   // delivery distance starts calculating the moment the shop opens
   state.cart = {};
   state.cartGrams = {};
   state.cartSizes = {};
@@ -12392,7 +12469,7 @@ function renderItemDetail() {
 // Item total of the current cart (no delivery / platform fee) and how far
 // it is below the shop's minimum order amount (0 when it's met or unset).
 function cartItemsTotal(r) {
-  return (r.items || []).reduce((sum, it) => sum + (state.cart[it.id] || 0) * getUnitPrice(it), 0);
+  return Math.round((r.items || []).reduce((sum, it) => sum + (state.cart[it.id] || 0) * getUnitPrice(it), 0) * 100) / 100;
 }
 function minOrderShortfall(r, itemsTotal) {
   const min = Number(r && r.minOrderAmount) || 0;
@@ -12500,6 +12577,7 @@ function updateCartBar() {
   const r = state.selectedRestaurant;
   const total = r.items.reduce((sum, it) => sum + (state.cart[it.id] || 0) * getUnitPrice(it), 0);
   if (count > 0) {
+    try { prefetchRoadDistance(); } catch (e) {}   // delivery distance gets ready while the customer keeps shopping
     cartBar.classList.add('visible');
     cartCountText.textContent = count + (count > 1 ? " items" : " item");
     const info = document.getElementById('cart-info');
@@ -13216,6 +13294,7 @@ function currentDeliveryKm() {
   if (state.roadDistanceKey === key && state.roadDistanceKm != null) {
     return { km: state.roadDistanceKm, isRoadDistance: true };
   }
+  { const cachedKm = roadKmCacheGet(restPos, pc); if (cachedKm != null) return { km: cachedKm, isRoadDistance: true }; }
   return { km: (haversineMeters(restPos.lat, restPos.lng, pc.lat, pc.lng) / 1000) * 1.25, isRoadDistance: false };
 }
 
@@ -13245,6 +13324,149 @@ function activeDeliveryCharge() {
 // spot. Cheap, no API key needed — same free-service pattern already used
 // for landmark lookups (Overpass) and address search (Nominatim) elsewhere
 // in this app.
+// ---- Fast delivery distance ----
+// The road distance is now fetched as soon as the first item is added to the cart (prefetchRoadDistance),
+// remembered for 7 days (same shop + same pin = instant next time), and the checkout never waits
+// longer than ~3.5s: if the routing server is slow it shows the straight-line estimate and quietly
+// switches to the road distance the moment it arrives.
+var roadKmCache = {};
+var roadCacheLoaded = false;
+var roadInflight = {};
+var roadReqSeq = 0;
+function roadKey4(a, b) {
+  return a.lat.toFixed(4) + ',' + a.lng.toFixed(4) + '|' + b.lat.toFixed(4) + ',' + b.lng.toFixed(4);
+}
+function roadCacheLoad() {
+  if (roadCacheLoaded) return;
+  roadCacheLoaded = true;
+  try {
+    const o = JSON.parse(localStorage.getItem('nesh_road_km_v1') || 'null');
+    if (o && typeof o === 'object') Object.keys(o).forEach(k => {
+      const e = o[k];
+      if (e && typeof e.km === 'number' && (Date.now() - e.t) < 7 * 24 * 3600 * 1000) roadKmCache[k] = e;
+    });
+  } catch (e) {}
+}
+function roadKmCacheGet(a, b) {
+  roadCacheLoad();
+  const e = roadKmCache[roadKey4(a, b)];
+  return e ? e.km : null;
+}
+function roadCachePut(a, b, km) {
+  roadCacheLoad();
+  roadKmCache[roadKey4(a, b)] = { km: km, t: Date.now() };
+  try {
+    const keys = Object.keys(roadKmCache).sort((x, y) => roadKmCache[y].t - roadKmCache[x].t).slice(0, 60);
+    const out = {};
+    keys.forEach(k => { out[k] = roadKmCache[k]; });
+    localStorage.setItem('nesh_road_km_v1', JSON.stringify(out));
+  } catch (e) {}
+}
+function roadDistanceUiRefresh() {
+  if (paymentOverlay && paymentOverlay.classList.contains('show')) {
+    updateLocSummary();
+    updateLocConfirmGate();
+    if (selectedPaymentMethod === 'gpay') setPaymentMethod('gpay');
+  }
+}
+// A road distance arrived after checkout had already moved on with the estimate: apply it now.
+function roadLateApply(restPos, pt, km) {
+  try {
+    if (state.roadDistanceLoading) return;   // ensureRoadDistance() is still waiting and will apply it itself
+    const pc = state.pendingCheckout, rp = deliveryOriginPos();
+    if (!pc || !rp || roadKey4(rp, pc) !== roadKey4(restPos, pt)) return;
+    const key = deliveryDistanceKey(rp, pc);
+    if (state.roadDistanceKey === key && state.roadDistanceKm != null) return;
+    state.roadDistanceKm = km; state.roadDistanceKey = key;
+    roadDistanceUiRefresh();
+  } catch (e) {}
+}
+// One shared request per shop->pin pair (prefetch and checkout never ask twice). Resolves km, or null on failure.
+function roadKmShared(restPos, pt) {
+  const hit = roadKmCacheGet(restPos, pt);
+  if (hit != null) return Promise.resolve(hit);
+  const k = roadKey4(restPos, pt);
+  if (!roadInflight[k]) {
+    const ctrl = new AbortController();
+    const tm = setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, 9000);
+    roadInflight[k] = (async () => {
+      try {
+        const url = `https://router.project-osrm.org/route/v1/cycling/${restPos.lng},${restPos.lat};${pt.lng},${pt.lat}?overview=false`;
+        const res = await fetch(url, { signal: ctrl.signal });
+        const data = await res.json();
+        const meters = data && data.routes && data.routes[0] && data.routes[0].distance;
+        if (typeof meters === 'number') {
+          const km = meters / 1000;
+          roadCachePut(restPos, pt, km);
+          roadLateApply(restPos, pt, km);
+          return km;
+        }
+      } catch (e) {}
+      return null;
+    })().finally(() => { clearTimeout(tm); delete roadInflight[k]; });
+  }
+  return roadInflight[k];
+}
+// Called when the cart gets an item: start working out the delivery distance to the customer's
+// current location right away, so it is already known when checkout opens.
+function prefetchRoadDistance() {
+  const r = state.selectedRestaurant;
+  const pt = state.customerPos;
+  if (!r || !pt || typeof pt.lat !== 'number' || typeof pt.lng !== 'number') return;
+  if (!activeDeliveryCharge()) return;
+  let restPos = null;
+  if (r.id === 'NESH_STORE') {
+    const shop = deliveryOriginShop();
+    restPos = (shop ? parseLatLng(shop.location) : null) || nearestGroceryShopLocation(pt);
+  } else {
+    restPos = parseLatLng(r.location);
+  }
+  if (!restPos) return;
+  if (roadKmCacheGet(restPos, pt) != null) return;
+  roadKmShared(restPos, pt);
+}
+
+// Warm the delivery distance for ANY shop + customer point (not only the shop whose cart is open), so the fee is
+// already known when the customer opens that shop's card / checkout. Same cache + same shared request as checkout.
+function neshPrefetchDelivery(r, pt) {
+  try {
+    r = r || state.selectedRestaurant; pt = pt || state.customerPos;
+    if (!r || !pt || typeof pt.lat !== 'number' || typeof pt.lng !== 'number') return;
+    const hasCharge = (r.goSeries || r.id === 'NESH_STORE' || r.businessType === 'groceries') ? true : !!r.deliveryCharges;
+    if (!hasCharge) return;
+    let restPos = null;
+    if (r.id === 'NESH_STORE') {
+      const shop = (state.selectedRestaurant && state.selectedRestaurant.id === 'NESH_STORE') ? deliveryOriginShop() : null;
+      restPos = (shop ? parseLatLng(shop.location) : null) || nearestGroceryShopLocation(pt);
+    } else {
+      restPos = parseLatLng(r.location);
+    }
+    if (!restPos) return;
+    if (roadKmCacheGet(restPos, pt) != null) return;
+    roadKmShared(restPos, pt);
+  } catch (e) {}
+}
+// Customer's location changed (GPS fix, picked on map): re-calculate in the background for the open shop and for
+// every shop that already has a saved cart, so going back to a card shows the right delivery charge straight away.
+var _neshPfT = null;
+function neshPrefetchSoon() {
+  clearTimeout(_neshPfT);
+  _neshPfT = setTimeout(function () {
+    try {
+      const pt = state.customerPos;
+      if (!pt || typeof pt.lat !== 'number' || typeof pt.lng !== 'number') return;
+      const seen = {}; let n = 0;
+      const go = function (r) { if (r && r.id && !seen[r.id] && n < 6) { seen[r.id] = 1; n++; neshPrefetchDelivery(r, pt); } };
+      go(state.selectedRestaurant);
+      try {
+        const sc = (typeof window.neshSavedCarts === 'function') ? window.neshSavedCarts() : {};
+        Object.keys(sc || {}).forEach(function (id) { go(resolveRestaurantById(id)); });
+      } catch (e) {}
+      try { if (typeof window.neshMultiPrewarm === 'function') window.neshMultiPrewarm(); } catch (e) {}   // multi-shop checkout: whole-route distance too
+    } catch (e) {}
+  }, 250);
+}
+
 async function ensureRoadDistance() {
   const r = state.selectedRestaurant;
   const dc = activeDeliveryCharge();
@@ -13255,32 +13477,37 @@ async function ensureRoadDistance() {
   const key = deliveryDistanceKey(restPos, pc);
   if (state.roadDistanceKey === key && state.roadDistanceKm != null) return; // already have it cached
 
-  if (deliveryRouteAbort) deliveryRouteAbort.abort();
-  deliveryRouteAbort = new AbortController();
+  // Already known (fetched while adding to cart, or from an earlier order)? Ready instantly.
+  const hit = roadKmCacheGet(restPos, pc);
+  if (hit != null) {
+    roadReqSeq++;
+    state.roadDistanceKm = hit; state.roadDistanceKey = key;
+    state.roadDistanceLoading = false;
+    roadDistanceUiRefresh();
+    return;
+  }
+
+  const mySeq = ++roadReqSeq;
   state.roadDistanceLoading = true;
   updateLocSummary();
   updateLocConfirmGate();
 
+  let km = null;
   try {
-    const url = `https://router.project-osrm.org/route/v1/cycling/${restPos.lng},${restPos.lat};${pc.lng},${pc.lat}?overview=false`;
-    const res = await fetch(url, { signal: deliveryRouteAbort.signal });
-    const data = await res.json();
-    const meters = data && data.routes && data.routes[0] && data.routes[0].distance;
-    if (typeof meters === 'number') {
-      state.roadDistanceKm = meters / 1000;
-      state.roadDistanceKey = key;
-    }
-  } catch (e) {
-    // Aborted (superseded by a newer request) or offline — currentDeliveryKm()
-    // already has a straight-line fallback, so checkout still works fine.
-  } finally {
-    state.roadDistanceLoading = false;
-    if (paymentOverlay && paymentOverlay.classList.contains('show')) {
-      updateLocSummary();
-      updateLocConfirmGate();
-      if (selectedPaymentMethod === 'gpay') setPaymentMethod('gpay');
-    }
+    km = await Promise.race([
+      roadKmShared(restPos, pc),
+      new Promise(res => setTimeout(() => res(null), 3500))   // never keep the customer waiting longer than this
+    ]);
+  } catch (e) {}
+  if (mySeq !== roadReqSeq) return;   // a newer request took over (it clears the loading flag itself)
+  if (typeof km === 'number') {
+    state.roadDistanceKm = km;
+    state.roadDistanceKey = key;
   }
+  // else: slow / offline -> currentDeliveryKm() uses the straight-line estimate now, and
+  // roadLateApply() switches to the real road distance as soon as it arrives.
+  state.roadDistanceLoading = false;
+  roadDistanceUiRefresh();
 }
 
 function deliveryFeeBeforeFree() {
@@ -13348,7 +13575,7 @@ function currentRainSurgeAmount() { const x = currentRainSurge(); return x ? x.a
 function currentCartItemsTotal() {
   const r = state.selectedRestaurant;
   if (!r) return 0;
-  return r.items.reduce((sum, it) => sum + (state.cart[it.id] || 0) * getUnitPrice(it), 0);
+  return Math.round(r.items.reduce((sum, it) => sum + (state.cart[it.id] || 0) * getUnitPrice(it), 0) * 100) / 100;
 }
 // ---- Delivery tip: added on top of the bill, 100% goes to the rider ----
 window.neshTip = 0;
@@ -14116,7 +14343,7 @@ async function neshRevealPlaceThenDone(lat, lng) {
       }
       return name;
     })();
-    const name = await Promise.race([resolve, new Promise(r => setTimeout(() => r(null), 2500))]);
+    const name = await Promise.race([resolve, new Promise(r => setTimeout(() => r(null), 1200))]);   // place name is only decoration: don't hold the splash for it
     if (window.neshSplash.gen() !== g0) return;   // splash was re-shown meanwhile (fresh fix pending) — don't touch it
     if (name && window.neshSplash.isActive()) {
       // Let "Locating..." be seen first (at least ~1.3s), then swap in the place name.
@@ -14405,27 +14632,28 @@ locGpsBtn.addEventListener('click', () => {
   }
   locGpsBtn.disabled = true;
   locGpsBtn.textContent = "Locating…";
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      const lat = pos.coords.latitude, lng = pos.coords.longitude;
-      setPendingFromLatLng(lat, lng);
-      if (locMap) {
-        locMap.setView([lat, lng], 16);
-        locMarker.setLatLng([lat, lng]);
-      }
-      locGpsBtn.disabled = false;
-      locGpsBtn.textContent = "📍 Use my current location";
-    },
-    (err) => {
+  const applyPin = pos => {
+    const lat = pos.coords.latitude, lng = pos.coords.longitude;
+    setPendingFromLatLng(lat, lng);
+    if (locMap) {
+      locMap.setView([lat, lng], 16);
+      locMarker.setLatLng([lat, lng]);
+    }
+    locGpsBtn.disabled = false;
+    locGpsBtn.textContent = "📍 Use my current location";
+  };
+  window.neshFastFix({
+    onUpdate: applyPin,
+    onDone: applyPin,
+    onFail: (err) => {
       locCurrentValue.textContent =
         err.code === 1 ? "Location permission denied — enable it in browser settings" :
         err.code === 2 ? "Location unavailable — check GPS/network" :
         "Location request timed out — try again";
       locGpsBtn.disabled = false;
       locGpsBtn.textContent = "📍 Use my current location";
-    },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-  );
+    }
+  });
 });
 
 locContactInput.addEventListener('input', () => {
@@ -14708,41 +14936,17 @@ browseLocGpsBtn.addEventListener('click', () => {
     browseLocGpsBtn.disabled = false;
     browseLocGpsBtn.textContent = GPS_LABEL;
   };
-  const fullGps = () => {
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        applyFix(pos, 15);
-        browseLocGpsBtn.disabled = false;
-        browseLocGpsBtn.textContent = GPS_LABEL;
-      },
-      onFail,
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-    );
+  // Pin jumps as soon as the first fix arrives and keeps tightening while GPS sharpens (unless the customer drags it).
+  let lastApplied = null;
+  const apply = (pos) => {
+    if (token !== browseGpsToken) return;
+    if (lastApplied && pendingBrowsePos && (pendingBrowsePos.lat !== lastApplied.lat || pendingBrowsePos.lng !== lastApplied.lng)) return;   // customer moved the pin
+    lastApplied = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    applyFix(pos, 16);
+    browseLocGpsBtn.disabled = false;
+    browseLocGpsBtn.textContent = GPS_LABEL;
   };
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      applyFix(pos, 15);
-      browseLocGpsBtn.disabled = false;
-      browseLocGpsBtn.textContent = GPS_LABEL;
-      // Background refine: only if the picker is still open, the customer hasn't moved the pin themselves,
-      // and the GPS fix is clearly better and clearly somewhere else.
-      const first = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: Number(pos.coords.accuracy) || 99999 };
-      try {
-        navigator.geolocation.getCurrentPosition(p2 => {
-          if (token !== browseGpsToken || !browseLocOverlay.classList.contains('show')) return;
-          if (!pendingBrowsePos || pendingBrowsePos.lat !== first.lat || pendingBrowsePos.lng !== first.lng) return;
-          const acc = Number(p2.coords.accuracy) || 99999;
-          if (acc >= first.acc || haversineMeters(first.lat, first.lng, p2.coords.latitude, p2.coords.longitude) < 40) return;
-          applyFix(p2, 16);
-        }, () => {}, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
-      } catch (e) {}
-    },
-    err => {
-      if (err && err.code === 1) { onFail(err); return; }   // permission denied: report straight away
-      fullGps();                                            // timeout / unavailable: try the full GPS request
-    },
-    { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
-  );
+  window.neshFastFix({ onUpdate: apply, onDone: apply, onFail: (err) => { if (token === browseGpsToken) onFail(err); } });
 });
 
 browseLocCancelBtn.addEventListener('click', () => { pendingLocationRequiredAction = null; closeBrowseLocationPicker(); });
@@ -15011,7 +15215,7 @@ function openOrderSummary() {
     const qty = state.cart[it.id] || 0;
     if (qty === 0) return;
     const unitPrice = getUnitPrice(it);
-    itemsTotal += qty * unitPrice;
+    itemsTotal = Math.round((itemsTotal + qty * unitPrice) * 100) / 100;
     const priceLine = isWeightUnit(it.unit)
       ? `₹${unitPrice} (${weightLabel(it)}) × ${qty}`
       : `₹${unitPrice} × ${qty}`;
@@ -15019,9 +15223,9 @@ function openOrderSummary() {
     const row = document.createElement('div');
     row.className = "order-summary-row";
     row.innerHTML = `
-      <div class="os-photo"><img class="order-summary-row-img" src="${it.image || ''}" alt="${it.name}" loading="lazy" onerror="this.onerror=null;this.src='icon-192.png';this.classList.add('img-fallback');" /><span class="os-badge" title="${escapeHtml(r.name || '')}">${shopLogoHtml}</span></div>
+      <div class="os-photo"><img class="order-summary-row-img" src="${escapeHtml(it.image || '')}" alt="${escapeHtml(it.name || '')}" loading="lazy" onerror="this.onerror=null;this.src='icon-192.png';this.classList.add('img-fallback');" /><span class="os-badge" title="${escapeHtml(r.name || '')}">${shopLogoHtml}</span></div>
       <div class="order-summary-row-mid">
-        <p class="order-summary-row-name">${it.name}</p>
+        <p class="order-summary-row-name">${escapeHtml(it.name || '')}</p>
         <p class="order-summary-row-price">${priceLine}</p>
         ${sizeLine}
       </div>
@@ -15149,7 +15353,7 @@ function cpLive(now) {
   }
   updateLocSummary();
   clearTimeout(cpLiveT);
-  cpLiveT = setTimeout(() => { if (state.pendingCheckout) ensureRoadDistance(); }, now ? 0 : 350);
+  cpLiveT = setTimeout(() => { if (state.pendingCheckout) ensureRoadDistance(); }, now ? 0 : 150);
   cpSyncBar();
 }
 function cpSyncBar() {
@@ -15318,6 +15522,7 @@ function cpPrepare() {
   if (!state.user) {
     closeOrderSummary();
     state.authReturnTo = "checkout";
+    try { const a = document.querySelector('.screen.active'); state.authPrevScreen = a ? a.id.replace('screen-', '') : null; } catch (e) { state.authPrevScreen = null; }
     loginNumberInput.value = "";
     loginErrorEl.style.display = "none";
     loginSubmitBtn.disabled = true;
@@ -15514,6 +15719,10 @@ payConfirmBtn.addEventListener('click', async () => {
       return;
     }
   }
+  if (navigator.onLine === false) {
+    showInfoModal('No internet', 'You seem to be offline. Please check your connection and try again.');
+    return;
+  }
   if (selectedPaymentMethod === 'gpay' && !gpayPaidCheckbox.checked) {
     showInfoModal('One more step', "Please complete the UPI payment and tick \"I've completed the payment\" before placing the order.");
     return;
@@ -15552,7 +15761,7 @@ payConfirmBtn.addEventListener('click', async () => {
       }
       return withShop({ name: it.name, desc: it.desc || '', price: it.price, qty: state.cart[it.id], ...(shopOptions ? { shopOptions } : {}) });
     });
-  const itemsTotal = orderItems.reduce((sum, it) => sum + it.price * it.qty, 0);
+  const itemsTotal = Math.round(orderItems.reduce((sum, it) => sum + it.price * it.qty, 0) * 100) / 100;
   // Free item offer reached: add the free item to the order at ₹0 (adds nothing to the total). The "(FREE)" in its name
   // shows on every order screen; shopOptions lets the shop's own rate be stamped on it when the operator assigns the order.
   try {
@@ -15592,6 +15801,7 @@ payConfirmBtn.addEventListener('click', async () => {
 
   payConfirmBtn.disabled = true;
   payConfirmBtn.textContent = "Placing order…";
+  let orderSaved = false;
 
   try {
     // Push the order into the restaurant's own node in Firebase. The
@@ -15660,6 +15870,7 @@ payConfirmBtn.addEventListener('click', async () => {
       if (waived > 0) { orderPayload.freeDelivery = true; orderPayload.deliveryFeeWaived = waived; }
     }
     await set(orderRef, orderPayload);
+    orderSaved = true;
     window.neshTip = 0; try { renderTipUI(); } catch (e) {}   // tip is per-order
 
     // Per-customer order index (see ensureOrderIndex): lets the app find this
@@ -15732,7 +15943,12 @@ payConfirmBtn.addEventListener('click', async () => {
     maybePromptNotificationPermission();
   } catch (err) {
     console.error("Failed to place order:", err);
-    showInfoModal('Oops', "Couldn't place the order. Please check your connection and try again.");
+    if (orderSaved) {
+      // The order is already in Firebase — only a screen/UI step after it failed. Don't ask to retry (would duplicate it).
+      try { state.cart = {}; state.cartGrams = {}; state.cartSizes = {}; state.pendingCheckout = null; closePaymentConfirm(); showScreen('placed'); } catch (e2) {}
+    } else {
+      showInfoModal('Oops', "Couldn't place the order. Please check your connection and try again.");
+    }
   } finally {
     payConfirmBtn.disabled = false;
     payConfirmBtn.textContent = "Confirm & place order";
@@ -16554,7 +16770,19 @@ yourOrdersBtn.addEventListener('click', openOrdersScreen);
 ordersBackBtn.addEventListener('click', leaveOrdersScreen);
 
 // ---------- LOGOUT ----------
+// After logout this phone must stop receiving the old customer's order notifications (and must not
+// hand them to the next person who logs in here). Only removes the token if it is THIS device's.
+async function neshDetachPushToken(number) {
+  try {
+    const tok = localStorage.getItem('nesh_fcm_token');
+    if (!tok || !number || !window.fb) return;
+    const { db, ref, get, update } = window.fb;
+    const snap = await get(ref(db, 'customers/' + number + '/fcmToken'));
+    if (snap.val() === tok) await update(ref(db, 'customers/' + number), { fcmToken: null });
+  } catch (e) {}
+}
 function logoutUser() {
+  try { neshDetachPushToken(state.user && state.user.number); } catch (e) {}
   state.user = null;
   updateVerifiedBadges();
   try { neshClearSavedCart(); } catch (e) {}
@@ -16727,33 +16955,11 @@ function autoDetectLocation() {
     }
     showLocationOffPopup(e && e.code);
   };
-  const quickFallback = (e) => {
-    navigator.geolocation.getCurrentPosition(
-      p2 => { onLocationGranted(p2); },
-      failNow,
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 10000 }
-    );
-  };
-  const GPS_OPTS = { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 };
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      const acc = Number(pos.coords.accuracy) || 0;
-      if (acc > 100) {
-        navigator.geolocation.getCurrentPosition(
-          p2 => { onLocationGranted((Number(p2.coords.accuracy) || 99999) < acc ? p2 : pos); },
-          () => { onLocationGranted(pos); },
-          { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-        );
-        return;
-      }
-      onLocationGranted(pos);
-    },
-    (err) => {
-      if (err && err.code === 1) { failNow(err); return; }   // denied: report straight away
-      quickFallback(err);                                    // timeout / unavailable: try a quicker network fix
-    },
-    GPS_OPTS
-  );
+  // Best-of live GPS + quick network fix: takes the first good fix (<= 30 m) at once, sharpens up to ~4-8 s otherwise.
+  window.neshFastFix({
+    onDone: pos => { onLocationGranted(pos); },
+    onFail: failNow
+  });
 }
 
 // ---------- "Turn on location" popup ----------
@@ -16841,30 +17047,15 @@ function neshShowOpenChoice() {
     const secure = window.isSecureContext || location.protocol === 'https:' || location.hostname === 'localhost';
     if (!navigator.geolocation || !secure) { slowFlow(); return; }
     btn.disabled = true; btn.textContent = 'Locating…';
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
+    window.neshFastFix({
+      onDone: (pos) => {
         restore(); close();
         try { onLocationGranted(pos); } catch (e) {}
         try { renderRestaurantList(); } catch (e) {}
         if (pendingLocationRequiredAction) { const a = pendingLocationRequiredAction; pendingLocationRequiredAction = null; a(); }
-        // Quietly sharpen the position in the background; only update if it clearly moved.
-        const first = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: Number(pos.coords.accuracy) || 99999 };
-        try {
-          navigator.geolocation.getCurrentPosition((p2) => {
-            const lat = p2.coords.latitude, lng = p2.coords.longitude, acc = Number(p2.coords.accuracy) || 99999;
-            const cur = state.customerPos;
-            if (!cur || cur.lat !== first.lat || cur.lng !== first.lng) return;     // customer already picked something else
-            if (acc >= first.acc || haversineMeters(first.lat, first.lng, lat, lng) < 150) return;
-            state.customerPos = { lat, lng };
-            try { localStorage.setItem('nesh_last_gps', JSON.stringify({ lat, lng, t: Date.now() })); } catch (e) {}
-            try { updateHomeLocationLabel(); } catch (e) {}
-            try { renderRestaurantList(); } catch (e) {}
-          }, () => {}, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
-        } catch (e) {}
       },
-      () => { slowFlow(); },
-      { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
-    );
+      onFail: () => { slowFlow(); }
+    });
   });
   document.getElementById('oc-last-btn').addEventListener('click', () => {
     window.__neshChoiceDone = true;
@@ -17013,9 +17204,10 @@ function tryEnableLocationCore(silent) {
     locOffEnableBtn.disabled = true;
     locOffEnableBtn.textContent = 'Checking…';
   }
-  navigator.geolocation.getCurrentPosition(
-    onLocationGranted,
-    (err) => {
+  window.neshFastFix({
+    hard: 12000,
+    onDone: onLocationGranted,
+    onFail: (err) => {
       if (silent) return;
       locOffEnableBtn.disabled = false;
       locOffEnableBtn.textContent = 'Try again';
@@ -17032,9 +17224,8 @@ function tryEnableLocationCore(silent) {
         const NS = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.NativeSettings;
         if (NS && NS.open) NS.open({ optionAndroid: (err && err.code === 1) ? 'application_details' : 'location', optionIOS: 'app' });
       } catch (e) {}
-    },
-    { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
-  );
+    }
+  });
 }
 ['loc-search', 'browse-loc-search'].forEach(id => {
   const el = document.getElementById(id);
@@ -17954,6 +18145,29 @@ if ('serviceWorker' in navigator) {
     try { return fn(); }
     finally { state.selectedRestaurant = keep.sr; state.cart = keep.c; state.cartGrams = keep.g; state.cartSizes = keep.s; state.roadDistanceKey = keep.k; state.roadDistanceKm = keep.km; }
   }
+  // Whole-route distance cache that survives app restarts (7 days), like the single-shop road distance cache.
+  function rcGet(key) {
+    try { var o = JSON.parse(localStorage.getItem('nesh_route_km_v1') || '{}') || {}, e = o[key];
+      if (e && typeof e.km === 'number' && (Date.now() - e.t) < 7 * 24 * 3600 * 1000) return e.km; } catch (x) {}
+    return null;
+  }
+  function rcPut(key, km) {
+    try { var o = JSON.parse(localStorage.getItem('nesh_route_km_v1') || '{}') || {}; o[key] = { km: km, t: Date.now() };
+      var ks = Object.keys(o).sort(function (a, b) { return o[b].t - o[a].t; }).slice(0, 30), out = {};
+      ks.forEach(function (k) { out[k] = o[k]; }); localStorage.setItem('nesh_route_km_v1', JSON.stringify(out)); } catch (x) {}
+  }
+  // OSRM request that can never hang: gives meters, or null on failure / timeout.
+  function osrmMeters(coords, ms) {
+    return new Promise(function (resolve) {
+      var ctrl = null, tm = null;
+      try { ctrl = new AbortController(); tm = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, ms || 8000); } catch (e) {}
+      fetch('https://router.project-osrm.org/route/v1/cycling/' + coords + '?overview=false', ctrl ? { signal: ctrl.signal } : undefined)
+        .then(function (r) { return r.json(); })
+        .then(function (d) { var m = d && d.routes && d.routes[0] && d.routes[0].distance; resolve(typeof m === 'number' ? m : null); })
+        .catch(function () { resolve(null); })
+        .then(function () { clearTimeout(tm); });
+    });
+  }
   function kmKey(id, pos, pc) { return id + '|' + pos.lat + ',' + pos.lng + '>' + pc.lat + ',' + pc.lng; }
 
   // Everything the normal checkout would charge this shop (no coupon / shop discount / tip).
@@ -17969,6 +18183,7 @@ if ('serviceWorker' in navigator) {
       state.roadDistanceKey = null; state.roadDistanceKm = null;
       if (needKm) {
         var k = kmKey(id, pos, pc), km = M.kmCache[k];
+        if (km == null) { try { var hit = roadKmCacheGet(pos, pc); if (hit != null) { km = hit; M.kmCache[k] = hit; } } catch (e) {} }   // already known from the single-shop warm-up / an earlier order
         if (km == null) { ready = false; M.need[k] = { id: id, pos: pos, pc: { lat: pc.lat, lng: pc.lng } }; }
         else { state.roadDistanceKey = deliveryDistanceKey(pos, pc); state.roadDistanceKm = km; kmVal = km; }
       } else if (dc && !(pc && typeof pc.lat === 'number')) ready = false;   // no pin yet
@@ -18012,10 +18227,15 @@ if ('serviceWorker' in navigator) {
       km += haversineMeters(prev.lat, prev.lng, pc.lat, pc.lng);
       return (km / 1000) * 1.25;   // same fallback factor as the normal checkout
     }
-    fetch('https://router.project-osrm.org/route/v1/cycling/' + pts + '?overview=false').then(function (r) { return r.json(); }).then(function (data) {
-      var meters = data && data.routes && data.routes[0] && data.routes[0].distance;
-      RC[key] = (typeof meters === 'number') ? meters / 1000 : fallback();
-    }).catch(function () { RC[key] = fallback(); }).then(function () { if (M) refresh(); else schedulePrewarm(); });
+    var tries = 0;
+    (function attempt() {
+      osrmMeters(pts, 8000).then(function (m) {
+        if (m != null) { RC[key] = m / 1000; rcPut(key, m / 1000); if (M) refresh(); else schedulePrewarm(); return; }
+        // slow / offline: show the estimate now (never block checkout), keep trying quietly for the real road distance
+        if (RC[key] == null) { RC[key] = fallback(); if (M) refresh(); else schedulePrewarm(); }
+        if (++tries <= 3) setTimeout(attempt, 6000);
+      });
+    })();
   }
   function routeFeeFor(far, km, pc) {
     var rest = M.rests[far.id], d = saved()[far.id];
@@ -18031,6 +18251,7 @@ if ('serviceWorker' in navigator) {
     var pc = M.pc;
     if (all.length < 2 || !pc || typeof pc.lat !== 'number' || all.some(function (b) { return !b.ready || !b.pos; })) return res;
     var order = routeOrder(all), far = order[0], key = routeKey(order, pc), km = RC[key];
+    if (km == null) { var rch = rcGet(key); if (rch != null) { RC[key] = km = rch; } }
     if (km == null) { fetchRoute(order, pc, key); res.pending = true; return res; }
     var fee = routeFeeFor(far, km, pc);
     all.forEach(function (b) { if (b === far) res.ov[b.id] = fee.df; else { res.ov[b.id] = 0; b.covered = far.name; } });
@@ -18040,14 +18261,15 @@ if ('serviceWorker' in navigator) {
 
   function fetchKm(n, key) {
     if (FETCHING[key]) return; FETCHING[key] = true;
-    var url = 'https://router.project-osrm.org/route/v1/cycling/' + n.pos.lng + ',' + n.pos.lat + ';' + n.pc.lng + ',' + n.pc.lat + '?overview=false';
-    fetch(url).then(function (r) { return r.json(); }).then(function (data) {
-      var meters = data && data.routes && data.routes[0] && data.routes[0].distance;
-      if (typeof meters === 'number') KM_CACHE[key] = meters / 1000;
-      else KM_CACHE[key] = (haversineMeters(n.pos.lat, n.pos.lng, n.pc.lat, n.pc.lng) / 1000) * 1.25;
-    }).catch(function () {
-      KM_CACHE[key] = (haversineMeters(n.pos.lat, n.pos.lng, n.pc.lat, n.pc.lng) / 1000) * 1.25;   // same fallback as the normal checkout
-    }).then(function () { if (M) refresh(); else schedulePrewarm(); });
+    var est = function () { return (haversineMeters(n.pos.lat, n.pos.lng, n.pc.lat, n.pc.lng) / 1000) * 1.25; };   // same fallback as the normal checkout
+    var tries = 0;
+    (function attempt() {
+      roadKmShared(n.pos, n.pc).then(function (km) {
+        if (typeof km === 'number') { KM_CACHE[key] = km; if (M) refresh(); else schedulePrewarm(); return; }
+        if (KM_CACHE[key] == null) { KM_CACHE[key] = est(); if (M) refresh(); else schedulePrewarm(); }
+        if (++tries <= 3) setTimeout(attempt, 6000);   // keep trying quietly; the real road distance replaces the estimate when it arrives
+      });
+    })();
   }
 
   var rt = null;
@@ -18357,6 +18579,7 @@ if ('serviceWorker' in navigator) {
 
   var pwT = null;
   function schedulePrewarm() { clearTimeout(pwT); pwT = setTimeout(prewarm, 700); }
+  window.neshMultiPrewarm = schedulePrewarm;
   function prewarm() {
     try {
       if (M) return;                                   // an open multi-shop checkout is doing this itself
@@ -18377,7 +18600,7 @@ if ('serviceWorker' in navigator) {
       if (need.length) { need.forEach(function (k) { fetchKm(tmp.need[k], k); }); return; }   // re-runs when these arrive
       if (bills.length < 2 || bills.some(function (b) { return !b.ready || !b.pos; })) return;
       var order = routeOrder(bills), key = routeKey(order, tmp.pc);
-      if (RC[key] == null) fetchRoute(order, tmp.pc, key);
+      if (RC[key] == null) { var rch2 = rcGet(key); if (rch2 != null) { RC[key] = rch2; } else fetchRoute(order, tmp.pc, key); }
     } catch (e) { M = null; }
   }
 
