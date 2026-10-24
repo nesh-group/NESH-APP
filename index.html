@@ -12848,7 +12848,12 @@ function neshLoyaltyGiftFor(r, itemsTotal) {
     if (!key || !ph || !window.fb || !loyaltyOn()) return;
     if (lsGet().indexOf(key) >= 0) return;
     lsAdd(key);
-    try { const { db, ref, set } = window.fb; set(ref(db, 'loyalty/' + ph + '/g/' + key), group || key).catch(() => {}); } catch (e) {}
+    try {
+      const { db, ref, set, runTransaction } = window.fb;
+      set(ref(db, 'loyalty/' + ph + '/g/' + key), group || key).catch(() => {});
+      const amt = Number((window.__neshOrderAmt || {})[key]) || 0;   // group total = sum of its orders' items totals
+      if (amt > 0) runTransaction(ref(db, 'loyalty/' + ph + '/amt/' + (group || key)), n => (n || 0) + amt);
+    } catch (e) {}
   }
   window.neshLoyaltyCount = function (key) { window.__neshLoyGroup = key; record(key, key); };   // first order of a group checkout
   window.neshLoyaltySync = function () { try { seen = (state.lastOrder && state.lastOrder.orderKey) || seen; } catch (e) {} };
@@ -12869,8 +12874,10 @@ function neshLoyaltyGiftFor(r, itemsTotal) {
     get(ref(db, 'loyalty/' + ph + '/g/' + orderKey)).then(gs => {
       if (!gs.exists()) return;   // order placed before the reward existed: not counted
       const group = String(gs.val()), cRef = ref(db, 'loyalty/' + ph + '/counted/' + group);
-      return get(cRef).then(cs => {
+      const min = Number((window.NESH_LOYALTY || {}).countMin) || 0;   // operator: min items total for an order to count
+      return Promise.all([get(cRef), get(ref(db, 'loyalty/' + ph + '/amt/' + group))]).then(([cs, as]) => {
         if (cs.exists()) return;
+        if (min > 0 && (Number(as.val()) || 0) < min) return;
         return set(cRef, Date.now()).then(() => runTransaction(ref(db, 'loyalty/' + ph + '/count'), n => (n || 0) + 1));
       });
     }).catch(() => { delete checked[orderKey]; });
@@ -12935,7 +12942,7 @@ function renderLoyaltyCard() {
   if (avail > 0) {
     foot = '\uD83C\uDF89 <b>Unlocked!</b> ' + (applied ? 'Applied to your order \u2705' : 'Claim it on this order.') + (Number(c.minOrder) > 0 ? ' (min order \u20B9' + c.minOrder + ')' : '');
     if (!applied) btn = '<button type="button" class="loy-btn" data-loy-claim>\uD83C\uDF81 Claim ' + escapeHtml(loyaltyRewardText(c)) + '</button>';
-  } else foot = '<b>' + done + ' of ' + n + '</b> orders done \u00B7 ' + left + ' more to unlock <span style="opacity:.7">(group order = 1 order)</span>';
+  } else foot = '<b>' + done + ' of ' + n + '</b> orders done \u00B7 ' + left + ' more to unlock <span style="opacity:.7">(group order = 1 order' + (Number(c.countMin) > 0 ? '; orders of \u20B9' + c.countMin + '+ count' : '') + ')</span>';
   el.innerHTML = '<div class="loy"><div class="loy-top"><span class="loy-ic">' + (avail > 0 ? '\uD83C\uDF89' : '\uD83C\uDFC6') + '</span><div><div class="loy-t">' + title + '</div><div class="loy-s">Order ' + n + ' times, get a reward</div></div><span class="loy-rw">' + escapeHtml(loyaltyRewardText(c)) + '</span></div>' + prog + '<div class="loy-f">' + foot + '</div>' + btn + '</div>';
   el.style.display = 'block';
   const b = el.querySelector('[data-loy-claim]');
@@ -13000,7 +13007,12 @@ function neshLoyaltySGiftFor(r, itemsTotal) {
     if (!key || !ph || !window.fb || !loyaltySOn()) return;
     if (lsGet().indexOf(key) >= 0) return;
     lsAdd(key);
-    try { const { db, ref, set } = window.fb; set(ref(db, 'loyaltyStore/' + ph + '/g/' + key), group || key).catch(() => {}); } catch (e) {}
+    try {
+      const { db, ref, set, runTransaction } = window.fb;
+      set(ref(db, 'loyaltyStore/' + ph + '/g/' + key), group || key).catch(() => {});
+      const amt = Number((window.__neshOrderAmt || {})[key]) || 0;   // group total = sum of its orders' items totals
+      if (amt > 0) runTransaction(ref(db, 'loyaltyStore/' + ph + '/amt/' + (group || key)), n => (n || 0) + amt);
+    } catch (e) {}
   }
   const isStore = () => { try { return !!(state.lastOrder && state.lastOrder.restId === 'NESH_STORE'); } catch (e) { return false; } };
   window.neshLoyaltySCount = function (key) { if (isStore()) record(key, key); };   // called for the first order of a group checkout
@@ -13021,8 +13033,10 @@ function neshLoyaltySGiftFor(r, itemsTotal) {
     get(ref(db, 'loyaltyStore/' + ph + '/g/' + orderKey)).then(gs => {
       if (!gs.exists()) return;   // order placed before the reward existed: not counted
       const group = String(gs.val()), cRef = ref(db, 'loyaltyStore/' + ph + '/counted/' + group);
-      return get(cRef).then(cs => {
+      const min = Number((window.NESH_LOYALTYS || {}).countMin) || 0;   // operator: min items total for an order to count
+      return Promise.all([get(cRef), get(ref(db, 'loyaltyStore/' + ph + '/amt/' + group))]).then(([cs, as]) => {
         if (cs.exists()) return;
+        if (min > 0 && (Number(as.val()) || 0) < min) return;
         return set(cRef, Date.now()).then(() => runTransaction(ref(db, 'loyaltyStore/' + ph + '/count'), n => (n || 0) + 1));
       });
     }).catch(() => { delete checked[orderKey]; });
@@ -13087,7 +13101,7 @@ function renderLoyaltySCard() {
   if (avail > 0) {
     foot = '\uD83C\uDF89 <b>Unlocked!</b> ' + (applied ? 'Applied to your order \u2705' : 'Claim it on this order.') + (Number(c.minOrder) > 0 ? ' (min order \u20B9' + c.minOrder + ')' : '');
     if (!applied) btn = '<button type="button" class="loy-btn" data-loy-claim>\uD83C\uDF81 Claim ' + escapeHtml(loyaltySRewardText(c)) + '</button>';
-  } else foot = '<b>' + done + ' of ' + n + '</b> orders done \u00B7 ' + left + ' more to unlock';
+  } else foot = '<b>' + done + ' of ' + n + '</b> orders done \u00B7 ' + left + ' more to unlock' + (Number(c.countMin) > 0 ? ' <span style="opacity:.7">(orders of \u20B9' + c.countMin + '+ count)</span>' : '');
   el.innerHTML = '<div class="loy"><div class="loy-top"><span class="loy-ic">' + (avail > 0 ? '\uD83C\uDF89' : '\uD83C\uDFC6') + '</span><div><div class="loy-t">' + title + '</div><div class="loy-s">Order ' + n + ' times, get a reward</div></div><span class="loy-rw">' + escapeHtml(loyaltySRewardText(c)) + '</span></div>' + prog + '<div class="loy-f">' + foot + '</div>' + btn + '</div>';
   el.style.display = 'block';
   const b = el.querySelector('[data-loy-claim]');
@@ -15700,6 +15714,7 @@ payConfirmBtn.addEventListener('click', async () => {
     document.getElementById('confirm-rest-name').textContent = "from " + r.name;
     // Remember which order this is so the "Track your Order" button knows
     // exactly which Firebase node to watch for live status updates.
+    try { (window.__neshOrderAmt = window.__neshOrderAmt || {})[orderRef.key] = Number(itemsTotal) || 0; } catch (e) {}   // loyalty: items total of this order
     state.lastOrder = { restId: r.id, orderKey: orderRef.key, orderNumber, restName: r.name, businessType: r.businessType };
     try { localStorage.setItem('asfood_last_order', JSON.stringify(state.lastOrder)); } catch (e) {}
     updateHomeTrackBtn();
