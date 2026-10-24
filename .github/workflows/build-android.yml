@@ -50,7 +50,7 @@ jobs:
       - name: Bundle fonts, Leaflet, Firebase and stock images
         run: |
           python3 - << 'PYEOF'
-          import re, os, hashlib, urllib.request
+          import re, os, hashlib, urllib.request, urllib.parse
           UA = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36"
           def get(u):
               r = urllib.request.Request(u, headers={"User-Agent": UA})
@@ -64,6 +64,11 @@ jobs:
           try:
               gf = re.search(r'https://fonts\.googleapis\.com/css2\?[^"\'\s]+', html).group(0)
               css = get(gf.replace("&amp;", "&")).decode()
+              # Keep only the latin + latin-ext subsets (latin-ext has the rupee sign).
+              # Cyrillic / vietnamese / greek etc. are never shown in this app, so skip them.
+              blocks = re.findall(r"/\*\s*([\w-]+)\s*\*/\s*(@font-face\s*\{.*?\})", css, re.S)
+              if blocks:
+                  css = "\n".join("/* %s */\n%s" % (n, b) for n, b in blocks if n in ("latin", "latin-ext"))
               for i, u in enumerate(sorted(set(re.findall(r'url\((https://fonts\.gstatic\.com/[^)]+)\)', css)))):
                   name = "f%d.woff2" % i
                   open(B + "/fonts/" + name, "wb").write(get(u))
@@ -96,13 +101,15 @@ jobs:
               except Exception as e:
                   print(n, "skipped:", e)
 
-          # Fixed Unsplash images (downloaded at 1200px wide so they stay sharp on phones)
+          # Fixed Unsplash images (downloaded at 800px wide as WebP quality 70: sharp on phones, much smaller)
           urls = sorted(set(re.findall(r'https://images\.unsplash\.com/[^"\'\s)`<>]+', html)), key=len, reverse=True)
           ok = 0
           for u in urls:
               try:
-                  big = re.sub(r"w=\d+", "w=1200", u)
-                  name = "img/" + hashlib.sha1(big.encode()).hexdigest()[:12] + ".jpg"
+                  pu = urllib.parse.urlsplit(u)
+                  qs = [(k, v) for k, v in urllib.parse.parse_qsl(pu.query, keep_blank_values=True) if k not in ("w", "q", "fm", "h")]
+                  big = urllib.parse.urlunsplit((pu.scheme, pu.netloc, pu.path, urllib.parse.urlencode(qs + [("w", "800"), ("q", "70"), ("fm", "webp")]), ""))
+                  name = "img/" + hashlib.sha1(big.encode()).hexdigest()[:12] + ".webp"
                   if not os.path.exists(B + "/" + name):
                       open(B + "/" + name, "wb").write(get(big))
                   html = html.replace(u, "web-assets/" + name)
