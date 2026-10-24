@@ -2,6 +2,11 @@ name: Build Customer App AAB (Signed Release)
 
 on:
   workflow_dispatch:
+    inputs:
+      skip_smoke_test:
+        description: 'Skip the pre-build "shops load" check (only if the check itself is wrong)'
+        type: boolean
+        default: false
   push:
     branches: [ main ]
     paths:
@@ -97,7 +102,10 @@ jobs:
                   print(n, "skipped:", e)
 
           # Firebase ES modules (firebase-app.js + firebase-database.js).
-          # All-or-nothing: if only one were local, the app would run two
+          # IMPORTANT: inside `import ... from "..."` a path must start with "./"
+          # (a bare "web-assets/..." is treated as a package name and the whole
+          # module script dies -> no shops). That was the earlier bug.
+          # All-or-nothing: if only one were local the app would run two
           # separate Firebase instances and the database would break.
           try:
               mods = {}
@@ -108,7 +116,7 @@ jobs:
                       mods[n] = mods[n].replace(G + m, "./" + m)
               for n, c in mods.items():
                   open(B + "/firebase/" + n, "w", encoding="utf-8").write(c)
-                  html = html.replace(G + n, "web-assets/firebase/" + n)
+                  html = html.replace(G + n, "./web-assets/firebase/" + n)
               print("firebase modules ok")
           except Exception as e:
               print("firebase modules skipped:", e)
@@ -162,6 +170,103 @@ jobs:
           h = h.replace("</head>", inject + "</head>", 1)
           open(p, "w", encoding="utf-8").write(h)
           print("app-feel injected")
+          PYEOF
+
+      # SAFETY CHECK: opens the exact www/ app in a real headless Chrome (like a
+      # first-time customer, empty cache) BEFORE the Android build.
+      # The build FAILS (nothing reaches Play Store) if:
+      #  - a bundled file (web-assets/...) or index.html is missing
+      #  - a module / import error happens (the bug that hid all shops)
+      #  - Firebase did not load, or no shops are listed within ~2 minutes
+      # Other small JS errors only show as warnings in the log.
+      # Only on a manual run, tick "skip_smoke_test" if the check itself is wrong.
+      - name: Smoke test - app must load and list shops
+        if: ${{ inputs.skip_smoke_test != true }}
+        run: |
+          pip install playwright -q
+          python3 -m playwright install --with-deps chromium
+          python3 - << 'PYEOF'
+          import sys, threading, functools, http.server, socketserver
+          from playwright.sync_api import sync_playwright
+
+          class Q(http.server.SimpleHTTPRequestHandler):
+              def log_message(self, *a): pass
+          socketserver.ThreadingTCPServer.allow_reuse_address = True
+          srv = socketserver.ThreadingTCPServer(("127.0.0.1", 8765), functools.partial(Q, directory="www"))
+          threading.Thread(target=srv.serve_forever, daemon=True).start()
+          BASE = "http://localhost:8765"
+          problems, warnings = [], []
+
+          with sync_playwright() as p:
+              b = p.chromium.launch()
+              ctx = b.new_context(
+                  viewport={"width": 412, "height": 915},
+                  geolocation={"latitude": 9.8667, "longitude": 76.3},
+                  permissions=["geolocation"])
+              page = ctx.new_page()
+
+              def on_err(e):
+                  m = str(e)
+                  low = m.lower()
+                  if "module" in low or "import" in low or "specifier" in low:
+                      problems.append("JS module error: " + m)
+                  else:
+                      warnings.append("JS error: " + m)
+              page.on("pageerror", on_err)
+
+              def on_resp(r):
+                  if r.url.startswith(BASE) and r.status >= 400 and "favicon" not in r.url:
+                      msg = "HTTP %s  %s" % (r.status, r.url)
+                      (problems if ("web-assets" in r.url or r.url.endswith("index.html")) else warnings).append(msg)
+              page.on("response", on_resp)
+
+              def on_fail(r):
+                  if r.url.startswith(BASE) and "ERR_ABORTED" not in (r.failure or ""):
+                      problems.append("request failed  %s  %s" % (r.url, r.failure))
+              page.on("requestfailed", on_fail)
+
+              page.goto(BASE + "/index.html", wait_until="domcontentloaded")
+
+              def wait(expr, secs):
+                  try:
+                      page.wait_for_function(expr, timeout=secs * 1000)
+                      return True
+                  except Exception:
+                      return False
+
+              SHOPS = "Array.isArray(window.RESTAURANTS) && window.RESTAURANTS.length > 0"
+              mod_ok = wait("typeof window.setShopLoading === 'function'", 30)
+              db_ok = mod_ok and wait("Array.isArray(window.SHOP_ZONES)", 45)
+              shops_ok = db_ok and wait(SHOPS, 25)
+              if db_ok and not shops_ok:
+                  # The test point may be outside every shop zone: move the test customer
+                  # to the middle of a zone that has shops, then wait again.
+                  print("moving test customer into a shop zone:", page.evaluate("""() => {
+                    try {
+                      const zs = (window.SHOP_ZONES || []).filter(z => z.shopIds.length);
+                      for (const z of zs) {
+                        const n = z.bounds.length;
+                        const c = { lat: z.bounds.reduce((a, p) => a + p.lat, 0) / n, lng: z.bounds.reduce((a, p) => a + p.lng, 0) / n };
+                        const pts = [c].concat(z.bounds.map(p => ({ lat: c.lat + (p.lat - c.lat) * 0.5, lng: c.lng + (p.lng - c.lng) * 0.5 })));
+                        const hit = pts.find(q => isPointInZone(q, z.bounds));
+                        if (hit) { state.customerPos = hit; return z.name + ' ' + JSON.stringify(hit); }
+                      }
+                      return 'no zone with shops found';
+                    } catch (e) { return 'error: ' + e; }
+                  }"""))
+                  shops_ok = wait(SHOPS, 45)
+              n = page.evaluate("(window.RESTAURANTS || []).length") if shops_ok else 0
+              b.close()
+
+          print("Firebase module loaded :", mod_ok)
+          print("Firebase data arrived  :", db_ok)
+          print("Shops listed           :", shops_ok, "(%d shops)" % n)
+          for x in warnings: print("::warning::", x)
+          for x in problems: print("PROBLEM:", x)
+          if problems or not (mod_ok and db_ok and shops_ok):
+              print("::error::App check failed - shops did not load. Build stopped, nothing was built.")
+              sys.exit(1)
+          print("Smoke test passed")
           PYEOF
 
       - name: Init npm + install Capacitor
