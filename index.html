@@ -4840,6 +4840,7 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
         <div id="nesh-coupon-box" style="display:none; margin:8px 0 4px;">
           <p style="margin:0 0 8px; font-size:13px; font-weight:800; color:#2B2410;">🎟️ Offers for you</p>
           <div id="nesh-coupon-cards" style="display:none; gap:10px; overflow-x:auto; padding:2px 2px 10px; -webkit-overflow-scrolling:touch; scrollbar-width:none;"></div>
+          <button type="button" id="nesh-coupon-remove" style="display:none; width:100%; margin:0 0 10px; padding:10px; border:1.5px solid #C62828; background:#fff; color:#C62828; font-weight:800; font-size:13px; border-radius:10px; cursor:pointer;">✕ Remove applied coupon</button>
           <div style="display:flex; gap:8px;">
             <input id="nesh-coupon-input" type="text" placeholder="Have a coupon code?" autocapitalize="characters" autocomplete="off" style="flex:1; min-width:0; padding:10px 12px; border:1.5px dashed #F2B705; border-radius:10px; font-size:14px; text-transform:uppercase; background:#FFF8DF; color:#2B2410;">
             <button type="button" id="nesh-coupon-apply" style="border:none; background:#2B2410; color:#fff; font-weight:700; font-size:13px; padding:0 16px; border-radius:10px; cursor:pointer;">Apply</button>
@@ -5443,6 +5444,10 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
     };
     window.GO_SERIES_PLATFORM_FEE = (data && Number(data.platformFee)) || 0;
     window.GO_SERIES_ITEM_MARKUP = (data && Number(data.itemMarkup)) || 0;
+    // Config is now known for real. Remember it, so the NEXT app open has the delivery charge
+    // instantly (see "Instant start" restore) instead of waiting for Firebase.
+    window.GO_SERIES_LOADED = true;
+    try { window.neshCfg.save('goSeries', { d: window.GO_SERIES_DELIVERY, p: window.GO_SERIES_PLATFORM_FEE, m: window.GO_SERIES_ITEM_MARKUP }); } catch (e) {}
     // Item prices are baked into window.RESTAURANTS at build time (unlike
     // the delivery/platform fees, which are read live at checkout), so a
     // markup change needs an explicit rebuild to show up right away.
@@ -5783,7 +5788,7 @@ function syncShopLoading() {
   Object.defineProperty(state, 'customerPos', {
     configurable: true, enumerable: true,
     get() { return _pos; },
-    set(v) { _pos = v; try { syncShopLoading(); } catch (e) {} try { if (typeof neshPrefetchSoon === 'function') neshPrefetchSoon(); } catch (e) {} }
+    set(v) { _pos = v; try { syncShopLoading(); } catch (e) {} try { if (typeof neshPrefetchSoon === 'function') neshPrefetchSoon(); } catch (e) {} try { if (typeof neshSyncZoneTopicsSoon === 'function') neshSyncZoneTopicsSoon(); } catch (e) {} }
   });
 })();
 
@@ -6770,6 +6775,11 @@ Object.assign(NESH_ML, {
  "Couldn't place the order. Please check your connection and try again.": "ഓർഡർ ചെയ്യാൻ കഴിഞ്ഞില്ല. കണക്ഷൻ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കൂ.",
  "Complete payment to continue": "തുടരാൻ പേയ്മെന്റ് പൂർത്തിയാക്കൂ",
  "One more step": "ഇനി ഒരു ഘട്ടം കൂടി",
+ "Payment not completed": "പേയ്മെന്റ് പൂർത്തിയായില്ല",
+ "Payment was not completed. No order was placed. Please try again.": "പേയ്മെന്റ് പൂർത്തിയായില്ല. ഓർഡർ ചെയ്തിട്ടില്ല. വീണ്ടും ശ്രമിക്കൂ.",
+ "Payment cancelled": "പേയ്മെന്റ് റദ്ദാക്കി",
+ "No order was placed. Tap Pay Online to try again.": "ഓർഡർ ചെയ്തിട്ടില്ല. വീണ്ടും ശ്രമിക്കാൻ Pay Online അമർത്തൂ.",
+ "No UPI app found": "UPI ആപ്പ് കണ്ടെത്തിയില്ല",
  "Please complete the UPI payment and tick \"I've completed the payment\" before placing the order.": "ഓർഡർ ചെയ്യുന്നതിന് മുമ്പ് UPI പേയ്മെന്റ് പൂർത്തിയാക്കി \"പേയ്മെന്റ് പൂർത്തിയാക്കി\" എന്ന് ടിക്ക് ചെയ്യൂ.",
  "Check your details": "വിവരങ്ങൾ പരിശോധിക്കൂ",
  "Landmark needed": "ലാൻഡ്മാർക്ക് ആവശ്യമാണ്",
@@ -10066,10 +10076,57 @@ async function subscribeToBroadcastTopic(token, attempt) {
     });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     try { localStorage.setItem('nesh_topic_token', token); } catch (e) {}
+    try { neshSyncZoneTopicsSoon(); } catch (e) {}
   } catch (e) {
     if (attempt < 3) setTimeout(() => subscribeToBroadcastTopic(token, attempt + 1), [3000, 10000, 30000][attempt]);
     else console.warn('subscribe_topic failed after retries', e);
   }
+}
+// ---------- Zone-wise notifications ----------
+// The device joins an FCM topic "zone_<zoneId>" for every Shop Zone its LAST known
+// location (state.customerPos) is inside, and leaves the topic when the customer moves
+// to another zone. Operator Panel -> Send Notification can then target a zone (or
+// several) in one FCM call, or "all customers" like before. Runs only when something
+// actually changed (token, location or zones) — otherwise zero network calls.
+let _neshZoneSyncTimer = null, _neshZoneSyncBusy = false;
+function neshSyncZoneTopicsSoon() {
+  clearTimeout(_neshZoneSyncTimer);
+  _neshZoneSyncTimer = setTimeout(neshSyncZoneTopics, 2500);
+}
+async function neshSyncZoneTopics() {
+  if (_neshZoneSyncBusy) { neshSyncZoneTopicsSoon(); return; }
+  let token = '';
+  try { token = localStorage.getItem('nesh_topic_token') || localStorage.getItem('nesh_fcm_token') || ''; } catch (e) {}
+  if (!token) return;
+  const pt = state && state.customerPos;                       // cleared location -> keep the last zone
+  if (!pt || typeof pt.lat !== 'number' || typeof pt.lng !== 'number') return;
+  if (!Array.isArray(window.SHOP_ZONES)) return;               // zones not loaded yet -> don't touch anything
+  const want = zonesAtPoint(pt).map(z => 'zone_' + z.id).sort();
+  let have = [], haveTok = '';
+  try {
+    have = JSON.parse(localStorage.getItem('nesh_zone_topics') || '[]');
+    haveTok = localStorage.getItem('nesh_zone_topics_token') || '';
+  } catch (e) {}
+  if (haveTok !== token) have = [];                            // new token -> nothing subscribed yet
+  const add = want.filter(t => have.indexOf(t) < 0);
+  const del = have.filter(t => want.indexOf(t) < 0);
+  if (!add.length && !del.length) return;
+  _neshZoneSyncBusy = true;
+  try {
+    const r = await fetch('https://broad-paper-6445.raise3715.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'subscribe_topic', token, topics: add, unsubscribeTopics: del }),
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    try {
+      localStorage.setItem('nesh_zone_topics', JSON.stringify(want));
+      localStorage.setItem('nesh_zone_topics_token', token);
+    } catch (e) {}
+  } catch (e) {
+    console.warn('zone topic sync failed — will retry', e);
+    setTimeout(neshSyncZoneTopicsSoon, 30000);
+  } finally { _neshZoneSyncBusy = false; }
 }
 // Same thing the native 'registration' listener does with a token.
 async function handlePushToken(token) {
@@ -10399,6 +10456,15 @@ function getShopMeta(shopId) {
   }
   return _shopMetaCache[shopId];
 }
+// Called from EVERY place that sees a delivered order (indexed watcher, legacy watcher, tracking screen, My Orders)
+// so the Hero offer count doesn't depend on which of them happens to be active. Safe to call repeatedly (counts once).
+window.neshLoyHook = function (key, o) {
+  try {
+    if (!key) return;
+    window.neshLoyaltyDelivered && window.neshLoyaltyDelivered(key, o);
+    window.neshLoyaltySDelivered && window.neshLoyaltySDelivered(key, o);
+  } catch (e) {}
+};
 // Same logic as the original watcher callback, fed from the indexed orders.
 function processWatchedOrders(entries, queueLiveKeys) {
   const seen = getNotifiedOrders();
@@ -10512,6 +10578,7 @@ function attachOrderStatusWatcher(number) {
   ensureOrderIndex(number).then(ready => {
     if (tok !== orderWatchToken) return;   // detached/re-attached meanwhile
     orderNotifyUnsub = null;
+    try { window.neshLoyLog('order watcher: ' + (ready ? 'indexed' : 'LEGACY (order index not ready)')); } catch (e) {}
     if (ready) attachOrderStatusWatcherIndexed(number);
     else attachOrderStatusWatcherLegacy(number);
   });
@@ -10531,6 +10598,7 @@ function attachOrderStatusWatcherLegacy(number) {
       neshForMyOrders(restSnap, number, (orderKey, o) => {
         if (!o) return;
         const status = normalizeStatus(o.status);
+        if (status === 'delivered') window.neshLoyHook(orderKey, o);
         if ((status === 'preparing' || status === 'ready') && !seen[orderKey]) {
           seen[orderKey] = true;
           changed = true;
@@ -11147,6 +11215,7 @@ function shopAllowedAtPoint(shopId, pt) {
   return zonesAtPoint(pt).some(z => z.shopIds.includes(shopId));
 }
 window.onShopZonesUpdated = () => {
+  try { neshSyncZoneTopicsSoon(); } catch (e) {}
   try { syncTestLocBtn(); } catch (e) {}
   try { syncAreaUnavailScreen(); } catch (e) {}
   try { syncShopLoading(); } catch (e) {}
@@ -12609,6 +12678,11 @@ function updateCartBar() {
       info.classList.add('unlocked');
       titleEl.textContent = "FREE delivery 🎉";
       cartTotalText.textContent = "Unlocked · Items ₹" + total;
+    } else if (!groupOrder && !goSeriesCfgPending() && (!dc || ((Number(dc.baseFee) || 0) === 0 && (Number(dc.perKmFee) || 0) === 0))) {
+      // no delivery charge set for this shop -> it is free, say so
+      info.classList.add('unlocked');
+      titleEl.textContent = "FREE delivery 🎉";
+      cartTotalText.textContent = "No delivery charge · Items ₹" + total;
     } else if (freeAbove > 0 && total < freeAbove && !groupOrder) {
       titleEl.textContent = "Unlock free delivery";
       cartTotalText.textContent = "Shop for ₹" + (freeAbove - total) + " more";
@@ -12708,6 +12782,8 @@ function couponMarkUsed(id) {
     window.NESH_LOYALTY_PROG.claimed = (window.NESH_LOYALTY_PROG.claimed || 0) + 1;
     const ph0 = couponPhoneKey();
     if (ph0 && window.fb) { try { window.fb.runTransaction(window.fb.ref(window.fb.db, 'loyalty/' + ph0 + '/claimed'), n => (n || 0) + 1); } catch (e) {} }
+    window.NESH_LOYALTY_PROG.claimedAt = 0;
+    if (ph0 && window.fb) { try { window.fb.set(window.fb.ref(window.fb.db, 'loyalty/' + ph0 + '/claimedAt'), null); } catch (e) {} }
     try { renderLoyaltyCard(); } catch (e) {}
     return;
   }
@@ -12743,6 +12819,28 @@ function couponMarkUsed(id) {
     } catch (e) {}
   }, 2000);
 })();
+// An unlocked loyalty reward is applied automatically when the customer reaches checkout (if no other coupon is applied).
+// If they remove it (Coupons & offers -> Remove) it is not re-applied for that shop until the order is placed.
+window.__loyAutoOff = null;
+window.NESH_LOY_AUTO = false;   // true = apply an unlocked reward at checkout without a Claim tap
+function neshAutoApplyLoyalty() {
+  try {
+    const claimedLive = loyaltyAvail() > 0 && loyaltyClaimedAt() > 0 && !(loyaltyClaimExpiry() && loyaltyClaimExpiry() <= Date.now());
+    if (!window.NESH_LOY_AUTO && !claimedLive) return;
+    const r = state.selectedRestaurant;
+    if (!r || window.neshCoupon || window.__loyAutoOff === r.id) return;
+    const items = currentCartItemsTotal();
+    if (!(items > 0)) return;
+    const ids = window.NESH_LOY_AUTO ? ['LOYALTY', 'LOYALTY_S'] : ['LOYALTY'];
+    for (let i = 0; i < ids.length; i++) {
+      const c = (window.neshCoupons || []).find(x => x.id === ids[i]);
+      if (!c || !couponsForShop(r.id).some(x => x.id === c.id)) continue;
+      if (couponCheck(c, r.id, items)) continue;   // not unlocked / min order not met
+      window.neshCoupon = { id: c.id, restId: r.id, restName: r.name };
+      return;
+    }
+  } catch (e) {}
+}
 function couponsForShop(restId) { return window.neshCoupons.filter(c => !c.off && (!c.exp || c.exp > Date.now()) && (c.allShops || (c.shops && c.shops[restId]))); }
 function couponCheck(c, restId, items) {   // '' = fine, otherwise the reason it can't be used
   if (c.loyaltyS) {
@@ -12753,6 +12851,8 @@ function couponCheck(c, restId, items) {   // '' = fine, otherwise the reason it
   }
   if (c.loyalty) {   // loyalty reward: unlocked by the customer's order count, not by couponUses
     if (restId === 'NESH_STORE' || (!c.allShops && !(c.shops && c.shops[restId]))) return 'This reward is not valid at this shop.';
+    { const ce = loyaltyClaimExpiry(); if (ce && ce <= Date.now()) return 'This reward has expired.'; }
+    { const ts = loyaltyTimeState(window.NESH_LOYALTY); if (ts === 'ended') return 'This reward has expired.'; if (ts === 'soon') return 'This reward has not started yet.'; }
     if (loyaltyAvail() <= 0) return 'Complete ' + loyaltyN() + ' orders to unlock this reward.';
     if (c.minOrder > 0 && items < c.minOrder) return 'Add items worth \u20B9' + c.minOrder + ' or more to use this reward.';
     return '';
@@ -12791,7 +12891,7 @@ function refreshCouponUI() {
   function apply(code) {
     const r = state.selectedRestaurant; if (!r) return;
     code = String(code || '').trim().toUpperCase();
-    if (!code) { if (window.neshCoupon) { window.neshCoupon = null; say('Coupon removed.', true); updateLocSummary(); if (typeof selectedPaymentMethod !== 'undefined' && selectedPaymentMethod === 'gpay') setPaymentMethod('gpay'); } return; }
+    if (!code) { if (window.neshCoupon) { if (/^LOYALTY/.test(String(window.neshCoupon.id))) window.__loyAutoOff = window.neshCoupon.restId; window.neshCoupon = null; say('Coupon removed.', true); updateLocSummary(); try { renderLoyaltyCard(); renderLoyaltySCard(); } catch (e) {} if (typeof selectedPaymentMethod !== 'undefined' && selectedPaymentMethod === 'gpay') setPaymentMethod('gpay'); } return; }
     const c = couponsForShop(r.id).find(x => x.code === code);
     if (!c) { say('This code is not valid for this shop.', false); return; }
     const why = couponCheck(c, r.id, currentCartItemsTotal());
@@ -12803,6 +12903,8 @@ function refreshCouponUI() {
     if (typeof selectedPaymentMethod !== 'undefined' && selectedPaymentMethod === 'gpay') setPaymentMethod('gpay');
   }
   window.neshApplyCoupon = apply;
+  const rmCpn = document.getElementById('nesh-coupon-remove');
+  if (rmCpn) rmCpn.addEventListener('click', () => apply(''));
   btn.addEventListener('click', () => apply(inp.value));
   window.neshCouponSay = say;
 })();
@@ -12821,11 +12923,20 @@ function renderCouponCards() {
     document.head.appendChild(st);
   }
   if (!(window.neshCoupon && window.neshCoupon.restId === r.id)) window.__cpnPopId = null;
-  const items = currentCartItemsTotal(), list = couponsForShop(r.id).filter(c => !c.secret);
+  const items = currentCartItemsTotal();
+  const rmBtn = document.getElementById('nesh-coupon-remove');
+  if (rmBtn) rmBtn.style.display = (window.neshCoupon && window.neshCoupon.restId === r.id) ? 'block' : 'none';
+  const list = couponsForShop(r.id).filter(c => {
+    if (!c.secret) return true;
+    if (!(c.loyalty || c.loyaltyS)) return false;   // other secret coupons only work by typing the code
+    const isOn = !!(window.neshCoupon && window.neshCoupon.id === c.id && window.neshCoupon.restId === r.id);
+    let avail = 0; try { avail = c.loyaltyS ? loyaltySAvail() : loyaltyAvail(); } catch (e) {}
+    return isOn || avail > 0;   // show an unlocked (or currently applied) loyalty reward
+  });
   list.forEach(c => {
     const applied = !!(window.neshCoupon && window.neshCoupon.id === c.id && window.neshCoupon.restId === r.id);
     const why = couponCheck(c, r.id, items), short = (why && c.minOrder > 0 && items < c.minOrder) ? c.minOrder - items : 0;
-    const off = c.type === 'percent' ? c.value + '%' : '\u20B9' + c.value;
+    const off = c.gift ? 'FREE' : (c.type === 'percent' ? c.value + '%' : '\u20B9' + c.value);
     const bc = applied ? '#1C7A3B' : '#F2B705';
     const fs = off.length <= 3 ? 26 : (off.length === 4 ? 22 : 18);
     const justApplied = applied && window.__cpnPopId !== c.id;
@@ -12840,7 +12951,7 @@ function renderCouponCards() {
         (applied ? '' : '<i style="position:absolute;top:0;bottom:0;left:0;width:40%;background:linear-gradient(105deg,rgba(255,255,255,0),rgba(255,255,255,.55),rgba(255,255,255,0));transform:translateX(-120%) skewX(-18deg);animation:nCpnShine 4s ease-in-out infinite;pointer-events:none;"></i>') +
         (applied
           ? '<span style="font-size:30px;font-weight:900;line-height:1;">\u2713</span><span style="font-size:10px;font-weight:900;letter-spacing:1px;margin-top:4px;">APPLIED</span>'
-          : '<span style="font-size:' + fs + 'px;font-weight:900;line-height:1;">' + off + '</span><span style="font-size:11px;font-weight:900;letter-spacing:.6px;margin-top:2px;">OFF</span><span style="font-size:8.5px;font-weight:800;letter-spacing:1px;margin-top:5px;opacity:.7;">COUPON</span>') +
+          : '<span style="font-size:' + fs + 'px;font-weight:900;line-height:1;">' + off + '</span><span style="font-size:11px;font-weight:900;letter-spacing:.6px;margin-top:2px;">' + (c.gift ? 'GIFT' : 'OFF') + '</span><span style="font-size:8.5px;font-weight:800;letter-spacing:1px;margin-top:5px;opacity:.7;">COUPON</span>') +
       '</div>' +
       '<div style="flex:1;min-width:0;padding:9px 10px 9px 14px;display:flex;flex-direction:column;gap:3px;">' +
         '<span style="font-size:13px;font-weight:800;letter-spacing:.8px;color:#2B2410;border:1.5px dashed ' + (applied ? '#1C7A3B' : '#D6A300') + ';border-radius:6px;padding:1px 6px;align-self:flex-start;">' + escapeHtml(c.code) + '</span>' +
@@ -12848,7 +12959,7 @@ function renderCouponCards() {
         '<span style="font-size:11.5px;color:#6b5a1e;">' + (c.minOrder > 0 ? 'Min order \u20B9' + c.minOrder : 'No minimum order') + (c.type === 'percent' && c.maxDiscount > 0 ? ' \u00B7 up to \u20B9' + c.maxDiscount : '') + '</span>' +
         '<span style="font-size:11px;color:#a07d00;">' + [couponExpText(c), c.maxUses > 0 ? (couponTotalLeft(c) > 0 ? 'Only ' + couponTotalLeft(c) + ' left' : 'Fully claimed') : ''].filter(Boolean).join(' \u00B7 ') + '</span>' +
         '<button type="button" style="margin-top:3px;border:none;border-radius:8px;padding:6px 8px;font-size:12px;font-weight:800;cursor:pointer;background:' + (applied ? '#1C7A3B' : (why ? '#e9e2c8' : '#2B2410')) + ';color:' + (why && !applied ? '#7a6a2a' : '#fff') + ';">' +
-          (applied ? 'APPLIED \u2713 (tap to remove)' : (short ? 'Add \u20B9' + short + ' more' : (why ? 'Not available' : 'TAP TO APPLY \u2014 save \u20B9' + couponAmount(c, items)))) + '</button>' +
+          (applied ? 'APPLIED \u2713 (tap to remove)' : (short ? 'Add \u20B9' + short + ' more' : (why ? 'Not available' : (c.gift ? 'TAP TO APPLY \u2014 free ' + escapeHtml(c.giftName || 'gift') : 'TAP TO APPLY \u2014 save \u20B9' + couponAmount(c, items))))) + '</button>' +
       '</div>';
     card.querySelector('button').addEventListener('click', () => {
       if (applied) { window.neshApplyCoupon(''); return; }
@@ -12881,7 +12992,41 @@ function renderCouponCards() {
 // The reward is applied through the normal coupon engine as a built-in coupon with id 'LOYALTY'.
 window.NESH_LOYALTY = null;
 window.NESH_LOYALTY_PROG = { count: 0, claimed: 0 };
-function loyaltyOn() { const c = window.NESH_LOYALTY; return !!(c && c.on !== false && Number(c.ordersNeeded) > 0); }
+// Operator can set startAt / endAt (ms, 0 = no limit) on the Hero Offer; outside that window it is hidden, can't be claimed and orders don't count.
+function loyaltyTimeState(c) { const n = Date.now(), st = Number(c && c.startAt) || 0, en = Number(c && c.endAt) || 0; return (en && n >= en) ? 'ended' : ((st && n < st) ? 'soon' : 'live'); }
+function loyaltyOn() { const c = window.NESH_LOYALTY; return !!(c && c.on !== false && Number(c.ordersNeeded) > 0 && loyaltyTimeState(c) === 'live'); }
+// Days a CLAIMED reward stays valid: operator sets discDays (coupon) and prodDays (free item) separately. Claim time = loyalty/{phone}/claimedAt.
+function loyaltyClaimDays(c) { c = c || window.NESH_LOYALTY || {}; return Math.max(0, Number(c.rewardType === 'product' ? c.prodDays : c.discDays) || 0); }
+function loyaltyClaimedAt() { return Number((window.NESH_LOYALTY_PROG || {}).claimedAt) || 0; }
+function loyaltyClaimExpiry() { const d = loyaltyClaimDays(), t = loyaltyClaimedAt(); return (t > 0 && d > 0) ? t + d * 86400000 : 0; }
+function loyaltyLeftText(ms) { if (ms <= 0) return 'expired'; const m = Math.floor(ms / 60000), d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60); return (d ? d + 'd ' + h + 'h' : (h ? h + 'h ' : '') + (m % 60) + 'm') + ' left'; }
+// A claimed reward that was not used in time is consumed (claimed +1, claimedAt cleared) once, even if several devices notice.
+window.neshLoyaltyExpireCheck = function () {
+  try {
+    const ex = loyaltyClaimExpiry();
+    if (ex && ex > Date.now() && loyaltyAvail() > 0) {   // heads-up inside the app once per claim, when the reminder window starts
+      const c0 = window.NESH_LOYALTY || {}, rem = c0.remindHours == null ? 24 : Number(c0.remindHours), ca = loyaltyClaimedAt();
+      if (rem > 0 && loyaltyClaimDays(c0) * 24 > rem && ex - Date.now() <= rem * 3600000) {
+        let seenW = ''; try { seenW = localStorage.getItem('nesh_loy_warn') || ''; } catch (e) {}
+        if (seenW !== String(ca)) {
+          try { localStorage.setItem('nesh_loy_warn', String(ca)); } catch (e) {}
+          try { showInfoModal('\u23F3 Your reward expires soon!', loyaltyRewardText(c0) + ' \u2014 ' + loyaltyLeftText(ex - Date.now()) + '. Order now and use it before ' + new Date(ex).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) + '.'); } catch (e) {}
+        }
+      }
+    }
+    if (!ex || ex > Date.now() || loyaltyAvail() <= 0 || window.__loyExpiring) return;
+    const ph = couponPhoneKey(); if (!ph || !window.fb) return;
+    window.__loyExpiring = true;
+    const txt = loyaltyRewardText(window.NESH_LOYALTY);
+    window.fb.runTransaction(window.fb.ref(window.fb.db, 'loyalty/' + ph), v => {
+      if (!v || !(Number(v.claimedAt) > 0)) return;   // already cleared elsewhere
+      v.claimed = (Number(v.claimed) || 0) + 1; delete v.claimedAt; return v;
+    }).then(r => {
+      window.__loyExpiring = false;
+      if (r && r.committed) { try { showInfoModal('Reward expired', 'Your ' + txt + ' reward was not used in time and has expired.'); } catch (e) {} }
+    }).catch(() => { window.__loyExpiring = false; });
+  } catch (e) { window.__loyExpiring = false; }
+};
 function loyaltyN() { return Math.max(1, Math.round(Number(window.NESH_LOYALTY && window.NESH_LOYALTY.ordersNeeded) || 5)); }
 function loyaltyAvail() { if (!loyaltyOn()) return 0; const p = window.NESH_LOYALTY_PROG; return Math.max(0, Math.floor((p.count || 0) / loyaltyN()) - (p.claimed || 0)); }
 function loyaltyShopOk(restId) { const c = window.NESH_LOYALTY; return !!(c && restId !== 'NESH_STORE' && (c.allShops || (c.shops && c.shops[restId]))); }   // Groceries (NESH Store) has its own reward
@@ -12992,6 +13137,21 @@ const neshLoyErr = e => String((e && (e.code || e.message)) || e);
     }, () => {});
   } catch (e) {}
 })();
+// Hero Offer time window: when the start / end time passes while the app is open, show or hide the card straight away
+(function () {
+  let last = null;
+  setInterval(() => {
+    try {
+      window.neshLoyaltyExpireCheck();
+      { const lt = loyaltyClaimExpiry() ? loyaltyLeftText(loyaltyClaimExpiry() - Date.now()) : ''; if (lt !== window.__loyLeftShown) { window.__loyLeftShown = lt; if (lt) renderLoyaltyCard(); } }   // keeps the 'left' text fresh, only re-draws when it changed
+      const st = loyaltyTimeState(window.NESH_LOYALTY);
+      if (last === null) { last = st; return; }
+      if (st === last) return;
+      last = st;
+      window.neshLoyaltyRebuild(); renderLoyaltyCard();
+    } catch (e) {}
+  }, 15000);
+})();
 (function () {
   let subPhone = '', unsub = null;
   setInterval(() => {
@@ -13003,12 +13163,45 @@ const neshLoyErr = e => String((e && (e.code || e.message)) || e);
     try {
       unsub = window.fb.onValue(window.fb.ref(window.fb.db, 'loyalty/' + ph), snap => {
         const v = snap.val() || {};
-        window.NESH_LOYALTY_PROG = { count: Number(v.count) || 0, claimed: Number(v.claimed) || 0 };
+        window.NESH_LOYALTY_PROG = { count: Number(v.count) || 0, claimed: Number(v.claimed) || 0, claimedAt: Number(v.claimedAt) || 0 };
         window.neshLoyaltyRebuild(); try { renderLoyaltyCard(); } catch (e) {}
+        window.neshLoyaltyExpireCheck();
       }, () => {});
     } catch (e) {}
   }, 2000);
 })();
+function neshLoyCss() {
+  if (document.getElementById('nesh-loy2-css')) return;
+  const st = document.createElement('style'); st.id = 'nesh-loy2-css';
+  st.textContent = '.loy.loy-ok{background:linear-gradient(135deg,#0d4a2a 0%,#1C7A3B 55%,#2fa35b 100%);box-shadow:0 8px 20px rgba(28,122,59,.35)}' +
+    '.loy.loy-ok .loy-d.on{background:#fff;border-color:#fff;color:#1C7A3B}.loy.loy-ok .loy-rw{background:#fff;color:#1C7A3B}' +
+    '.loy-claimed{position:relative;margin-top:2px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.16);border:1.5px dashed rgba(255,255,255,.75);font-weight:800;font-size:13px}' +
+    '@keyframes rwPop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.06);opacity:1}100%{transform:scale(1);opacity:1}}' +
+    '@keyframes rwFall{0%{transform:translateY(-30px) rotate(0);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:.9}}';
+  document.head.appendChild(st);
+}
+// Celebration shown once, when the customer claims a loyalty reward
+function neshRewardCelebrate(rewardText, sub) {
+  try {
+    neshLoyCss();
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:24px;overflow:hidden;';
+    const colors = ['#F2B705', '#1C7A3B', '#E53935', '#1E88E5', '#8E24AA', '#FF7043'];
+    let conf = '';
+    for (let i = 0; i < 40; i++) conf += '<i style="position:absolute;top:0;left:' + (Math.random() * 100).toFixed(1) + '%;width:' + (6 + Math.random() * 6).toFixed(0) + 'px;height:' + (10 + Math.random() * 8).toFixed(0) + 'px;background:' + colors[i % 6] + ';border-radius:2px;animation:rwFall ' + (2 + Math.random() * 1.8).toFixed(2) + 's ease-in ' + (Math.random() * 0.8).toFixed(2) + 's forwards;"></i>';
+    ov.innerHTML = conf + '<div style="position:relative;width:100%;max-width:340px;background:#fff;border-radius:22px;padding:26px 20px 20px;text-align:center;animation:rwPop .5s ease-out both;box-shadow:0 20px 50px rgba(0,0,0,.35);">' +
+      '<div style="font-size:54px;line-height:1;">\uD83C\uDF89</div>' +
+      '<div style="margin-top:8px;font-size:13px;font-weight:800;letter-spacing:1.5px;color:#1C7A3B;">REWARD CLAIMED</div>' +
+      '<div style="margin:12px auto 6px;display:inline-block;padding:10px 20px;border-radius:14px;background:linear-gradient(135deg,#FFE066,#F2B705);color:#2B2410;font-size:26px;font-weight:900;border:2px dashed #2B2410;">' + escapeHtml(rewardText) + '</div>' +
+      '<div style="font-size:13px;color:#6b5a1e;margin:8px 0 16px;">' + escapeHtml(sub) + '</div>' +
+      '<button type="button" style="width:100%;border:0;border-radius:12px;padding:12px;background:#2B2410;color:#fff;font-weight:800;font-size:15px;cursor:pointer;">Awesome!</button></div>';
+    const close = () => { try { ov.remove(); } catch (e) {} };
+    ov.querySelector('button').addEventListener('click', close);
+    ov.addEventListener('click', e => { if (e.target === ov) close(); });
+    document.body.appendChild(ov);
+    setTimeout(close, 7000);
+  } catch (e) {}
+}
 // Debug: tap the Hero offer card 5 times quickly to see why an order did/didn't count
 (function () {
   var n = 0, t = 0;
@@ -13045,6 +13238,7 @@ function renderLoyaltyCard() {
   const n = loyaltyN(), p = window.NESH_LOYALTY_PROG, avail = loyaltyAvail();
   const done = avail > 0 ? n : Math.max(0, (p.count || 0) - (p.claimed || 0) * n), left = Math.max(0, n - done);
   const applied = !!(window.neshCoupon && window.neshCoupon.id === 'LOYALTY' && window.neshCoupon.restId === r.id);
+  const other = (window.neshCoupon && window.neshCoupon.id === 'LOYALTY' && window.neshCoupon.restId !== r.id) ? (window.neshCoupon.restName || 'another shop') : '';
   let prog;
   if (n <= 10) {
     prog = '<div class="loy-dots">';
@@ -13054,17 +13248,25 @@ function renderLoyaltyCard() {
   const title = escapeHtml(String(c.title || 'Loyalty Reward').slice(0, 40));
   let foot, btn = '';
   if (avail > 0) {
-    foot = '\uD83C\uDF89 <b>Unlocked!</b> ' + (applied ? 'Applied to your order \u2705' : 'Claim it on this order.') + (Number(c.minOrder) > 0 ? ' (min order \u20B9' + c.minOrder + ')' : '');
-    if (!applied) btn = '<button type="button" class="loy-btn" data-loy-claim>\uD83C\uDF81 Claim ' + escapeHtml(loyaltyRewardText(c)) + '</button>';
+    neshLoyCss();
+    const minTxt = Number(c.minOrder) > 0 ? ' (min order \u20B9' + c.minOrder + ')' : '';
+    const ex = loyaltyClaimExpiry(), leftTxt = ex ? ' \u00B7 \u23F3 ' + loyaltyLeftText(ex - Date.now()) : '', dys = loyaltyClaimDays(c);
+    if (applied) foot = '<div class="loy-claimed">\u2705 Reward claimed \u00B7 applied to your order' + minTxt + leftTxt + '</div>';
+    else if (other) foot = '\uD83C\uDF81 Reward already claimed at <b>' + escapeHtml(other) + '</b>.';
+    else if (loyaltyClaimedAt() > 0 && ex && ex <= Date.now()) foot = '<div class="loy-claimed">\u26D4 Your claimed reward has expired.</div>';
+    else if (loyaltyClaimedAt() > 0) foot = '<div class="loy-claimed">\u2705 Reward claimed' + leftTxt + minTxt + ' \u00B7 applies automatically at checkout</div>';
+    else { foot = '\uD83C\uDF89 <b>Unlocked!</b> Claim it on this order.' + minTxt + (dys > 0 ? ' Valid ' + dys + ' day' + (dys === 1 ? '' : 's') + ' after you claim.' : ''); btn = '<button type="button" class="loy-btn" data-loy-claim>\uD83C\uDF81 Claim ' + escapeHtml(loyaltyRewardText(c)) + '</button>'; }
   } else foot = '<b>' + done + ' of ' + n + '</b> orders done \u00B7 ' + left + ' more to unlock <span style="opacity:.7">(group order = 1 order' + (Number(c.countMin) > 0 ? '; orders of \u20B9' + c.countMin + '+ count' : '') + ')</span>';
-  el.innerHTML = '<div class="loy"><div class="loy-top"><span class="loy-ic">' + (avail > 0 ? '\uD83C\uDF89' : '\uD83C\uDFC6') + '</span><div><div class="loy-t">' + title + '</div><div class="loy-s">Order ' + n + ' times, get a reward</div></div><span class="loy-rw">' + escapeHtml(loyaltyRewardText(c)) + '</span></div>' + prog + '<div class="loy-f">' + foot + '</div>' + btn + '</div>';
+  el.innerHTML = '<div class="loy' + ((applied || (avail > 0 && loyaltyClaimedAt() > 0 && !(loyaltyClaimExpiry() && loyaltyClaimExpiry() <= Date.now()))) ? ' loy-ok' : '') + '"><div class="loy-top"><span class="loy-ic">' + (avail > 0 ? ((applied || (loyaltyClaimedAt() > 0 && !(loyaltyClaimExpiry() && loyaltyClaimExpiry() <= Date.now()))) ? '\u2705' : '\uD83C\uDF89') : '\uD83C\uDFC6') + '</span><div><div class="loy-t">' + title + '</div><div class="loy-s">Order ' + n + ' times, get a reward' + (Number(c.endAt) > 0 ? ' \u00B7 \u23F3 Ends ' + new Date(Number(c.endAt)).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '') + '</div></div><span class="loy-rw">' + escapeHtml(loyaltyRewardText(c)) + '</span></div>' + prog + '<div class="loy-f">' + foot + '</div>' + btn + '</div>';
   el.style.display = 'block';
   const b = el.querySelector('[data-loy-claim]');
   if (b) b.addEventListener('click', () => {
-    window.neshCoupon = { id: 'LOYALTY', restId: r.id };
+    if (window.neshCoupon) { try { showInfoModal('A coupon is already applied', 'Remove it in Coupons & offers (in your cart) to use this reward.'); } catch (e) {} return; }
+    window.neshCoupon = { id: 'LOYALTY', restId: r.id, restName: r.name };
+    { const now = Date.now(), ph = couponPhoneKey(); window.NESH_LOYALTY_PROG.claimedAt = now; if (ph && window.fb) { try { window.fb.set(window.fb.ref(window.fb.db, 'loyalty/' + ph + '/claimedAt'), now); } catch (e) {} } }
     try { updateLocSummary(); } catch (e) {}
-    renderLoyaltyCard();
-    try { showInfoModal('Reward added \uD83C\uDF89', c.rewardType === 'product' ? 'Your free gift will be added to this order at checkout.' : 'Your discount will be applied at checkout.'); } catch (e) {}
+    renderLoyaltyCard(); try { renderCouponCards(); } catch (e) {}
+    neshRewardCelebrate(loyaltyRewardText(c), (c.rewardType === 'product' ? 'Your free gift is added to this order at checkout.' : 'Applied automatically at checkout.') + (loyaltyClaimDays(c) > 0 ? ' Use it within ' + loyaltyClaimDays(c) + ' day' + (loyaltyClaimDays(c) === 1 ? '' : 's') + '.' : ''));
   });
 }
 // ---------- GROCERIES (NESH Store) loyalty reward (Operator Panel -> Groceries Reward): same idea, only for NESH Store orders, own progress
@@ -13210,6 +13412,7 @@ function renderLoyaltySCard() {
   const n = loyaltySN(), p = window.NESH_LOYALTYS_PROG, avail = loyaltySAvail();
   const done = avail > 0 ? n : Math.max(0, (p.count || 0) - (p.claimed || 0) * n), left = Math.max(0, n - done);
   const applied = !!(window.neshCoupon && window.neshCoupon.id === 'LOYALTY_S' && window.neshCoupon.restId === r.id);
+  const other = (window.neshCoupon && window.neshCoupon.id === 'LOYALTY_S' && window.neshCoupon.restId !== r.id) ? (window.neshCoupon.restName || 'another shop') : '';
   let prog;
   if (n <= 10) {
     prog = '<div class="loy-dots">';
@@ -13219,17 +13422,21 @@ function renderLoyaltySCard() {
   const title = escapeHtml(String(c.title || 'Groceries Reward').slice(0, 40));
   let foot, btn = '';
   if (avail > 0) {
-    foot = '\uD83C\uDF89 <b>Unlocked!</b> ' + (applied ? 'Applied to your order \u2705' : 'Claim it on this order.') + (Number(c.minOrder) > 0 ? ' (min order \u20B9' + c.minOrder + ')' : '');
-    if (!applied) btn = '<button type="button" class="loy-btn" data-loy-claim>\uD83C\uDF81 Claim ' + escapeHtml(loyaltySRewardText(c)) + '</button>';
+    neshLoyCss();
+    const minTxt = Number(c.minOrder) > 0 ? ' (min order \u20B9' + c.minOrder + ')' : '';
+    if (applied) foot = '<div class="loy-claimed">\u2705 Reward claimed \u00B7 applied to your order' + minTxt + '</div>';
+    else if (other) foot = '\uD83C\uDF81 Reward already claimed at <b>' + escapeHtml(other) + '</b>.';
+    else { foot = '\uD83C\uDF89 <b>Unlocked!</b> Claim it on this order.' + minTxt; btn = '<button type="button" class="loy-btn" data-loy-claim>\uD83C\uDF81 Claim ' + escapeHtml(loyaltySRewardText(c)) + '</button>'; }
   } else foot = '<b>' + done + ' of ' + n + '</b> orders done \u00B7 ' + left + ' more to unlock' + (Number(c.countMin) > 0 ? ' <span style="opacity:.7">(orders of \u20B9' + c.countMin + '+ count)</span>' : '');
-  el.innerHTML = '<div class="loy"><div class="loy-top"><span class="loy-ic">' + (avail > 0 ? '\uD83C\uDF89' : '\uD83C\uDFC6') + '</span><div><div class="loy-t">' + title + '</div><div class="loy-s">Order ' + n + ' times, get a reward</div></div><span class="loy-rw">' + escapeHtml(loyaltySRewardText(c)) + '</span></div>' + prog + '<div class="loy-f">' + foot + '</div>' + btn + '</div>';
+  el.innerHTML = '<div class="loy' + (applied ? ' loy-ok' : '') + '"><div class="loy-top"><span class="loy-ic">' + (avail > 0 ? (applied ? '\u2705' : '\uD83C\uDF89') : '\uD83C\uDFC6') + '</span><div><div class="loy-t">' + title + '</div><div class="loy-s">Order ' + n + ' times, get a reward</div></div><span class="loy-rw">' + escapeHtml(loyaltySRewardText(c)) + '</span></div>' + prog + '<div class="loy-f">' + foot + '</div>' + btn + '</div>';
   el.style.display = 'block';
   const b = el.querySelector('[data-loy-claim]');
   if (b) b.addEventListener('click', () => {
-    window.neshCoupon = { id: 'LOYALTY_S', restId: r.id };
+    if (window.neshCoupon) { try { showInfoModal('A coupon is already applied', 'Remove it in Coupons & offers (in your cart) to use this reward.'); } catch (e) {} return; }
+    window.neshCoupon = { id: 'LOYALTY_S', restId: r.id, restName: r.name };
     try { updateLocSummary(); } catch (e) {}
-    renderLoyaltySCard();
-    try { showInfoModal('Reward added \uD83C\uDF89', c.rewardType === 'product' ? 'Your free item will be added to this order at checkout.' : 'Your discount will be applied at checkout.'); } catch (e) {}
+    renderLoyaltySCard(); try { renderCouponCards(); } catch (e) {}
+    neshRewardCelebrate(loyaltySRewardText(c), c.rewardType === 'product' ? 'Your free item is added to this order at checkout.' : 'Applied automatically at checkout.');
   });
 }
 // Platform fee for the currently selected shop: the operator-set Go Series
@@ -13349,6 +13556,21 @@ let deliveryRouteAbort = null;
 // existed. NESH Store (no shop of its own) always uses the same shared Go
 // Series charge config, since it's already the one flat, operator-set rate
 // meant to apply independently of any one shop's own settings.
+// True ONLY while a Go Series shop's delivery charge config has not arrived yet (first ever open / cache empty).
+// Bounded: after 6s it stops being "pending" no matter what, so the checkout can never stay stuck on it.
+window.GO_SERIES_WAIT_OVER = false;
+setTimeout(function () {
+  window.GO_SERIES_WAIT_OVER = true;
+  try { if (paymentOverlay && paymentOverlay.classList.contains('show')) { updateLocSummary(); updateLocConfirmGate(); } } catch (e) {}
+  try { updateCartBar(); } catch (e) {}
+}, 6000);
+function goSeriesCfgPending() {
+  try {
+    const r = state.selectedRestaurant;
+    if (!r || !(r.goSeries || r.id === 'NESH_STORE' || r.businessType === 'groceries')) return false;
+    return !window.GO_SERIES_LOADED && !window.GO_SERIES_WAIT_OVER;
+  } catch (e) { return false; }
+}
 function activeDeliveryCharge() {
   const r = state.selectedRestaurant;
   if (!r) return null;
@@ -13429,23 +13651,36 @@ function roadKmShared(restPos, pt) {
   if (hit != null) return Promise.resolve(hit);
   const k = roadKey4(restPos, pt);
   if (!roadInflight[k]) {
-    const ctrl = new AbortController();
-    const tm = setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, 9000);
-    roadInflight[k] = (async () => {
-      try {
-        const url = `https://router.project-osrm.org/route/v1/cycling/${restPos.lng},${restPos.lat};${pt.lng},${pt.lat}?overview=false`;
-        const res = await fetch(url, { signal: ctrl.signal });
-        const data = await res.json();
-        const meters = data && data.routes && data.routes[0] && data.routes[0].distance;
-        if (typeof meters === 'number') {
-          const km = meters / 1000;
-          roadCachePut(restPos, pt, km);
-          roadLateApply(restPos, pt, km);
-          return km;
-        }
-      } catch (e) {}
-      return null;
-    })().finally(() => { clearTimeout(tm); delete roadInflight[k]; });
+    // Two free routing servers: the first answers almost always; if it has not answered within 2.5s (or it fails)
+    // the backup is asked too and whichever gives a distance first wins. Hard stop at 9s -> null (estimate is used).
+    const urls = [
+      `https://router.project-osrm.org/route/v1/cycling/${restPos.lng},${restPos.lat};${pt.lng},${pt.lat}?overview=false`,
+      `https://routing.openstreetmap.de/routed-bike/route/v1/driving/${restPos.lng},${restPos.lat};${pt.lng},${pt.lat}?overview=false`
+    ];
+    roadInflight[k] = new Promise(resolve => {
+      let settled = false, failed = 0, started = 0, backupTimer = null;
+      const ctrls = [];
+      const finish = (km) => {
+        if (settled) return; settled = true;
+        clearTimeout(backupTimer); clearTimeout(hardStop);
+        ctrls.forEach(c => { try { c.abort(); } catch (e) {} });
+        if (typeof km === 'number') { roadCachePut(restPos, pt, km); roadLateApply(restPos, pt, km); }
+        resolve(typeof km === 'number' ? km : null);
+      };
+      const hardStop = setTimeout(() => finish(null), 9000);
+      const fail = () => { failed++; if (started < urls.length) start(); else if (failed >= urls.length) finish(null); };
+      const start = () => {
+        if (settled || started >= urls.length) return;
+        const url = urls[started++];
+        const ctrl = new AbortController(); ctrls.push(ctrl);
+        fetch(url, { signal: ctrl.signal }).then(r => r.json()).then(data => {
+          const meters = data && data.routes && data.routes[0] && data.routes[0].distance;
+          if (typeof meters === 'number' && meters >= 0) finish(meters / 1000); else fail();
+        }).catch(() => { if (!settled) fail(); });
+        if (started < urls.length) backupTimer = setTimeout(start, 2500);
+      };
+      start();
+    }).finally(() => { delete roadInflight[k]; });
   }
   return roadInflight[k];
 }
@@ -13683,6 +13918,7 @@ function setTip(v) {
   inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); applyCustom(); } });
 })();
 function updateLocSummary() {
+  neshAutoApplyLoyalty();   // unlocked loyalty reward goes on the order automatically (removable in Coupons & offers)
   const itemsTotal = currentCartItemsTotal();
   const fee = currentPlatformFee();
   const dc = activeDeliveryCharge();
@@ -13709,14 +13945,17 @@ function updateLocSummary() {
   // While the real road distance is still loading, show "Calculating…"
   // instead of a number that's about to change — avoids the customer
   // seeing one total on screen and a slightly different one get charged.
-  const showLoading = state.roadDistanceLoading && dc;
+  const showLoading = (state.roadDistanceLoading && dc) || goSeriesCfgPending();
   const shownDelivery = deliveryFee + fee;
+  // "FREE" is only claimed when the 0 is real: a per-km shop whose distance is still unknown is NOT free yet.
+  const deliveryDistOk = !dc || !(Number(dc.perKmFee) > 0) || !!currentDeliveryKm();
   if (locSummaryDeliveryEl) {
     if (showLoading) locSummaryDeliveryEl.textContent = "Calculating…";
     else if (freeDelivery && wouldBeFee > 0) locSummaryDeliveryEl.innerHTML = '<s style="color:var(--muted);">₹' + (wouldBeFee + fee) + '</s> ' + (fee > 0 ? '<b style="color:var(--leaf);">₹' + fee + '</b>' : '<b style="color:var(--leaf);">FREE</b>');
+    else if (shownDelivery === 0 && deliveryDistOk) locSummaryDeliveryEl.innerHTML = '<b style="color:var(--leaf);">FREE 🎉</b>';   // no delivery charge set -> show it as a perk
     else locSummaryDeliveryEl.textContent = "₹" + shownDelivery;
   }
-  if (locSummaryDeliveryRowEl) locSummaryDeliveryRowEl.style.display = (shownDelivery > 0 || showLoading || (freeDelivery && wouldBeFee > 0)) ? "flex" : "none";
+  if (locSummaryDeliveryRowEl) locSummaryDeliveryRowEl.style.display = (shownDelivery > 0 || showLoading || deliveryDistOk || (freeDelivery && wouldBeFee > 0)) ? "flex" : "none";   // the charge, "Calculating…" or "FREE"
   // Nudge: how much more to add to unlock free delivery.
   const freeMin = dc ? (Number(dc.freeAbove) || 0) : 0;
   const freeHintEl = document.getElementById('loc-summary-free-hint');
@@ -13767,8 +14006,10 @@ function updateLocSummary() {
 // If the operator changes the fee while this checkout sheet happens to be
 // open, keep the summary (and GPay QR amount) in sync live.
 window.onPlatformFeeUpdated = () => {
+  try { updateCartBar(); } catch (e) {}
   if (paymentOverlay && paymentOverlay.classList.contains('show')) {
     updateLocSummary();
+    try { updateLocConfirmGate(); } catch (e) {}
     if (selectedPaymentMethod === 'gpay') setPaymentMethod('gpay');
   }
 };
@@ -14702,6 +14943,84 @@ locContactInput.addEventListener('input', () => {
   locContactInput.value = digitsOnly(locContactInput.value).slice(0, 10);
 });
 
+// ---------- Native UPI pay (Android app): pick UPI app -> pay -> order goes to the shop automatically ----------
+// Uses the NeshUpi native plugin (see build-android.yml). In a normal browser / old app build the
+// plugin doesn't exist, so the old QR + "I've completed the payment" sheet is used instead.
+window.__neshUpiPaid = null;
+let neshUpiBusy = false;
+function neshUpiPlugin() {
+  try {
+    const C = window.Capacitor;
+    if (C && C.isNativePlatform && C.isNativePlatform() && C.Plugins && C.Plugins.NeshUpi) return C.Plugins.NeshUpi;
+  } catch (e) {}
+  return null;
+}
+function neshUpiAutoPaid() {
+  const p = window.__neshUpiPaid;
+  return !!(p && (p.status === 'success' || p.status === 'pending'));
+}
+function neshUpiAmount() {
+  return Math.max(0, currentCartItemsTotal() + currentPlatformFee() + currentDeliveryFee() - currentCouponDiscount()) + currentRainSurgeAmount() + currentTipAmount();
+}
+function neshUpiLegacySheet() {
+  setPaymentMethod('gpay');
+  document.getElementById('cp-online-amt').textContent = locSummaryTotalEl ? locSummaryTotalEl.textContent : '';
+  document.getElementById('cp-online-place').disabled = true;
+  document.getElementById('cp-online-sheet').classList.add('show');
+}
+async function neshUpiFinish() {
+  setPaymentMethod('gpay');   // the order must be saved as a UPI order
+  // The delivery distance may still be recalculating — wait a little, never drop a paid order.
+  for (let i = 0; i < 40; i++) {
+    updateLocConfirmGate();
+    if (!payConfirmBtn.disabled) break;
+    await new Promise(res => setTimeout(res, 500));
+  }
+  if (payConfirmBtn.disabled) {
+    showInfoModal('Payment received', 'Your payment went through. Tap "Pay Online" once more to place the order. You will not be charged again.');
+    return;
+  }
+  payConfirmBtn.click();
+}
+async function neshNativeUpiPay() {
+  const r = state.selectedRestaurant;
+  const NU = neshUpiPlugin();
+  if (!r || !NU || neshUpiBusy) return;
+  const amt = Math.round(neshUpiAmount() * 100) / 100;
+  const prev = window.__neshUpiPaid;
+  // Already paid for this same order (e.g. saving the order failed): just place it, don't charge again.
+  if (prev && Math.abs((prev.amt || 0) - amt) < 0.005) { neshUpiFinish(); return; }
+  window.__neshUpiPaid = null;
+  if (!(amt > 0)) { neshUpiLegacySheet(); return; }
+  neshUpiBusy = true;
+  const onl = document.getElementById('cp-pay-online');
+  if (onl) onl.disabled = true;
+  let res = null;
+  try {
+    const url = 'upi://pay?pa=' + encodeURIComponent(r.gpayNumber) +
+      '&pn=' + encodeURIComponent(r.name || 'Restaurant') +
+      '&am=' + amt.toFixed(2) +
+      '&cu=INR&tn=' + encodeURIComponent('Order at ' + (r.name || 'Restaurant')) +
+      '&tr=' + encodeURIComponent('NESH' + Date.now());
+    res = await NU.pay({ url: url });
+  } catch (e) { res = { status: 'error' }; }
+  neshUpiBusy = false;
+  try { cpSyncBar(); } catch (e) {}   // re-enables the Pay Online button
+  const st = res && res.status;
+  if (st === 'success' || st === 'pending' || st === 'unknown') {
+    window.__neshUpiPaid = { status: st === 'success' ? 'success' : 'pending', amt: amt, txnId: (res && res.txnId) || '', txnRef: (res && res.txnRef) || '', at: Date.now() };
+    neshUpiFinish();
+  } else if (st === 'failure') {
+    showInfoModal('Payment not completed', 'Payment was not completed. No order was placed. Please try again.');
+  } else if (st === 'cancelled') {
+    showInfoModal('Payment cancelled', 'No order was placed. Tap Pay Online to try again.');
+  } else if (st === 'no_app') {
+    showInfoModal('No UPI app found', 'Please install a UPI app (Google Pay, PhonePe, Paytm...) or choose Cash/UPI on delivery.');
+  } else {
+    neshUpiLegacySheet();   // plugin could not start — old QR sheet as a fallback
+  }
+}
+
 // ---------- Payment method (Cash on Delivery / GPay scanner) ----------
 function setPaymentMethod(method) {
   const r = state.selectedRestaurant;
@@ -14731,9 +15050,9 @@ function setPaymentMethod(method) {
 }
 
 function updateLocConfirmGate() {
-  const needsPaymentConfirm = selectedPaymentMethod === 'gpay' && !gpayPaidCheckbox.checked;
+  const needsPaymentConfirm = selectedPaymentMethod === 'gpay' && !gpayPaidCheckbox.checked && !neshUpiAutoPaid();
   const dc = activeDeliveryCharge();
-  const stillCalculating = state.roadDistanceLoading && dc;
+  const stillCalculating = (state.roadDistanceLoading && dc) || goSeriesCfgPending();
   payConfirmBtn.disabled = needsPaymentConfirm || stillCalculating;
   payConfirmBtn.textContent = stillCalculating
     ? "Calculating delivery distance…"
@@ -15405,7 +15724,7 @@ function cpSyncBar() {
   const totEl = document.getElementById('os-bar-total');
   if (totEl && locSummaryTotalEl) totEl.textContent = locSummaryTotalEl.textContent;
   const short = minOrderShortfall(r, cartItemsTotal(r));
-  const calc = state.roadDistanceLoading && activeDeliveryCharge();
+  const calc = (state.roadDistanceLoading && activeDeliveryCharge()) || goSeriesCfgPending();
   const needPay = selectedPaymentMethod === 'gpay' && !gpayPaidCheckbox.checked;
   let label = null, off = false;
   if (short > 0) { label = 'Add ₹' + short + ' more to order'; off = true; }
@@ -15630,6 +15949,7 @@ document.getElementById('cp-pay-online').addEventListener('click', () => {
   const r = state.selectedRestaurant;
   if (!(r && r.gpayNumber)) { showInfoModal('Online payment unavailable', "This shop hasn't set up UPI payment yet. Please choose Cash/UPI on delivery."); return; }
   if (!cpPrepare()) return;
+  if (neshUpiPlugin()) { neshNativeUpiPay(); return; }
   setPaymentMethod('gpay');
   document.getElementById('cp-online-amt').textContent = locSummaryTotalEl ? locSummaryTotalEl.textContent : '';
   document.getElementById('cp-online-place').disabled = true;
@@ -15774,7 +16094,7 @@ payConfirmBtn.addEventListener('click', async () => {
     showInfoModal('No internet', 'You seem to be offline. Please check your connection and try again.');
     return;
   }
-  if (selectedPaymentMethod === 'gpay' && !gpayPaidCheckbox.checked) {
+  if (selectedPaymentMethod === 'gpay' && !gpayPaidCheckbox.checked && !neshUpiAutoPaid()) {
     showInfoModal('One more step', "Please complete the UPI payment and tick \"I've completed the payment\" before placing the order.");
     return;
   }
@@ -15878,10 +16198,14 @@ payConfirmBtn.addEventListener('click', async () => {
     const suggestedShop = isNeshStore ? deliveryOriginShop() : null;
     const orderPayload = {
       orderNumber,
-      status: isNeshStore ? 'pending_assignment' : (selectedPaymentMethod === 'gpay' ? "awaiting_payment" : "pending"),
+      status: isNeshStore ? 'pending_assignment' : (selectedPaymentMethod === 'gpay' ? ((window.__neshUpiPaid && window.__neshUpiPaid.status === 'success') ? "pending" : "awaiting_payment") : "pending"),
       createdAt: Date.now(),
       customerName: state.user?.name || "Guest",
       customerPhone: pc.contact,
+      // Logged-in account number: order-status pushes (confirmed / ready / delivered) look the
+      // device token up by THIS, because customerPhone above is only the delivery contact typed in
+      // the address form and can be a different number.
+      customerAccount: (state.user && state.user.number) ? String(state.user.number) : '',
       customerAddress: state.user?.address || "",
       customerLocation: pc.text,
       customerPlace: pc.place,
@@ -15904,6 +16228,12 @@ payConfirmBtn.addEventListener('click', async () => {
     }
     if (selectedPaymentMethod === 'gpay' && r.gpayNumber) {
       orderPayload.gpayNumber = r.gpayNumber;
+      if (window.__neshUpiPaid) {
+        orderPayload.upiAutoPaid = window.__neshUpiPaid.status === 'success';
+        orderPayload.upiPaidAmount = window.__neshUpiPaid.amt;
+        if (window.__neshUpiPaid.txnId) orderPayload.upiTxnId = window.__neshUpiPaid.txnId;
+        if (window.__neshUpiPaid.txnRef) orderPayload.upiTxnRef = window.__neshUpiPaid.txnRef;
+      }
     }
     if (typeof pc.lat === 'number' && typeof pc.lng === 'number') {
       orderPayload.customerLat = pc.lat;
@@ -15922,6 +16252,7 @@ payConfirmBtn.addEventListener('click', async () => {
     }
     await set(orderRef, orderPayload);
     orderSaved = true;
+    window.__neshUpiPaid = null;
     try { (window.__neshOrderAmt = window.__neshOrderAmt || {})[orderRef.key] = Number(itemsTotal) || 0; } catch (e) {}   // loyalty: must be set BEFORE lastOrder (the loyalty poller reads it when lastOrder changes)
     state.lastOrder = { restId: r.id, orderKey: orderRef.key, orderNumber, restName: r.name, businessType: r.businessType };
     try { localStorage.setItem('asfood_last_order', JSON.stringify(state.lastOrder)); } catch (e) {}
@@ -15988,7 +16319,7 @@ payConfirmBtn.addEventListener('click', async () => {
     state.cartGrams = {};
   state.cartSizes = {};
     state.pendingCheckout = null;
-    if (window.__couponPending) { couponMarkUsed(window.__couponPending); window.__couponPending = null; } window.neshCoupon = null;
+    if (window.__couponPending) { couponMarkUsed(window.__couponPending); window.__couponPending = null; } window.neshCoupon = null; window.__loyAutoOff = null;
     state.discountReveal = null;
     closePaymentConfirm();
     showScreen('placed');
@@ -16001,7 +16332,7 @@ payConfirmBtn.addEventListener('click', async () => {
       // The order is already in Firebase — only a screen/UI step after it failed. Don't ask to retry (would duplicate it).
       try { state.cart = {}; state.cartGrams = {}; state.cartSizes = {}; state.pendingCheckout = null; closePaymentConfirm(); showScreen('placed'); } catch (e2) {}
     } else {
-      showInfoModal('Oops', "Couldn't place the order. Please check your connection and try again.");
+      showInfoModal('Oops', neshUpiAutoPaid() ? "Your payment went through but the order could not be saved. Check your connection and tap Pay Online again. You will not be charged twice." : "Couldn't place the order. Please check your connection and try again.");
     }
   } finally {
     payConfirmBtn.disabled = false;
@@ -16315,6 +16646,7 @@ function renderTrackItems(o) {
   });
   const shownDeliveryCharge = (Number(o.deliveryFee) || 0) + (Number(o.platformFee) || 0);
   if (shownDeliveryCharge > 0) html += row('Delivery charge', '₹' + shownDeliveryCharge);
+  else html += row('Delivery charge', '<b style="color:#1a7f37;">FREE</b>');
   if (Number(o.rainSurge) > 0) html += row('🌧️ Rain surge', '₹' + o.rainSurge);
   if (Number(o.tip) > 0) html += row('🏍️ Delivery tip', '₹' + o.tip);
   if (Number(o.shopDiscountApplied) > 0) html += row('Shop discount', '−₹' + o.shopDiscountApplied);
@@ -16339,6 +16671,7 @@ function setTrackHero(kind, emoji, pct) {
 // Live "arriving in X min" from the rider's route (grocery nav-map only).
 let trackLiveEtaMins = null;
 function renderTrackTimeline(rawStatus, reason, o) {
+  try { if (normalizeStatus(rawStatus) === 'delivered' && trackCurrentOrderKey) window.neshLoyHook(trackCurrentOrderKey, o); } catch (e) {}
   if (rawStatus === 'pending_assignment') renderTrackRate(null);
   if (rawStatus === 'pending_assignment') {
     trackStatusText.textContent = "Finding a store for your order";
@@ -16598,6 +16931,7 @@ function statusChipInfo(status, businessType) {
 
 function renderOrderRow(o) {
   const status = normalizeStatus(o.status);
+  if (status === 'delivered') window.neshLoyHook(o.orderKey, o);
   const chip = statusChipInfo(status, o.businessType);
   const itemCount = Array.isArray(o.items) ? o.items.reduce((a, it) => a + (it.qty || 0), 0) : 0;
   const row = document.createElement('div');
@@ -17376,6 +17710,12 @@ try {
     }
     if ('shopOrder' in cfg && !live.shopOrder) { SHOP_ORDER = cfg.shopOrder || {}; window.SHOP_ORDER = SHOP_ORDER; if (sp) sp.done('shop'); }
     if (Array.isArray(cfg.zones) && !live.zones) { window.SHOP_ZONES = cfg.zones; if (sp) sp.done('zones'); try { syncShopLoading(); } catch (e) {} }
+    if (cfg.goSeries && cfg.goSeries.d && !live.goSeries) {      // last known Go Series delivery charge / platform fee: ready instantly
+      window.GO_SERIES_DELIVERY = cfg.goSeries.d;
+      window.GO_SERIES_PLATFORM_FEE = Number(cfg.goSeries.p) || 0;
+      window.GO_SERIES_ITEM_MARKUP = Number(cfg.goSeries.m) || 0;
+      window.GO_SERIES_LOADED = true;                            // the live value still replaces it a moment later
+    }
   }
   const g = JSON.parse(localStorage.getItem('nesh_last_gps') || 'null');
   if (false && g && typeof g.lat === 'number' && typeof g.lng === 'number' && !state.customerPos) {
