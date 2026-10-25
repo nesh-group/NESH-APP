@@ -2855,6 +2855,19 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
 .cp-bill .order-summary-grand-row{ font-size:17px; padding-top:12px; border-top:1px solid #F0EBDD; margin-top:2px; }
 .cp-bill-note{ margin:0; font-size:12px; color:#8A7E58; }
 .cp-min-note{ margin:0 !important; padding:10px 12px; border-radius:12px; background:#FFF4E5; color:#8A4B00; font-size:13px; font-weight:600; }
+/* ---- Ask a friend to pay: eye-catching CTA ---- */
+.pr-cta{ position:relative; overflow:hidden; flex:none; width:100%; display:flex; align-items:center; gap:12px; padding:13px 14px; border:0; border-radius:18px; font-family:inherit; text-align:left; cursor:pointer; color:#3a2a00; background:linear-gradient(135deg,#FFE27A 0%,#FFC62E 55%,#FFA62B 100%); box-shadow:0 6px 16px rgba(255,166,43,.38), inset 0 0 0 1.5px rgba(255,255,255,.55); animation:prPulse 2.4s ease-in-out infinite; -webkit-tap-highlight-color:transparent; }
+.pr-cta:active{ transform:scale(.98); }
+.pr-cta::after{ content:""; position:absolute; top:0; bottom:0; left:-60%; width:40%; background:linear-gradient(100deg,transparent,rgba(255,255,255,.65),transparent); transform:skewX(-20deg); animation:prShine 3.2s ease-in-out infinite; pointer-events:none; }
+.pr-cta-ic{ flex:none; width:44px; height:44px; border-radius:14px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:24px; box-shadow:0 2px 8px rgba(0,0,0,.12); animation:prBob 1.8s ease-in-out infinite; }
+.pr-cta-tx{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.pr-cta-tx b{ font:800 16px/1.2 Poppins,Inter,sans-serif; color:#2B1D00; }
+.pr-cta-tx small{ font:600 12px/1.3 Inter,sans-serif; color:#6a4a00; }
+.pr-cta-go{ flex:none; width:30px; height:30px; border-radius:50%; background:#2B1D00; color:#FFD54A; display:flex; align-items:center; justify-content:center; font:800 22px/1 Inter,sans-serif; padding-bottom:3px; }
+@keyframes prPulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.02); } }
+@keyframes prShine{ 0%{ left:-60%; } 55%,100%{ left:130%; } }
+@keyframes prBob{ 0%,100%{ transform:translateY(0) rotate(0); } 50%{ transform:translateY(-3px) rotate(-6deg); } }
+@media (prefers-reduced-motion:reduce){ .pr-cta,.pr-cta::after,.pr-cta-ic{ animation:none; } }
 .cp-bar{
   position:absolute; z-index:20; left:0; right:0; bottom:0; display:flex; align-items:center; gap:14px;
   padding:12px 14px calc(env(safe-area-inset-bottom) + 12px); background:#fff; border-top:1px solid #E9E3D3;
@@ -4682,6 +4695,7 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
       </div>
       <div class="cp-saved" id="os-saved" style="display:none"></div>
       <div class="cp-scroll">
+        <div id="pr-cbanner" class="prq-cb" style="display:none;"></div>
         <div class="cp-card" id="cp-coupon-card" style="display:none;">
           <p class="cp-cpn-title">Coupons &amp; offers</p>
           <button type="button" class="cp-cpn-row" id="cp-coupon-open">
@@ -4703,6 +4717,7 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
           <button type="button" class="cp-addmore" id="os-addmore">Forgot something? <b>Add More Items</b></button>
           <div class="os-item-total" id="os-item-total"><span>Item total</span><span id="os-item-total-val">₹0</span></div>
         </div>
+        <button type="button" id="pr-open" class="pr-cta" style="display:none;"><span class="pr-cta-ic">💌</span><span class="pr-cta-tx"><b>Ask a friend to pay</b><small>Share on WhatsApp · they pay, it's delivered to you 🎁</small></span><span class="pr-cta-go">›</span></button>
         <div id="multi-panel" class="cp-card" style="display:none;"></div>
         <div id="order-summary-suggest" class="cp-card cp-suggest" style="display:none;">
           <p class="cp-suggest-title">🥤 Add something extra?</p>
@@ -4878,7 +4893,6 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
           </div>
         </div>
       </div>
-      <div style="padding:0 14px 8px;"><button type="button" id="pr-open" style="width:100%;border:1.5px dashed #F2B705;background:#FFF8DC;color:#5a4a1a;font-weight:800;font-size:14px;padding:11px;border-radius:14px;font-family:inherit;display:none;">💌 Ask a friend to pay</button></div>
       <div class="cp-bar">
         <div class="cp-bar-total"><span>To Pay</span><b id="os-bar-total">₹0</b></div>
         <button type="button" class="cp-pay-online" id="cp-pay-online">Pay Online</button>
@@ -19129,23 +19143,138 @@ if ('serviceWorker' in navigator) {
 .pr-btn.alt{background:#fff;color:#7a6a3a;border:1.5px solid #e6d9b8}
 .pr-msg{background:#FFF8DC;border-radius:14px;padding:12px;font-size:14px;font-weight:600;margin-bottom:10px}
 .pr-it{display:flex;justify-content:space-between;font-size:13.5px;padding:4px 0}
+#pr-body .prq-hero{margin:-18px -16px 14px;padding:22px 16px 18px;border-radius:22px 22px 0 0;text-align:center;position:relative;overflow:hidden;background:linear-gradient(135deg,#FF7A9C 0%,#FF9A5A 55%,#FFC83D 100%);color:#fff}
+#pr-cbanner{flex:none}
+.prq-cb{position:relative;overflow:hidden;border-radius:20px;padding:16px 14px 14px;background:linear-gradient(135deg,#FF7A9C 0%,#FF9A5A 55%,#FFC83D 100%);color:#fff;box-shadow:0 8px 20px rgba(255,122,92,.35)}
+.prq-cb-top{display:flex;align-items:center;gap:12px}
+.prq-cb-ic{flex:none;width:52px;height:52px;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 12px rgba(0,0,0,.16);animation:prqBob 1.8s ease-in-out infinite}
+.prq-cb-badge{display:inline-block;background:rgba(0,0,0,.22);font:800 10.5px/1 Inter,sans-serif;letter-spacing:1.4px;padding:5px 10px;border-radius:999px;margin-bottom:6px}
+.prq-cb-t{margin:0;font:800 18px/1.25 Poppins,Inter,sans-serif;color:#fff;text-shadow:0 1px 5px rgba(0,0,0,.18)}
+.prq-cb-sub{margin:8px 0 0;font-size:14px;font-weight:700;color:#fff;opacity:.97}
+.prq-cb .prq-chat{margin:10px 0 0}
+.prq-cb .prq-bub{background:#fff;color:#3a2a00}
+.prq-cb-note{margin-top:10px;background:rgba(255,255,255,.9);color:#0B5E3F;border-radius:12px;padding:8px 11px;font-size:12.5px;font-weight:700;line-height:1.4}
+.cp-pay-online.prq-payfor{background:linear-gradient(135deg,#FF7A9C,#FF9A5A);color:#fff;border:0;font-size:15.5px;box-shadow:0 8px 18px rgba(255,122,92,.4)}
+@media (prefers-reduced-motion:reduce){.prq-cb-ic{animation:none}}
+#pr-body .prq-hero.prs-hero,#pr-modal .prq-hero{margin:-18px -16px 14px;padding:20px 16px 16px;border-radius:22px 22px 0 0;text-align:center;background:linear-gradient(135deg,#FF7A9C 0%,#FF9A5A 55%,#FFC83D 100%);color:#fff}
+#pr-modal .prq-hero h2{margin:8px 0 0;font:800 21px/1.25 Poppins,Inter,sans-serif;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.18)}
+#pr-modal .prq-hero .prq-sub{margin:6px 0 0;font-size:13.5px;font-weight:700;color:#fff}
+#pr-modal .prq-ic{margin:0 auto}
+.prs-lbl{font:800 13px/1 Poppins,Inter,sans-serif;color:#2B2410;margin:4px 0 8px}.prs-lbl small{font-weight:600;color:#9a8a5a}
+.prs-in{width:100%;box-sizing:border-box;border:1.5px solid #f0dca0;background:#FFFBEA;border-radius:14px;padding:11px 12px;font:inherit;font-size:14px;font-weight:700;margin-bottom:12px;outline:none}
+.prs-in:focus,#pr-modal textarea:focus{border-color:#FF9A5A;box-shadow:0 0 0 3px rgba(255,154,90,.2)}
+#pr-modal .pr-chip{border:1.5px solid #f0dca0;background:#FFFBEA;border-radius:14px;text-align:left;line-height:1.35;transition:.15s}
+#pr-modal .pr-chip.on{background:linear-gradient(135deg,#FFE0EA,#FFEBCF);border-color:#FF7A9C;color:#8a2a4a;box-shadow:0 3px 10px rgba(255,122,156,.25)}
+#pr-modal textarea{border:1.5px solid #f0dca0;background:#FFFBEA;border-radius:14px;outline:none}
+.prs-pv{margin:12px 0 2px;border-radius:16px;background:#F7F3FF;border:1.5px dashed #b9a6f0;padding:10px 12px}
+.prq-pvh{font:800 11px/1 Inter,sans-serif;letter-spacing:.8px;color:#6a55b8;margin-bottom:8px}
+.prq-pvc b{display:block;font-size:14px;color:#2B2410;margin-bottom:6px}
+.prq-pvc small{display:block;font-size:12.5px;font-weight:700;color:#8a2a4a;margin-bottom:6px}
+.prq-pvc .prq-bub{font-size:13px;padding:8px 11px}
+.pr-btn.prs-send{background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;font-size:16px;padding:15px;box-shadow:0 8px 18px rgba(18,140,126,.35)}
+.pr-btn.prs-send:disabled{opacity:.7}
+.prq-state{text-align:center;padding:10px 4px 6px}
+.prq-se{width:84px;height:84px;margin:0 auto 12px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:42px;background:linear-gradient(135deg,#FFE0EA,#FFEBCF);box-shadow:0 8px 20px rgba(255,122,92,.25);animation:prqBob 1.8s ease-in-out infinite}
+.prq-state h3{font:800 20px/1.25 Poppins,Inter,sans-serif;margin:0 0 6px}
+.prq-state p{font-size:14px;margin:0 0 6px}
+#pr-pop{position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.58);display:none;align-items:center;justify-content:center;padding:20px}
+#pr-pop.on{display:flex}
+.prp-card{position:relative;overflow:hidden;background:#fff;width:100%;max-width:340px;border-radius:26px;padding:28px 18px 18px;text-align:center;font-family:'Poppins','Inter',sans-serif;color:#2B2410;animation:prpIn .35s cubic-bezier(.2,1.3,.4,1)}
+.prp-ic{position:relative;z-index:2;width:84px;height:84px;margin:0 auto 12px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:44px;background:linear-gradient(135deg,#FF7A9C,#FFC83D);box-shadow:0 10px 24px rgba(255,122,92,.4);animation:prqBob 1.8s ease-in-out infinite}
+.prp-card h3{position:relative;z-index:2;margin:0 0 6px;font:800 21px/1.25 Poppins,Inter,sans-serif}
+.prp-card p{position:relative;z-index:2;margin:0 0 6px;font-size:14px;color:#7a6a3a;line-height:1.45}
+.prp-card .pr-btn{position:relative;z-index:2;background:linear-gradient(135deg,#FF7A9C,#FF9A5A);color:#fff;box-shadow:0 8px 18px rgba(255,122,92,.4)}
+.prp-cf{position:absolute;top:-14px;width:9px;height:14px;border-radius:2px;opacity:0;animation:prpFall linear forwards;z-index:1}
+@keyframes prpIn{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes prpFall{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(420px) rotate(540deg);opacity:0}}
+@media (prefers-reduced-motion:reduce){.prp-ic,.prq-se,.prp-cf{animation:none}}
+.prq-conf{font-size:15px;letter-spacing:6px;opacity:.9;margin-bottom:2px}
+.prq-ic{width:64px;height:64px;margin:4px auto 8px;border-radius:20px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:34px;box-shadow:0 6px 18px rgba(0,0,0,.18);animation:prqBob 1.8s ease-in-out infinite}
+.prq-badge{display:inline-block;background:rgba(0,0,0,.22);color:#fff;font:800 11px/1 Inter,sans-serif;letter-spacing:1.4px;padding:6px 12px;border-radius:999px;animation:prqPulse 1.8s ease-in-out infinite}
+#pr-body .prq-hero h2{margin:10px 0 0;font:800 21px/1.25 Poppins,Inter,sans-serif;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.18)}
+#pr-body .prq-hero .prq-sub{margin:6px 0 0;font-size:14px;font-weight:700;color:#fff;opacity:.95}
+.prq-chat{display:flex;align-items:flex-end;gap:8px;margin-bottom:12px}
+.prq-av{flex:none;width:34px;height:34px;border-radius:50%;background:#2B2410;color:#FFD54A;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px}
+.prq-bub{background:#FFF1C9;border-radius:16px 16px 16px 4px;padding:10px 13px;font-size:14px;font-weight:600;color:#3a2a00;line-height:1.4}
+.prq-order{border:1.5px dashed #F2B705;border-radius:16px;background:#FFFBEA;padding:10px 12px;margin-bottom:10px}
+.prq-oh{font-size:13px;color:#7a6a3a;margin-bottom:6px}.prq-oh b{color:#2B2410}
+.prq-it{display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid #F3E7BE}
+.prq-it:first-of-type{border-top:0}
+.prq-it img,.prq-ph{flex:none;width:44px;height:44px;border-radius:12px;object-fit:cover;background:#fff;border:1px solid #F0E3B5;display:flex;align-items:center;justify-content:center;font-size:20px}
+.prq-nm{flex:1;min-width:0;font-size:14px;font-weight:700;color:#2B2410}
+.prq-it b{flex:none;font-size:14px;color:#2B2410}
+.prq-note{background:#E6F8EF;color:#0B5E3F;border-radius:12px;padding:9px 12px;font-size:12.5px;font-weight:600;line-height:1.4;margin-bottom:2px}
+.pr-btn.prq-pay{background:linear-gradient(135deg,#FF7A9C,#FF9A5A);color:#fff;font-size:16px;padding:15px;box-shadow:0 8px 18px rgba(255,122,92,.4)}
+@keyframes prqBob{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-4px) rotate(-6deg)}}
+@keyframes prqPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+@media (prefers-reduced-motion:reduce){.prq-ic,.prq-badge{animation:none}}
 </style>
-<div id="pr-modal"><div class="pr-sheet"><h3>💌 Ask a friend to pay</h3><p>Pick a message or write your own. Your friend pays, the order comes to <b>your</b> address.</p><input id="pr-title" maxlength="50" placeholder="Card title, e.g. Treat me today 😋 (optional)" style="width:100%;box-sizing:border-box;border:1.5px solid #e6d9b8;border-radius:12px;padding:10px;font:inherit;font-size:14px;font-weight:700;margin-bottom:10px"><div class="pr-chips" id="pr-chips"></div><textarea id="pr-text" maxlength="120" placeholder="Write a message (optional)"></textarea><button class="pr-btn" id="pr-send">Share on WhatsApp</button><button class="pr-btn alt" id="pr-cancel">Cancel</button></div></div>
+<div id="pr-modal"><div class="pr-sheet"><div class="prq-hero prs-hero"><div class="prq-ic">💌</div><h2>Ask a friend to pay</h2><p class="prq-sub">Your friend pays · it's delivered to <b>you</b> 🎁</p></div><div class="prs-lbl">✏️ Card title <small>(optional)</small></div><input id="pr-title" class="prs-in" maxlength="50" placeholder="e.g. Treat me today 😋"><div class="prs-lbl">💬 Pick a message</div><div class="pr-chips" id="pr-chips"></div><textarea id="pr-text" maxlength="120" placeholder="…or write your own message"></textarea><div id="pr-pv" class="prs-pv"></div><button class="pr-btn prs-send" id="pr-send">📲 Share on WhatsApp</button><button class="pr-btn alt" id="pr-cancel">Cancel</button></div></div>
 <div id="pr-view"><div class="pr-sheet" id="pr-body"></div></div>
 <script id="pr-js">
 (function(){
 var $=function(i){return document.getElementById(i)},E=function(x){return escapeHtml(String(x==null?'':x))};
-var BASE='https://nesh-group.github.io/NESH-APP/',PREVIEW='https://shop-preview.raise3715.workers.dev/',PREVIEW_ON=false; // set PREVIEW_ON=true AFTER deploying pay-preview-worker.js
+var BASE='https://nesh-group.github.io/NESH-APP/',PREVIEW='https://shop-preview.raise3715.workers.dev/'; // existing Worker already handles ?pay=<id> (photo + title preview card)
 var CH=['😋 Enikku vishakkunnu, ithu pay cheyyamo?','🙏 Salary varum vare, ithu ente vaka pay cheyyumo?','🎂 Ente birthday aanu, treat tharumo?','❤️ Ninte special gift enikku, please!','😄 Ninte treat ippo venam!'];
+var NESH_LOGO='data:image/jpeg;base64,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';
+function ldImg(src){return new Promise(function(ok){if(!src)return ok(null);var i=new Image();i.crossOrigin='anonymous';i.onload=function(){ok(i)};i.onerror=function(){ok(null)};setTimeout(function(){ok(null)},4500);i.src=src})}
+function rrp(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
+function trunc(c,t,w){t=String(t||'');if(c.measureText(t).width<=w)return t;while(t.length>1&&c.measureText(t+'…').width>w)t=t.slice(0,-1);return t+'…'}
+function cover(c,im,x,y,w,h){var r=Math.max(w/im.width,h/im.height),iw=w/r,ih=h/r;c.drawImage(im,(im.width-iw)/2,(im.height-ih)/2,iw,ih,x,y,w,h)}
+// Draws the share card (supermarket-ticket style: NESH logo + item photos) and returns a JPEG data URL
+async function makeCard(d,lst,withPhotos){
+  var W=1200,H=630,cv=document.createElement('canvas');cv.width=W;cv.height=H;var c=cv.getContext('2d'),F='Poppins,Inter,Arial,sans-serif';
+  var shown=lst.slice(0,3),imgs=await Promise.all([ldImg(NESH_LOGO)].concat(shown.map(function(x){return withPhotos?ldImg(x.img):null})));
+  var g=c.createLinearGradient(0,0,W,H);g.addColorStop(0,'#FF5C8A');g.addColorStop(.55,'#FF9A4A');g.addColorStop(1,'#FFC83D');c.fillStyle=g;c.fillRect(0,0,W,H);
+  var cl=['rgba(255,255,255,.9)','#FFEC78','#7B5CE6','#25D366','#3AA3FF'],sd=7;function rnd(){sd=(sd*9301+49297)%233280;return sd/233280}
+  for(var i=0;i<60;i++){var x=rnd()*W,y=rnd()*H,a=rnd()*3;if(x>640&&x<1180&&y>20&&y<610)continue;if(x<660&&y>170&&y<475)continue;c.save();c.translate(x,y);c.rotate(a);c.fillStyle=cl[i%5];c.fillRect(-6,-11,12,22);c.restore()}
+  // logo
+  c.save();c.shadowColor='rgba(90,20,40,.35)';c.shadowBlur=18;c.shadowOffsetY=6;rrp(c,44,34,104,104,26);c.fillStyle='#FDC407';c.fill();c.restore();
+  if(imgs[0]){c.save();rrp(c,44,34,104,104,26);c.clip();c.drawImage(imgs[0],44,34,104,104);c.restore()}
+  c.lineWidth=4;c.strokeStyle='#fff';rrp(c,44,34,104,104,26);c.stroke();
+  c.fillStyle='#fff';c.font='700 26px '+F;c.textBaseline='middle';c.fillText('Food • Groceries • Taxi',166,86);
+  // left text
+  c.textBaseline='alphabetic';c.font='700 22px '+F;var pt='PAYMENT REQUEST',pw=c.measureText(pt).width;
+  c.fillStyle='rgba(60,10,40,.45)';rrp(c,44,196,pw+48,48,24);c.fill();c.fillStyle='#fff';c.textBaseline='middle';c.fillText(pt,68,221);
+  c.textBaseline='alphabetic';c.font='800 90px '+F;c.fillStyle='rgba(120,20,60,.35)';c.fillText('Help me pay!',50,346);c.fillStyle='#fff';c.fillText('Help me pay!',44,340);
+  c.font='700 34px '+F;c.fillText(trunc(c,'💌 '+(d.fromName||'Your friend')+' needs your help',590),44,396);
+  c.font='600 28px '+F;c.fillStyle='rgba(255,255,255,.95)';c.fillText(trunc(c,d.title||'Tap to pay & treat your friend 🎁',590),44,442);
+  // ticket
+  var tx=700,ty=40,tw=450,th=550;c.save();c.translate(tx+tw/2,ty+th/2);c.rotate(.03);c.translate(-tw/2,-th/2);
+  c.shadowColor='rgba(90,20,40,.4)';c.shadowBlur=30;c.shadowOffsetY=14;rrp(c,0,0,tw,th,30);c.fillStyle='#fff';c.fill();c.shadowColor='transparent';
+  c.fillStyle='#FF5C8A';c.font='800 20px '+F;c.fillText('🛒 ORDER',28,48);
+  c.fillStyle='#2B2410';c.font='800 28px '+F;c.fillText(trunc(c,d.restName||'NESH',tw-56),28,88);
+  function dash(y){c.strokeStyle='#E9D9A8';c.lineWidth=3;c.setLineDash([10,8]);c.beginPath();c.moveTo(24,y);c.lineTo(tw-24,y);c.stroke();c.setLineDash([])}
+  dash(106);
+  for(var k=0;k<shown.length;k++){var ry=122+k*96,it=shown[k],im=imgs[k+1];
+    c.save();rrp(c,28,ry,80,80,18);c.clip();if(im)cover(c,im,28,ry,80,80);else{c.fillStyle='#FFF1C9';c.fillRect(28,ry,80,80);c.font='38px '+F;c.fillStyle='#000';c.textBaseline='middle';c.textAlign='center';c.fillText('🛍️',68,ry+42);c.textAlign='left';c.textBaseline='alphabetic'}c.restore();
+    c.strokeStyle='#F0E3B5';c.lineWidth=2;rrp(c,28,ry,80,80,18);c.stroke();
+    c.fillStyle='#2B2410';c.font='700 24px '+F;c.fillText(trunc(c,String(it.n||'').replace(/^[`'"]+/,''),292),124,ry+34);
+    c.fillStyle='#FF5C8A';c.font='800 26px '+F;c.fillText('× '+it.q,124,ry+66)}
+  var more=lst.length-shown.length;if(more>0){c.fillStyle='#7a6a3a';c.font='700 22px '+F;c.fillText('+ '+more+' more item'+(more>1?'s':''),28,122+shown.length*96+24)}
+  dash(th-104);
+  c.fillStyle='#2B2410';for(var b=0,bx=28;bx<tw-28;b++){var bw=2+((b*7)%4);c.fillRect(bx,th-92,bw,30);bx+=bw+3+((b*5)%3)}
+  c.fillStyle='#7a6a3a';c.font='700 18px '+F;c.fillText('NESH · TAP TO PAY',28,th-24);
+  c.fillStyle='#25D366';rrp(c,tw-150,th-56,122,38,19);c.fill();c.fillStyle='#fff';c.font='800 20px '+F;c.textAlign='center';c.fillText('PAY ›',tw-89,th-30);c.textAlign='left';
+  c.restore();
+  return cv.toDataURL('image/jpeg',.8)}
+function stateCard(ic,t,m){return '<div class="prq-state"><div class="prq-se">'+ic+'</div><h3>'+E(t)+'</h3><p>'+E(m)+'</p></div><button class="pr-btn" id="pr-x">OK</button>'}
+function prPop(ic,t,m,btn,conf){var o=$('pr-pop');if(!o){o=document.createElement('div');o.id='pr-pop';o.innerHTML='<div class="prp-card"><div class="prp-ic" id="prp-ic"></div><h3 id="prp-t"></h3><p id="prp-m"></p><button class="pr-btn" id="prp-b"></button></div>';document.body.appendChild(o);$('prp-b').onclick=function(){o.classList.remove('on')};o.onclick=function(e){if(e.target===o)o.classList.remove('on')}}
+  $('prp-ic').textContent=ic;$('prp-t').textContent=t;$('prp-m').textContent=m;$('prp-b').textContent=btn||'OK';
+  var card=o.querySelector('.prp-card');card.querySelectorAll('.prp-cf').forEach(function(n){n.remove()});
+  if(conf){var cl=['#FF7A9C','#FFC83D','#25D366','#6a55b8','#FF9A5A','#3AA3FF'];for(var q=0;q<26;q++){var c=document.createElement('i');c.className='prp-cf';c.style.left=(Math.random()*100)+'%';c.style.background=cl[q%cl.length];c.style.animationDuration=(1.6+Math.random()*1.6)+'s';c.style.animationDelay=(Math.random()*.6)+'s';card.appendChild(c)}}
+  o.classList.add('on')}
+function prv(){var t=$('pr-title').value.trim(),m=$('pr-text').value.trim(),n=(state.user&&state.user.name)||'You';$('pr-pv').innerHTML='<div class="prq-pvh">👀 YOUR FRIEND WILL SEE</div><div class="prq-pvc"><b>💌 '+E(n)+' needs your help to pay!</b>'+(t?'<small>'+E(t)+'</small>':'')+(m?'<div class="prq-bub">'+E(m)+'</div>':'')+'</div>'}
 function cnt(){var c=state.cart||{};return Object.keys(c).filter(function(k){return c[k]>0}).length}
 function sync(){var b=$('pr-open'),r=state.selectedRestaurant;if(b)b.style.display=(r&&r.gpayNumber&&cnt()&&!window.__neshPayFor)?'':'none'}
 setInterval(sync,700);
 $('pr-open').onclick=function(){
   var r=state.selectedRestaurant;if(!r||!r.gpayNumber)return;
-  if(typeof pendingLocation.lat!=='number'||!locLandmarkInput.value.trim()||digitsOnly(locContactInput.value).length<10){showInfoModal('Add your address first','Please set your delivery location, landmark and contact number above, then ask a friend to pay.');return}
+  if(typeof pendingLocation.lat!=='number'||!locLandmarkInput.value.trim()||digitsOnly(locContactInput.value).length<10){prPop('📍','Add your address first','Please set your delivery location, landmark and contact number above, then ask a friend to pay.','Okay, got it');return}
   var h='';CH.forEach(function(m,i){h+='<button type="button" class="pr-chip" data-i="'+i+'">'+E(m)+'</button>'});
-  $('pr-chips').innerHTML=h;$('pr-text').value='';$('pr-title').value='';$('pr-modal').classList.add('on')};
-$('pr-chips').onclick=function(e){var b=e.target.closest('.pr-chip');if(b)$('pr-text').value=CH[+b.dataset.i]};
+  $('pr-chips').innerHTML=h;$('pr-text').value='';$('pr-title').value='';prv();$('pr-modal').classList.add('on')};
+$('pr-chips').onclick=function(e){var b=e.target.closest('.pr-chip');if(b){$('pr-text').value=CH[+b.dataset.i];$('pr-chips').querySelectorAll('.pr-chip').forEach(function(x){x.classList.remove('on')});b.classList.add('on');prv()}};
+$('pr-title').oninput=prv;$('pr-text').oninput=function(){$('pr-chips').querySelectorAll('.pr-chip').forEach(function(x){x.classList.remove('on')});prv()};
 $('pr-cancel').onclick=function(){$('pr-modal').classList.remove('on')};
 $('pr-send').onclick=async function(){
   var r=state.selectedRestaurant,f=window.fb,btn=$('pr-send');if(!r)return;btn.disabled=true;btn.textContent='Creating link…';
@@ -19155,43 +19284,53 @@ $('pr-send').onclick=async function(){
       loc:{text:pendingLocation.text,lat:pendingLocation.lat,lng:pendingLocation.lng,place:locPlaceInput.value.trim(),landmark:locLandmarkInput.value.trim(),contact:digitsOnly(locContactInput.value)}};
     var rf=f.push(f.ref(f.db,'payRequests'));await f.set(rf,d);
     try{var a=JSON.parse(localStorage.getItem('nesh_pr')||'[]');a.push(rf.key);localStorage.setItem('nesh_pr',JSON.stringify(a.slice(-10)))}catch(e){}
-    var items=r.items||[],ks=Object.keys(state.cart||{}).filter(function(k){return state.cart[k]>0}),img='',names=[];
-    ks.forEach(function(k){var i=items.find(function(x){return x&&x.id===k});if(!i)return;if(!img&&/^https?:/.test(i.image||''))img=i.image;if(names.length<3)names.push(state.cart[k]+'× '+i.name)});
+    var lst=[],items=r.items||[],ks=Object.keys(state.cart||{}).filter(function(k){return state.cart[k]>0}),img='',names=[];
+    ks.forEach(function(k){var i=items.find(function(x){return x&&x.id===k});if(!i)return;if(!img&&/^https?:/.test(i.image||''))img=i.image;if(names.length<3)names.push(state.cart[k]+'× '+i.name);lst.push({n:i.name,q:state.cart[k],img:/^https?:/.test(i.image||'')?i.image:''})});
     if(!img&&/^https?:/.test(r.image||''))img=r.image;
     try{await f.set(f.ref(f.db,'payPreview/'+rf.key),{fromName:d.fromName,title:d.title,msg:d.msg,restName:d.restName,img:img,items:names.join(', '),at:Date.now()})}catch(e){}
-    var link=(PREVIEW_ON?PREVIEW:BASE)+'?pay='+rf.key,text=(d.title?d.title+'\n':'')+(d.msg?d.msg+'\n\n':'')+'💌 '+(d.fromName||'Your friend')+' needs your help to pay for an order from '+d.restName+'. Tap to see & pay:\n'+link;
+    btn.textContent='Making your card…';try{var card='';try{card=await makeCard(d,lst,true)}catch(e1){try{card=await makeCard(d,lst,false)}catch(e2){}}if(card)await f.set(f.ref(f.db,'payCards/'+rf.key),card)}catch(e){}
+    var link=PREVIEW+'?pay='+rf.key,text=(d.title?d.title+'\n':'')+(d.msg?d.msg+'\n\n':'')+'💌 '+(d.fromName||'Your friend')+' needs your help to pay for an order from '+d.restName+'. Tap to see & pay:\n'+link;
     $('pr-modal').classList.remove('on');
     var cap=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Share,ttl='Help me pay on NESH';
     try{if(cap&&cap.share)await cap.share({title:ttl,text:text,dialogTitle:'Send to a friend'});else if(navigator.share)await navigator.share({title:ttl,text:text});else window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank')}catch(e){}
   }catch(e){showInfoModal('Could not create link','Please check your internet and try again.')}
-  btn.disabled=false;btn.textContent='Share on WhatsApp'};
-function unlock(){window.__neshPayFor=null;try{payCodBtn.style.display='';[locPlaceInput,locLandmarkInput,locContactInput].forEach(function(i){i.readOnly=false})}catch(e){}}
+  btn.disabled=false;btn.textContent='📲 Share on WhatsApp'};
+function unlock(){window.__neshPayFor=null;try{var _b=$('pr-cbanner'),_o=$('cp-pay-online');if(_b){_b.style.display='none';_b.innerHTML=''}if(_o){_o.classList.remove('prq-payfor');_o.textContent='Pay Online'}}catch(e){}try{payCodBtn.style.display='';[locPlaceInput,locLandmarkInput,locContactInput].forEach(function(i){i.readOnly=false})}catch(e){}}
 var _co=closeOrderSummary;closeOrderSummary=function(){var r=_co.apply(this,arguments);if(window.__neshPayFor)unlock();return r};
 window.neshPayDone=function(id,key){try{window.fb.update(window.fb.ref(window.fb.db,'payRequests/'+id),{status:'ordered',orderKey:key,paidAt:Date.now(),paidByName:(state.user&&state.user.name)||''})}catch(e){}unlock()};
 function close(){$('pr-view').classList.remove('on')}
 window.neshOpenPay=async function(id){
   var t=0;await new Promise(function(ok){var iv=setInterval(function(){if((state.user&&typeof RESTAURANTS!=='undefined'&&RESTAURANTS.length)||++t>100){clearInterval(iv);ok()}},600)});
-  if(!state.user)return;var f=window.fb,body=$('pr-body');$('pr-view').classList.add('on');body.innerHTML='<p>Loading…</p>';
+  if(!state.user)return;var f=window.fb,body=$('pr-body');$('pr-view').classList.add('on');body.innerHTML='<div class="prq-state"><div class="prq-se">💌</div><p>Opening request…</p></div>';
   try{var sn=await f.get(f.ref(f.db,'payRequests/'+id)),d=sn.val();
-    if(!d){body.innerHTML='<h3>Link not found</h3><p>This request is no longer available.</p><button class="pr-btn" id="pr-x">OK</button>';$('pr-x').onclick=close;return}
-    if(d.status!=='open'){body.innerHTML='<h3>Already taken care of 🎉</h3><p>This order has already been paid.</p><button class="pr-btn" id="pr-x">OK</button>';$('pr-x').onclick=close;return}
+    if(!d){body.innerHTML=stateCard('🔍','Link not found','This request is no longer available.');$('pr-x').onclick=close;return}
+    if(d.status!=='open'){body.innerHTML=stateCard('🎉','Already taken care of!','Someone has already paid for this order. Nothing more to do.');$('pr-x').onclick=close;return}
     var rest=RESTAURANTS.find(function(x){return x.id===d.restId});
-    if(!rest||!rest.gpayNumber){body.innerHTML='<h3>Shop unavailable</h3><p>This shop can\'t take online payment right now.</p><button class="pr-btn" id="pr-x">OK</button>';$('pr-x').onclick=close;return}
-    var rows='';Object.keys(d.cart||{}).forEach(function(k){var q=d.cart[k];var it=(rest.items||[]).find(function(i){return i&&i.id===k});if(it&&q>0)rows+='<div class="pr-it"><span>'+E(it.name)+' × '+q+'</span></div>'});
-    body.innerHTML='<h3>'+(d.title?E(d.title):'💌 '+E(d.fromName||'A friend')+' needs your help')+'</h3><p>'+E(d.restName)+'</p>'+(d.msg?'<div class="pr-msg">“'+E(d.msg)+'”</div>':'')+rows+'<p style="margin-top:8px">You pay by UPI. It is delivered to '+E(d.fromName||'them')+', you don\'t need to enter any address.</p><button class="pr-btn" id="pr-go">Pay for '+E(d.fromName||'friend')+'</button><button class="pr-btn alt" id="pr-x">Not now</button>';
+    if(!rest||!rest.gpayNumber){body.innerHTML=stateCard('🏪','Shop unavailable','This shop can\'t take online payment right now.');$('pr-x').onclick=close;return}
+    var rows='';Object.keys(d.cart||{}).forEach(function(k){var q=d.cart[k];var it=(rest.items||[]).find(function(i){return i&&i.id===k});if(it&&q>0)rows+='<div class="prq-it">'+(/^https?:/.test(it.image||'')?'<img src="'+E(it.image)+'" alt="">':'<span class="prq-ph">🛍️</span>')+'<span class="prq-nm">'+E(it.name)+'</span><b>× '+q+'</b></div>'});
+    var nm=E(d.fromName||'Your friend'),ini=E(((d.fromName||'F').trim().charAt(0)||'F').toUpperCase());
+    body.innerHTML='<div class="prq-hero"><div class="prq-conf">🎉 ✨ 🎁 ✨ 🎉</div><div class="prq-ic">💌</div><span class="prq-badge">PAYMENT REQUEST</span><h2>'+nm+' needs your help to pay!</h2>'+(d.title?'<p class="prq-sub">'+E(d.title)+'</p>':'')+'</div>'
+      +(d.msg?'<div class="prq-chat"><span class="prq-av">'+ini+'</span><div class="prq-bub">'+E(d.msg)+'</div></div>':'')
+      +'<div class="prq-order"><div class="prq-oh">🛍️ Order from <b>'+E(d.restName)+'</b></div>'+rows+'</div>'
+      +'<div class="prq-note">🔒 Pay by UPI · It will be delivered to <b>'+nm+'</b>. You don\'t need to enter any address.</div>'
+      +'<button class="pr-btn prq-pay" id="pr-go">💸 Pay for '+E(d.fromName||'friend')+'</button><button class="pr-btn alt" id="pr-x">Not now</button>';
     $('pr-x').onclick=close;
     $('pr-go').onclick=function(){
       close();var L=d.loc||{};state.selectedRestaurant=rest;state.cart=d.cart||{};state.cartGrams=d.grams||{};state.cartSizes=d.sizes||{};
       window.__neshPayFor={id:id,name:d.fromName,account:d.fromAccount,msg:d.msg};
       try{renderMenu();showScreen('menu')}catch(e){}openOrderSummary();
+      try{var _n=E(d.fromName||'your friend'),_i=E(((d.fromName||'F').trim().charAt(0)||'F').toUpperCase()),_b=$('pr-cbanner'),_o=$('cp-pay-online');
+        _b.innerHTML='<div class="prq-cb-top"><div class="prq-cb-ic">💌</div><div><span class="prq-cb-badge">PAYMENT REQUEST</span><p class="prq-cb-t">You\'re paying for '+_n+'</p></div></div>'+(d.title?'<p class="prq-cb-sub">'+E(d.title)+'</p>':'')+(d.msg?'<div class="prq-chat"><span class="prq-av">'+_i+'</span><div class="prq-bub">'+E(d.msg)+'</div></div>':'')+'<div class="prq-cb-note">🎁 Delivered to <b>'+_n+'</b> · no address needed · Pay by UPI</div>';
+        _b.style.display='';var _sc=document.querySelector('#order-summary-overlay .cp-scroll');if(_sc)_sc.scrollTop=0;
+        if(_o){_o.classList.add('prq-payfor');_o.textContent='💸 Pay for '+(d.fromName||'friend')}}catch(e){}
       var fill=function(){Object.assign(pendingLocation,{text:L.text,lat:L.lat,lng:L.lng});locPlaceInput.value=L.place||'';locLandmarkInput.value=L.landmark||'';locContactInput.value=L.contact||'';
         [locPlaceInput,locLandmarkInput,locContactInput].forEach(function(i){i.readOnly=true});payCodBtn.style.display='none';try{cpLive(true)}catch(e){}setPaymentMethod('gpay')};
       fill();setTimeout(fill,400)};
-  }catch(e){body.innerHTML='<h3>Could not load</h3><p>Check your internet and try again.</p><button class="pr-btn" id="pr-x">OK</button>';$('pr-x').onclick=close}};
+  }catch(e){body.innerHTML=stateCard('📶','Could not load','Check your internet and try again.');$('pr-x').onclick=close}};
 try{var pid=new URLSearchParams(location.search).get('pay');if(pid){history.replaceState({},'',location.pathname);window.neshOpenPay(pid)}}catch(e){}
 // requester: tell them when a friend has paid
 setTimeout(async function(){try{var a=JSON.parse(localStorage.getItem('nesh_pr')||'[]'),f=window.fb,keep=[];
-  for(var i=0;i<a.length;i++){var d=(await f.get(f.ref(f.db,'payRequests/'+a[i]))).val();if(d&&d.status==='ordered'){showInfoModal('🎉 '+(d.paidByName||'Your friend')+' paid!','Your order from '+(d.restName||'the shop')+' is on its way.')}else if(d&&d.status==='open')keep.push(a[i])}
+  for(var i=0;i<a.length;i++){var d=(await f.get(f.ref(f.db,'payRequests/'+a[i]))).val();if(d&&d.status==='ordered'){prPop('🎉',(d.paidByName||'Your friend')+' paid!','Your order from '+(d.restName||'the shop')+' is on its way. Enjoy! 😋','Yay! 🎉',true)}else if(d&&d.status==='open')keep.push(a[i])}
   localStorage.setItem('nesh_pr',JSON.stringify(keep))}catch(e){}},8000);
 })();
 </script>
