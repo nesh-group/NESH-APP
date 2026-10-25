@@ -10409,7 +10409,7 @@ function processWatchedOrders(entries, queueLiveKeys) {
   entries.forEach(({ restId, orderKey, o, restName, businessType }) => {
     if (!o) return;
     const status = normalizeStatus(o.status);
-    if (status === 'delivered') { try { window.neshLoyaltyDelivered && window.neshLoyaltyDelivered(orderKey); window.neshLoyaltySDelivered && window.neshLoyaltySDelivered(orderKey); } catch (e) {} }
+    if (status === 'delivered') { try { window.neshLoyaltyDelivered && window.neshLoyaltyDelivered(orderKey, o); window.neshLoyaltySDelivered && window.neshLoyaltySDelivered(orderKey, o); } catch (e) {} }
     const shownName = o.fromNeshStoreQueue ? 'NESH Store' : (restName || 'Restaurant');
     if ((status === 'preparing' || status === 'ready') && !seen[orderKey]) {
       seen[orderKey] = true;
@@ -12915,6 +12915,15 @@ function neshLoyaltyGiftFor(r, itemsTotal) {
 // ---- counting: an order counts only once it is DELIVERED; a group order over several shops = 1 ----
 // At placement each order is tagged with its checkout group (loyalty/{phone}/g/{orderKey} = groupId). When an order is seen
 // as delivered, its group is counted once (loyalty/{phone}/counted/{groupId}) and count goes up by 1.
+window.neshLoyLog = function (m) {
+  try {
+    var a = JSON.parse(localStorage.getItem('nesh_loy_log') || '[]');
+    var line = new Date().toTimeString().slice(0, 8) + ' ' + m;
+    if (a.length && a[a.length - 1].slice(9) === m) return;
+    a.push(line); localStorage.setItem('nesh_loy_log', JSON.stringify(a.slice(-40)));
+  } catch (e) {}
+};
+const neshLoyErr = e => String((e && (e.code || e.message)) || e);
 (function () {
   let seen = null;
   const LS = 'nesh_loy_seen';
@@ -12923,15 +12932,17 @@ function neshLoyaltyGiftFor(r, itemsTotal) {
   const busy = () => Date.now() - (window.__neshMultiBusy || 0) < 120000;
   function record(key, group) {
     const ph = couponPhoneKey();
-    if (!key || !ph || !window.fb || !loyaltyOn()) return;
+    if (!key || !ph || !window.fb || !loyaltyOn()) { window.neshLoyLog('record skipped: key=' + !!key + ' phone=' + !!ph + ' fb=' + !!window.fb + ' on=' + loyaltyOn()); return; }
     if (lsGet().indexOf(key) >= 0) return;
     lsAdd(key);
     try {
       const { db, ref, set, runTransaction } = window.fb;
-      set(ref(db, 'loyalty/' + ph + '/g/' + key), group || key).catch(() => {});
+      window.neshLoyLog('order placed ' + key.slice(-6) + ' -> tagging');
+      set(ref(db, 'loyalty/' + ph + '/g/' + key), group || key).then(() => window.neshLoyLog('tag saved ' + key.slice(-6)), e => window.neshLoyLog('TAG WRITE FAILED: ' + neshLoyErr(e)));
       const amt = Number((window.__neshOrderAmt || {})[key]) || 0;   // group total = sum of its orders' items totals
-      if (amt > 0) runTransaction(ref(db, 'loyalty/' + ph + '/amt/' + (group || key)), n => (n || 0) + amt);
-    } catch (e) {}
+      if (amt > 0) runTransaction(ref(db, 'loyalty/' + ph + '/amt/' + (group || key)), n => (n || 0) + amt).then(() => window.neshLoyLog('amount saved ' + amt), e => window.neshLoyLog('AMOUNT WRITE FAILED: ' + neshLoyErr(e)));
+      else window.neshLoyLog('amount unknown at placement (will read from order)');
+    } catch (e) { window.neshLoyLog('record error: ' + neshLoyErr(e)); }
   }
   window.neshLoyaltyCount = function (key) { window.__neshLoyGroup = key; record(key, key); };   // first order of a group checkout
   window.neshLoyaltySync = function () { try { seen = (state.lastOrder && state.lastOrder.orderKey) || seen; } catch (e) {} };
@@ -12944,21 +12955,31 @@ function neshLoyaltyGiftFor(r, itemsTotal) {
     else { window.__neshLoyGroup = k; record(k, k); }
   }, 500);
   const checked = {};
-  window.neshLoyaltyDelivered = function (orderKey) {
+  window.neshLoyaltyDelivered = function (orderKey, ord) {
     const ph = couponPhoneKey();
-    if (!orderKey || !ph || !window.fb || checked[orderKey] || !loyaltyOn()) return;
+    if (!orderKey || !ph || !window.fb || checked[orderKey] || !loyaltyOn()) {
+      if (orderKey && !checked[orderKey]) window.neshLoyLog('delivered seen but skipped: phone=' + !!ph + ' fb=' + !!window.fb + ' on=' + loyaltyOn());
+      return;
+    }
     checked[orderKey] = true;
     const { db, ref, get, set, runTransaction } = window.fb;
+    window.neshLoyLog('delivered seen ' + orderKey.slice(-6));
     get(ref(db, 'loyalty/' + ph + '/g/' + orderKey)).then(gs => {
-      if (!gs.exists()) return;   // order placed before the reward existed: not counted
-      const group = String(gs.val()), cRef = ref(db, 'loyalty/' + ph + '/counted/' + group);
+      let group;
+      if (gs.exists()) group = String(gs.val());
+      else if (lsGet().indexOf(orderKey) >= 0) group = orderKey;   // this device tagged it when it was placed but the tag write didn't land: still count it
+      else { window.neshLoyLog('NO TAG for ' + orderKey.slice(-6) + ' -> not counted'); return; }   // order placed before the reward existed: not counted
+      const cRef = ref(db, 'loyalty/' + ph + '/counted/' + group);
       const min = Number((window.NESH_LOYALTY || {}).countMin) || 0;   // operator: min items total for an order to count
       return Promise.all([get(cRef), get(ref(db, 'loyalty/' + ph + '/amt/' + group))]).then(([cs, as]) => {
-        if (cs.exists()) return;
-        if (min > 0 && (Number(as.val()) || 0) < min) return;
-        return set(cRef, Date.now()).then(() => runTransaction(ref(db, 'loyalty/' + ph + '/count'), n => (n || 0) + 1));
+        if (cs.exists()) { window.neshLoyLog('already counted ' + group.slice(-6)); return; }
+        let amtNow = Number(as.val()) || 0;
+        // amount missing (not recorded at placement): read it from the order's own items
+        if (!(amtNow > 0) && ord && Array.isArray(ord.items)) amtNow = ord.items.reduce((t, it) => t + (Number(it.price) || 0) * (Number(it.qty) || 0), 0);
+        if (min > 0 && amtNow < min) { window.neshLoyLog('below minimum: amount ' + amtNow + ' < ' + min); return; }
+        return set(cRef, Date.now()).then(() => runTransaction(ref(db, 'loyalty/' + ph + '/count'), n => (n || 0) + 1)).then(() => window.neshLoyLog('COUNT +1 saved'));
       });
-    }).catch(() => { delete checked[orderKey]; });
+    }).catch(e => { window.neshLoyLog('COUNT FAILED: ' + neshLoyErr(e)); delete checked[orderKey]; });
   };
 })();
 // ---- config + progress listeners ----
@@ -12987,6 +13008,21 @@ function neshLoyaltyGiftFor(r, itemsTotal) {
       }, () => {});
     } catch (e) {}
   }, 2000);
+})();
+// Debug: tap the Hero offer card 5 times quickly to see why an order did/didn't count
+(function () {
+  var n = 0, t = 0;
+  document.addEventListener('click', function (e) {
+    try {
+      if (!e.target.closest || !e.target.closest('#loyalty-card')) return;
+      var now = Date.now(); n = (now - t < 1500) ? n + 1 : 1; t = now;
+      if (n < 5) return; n = 0;
+      var c = window.NESH_LOYALTY || {}, p = window.NESH_LOYALTY_PROG || {}, log = [];
+      try { log = JSON.parse(localStorage.getItem('nesh_loy_log') || '[]'); } catch (x) {}
+      alert('Loyalty debug\nphone: ' + (couponPhoneKey() || '-') + '\nfirebase: ' + !!window.fb + '\non: ' + loyaltyOn() + '  need: ' + c.ordersNeeded + '  min: ' + c.countMin +
+        '\ncount: ' + p.count + '  claimed: ' + p.claimed + '\nlast order: ' + ((state.lastOrder && state.lastOrder.orderKey) || '-') + '\n\n' + (log.slice(-14).join('\n') || '(no log yet)'));
+    } catch (x) {}
+  }, true);
 })();
 // ---- the attractive card at the top of every eligible shop ----
 function renderLoyaltyCard() {
@@ -13103,21 +13139,27 @@ function neshLoyaltySGiftFor(r, itemsTotal) {
     if (isStore()) record(k, k);
   }, 500);
   const checked = {};
-  window.neshLoyaltySDelivered = function (orderKey) {
+  window.neshLoyaltySDelivered = function (orderKey, ord) {
     const ph = couponPhoneKey();
     if (!orderKey || !ph || !window.fb || checked[orderKey] || !loyaltySOn()) return;
     checked[orderKey] = true;
     const { db, ref, get, set, runTransaction } = window.fb;
     get(ref(db, 'loyaltyStore/' + ph + '/g/' + orderKey)).then(gs => {
-      if (!gs.exists()) return;   // order placed before the reward existed: not counted
-      const group = String(gs.val()), cRef = ref(db, 'loyaltyStore/' + ph + '/counted/' + group);
+      let group;
+      if (gs.exists()) group = String(gs.val());
+      else if (lsGet().indexOf(orderKey) >= 0) group = orderKey;   // this device tagged it when it was placed but the tag write didn't land: still count it
+      else { window.neshLoyLog('NO TAG for ' + orderKey.slice(-6) + ' -> not counted'); return; }   // order placed before the reward existed: not counted
+      const cRef = ref(db, 'loyaltyStore/' + ph + '/counted/' + group);
       const min = Number((window.NESH_LOYALTYS || {}).countMin) || 0;   // operator: min items total for an order to count
       return Promise.all([get(cRef), get(ref(db, 'loyaltyStore/' + ph + '/amt/' + group))]).then(([cs, as]) => {
-        if (cs.exists()) return;
-        if (min > 0 && (Number(as.val()) || 0) < min) return;
+        if (cs.exists()) { window.neshLoyLog('already counted ' + group.slice(-6)); return; }
+        let amtNow = Number(as.val()) || 0;
+        // amount missing (not recorded at placement): read it from the order's own items
+        if (!(amtNow > 0) && ord && Array.isArray(ord.items)) amtNow = ord.items.reduce((t, it) => t + (Number(it.price) || 0) * (Number(it.qty) || 0), 0);
+        if (min > 0 && amtNow < min) { window.neshLoyLog('below minimum: amount ' + amtNow + ' < ' + min); return; }
         return set(cRef, Date.now()).then(() => runTransaction(ref(db, 'loyaltyStore/' + ph + '/count'), n => (n || 0) + 1));
       });
-    }).catch(() => { delete checked[orderKey]; });
+    }).catch(e => { window.neshLoyLog('COUNT FAILED: ' + neshLoyErr(e)); delete checked[orderKey]; });
   };
 })();
 // ---- config + progress listeners ----
@@ -15880,6 +15922,7 @@ payConfirmBtn.addEventListener('click', async () => {
     }
     await set(orderRef, orderPayload);
     orderSaved = true;
+    try { (window.__neshOrderAmt = window.__neshOrderAmt || {})[orderRef.key] = Number(itemsTotal) || 0; } catch (e) {}   // loyalty: must be set BEFORE lastOrder (the loyalty poller reads it when lastOrder changes)
     state.lastOrder = { restId: r.id, orderKey: orderRef.key, orderNumber, restName: r.name, businessType: r.businessType };
     try { localStorage.setItem('asfood_last_order', JSON.stringify(state.lastOrder)); } catch (e) {}
     window.neshTip = 0; try { renderTipUI(); } catch (e) {}   // tip is per-order
