@@ -14997,17 +14997,16 @@ async function neshNativeUpiPay() {
   if (onl) onl.disabled = true;
   let res = null;
   try {
-    const url = 'upi://pay?pa=' + encodeURIComponent(r.gpayNumber) +
+    const url = 'upi://pay?pa=' + encodeURIComponent(String(r.gpayNumber).trim()) +
       '&pn=' + encodeURIComponent(r.name || 'Restaurant') +
       '&am=' + amt.toFixed(2) +
-      '&cu=INR&tn=' + encodeURIComponent('Order at ' + (r.name || 'Restaurant')) +
-      '&tr=' + encodeURIComponent('NESH' + Date.now());
+      '&cu=INR';
     res = await NU.pay({ url: url });
   } catch (e) { res = { status: 'error' }; }
   neshUpiBusy = false;
   try { cpSyncBar(); } catch (e) {}   // re-enables the Pay Online button
   const st = res && res.status;
-  if (st === 'success' || st === 'pending' || st === 'unknown') {
+  if (st === 'success' || st === 'pending') {
     window.__neshUpiPaid = { status: st === 'success' ? 'success' : 'pending', amt: amt, txnId: (res && res.txnId) || '', txnRef: (res && res.txnRef) || '', at: Date.now() };
     neshUpiFinish();
   } else if (st === 'failure') {
@@ -15036,10 +15035,10 @@ function setPaymentMethod(method) {
     gpayScannerBox.style.display = 'block';
     gpayNumberText.textContent = "UPI ID: " + r.gpayNumber;
     const cartTotal = Math.max(0, currentCartItemsTotal() + currentPlatformFee() + currentDeliveryFee() - currentCouponDiscount()) + currentRainSurgeAmount() + currentTipAmount();
-    const upiUrl = "upi://pay?pa=" + encodeURIComponent(r.gpayNumber) +
+    const upiUrl = "upi://pay?pa=" + encodeURIComponent(String(r.gpayNumber).trim()) +
       "&pn=" + encodeURIComponent(r.name || 'Restaurant') +
-      "&am=" + encodeURIComponent(cartTotal) +
-      "&cu=INR&tn=" + encodeURIComponent("Order at " + (r.name || 'Restaurant'));
+      "&am=" + (Math.round(cartTotal * 100) / 100).toFixed(2) +
+      "&cu=INR";
     gpayQrImg.src = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(upiUrl);
     gpayPaidCheckbox.checked = false;
   } else {
