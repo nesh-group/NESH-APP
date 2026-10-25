@@ -4878,6 +4878,7 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
           </div>
         </div>
       </div>
+      <div style="padding:0 14px 8px;"><button type="button" id="pr-open" style="width:100%;border:1.5px dashed #F2B705;background:#FFF8DC;color:#5a4a1a;font-weight:800;font-size:14px;padding:11px;border-radius:14px;font-family:inherit;display:none;">💌 Ask a friend to pay</button></div>
       <div class="cp-bar">
         <div class="cp-bar-total"><span>To Pay</span><b id="os-bar-total">₹0</b></div>
         <button type="button" class="cp-pay-online" id="cp-pay-online">Pay Online</button>
@@ -5696,6 +5697,7 @@ function neshOpenAppLink(url) {
     if (_lastAppLink.url === url && now - _lastAppLink.t < 4000) return;
     _lastAppLink = { url, t: now };
     const q = new URL(url).searchParams;
+    if (q.get('pay') && window.neshOpenPay) { window.neshOpenPay(q.get('pay')); return; }
     const shop = q.get('shop');
     if (!shop) return;
     pendingShopLinkId = shop;
@@ -16199,7 +16201,7 @@ payConfirmBtn.addEventListener('click', async () => {
       orderNumber,
       status: isNeshStore ? 'pending_assignment' : (selectedPaymentMethod === 'gpay' ? ((window.__neshUpiPaid && window.__neshUpiPaid.status === 'success') ? "pending" : "awaiting_payment") : "pending"),
       createdAt: Date.now(),
-      customerName: state.user?.name || "Guest",
+      customerName: (window.__neshPayFor && window.__neshPayFor.name) || state.user?.name || "Guest",
       customerPhone: pc.contact,
       // Logged-in account number: order-status pushes (confirmed / ready / delivered) look the
       // device token up by THIS, because customerPhone above is only the delivery contact typed in
@@ -16249,7 +16251,12 @@ payConfirmBtn.addEventListener('click', async () => {
       const waived = deliveryFeeBeforeFree();
       if (waived > 0) { orderPayload.freeDelivery = true; orderPayload.deliveryFeeWaived = waived; }
     }
+    if (window.__neshPayFor) { const P = window.__neshPayFor;
+      orderPayload.customerAccount = P.account || ''; orderPayload.customerAddress = pc.text || '';
+      orderPayload.paidByName = (state.user && state.user.name) || ''; orderPayload.paidByPhone = (state.user && state.user.number) || '';
+      orderPayload.payRequestId = P.id; if (P.msg) orderPayload.giftMessage = P.msg; }
     await set(orderRef, orderPayload);
+    try { if (window.__neshPayFor) { const P = window.__neshPayFor; window.__neshPayFor = null; window.neshPayDone && window.neshPayDone(P.id, orderRef.key); } } catch (e) {}
     orderSaved = true;
     window.__neshUpiPaid = null;
     try { (window.__neshOrderAmt = window.__neshOrderAmt || {})[orderRef.key] = Number(itemsTotal) || 0; } catch (e) {}   // loyalty: must be set BEFORE lastOrder (the loyalty poller reads it when lastOrder changes)
@@ -19108,6 +19115,84 @@ if ('serviceWorker' in navigator) {
       });
     }
   });
+})();
+</script>
+<style id="pr-css">
+#pr-modal,#pr-view{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center}
+#pr-modal.on,#pr-view.on{display:flex}
+.pr-sheet{background:#fff;width:100%;max-width:430px;border-radius:22px 22px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));max-height:88vh;overflow:auto;font-family:'Poppins','Inter',sans-serif;color:#2B2410}
+.pr-sheet h3{margin:0 0 4px;font-size:18px}.pr-sheet p{margin:0 0 10px;font-size:13px;color:#7a6a3a}
+.pr-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.pr-chip{border:1.5px solid #e6d9b8;background:#fff;border-radius:999px;padding:8px 12px;font-size:13px;font-weight:600;font-family:inherit;color:#5a4a1a}
+.pr-sheet textarea{width:100%;box-sizing:border-box;border:1.5px solid #e6d9b8;border-radius:12px;padding:10px;font:inherit;font-size:14px;min-height:64px;resize:none}
+.pr-btn{width:100%;border:0;background:#2B2410;color:#FFD54A;font-weight:800;font-size:15px;padding:13px;border-radius:14px;margin-top:10px;font-family:inherit}
+.pr-btn.alt{background:#fff;color:#7a6a3a;border:1.5px solid #e6d9b8}
+.pr-msg{background:#FFF8DC;border-radius:14px;padding:12px;font-size:14px;font-weight:600;margin-bottom:10px}
+.pr-it{display:flex;justify-content:space-between;font-size:13.5px;padding:4px 0}
+</style>
+<div id="pr-modal"><div class="pr-sheet"><h3>💌 Ask a friend to pay</h3><p>Pick a message or write your own. Your friend pays, the order comes to <b>your</b> address.</p><input id="pr-title" maxlength="50" placeholder="Card title, e.g. Treat me today 😋 (optional)" style="width:100%;box-sizing:border-box;border:1.5px solid #e6d9b8;border-radius:12px;padding:10px;font:inherit;font-size:14px;font-weight:700;margin-bottom:10px"><div class="pr-chips" id="pr-chips"></div><textarea id="pr-text" maxlength="120" placeholder="Write a message (optional)"></textarea><button class="pr-btn" id="pr-send">Share on WhatsApp</button><button class="pr-btn alt" id="pr-cancel">Cancel</button></div></div>
+<div id="pr-view"><div class="pr-sheet" id="pr-body"></div></div>
+<script id="pr-js">
+(function(){
+var $=function(i){return document.getElementById(i)},E=function(x){return escapeHtml(String(x==null?'':x))};
+var BASE='https://nesh-group.github.io/NESH-APP/',PREVIEW='https://shop-preview.raise3715.workers.dev/',PREVIEW_ON=false; // set PREVIEW_ON=true AFTER deploying pay-preview-worker.js
+var CH=['😋 Enikku vishakkunnu, ithu pay cheyyamo?','🙏 Salary varum vare, ithu ente vaka pay cheyyumo?','🎂 Ente birthday aanu, treat tharumo?','❤️ Ninte special gift enikku, please!','😄 Ninte treat ippo venam!'];
+function cnt(){var c=state.cart||{};return Object.keys(c).filter(function(k){return c[k]>0}).length}
+function sync(){var b=$('pr-open'),r=state.selectedRestaurant;if(b)b.style.display=(r&&r.gpayNumber&&cnt()&&!window.__neshPayFor)?'':'none'}
+setInterval(sync,700);
+$('pr-open').onclick=function(){
+  var r=state.selectedRestaurant;if(!r||!r.gpayNumber)return;
+  if(typeof pendingLocation.lat!=='number'||!locLandmarkInput.value.trim()||digitsOnly(locContactInput.value).length<10){showInfoModal('Add your address first','Please set your delivery location, landmark and contact number above, then ask a friend to pay.');return}
+  var h='';CH.forEach(function(m,i){h+='<button type="button" class="pr-chip" data-i="'+i+'">'+E(m)+'</button>'});
+  $('pr-chips').innerHTML=h;$('pr-text').value='';$('pr-title').value='';$('pr-modal').classList.add('on')};
+$('pr-chips').onclick=function(e){var b=e.target.closest('.pr-chip');if(b)$('pr-text').value=CH[+b.dataset.i]};
+$('pr-cancel').onclick=function(){$('pr-modal').classList.remove('on')};
+$('pr-send').onclick=async function(){
+  var r=state.selectedRestaurant,f=window.fb,btn=$('pr-send');if(!r)return;btn.disabled=true;btn.textContent='Creating link…';
+  try{
+    var d={restId:r.id,restName:r.name||'',cart:state.cart,grams:state.cartGrams||{},sizes:state.cartSizes||{},msg:$('pr-text').value.trim().slice(0,120),title:$('pr-title').value.trim().slice(0,50),
+      fromName:(state.user&&state.user.name)||'',fromAccount:(state.user&&state.user.number)||'',status:'open',createdAt:Date.now(),
+      loc:{text:pendingLocation.text,lat:pendingLocation.lat,lng:pendingLocation.lng,place:locPlaceInput.value.trim(),landmark:locLandmarkInput.value.trim(),contact:digitsOnly(locContactInput.value)}};
+    var rf=f.push(f.ref(f.db,'payRequests'));await f.set(rf,d);
+    try{var a=JSON.parse(localStorage.getItem('nesh_pr')||'[]');a.push(rf.key);localStorage.setItem('nesh_pr',JSON.stringify(a.slice(-10)))}catch(e){}
+    var items=r.items||[],ks=Object.keys(state.cart||{}).filter(function(k){return state.cart[k]>0}),img='',names=[];
+    ks.forEach(function(k){var i=items.find(function(x){return x&&x.id===k});if(!i)return;if(!img&&/^https?:/.test(i.image||''))img=i.image;if(names.length<3)names.push(state.cart[k]+'× '+i.name)});
+    if(!img&&/^https?:/.test(r.image||''))img=r.image;
+    try{await f.set(f.ref(f.db,'payPreview/'+rf.key),{fromName:d.fromName,title:d.title,msg:d.msg,restName:d.restName,img:img,items:names.join(', '),at:Date.now()})}catch(e){}
+    var link=(PREVIEW_ON?PREVIEW:BASE)+'?pay='+rf.key,text=(d.title?d.title+'\n':'')+(d.msg?d.msg+'\n\n':'')+'💌 '+(d.fromName||'Your friend')+' needs your help to pay for an order from '+d.restName+'. Tap to see & pay:\n'+link;
+    $('pr-modal').classList.remove('on');
+    var cap=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Share,ttl='Help me pay on NESH';
+    try{if(cap&&cap.share)await cap.share({title:ttl,text:text,dialogTitle:'Send to a friend'});else if(navigator.share)await navigator.share({title:ttl,text:text});else window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank')}catch(e){}
+  }catch(e){showInfoModal('Could not create link','Please check your internet and try again.')}
+  btn.disabled=false;btn.textContent='Share on WhatsApp'};
+function unlock(){window.__neshPayFor=null;try{payCodBtn.style.display='';[locPlaceInput,locLandmarkInput,locContactInput].forEach(function(i){i.readOnly=false})}catch(e){}}
+var _co=closeOrderSummary;closeOrderSummary=function(){var r=_co.apply(this,arguments);if(window.__neshPayFor)unlock();return r};
+window.neshPayDone=function(id,key){try{window.fb.update(window.fb.ref(window.fb.db,'payRequests/'+id),{status:'ordered',orderKey:key,paidAt:Date.now(),paidByName:(state.user&&state.user.name)||''})}catch(e){}unlock()};
+function close(){$('pr-view').classList.remove('on')}
+window.neshOpenPay=async function(id){
+  var t=0;await new Promise(function(ok){var iv=setInterval(function(){if((state.user&&typeof RESTAURANTS!=='undefined'&&RESTAURANTS.length)||++t>100){clearInterval(iv);ok()}},600)});
+  if(!state.user)return;var f=window.fb,body=$('pr-body');$('pr-view').classList.add('on');body.innerHTML='<p>Loading…</p>';
+  try{var sn=await f.get(f.ref(f.db,'payRequests/'+id)),d=sn.val();
+    if(!d){body.innerHTML='<h3>Link not found</h3><p>This request is no longer available.</p><button class="pr-btn" id="pr-x">OK</button>';$('pr-x').onclick=close;return}
+    if(d.status!=='open'){body.innerHTML='<h3>Already taken care of 🎉</h3><p>This order has already been paid.</p><button class="pr-btn" id="pr-x">OK</button>';$('pr-x').onclick=close;return}
+    var rest=RESTAURANTS.find(function(x){return x.id===d.restId});
+    if(!rest||!rest.gpayNumber){body.innerHTML='<h3>Shop unavailable</h3><p>This shop can\'t take online payment right now.</p><button class="pr-btn" id="pr-x">OK</button>';$('pr-x').onclick=close;return}
+    var rows='';Object.keys(d.cart||{}).forEach(function(k){var q=d.cart[k];var it=(rest.items||[]).find(function(i){return i&&i.id===k});if(it&&q>0)rows+='<div class="pr-it"><span>'+E(it.name)+' × '+q+'</span></div>'});
+    body.innerHTML='<h3>'+(d.title?E(d.title):'💌 '+E(d.fromName||'A friend')+' needs your help')+'</h3><p>'+E(d.restName)+'</p>'+(d.msg?'<div class="pr-msg">“'+E(d.msg)+'”</div>':'')+rows+'<p style="margin-top:8px">You pay by UPI. It is delivered to '+E(d.fromName||'them')+', you don\'t need to enter any address.</p><button class="pr-btn" id="pr-go">Pay for '+E(d.fromName||'friend')+'</button><button class="pr-btn alt" id="pr-x">Not now</button>';
+    $('pr-x').onclick=close;
+    $('pr-go').onclick=function(){
+      close();var L=d.loc||{};state.selectedRestaurant=rest;state.cart=d.cart||{};state.cartGrams=d.grams||{};state.cartSizes=d.sizes||{};
+      window.__neshPayFor={id:id,name:d.fromName,account:d.fromAccount,msg:d.msg};
+      try{renderMenu();showScreen('menu')}catch(e){}openOrderSummary();
+      var fill=function(){Object.assign(pendingLocation,{text:L.text,lat:L.lat,lng:L.lng});locPlaceInput.value=L.place||'';locLandmarkInput.value=L.landmark||'';locContactInput.value=L.contact||'';
+        [locPlaceInput,locLandmarkInput,locContactInput].forEach(function(i){i.readOnly=true});payCodBtn.style.display='none';try{cpLive(true)}catch(e){}setPaymentMethod('gpay')};
+      fill();setTimeout(fill,400)};
+  }catch(e){body.innerHTML='<h3>Could not load</h3><p>Check your internet and try again.</p><button class="pr-btn" id="pr-x">OK</button>';$('pr-x').onclick=close}};
+try{var pid=new URLSearchParams(location.search).get('pay');if(pid){history.replaceState({},'',location.pathname);window.neshOpenPay(pid)}}catch(e){}
+// requester: tell them when a friend has paid
+setTimeout(async function(){try{var a=JSON.parse(localStorage.getItem('nesh_pr')||'[]'),f=window.fb,keep=[];
+  for(var i=0;i<a.length;i++){var d=(await f.get(f.ref(f.db,'payRequests/'+a[i]))).val();if(d&&d.status==='ordered'){showInfoModal('🎉 '+(d.paidByName||'Your friend')+' paid!','Your order from '+(d.restName||'the shop')+' is on its way.')}else if(d&&d.status==='open')keep.push(a[i])}
+  localStorage.setItem('nesh_pr',JSON.stringify(keep))}catch(e){}},8000);
 })();
 </script>
 </body>
