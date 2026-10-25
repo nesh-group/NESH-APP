@@ -565,7 +565,7 @@ jobs:
 
           import android.app.Activity;
           import android.content.Intent;
-          import android.content.pm.PackageManager;
+          import android.content.ActivityNotFoundException;
           import android.net.Uri;
           import androidx.activity.ComponentActivity;
           import androidx.activity.result.ActivityResultLauncher;
@@ -659,13 +659,11 @@ jobs:
                           return;
                       }
                       Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                      PackageManager pm = getContext().getPackageManager();
-                      if (pm.queryIntentActivities(i, 0).isEmpty()) {
-                          fail(call, "no_app");
-                          return;
-                      }
                       pending = call;
                       launcher.launch(Intent.createChooser(i, "Pay with"));
+                  } catch (ActivityNotFoundException e) {
+                      pending = null;
+                      fail(call, "no_app");
                   } catch (Throwable t) {
                       pending = null;
                       fail(call, "error");
