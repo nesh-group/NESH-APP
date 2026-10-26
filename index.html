@@ -15,6 +15,8 @@
     transition:opacity .35s ease, visibility .35s ease;
   }
   #nesh-splash:not(.show){ opacity:0; visibility:hidden; pointer-events:none; }
+  /* once the splash is gone, stop its infinite animations (logo pulse, dots, arrow) so they don't keep the GPU/CPU busy behind the app */
+  #nesh-splash:not(.show), #nesh-splash:not(.show) *{ animation:none !important; }
   #nesh-splash .sp-top{ margin-top:17vh; display:flex; flex-direction:column; align-items:center; }
   #nesh-splash.no-loc .sp-top{ visibility:hidden; }
   /* no "Locating..." text: centre logo + tagline on the screen */
@@ -1963,13 +1965,13 @@
   // jumps to a wrong place first. onDone(pos) fires once with the most accurate fix.
   window.neshFastFix = function (o) {
     o = o || {};
-    const GOOD = o.good || 10, SOFT = o.soft || 6000, MID = o.mid || 10000, HARD = o.hard || 20000;
+    const GOOD = o.good || 5, SOFT = o.soft || 5000, MID = o.mid || 9000, HARD = o.hard || 20000;   // exact (<= 5 m) at once; else 10 m after 5 s, 25 m after 9 s
     const geo = navigator.geolocation;
     let best = null, done = false, watchId = null, lastErr = null; const timers = [];
     const acc = p => { const a = Number(p && p.coords && p.coords.accuracy); return isFinite(a) && a > 0 ? a : 99999; };
     function finish(maxAcc) {
       if (done) return;
-      if (best && acc(best) > maxAcc) return;   // not accurate enough yet - keep waiting
+      if (!best || acc(best) > maxAcc) return;   // no fix yet, or not accurate enough yet - keep waiting (giveUp() at HARD handles the no-fix case)
       done = true;
       timers.forEach(clearTimeout);
       try { if (watchId != null) geo.clearWatch(watchId); } catch (e) {}
@@ -1978,26 +1980,38 @@
     function giveUp() {
       if (done) return;
       if (best && acc(best) <= 100) { finish(100); return; }
-      done = true;
       timers.forEach(clearTimeout);
       try { if (watchId != null) geo.clearWatch(watchId); } catch (e) {}
-      try { if (o.onFail) o.onFail(lastErr || { code: 3, message: 'timeout' }); } catch (e) {}
+      watchId = null;
+      const failNow = (e) => { if (done) return; done = true; try { if (o.onFail) o.onFail(e || lastErr || { code: 3, message: 'timeout' }); } catch (x) {} };
+      const useLoose = (p) => { if (done) return; done = true; try { p.approx = true; } catch (x) {} try { if (o.onDone) o.onDone(p); } catch (x) {} };
+      // Location is ON but GPS never got within 100 m (indoors / weak signal / battery saver).
+      // Do NOT report that as "location off": use the best loose fix we have (the pin can still be adjusted), else one quick network fix.
+      if (best && acc(best) <= 3000) { useLoose(best); return; }
+      if (lastErr && (lastErr.code === 1 || lastErr.code === 2)) { failNow(lastErr); return; }   // permission denied / services off: a real failure
+      try {
+        geo.getCurrentPosition(
+          p => { if (p && p.coords) useLoose(p); else failNow(); },
+          e => { failNow(e && (e.code === 1 || e.code === 2) ? e : null); },
+          { enableHighAccuracy: false, timeout: 6000, maximumAge: 60000 }
+        );
+      } catch (e) { failNow(); }
     }
     function consider(p) {
       if (done || !p || !p.coords) return;
-      if (p.timestamp && Date.now() - p.timestamp > 5000) return;   // stale / cached fix - ignore
+      if (p.timestamp && Date.now() - p.timestamp > 15000) return;   // really old cached fix - ignore (30 s, so a phone clock that is a few seconds off never rejects every real GPS fix)
       if (!best || acc(p) < acc(best)) {
         best = p;
-        if (acc(p) <= 40) { try { if (o.onUpdate) o.onUpdate(p); } catch (e) {} }
+        if (acc(p) <= 20) { try { if (o.onUpdate) o.onUpdate(p); } catch (e) {} }
       }
       if (acc(best) <= GOOD) finish(GOOD);
     }
-    function onErr(e) { lastErr = e; if (e && e.code === 1) { done = true; timers.forEach(clearTimeout); try { if (watchId != null) geo.clearWatch(watchId); } catch (x) {} try { if (o.onFail) o.onFail(e); } catch (x) {} } }   // permission denied: stop straight away
+    function onErr(e) { lastErr = e; if (e && (e.code === 1 || (e.code === 2 && /not enabled|disabled|turned off/i.test(String(e.message || ''))))) { done = true; timers.forEach(clearTimeout); try { if (watchId != null) geo.clearWatch(watchId); } catch (x) {} try { if (o.onFail) o.onFail(e); } catch (x) {} } }   // permission denied: stop straight away
     if (!geo) { onErr({ code: 2, message: 'no geolocation' }); return function () {}; }
     try { watchId = geo.watchPosition(consider, onErr, { enableHighAccuracy: true, timeout: HARD, maximumAge: 0 }); } catch (e) { onErr(e); }
     try { geo.getCurrentPosition(consider, function () {}, { enableHighAccuracy: true, timeout: HARD, maximumAge: 0 }); } catch (e) {}
-    timers.push(setTimeout(() => finish(20), SOFT));
-    timers.push(setTimeout(() => finish(40), MID));
+    timers.push(setTimeout(() => finish(10), SOFT));
+    timers.push(setTimeout(() => finish(25), MID));
     timers.push(setTimeout(giveUp, HARD));
     return function cancel() { if (done) return; done = true; timers.forEach(clearTimeout); try { if (watchId != null) geo.clearWatch(watchId); } catch (e) {} };
   };
@@ -6502,12 +6516,25 @@ function neshRenderTrending() {
     grid.appendChild(c);
   });
 }
+function neshHasOffers() {
+  // Same rules as neshGetOffers() but stops at the first offer (no full scan + sort on every screen change).
+  const list = RESTAURANTS || [];
+  for (let k = 0; k < list.length; k++) {
+    const r = list[k];
+    if (!r || (r.businessType !== 'groceries' && r.businessType !== 'online_shop')) continue;
+    try { if (r.shopUnavailable || getShopClosedInfo(r).closed) continue; } catch (e) {}
+    try { if (!shopAllowedAtPoint(r.id, state.customerPos)) continue; } catch (e) {}
+    const its = r.items || [];
+    for (let j = 0; j < its.length; j++) { const it = its[j]; if (Number(it.offerMrp) > Number(it.price) && Number(it.price) > 0) return true; }
+  }
+  return false;
+}
 function neshSyncBottomNav() {
   const nav = document.getElementById('nesh-bnav');
   if (!nav) return;
   const act = document.querySelector('.screen.active');
   const id = act ? act.id : '';
-  const has = neshGetOffers().length > 0;
+  const has = neshHasOffers();
   // Trending screen with no offers left (e.g. the last offer ended) -> back to the main screen
   if (id === 'screen-trending' && !has) { goToCategoryScreen(); return; }
   const show = has && (id === 'screen-category' || id === 'screen-trending');
@@ -12392,7 +12419,10 @@ function renderMenu() {
   itemListEl.innerHTML = "";
   menuNoResults.style.display = items.length === 0 ? 'block' : 'none';
   itemListLabel.style.display = items.length === 0 ? 'none' : 'block';
-  items.forEach(it => {
+  // Speed: build the first screenful of cards at once, the rest in small batches on the next frames,
+  // so opening Groceries / a shop never freezes while hundreds of cards + photos are created.
+  const menuGen = window.__neshMenuGen = (window.__neshMenuGen || 0) + 1;
+  const buildCard = it => {
     try {
       const qty = state.cart[it.id] || 0;
       const card = document.createElement('div');
@@ -12400,7 +12430,7 @@ function renderMenu() {
       card.dataset.itemId = it.id;
       card.innerHTML = `
         <div class="item-img-wrap">
-          <img class="item-img" src="${it.image || ''}" alt="${it.name}" loading="lazy" onerror="this.onerror=null;this.src='icon-192.png';this.classList.add('img-fallback');" />
+          <img class="item-img" src="${it.image || ''}" alt="${it.name}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='icon-192.png';this.classList.add('img-fallback');" />
           <span class="item-veg"><span></span></span>
           <span class="item-rating2">${itemRatingLabel(it)}</span>
           ${neshIsOffer(it) ? `<span style="position:absolute;top:6px;left:6px;background:#F2560C;color:#fff;font:700 10px/1 Inter,sans-serif;padding:4px 7px;border-radius:999px;z-index:2;">🔥 Trending</span>` : ''}
@@ -12446,16 +12476,35 @@ function renderMenu() {
         renderSizeChips(sizeRow, it, () => {}); // qty/price don't change on size switch, just remember the pick
       }
       card.querySelector('.item-img-wrap').addEventListener('click', () => openItemDetail(it.id));
-      itemListEl.appendChild(card);
+      return card;
     } catch (e) {
       console.error('Skipped one broken menu item while rendering:', it && it.id, e);
     }
-  });
+    return null;
+  };
+  const addBatch = (from, to) => {
+    const frag = document.createDocumentFragment();
+    for (let i = from; i < to && i < items.length; i++) { const c = buildCard(items[i]); if (c) frag.appendChild(c); }
+    itemListEl.appendChild(frag);
+  };
+  const FIRST_N = 14, BATCH_N = 20;
+  addBatch(0, FIRST_N);
+  if (items.length > FIRST_N) {
+    let pos = FIRST_N;
+    const step = () => {
+      if (window.__neshMenuGen !== menuGen) return;   // a newer render started (search / category tap): stop this one
+      addBatch(pos, pos + BATCH_N); pos += BATCH_N;
+      if (pos < items.length) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
   updateCartBar();
 }
+let _menuSearchT = null;
 menuSearchInput.addEventListener('input', () => {
   state.menuSearch = menuSearchInput.value;
-  renderMenu();
+  clearTimeout(_menuSearchT);
+  _menuSearchT = setTimeout(renderMenu, 180);   // not on every keystroke
 });
 
 // Renders a row of tappable size chips (S, M, L, 2XL, or numeric sizes like
@@ -17559,9 +17608,9 @@ function showLocationOffPopup(errCode, opts) {
   if (locOffLaterBtn) { locOffLaterBtn.dataset.mode = taxiMode ? 'taxi' : 'dismiss'; locOffLaterBtn.textContent = taxiMode ? 'Not now — select manually' : 'Not now'; }
   locOffHelp.style.display = 'none';
   locOffEnableBtn.dataset.mode = '';
-  neshSetLocPopupTexts(false);
+  neshSetLocPopupTexts(false, errCode === 3);
   locOffEnableBtn.disabled = false;
-  locOffEnableBtn.textContent = 'Turn on location';
+  locOffEnableBtn.textContent = errCode === 3 ? 'Try again' : 'Turn on location';
   if (errCode === 1) { locOffHelp.innerHTML = locBlockedHelpHtml(); locOffHelp.style.display = 'block'; locOffEnableBtn.textContent = 'Try again'; }
   // Turn-on-location popup: only "Turn on location / Try again" (no last-location or search buttons). Taxi keeps its "Not now" button.
   try { if (locOffLastBtn) locOffLastBtn.style.display = 'none'; if (locOffLaterBtn) locOffLaterBtn.style.display = ''; } catch (e) {}
@@ -17577,8 +17626,14 @@ function showLocationOffPopup(errCode, opts) {
     }
   } catch (e) {}
 }
-function neshSetLocPopupTexts(open) {
+function neshSetLocPopupTexts(open, slow) {
   const t = document.getElementById('loc-off-title'), m = document.getElementById('loc-off-msg'), sb = document.getElementById('loc-off-sub');
+  if (slow) {   // Location IS on, the GPS just has not got a fix yet - never tell the customer to "turn on" something that is already on
+    if (t) t.textContent = "Can't find you yet";
+    if (m) m.textContent = 'Location is on, but the GPS signal is weak. Move near a window or outdoors and tap Try again, or search your location instead.';
+    if (sb) sb.style.display = 'none';
+    return;
+  }
   if (t) t.textContent = open ? 'Choose your location' : 'Turn on location';
   if (m) m.textContent = open ? 'Where should we show shops and delivery for?' : 'Please turn on your location to find nearby shops, taxis and delivery.';
   if (sb) sb.style.display = open ? 'none' : '';
@@ -17786,13 +17841,14 @@ function tryEnableLocationCore(silent) {
       if (silent) return;
       locOffEnableBtn.disabled = false;
       locOffEnableBtn.textContent = 'Try again';
+      neshSetLocPopupTexts(false, !!(err && err.code === 3));
       const isNativeApp = !!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation);
       locOffHelp.innerHTML = (err && err.code === 1)
         ? (isNativeApp ? '<b>Permission is blocked.</b> Go to phone Settings → Apps → this app → Permissions → Location → <b>Allow</b>. Then come back and tap <b>Try again</b>.' : locBlockedHelpHtml())
         : (err && err.code === 3)
-          ? '<b>Still finding your location.</b> Make sure <b>Location</b> is on, then tap <b>Try again</b> (GPS can take a few seconds outdoors).'
+          ? ''
           : '<b>GPS is off.</b> Turn on the <b>Location</b> icon in your phone\'s notification bar (or Settings → Location → On). Then come back and tap <b>Try again</b>.';
-      locOffHelp.style.display = 'block';
+      locOffHelp.style.display = (err && err.code === 3) ? 'none' : 'block';
       if (err && err.code === 3) return;   // slow fix, not a settings problem — don't throw the customer into Settings
       // Native app: jump straight to the phone's location settings if available.
       try {
