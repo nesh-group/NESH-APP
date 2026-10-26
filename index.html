@@ -5092,6 +5092,17 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
           }
           return obj;
         };
+        // Shop-set price ranges (Delivery Charges -> free-delivery ranges): items priced in [min, max) get +add on the price the
+        // customer pays; that extra funds the free delivery. The shop is still paid its own price (shopRate -> shopPrice on the order).
+        // Only normal per-piece items of ordinary shops (not Go Series / groceries, and not items with an operator customer price).
+        const priceTiers = (businessType !== 'groceries' && !v.goSeries && v.deliveryCharges && v.deliveryCharges.freeTiers)
+          ? (Array.isArray(v.deliveryCharges.freeTiers) ? v.deliveryCharges.freeTiers : Object.values(v.deliveryCharges.freeTiers)) : [];
+        const priceBump = (m) => {
+          if (!priceTiers.length || Number(m.customerPrice) > 0 || (m.unit && m.unit !== 'piece')) return 0;
+          const p = Number(m.price) || 0;
+          const t = priceTiers.find(t => t && p >= (Number(t.min) || 0) && (t.max == null || p < Number(t.max)));
+          return (t && Number(t.add) > 0) ? Math.round(Number(t.add)) : 0;
+        };
         const menuItems = v.menu
           ? Object.keys(v.menu)
               .filter(k => !v.menu[k].unavailable)
@@ -5107,8 +5118,8 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
                 // price (kept as shopRate and stamped on the order as shopPrice).
                 price: (Number(v.menu[k].customerPrice) > 0 && businessType !== 'groceries')
                   ? Number(v.menu[k].customerPrice)
-                  : (Number(v.menu[k].price) || 0) + ((v.goSeries || businessType === 'groceries') ? (Number(window.GO_SERIES_ITEM_MARKUP) || 0) : 0),
-                shopRate: (Number(v.menu[k].customerPrice) > 0 && businessType !== 'groceries') ? (Number(v.menu[k].price) || 0) : undefined,
+                  : (Number(v.menu[k].price) || 0) + ((v.goSeries || businessType === 'groceries') ? (Number(window.GO_SERIES_ITEM_MARKUP) || 0) : 0) + priceBump(v.menu[k]),
+                shopRate: (Number(v.menu[k].customerPrice) > 0 && businessType !== 'groceries') ? (Number(v.menu[k].price) || 0) : (priceBump(v.menu[k]) > 0 ? (Number(v.menu[k].price) || 0) : undefined),
                 unit: v.menu[k].unit || 'piece', // 'piece' | 'gram' | 'kg' — set by the shop; for gram/kg, `price` is the rate per gram/kg, not a flat price
                 sizes: Array.isArray(v.menu[k].sizes) ? v.menu[k].sizes.filter(Boolean) : [], // e.g. ['S','M','L','XL','2XL'] — only set on "Sports" shop items
                 image: v.menu[k].photo || itemPhotoSet[di % itemPhotoSet.length],
