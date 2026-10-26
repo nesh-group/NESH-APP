@@ -1952,37 +1952,53 @@
     };
   })();
 
-  // ---- Fast + accurate "where is the customer right now" ----
-  // Runs a live high-accuracy GPS watch AND a quick network fix at the same time, and uses the BEST fix seen:
-  //   * accuracy <= 30 m          -> accept immediately (usually 1-3 s outdoors)
-  //   * after 4 s                 -> accept the best fix if it is <= 200 m
-  //   * after 6.5 s               -> accept whatever best fix exists (before the 8 s splash safety timer)
-  //   * after 15 s with no fix    -> onFail(lastError)
-  // onUpdate(pos) fires every time a better fix arrives (use it to move a pin early); onDone(pos) fires once.
+  // ---- Fast + EXACT "where is the customer standing right now" ----
+  // Only REAL GPS fixes are used. Cached / Wi-Fi / cell-tower (network) positions are never used, because
+  // those are what put the pin hundreds of metres away from where the customer actually is.
+  //   * accuracy <= 10 m          -> accept immediately (usually 2-5 s outdoors)
+  //   * after 6 s                 -> accept best fix if it is <= 20 m
+  //   * after 10 s                -> accept best fix if it is <= 40 m
+  //   * after 20 s                -> accept best fix if it is <= 100 m, otherwise onFail (timeout) - never a wrong guess
+  // Fixes older than 5 s are ignored. onUpdate(pos) fires only for good fixes (<= 40 m), so the pin never
+  // jumps to a wrong place first. onDone(pos) fires once with the most accurate fix.
   window.neshFastFix = function (o) {
     o = o || {};
-    const GOOD = o.good || 30, SOFT = o.soft || 4000, MID = o.mid || 6500, HARD = o.hard || 15000;
+    const GOOD = o.good || 10, SOFT = o.soft || 6000, MID = o.mid || 10000, HARD = o.hard || 20000;
     const geo = navigator.geolocation;
     let best = null, done = false, watchId = null, lastErr = null; const timers = [];
     const acc = p => { const a = Number(p && p.coords && p.coords.accuracy); return isFinite(a) && a > 0 ? a : 99999; };
-    function finish() {
-      if (done) return; done = true;
+    function finish(maxAcc) {
+      if (done) return;
+      if (best && acc(best) > maxAcc) return;   // not accurate enough yet - keep waiting
+      done = true;
       timers.forEach(clearTimeout);
       try { if (watchId != null) geo.clearWatch(watchId); } catch (e) {}
       try { if (best) { if (o.onDone) o.onDone(best); } else if (o.onFail) o.onFail(lastErr || { code: 3, message: 'timeout' }); } catch (e) {}
     }
+    function giveUp() {
+      if (done) return;
+      if (best && acc(best) <= 100) { finish(100); return; }
+      done = true;
+      timers.forEach(clearTimeout);
+      try { if (watchId != null) geo.clearWatch(watchId); } catch (e) {}
+      try { if (o.onFail) o.onFail(lastErr || { code: 3, message: 'timeout' }); } catch (e) {}
+    }
     function consider(p) {
       if (done || !p || !p.coords) return;
-      if (!best || acc(p) < acc(best)) { best = p; try { if (o.onUpdate) o.onUpdate(p); } catch (e) {} }
-      if (acc(best) <= GOOD) finish();
+      if (p.timestamp && Date.now() - p.timestamp > 5000) return;   // stale / cached fix - ignore
+      if (!best || acc(p) < acc(best)) {
+        best = p;
+        if (acc(p) <= 40) { try { if (o.onUpdate) o.onUpdate(p); } catch (e) {} }
+      }
+      if (acc(best) <= GOOD) finish(GOOD);
     }
-    function onErr(e) { lastErr = e; if (e && e.code === 1) finish(); }   // permission denied: stop straight away
-    if (!geo) { onErr({ code: 2, message: 'no geolocation' }); finish(); return function () {}; }
+    function onErr(e) { lastErr = e; if (e && e.code === 1) { done = true; timers.forEach(clearTimeout); try { if (watchId != null) geo.clearWatch(watchId); } catch (x) {} try { if (o.onFail) o.onFail(e); } catch (x) {} } }   // permission denied: stop straight away
+    if (!geo) { onErr({ code: 2, message: 'no geolocation' }); return function () {}; }
     try { watchId = geo.watchPosition(consider, onErr, { enableHighAccuracy: true, timeout: HARD, maximumAge: 0 }); } catch (e) { onErr(e); }
-    try { geo.getCurrentPosition(consider, onErr, { enableHighAccuracy: false, timeout: 6000, maximumAge: 15000 }); } catch (e) {}
-    timers.push(setTimeout(() => { if (best && acc(best) <= 200) finish(); }, SOFT));
-    timers.push(setTimeout(() => { if (best) finish(); }, MID));
-    timers.push(setTimeout(finish, HARD));
+    try { geo.getCurrentPosition(consider, function () {}, { enableHighAccuracy: true, timeout: HARD, maximumAge: 0 }); } catch (e) {}
+    timers.push(setTimeout(() => finish(20), SOFT));
+    timers.push(setTimeout(() => finish(40), MID));
+    timers.push(setTimeout(giveUp, HARD));
     return function cancel() { if (done) return; done = true; timers.forEach(clearTimeout); try { if (watchId != null) geo.clearWatch(watchId); } catch (e) {} };
   };
 </script>
@@ -5103,9 +5119,13 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
           priceTiers = (v.deliveryCharges && v.deliveryCharges.freeTiers)
             ? (Array.isArray(v.deliveryCharges.freeTiers) ? v.deliveryCharges.freeTiers : Object.values(v.deliveryCharges.freeTiers)) : [];
         } else {
-          const zc = window.ZONE_DELIVERY || {};
-          const zid = Object.keys(zc).find(id => zc[id] && zc[id].shopIds && zc[id].shopIds[child.key] && zc[id].freeTiers && zc[id].freeTiers.length);
-          if (zid) priceTiers = zc[zid].freeTiers;
+          const own = v.martRanges ? (Array.isArray(v.martRanges) ? v.martRanges : Object.values(v.martRanges)) : [];
+          if (own.length) priceTiers = own;   // this shop's own ranges (Operator Panel -> Single shop) win over the zone rule
+          else {
+            const zc = window.ZONE_DELIVERY || {};
+            const zid = Object.keys(zc).find(id => zc[id] && zc[id].shopIds && zc[id].shopIds[child.key] && zc[id].freeTiers && zc[id].freeTiers.length);
+            if (zid) priceTiers = zc[zid].freeTiers;
+          }
         }
         // Operator-set shop commission per price range (Operator Panel -> Shop Delivery Charges): the shop is paid its price MINUS this per item.
         const commissionFor = (m) => {
@@ -5185,6 +5205,7 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
           gpayNumber: v.gpayNumber || "",
           zone: Array.isArray(v.deliveryZone) && v.deliveryZone.length >= 3 ? v.deliveryZone : null,
           deliveryCharges: v.deliveryCharges || null,
+          martRanges: v.martRanges ? (Array.isArray(v.martRanges) ? v.martRanges : Object.values(v.martRanges)).filter(Boolean) : [],   // Go Series / groceries shop's own price ranges
           // Operator Panel → Go Series flag. When true, activeDeliveryCharge()
           // uses the shared Go Series charge (and, below, the Go Series
           // platform fee) instead of this shop's own settings.
@@ -5326,6 +5347,15 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
   // and keeps it current. Exposed on window so the checkout/order-placement
   // code (in the plain <script> below) can read it when building the order
   // summary and placing the order.
+  // Operator-set ONE UPI ID for every shop's online payment (Operator Panel → Online Payment UPI).
+  window.GLOBAL_UPI = '';
+  onValue(ref(db, 'app_config/onlineUpi'), (snapshot) => {
+    const d = snapshot.val();
+    window.GLOBAL_UPI = (d && d.upi) ? String(d.upi).trim() : '';
+    try { if (window.fb && state && state.selectedRestaurant && typeof sync === 'function') sync(); } catch (e) {}
+  });
+  window.effUpi = (r) => window.GLOBAL_UPI || (r && r.gpayNumber) || '';
+
   onValue(ref(db, 'app_config/extraAmount'), (snapshot) => {
     const data = snapshot.val();
     PLATFORM_EXTRA_AMOUNT = (data && Number(data.amount)) || 0;
@@ -5489,6 +5519,9 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
       // currentDeliveryFee code zeroes the fee itself; here isFreeDelivery()
       // handles it so the summary can still show the struck-out charge.
       freeWithinKm: (data && Number(data.freeDeliveryWithinKm)) || 0,
+      // Small order fee: item total below smallCartBelow -> smallCartFee added to the delivery charge (0 = off)
+      smallCartBelow: (data && Number(data.smallCartBelow)) || 0,
+      smallCartFee: (data && Number(data.smallCartFee)) || 0,
     };
     window.GO_SERIES_PLATFORM_FEE = (data && Number(data.platformFee)) || 0;
     window.GO_SERIES_ITEM_MARKUP = (data && Number(data.itemMarkup)) || 0;
@@ -5515,6 +5548,8 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
         perKmFee: Number(c.perKmFee) || 0,
         freeAbove: Number(c.freeAbove) || 0,
         freeWithinKm: Number(c.freeWithinKm) || 0,
+        smallCartBelow: Number(c.smallCartBelow) || 0,
+        smallCartFee: Number(c.smallCartFee) || 0,
         freeTiers: Array.isArray(c.freeTiers) ? c.freeTiers : Object.values(c.freeTiers || {}),
         shopIds: c.shopIds || null,   // which Mart shops the rule covers (null = every Mart shop in the zone)
       };
@@ -12733,10 +12768,12 @@ function updateCartBar() {
     const fillEl = document.getElementById('cart-info-prog-fill');
     const short = minOrderShortfall(r, total);
     const dc = (typeof activeDeliveryCharge === 'function') ? activeDeliveryCharge() : null;
+    // Before checkout there is no delivery pin yet -> use the customer's current location so the free-delivery offer shows here too
+    const barPt = (!state.pendingCheckout && state.customerPos && typeof state.customerPos.lat === 'number') ? state.customerPos : null;
     let freeAbove = dc ? (Number(dc.freeAbove) || 0) : 0;
-    try { const tn = freeTierNeedMin(dc, total); if (tn && (!freeAbove || tn < freeAbove)) freeAbove = tn; } catch (e) {}
+    try { const tn = freeTierNeedMin(dc, total, barPt); if (tn && (!freeAbove || tn < freeAbove)) freeAbove = tn; } catch (e) {}
     let free = false;
-    try { free = isFreeDelivery(); } catch (e) {}
+    try { free = isFreeDelivery(barPt); } catch (e) {}
     let pct = null;
     // Ordering together with other shops (group order): this shop's own free-delivery progress doesn't apply, so don't show it
     let groupOrder = false;
@@ -12763,12 +12800,20 @@ function updateCartBar() {
       titleEl.textContent = "FREE delivery 🎉";
       cartTotalText.textContent = "No delivery charge · Items ₹" + total;
     } else if (freeAbove > 0 && total < freeAbove && !groupOrder) {
-      titleEl.textContent = "Unlock free delivery";
-      cartTotalText.textContent = "Shop for ₹" + (freeAbove - total) + " more";
+      titleEl.textContent = "Add ₹" + (Math.round((freeAbove - total) * 100) / 100) + " more";
+      cartTotalText.textContent = "to get FREE delivery 🛵";
       pct = Math.min(100, (total / freeAbove) * 100);
     } else {
-      titleEl.textContent = "Fast delivery";
-      cartTotalText.textContent = "Delivered to your doorstep";
+      // Not free and nothing left to unlock: show the real delivery charge once the distance is known
+      let feeNow = 0;
+      try { if (!groupOrder && currentDeliveryKm()) feeNow = deliveryFeeBeforeFree(); } catch (e) {}
+      if (feeNow > 0) {
+        titleEl.textContent = "Delivery ₹" + feeNow;
+        cartTotalText.textContent = "Fast delivery · Items ₹" + total;
+      } else {
+        titleEl.textContent = "Fast delivery";
+        cartTotalText.textContent = "Delivered to your doorstep";
+      }
     }
     if (fi && fi.won && !fi.next && short <= 0) cartTotalText.textContent += " · 🎁 " + fi.won.item.name + " FREE";
     // show the free item's photo (+ FREE tag) in the pill while the offer is in play
@@ -13614,8 +13659,8 @@ function deliveryOriginPos() {
   return parseLatLng(r.location);
 }
 
-function currentDeliveryKm() {
-  const pc = state.pendingCheckout;
+function currentDeliveryKm(ptOverride) {
+  const pc = ptOverride || state.pendingCheckout;
   const restPos = deliveryOriginPos();
   if (!pc || typeof pc.lat !== 'number' || typeof pc.lng !== 'number' || !restPos) return null;
   const key = deliveryDistanceKey(restPos, pc);
@@ -13659,7 +13704,12 @@ function activeDeliveryCharge() {
   // NESH Store and every groceries shop always use the operator-set Go
   // Series delivery charge. (For NESH Store the DISTANCE is still measured
   // from the highest-profit shop — see deliveryOriginPos().)
-  if (r.goSeries || r.id === 'NESH_STORE' || r.businessType === 'groceries') return zoneDeliveryCfg(r) || goSeriesCfg;
+  if (r.goSeries || r.id === 'NESH_STORE' || r.businessType === 'groceries') {
+    const cfg = zoneDeliveryCfg(r) || goSeriesCfg;
+    // A Go Series / groceries shop with its own price ranges uses them for the free-km check instead of the zone rule's ranges
+    if (r.martRanges && r.martRanges.length) return Object.assign({}, cfg, { freeTiers: r.martRanges });
+    return cfg;
+  }
   return r.deliveryCharges || null;
 }
 // The operator's whole-zone NESH Mart rule for the zone the customer's pin is in (null = use the global Go Series charge).
@@ -13762,7 +13812,7 @@ function roadKmShared(restPos, pt) {
         if (settled) return; settled = true;
         clearTimeout(backupTimer); clearTimeout(hardStop);
         ctrls.forEach(c => { try { c.abort(); } catch (e) {} });
-        if (typeof km === 'number') { roadCachePut(restPos, pt, km); roadLateApply(restPos, pt, km); }
+        if (typeof km === 'number') { roadCachePut(restPos, pt, km); roadLateApply(restPos, pt, km); try { updateCartBar(); } catch (e) {} }
         resolve(typeof km === 'number' ? km : null);
       };
       const hardStop = setTimeout(() => finish(null), 7000);
@@ -13884,18 +13934,27 @@ async function ensureRoadDistance() {
   roadDistanceUiRefresh();
 }
 
+// Small order fee (shop's own Delivery Charges: smallCartBelow / smallCartFee): item total below the limit -> fee added to the delivery charge.
+function smallCartFeeNow(dc) {
+  try {
+    const below = Number(dc && dc.smallCartBelow) || 0, fee = Number(dc && dc.smallCartFee) || 0;
+    if (below > 0 && fee > 0 && currentCartItemsTotal() < below) return fee;
+  } catch (e) {}
+  return 0;
+}
 function deliveryFeeBeforeFree() {
   const dc = activeDeliveryCharge();
   if (!dc) return 0;
+  const small = smallCartFeeNow(dc);
   const d = currentDeliveryKm();
-  if (!d) return Number(dc.baseFee) || 0; // distance unknown — charge the flat base fee only
+  if (!d) return (Number(dc.baseFee) || 0) + small; // distance unknown — charge the flat base fee only
   const km = d.km;
-  if (dc.freeUnderKm != null && km < Number(dc.freeUnderKm)) return 0;
+  if (dc.freeUnderKm != null && km < Number(dc.freeUnderKm)) return small;
   const baseFee = Number(dc.baseFee) || 0;
   const perKmFee = Number(dc.perKmFee) || 0;
   // Rounded to the nearest whole rupee (not paise) — this is a
   // Cash-on-Delivery app, so customers/drivers need round, practical change.
-  return Math.round(baseFee + perKmFee * km);
+  return Math.round(baseFee + perKmFee * km) + small;
 }
 // Free delivery, read from whichever delivery-charge config is active:
 //  - freeAbove: "free on orders of ₹X and above" — the operator's Go Series
@@ -13904,7 +13963,7 @@ function deliveryFeeBeforeFree() {
 //    against the item total (before platform fee / delivery / discount).
 //  - freeWithinKm: Go Series config only. A shop's own distance rule is its
 //    separate freeUnderKm, handled in deliveryFeeBeforeFree().
-function isFreeDelivery() {
+function isFreeDelivery(ptOverride) {
   const dc = activeDeliveryCharge();
   if (!dc) return false;
   // Rule 1: item total reaches the free-above amount.
@@ -13913,7 +13972,7 @@ function isFreeDelivery() {
   // Rule 3: the shop's own "order value range -> free up to N km" ranges (freeTiers).
   const tiers = Array.isArray(dc.freeTiers) ? dc.freeTiers : [];
   if (tiers.length) {
-    const dk = currentDeliveryKm();
+    const dk = currentDeliveryKm(ptOverride);
     if (dk) {
       const tot = currentCartItemsTotal();
       if (tiers.some(t => tot >= (Number(t.min) || 0) && (t.max == null || tot < Number(t.max)) && dk.km <= Number(t.km))) return true;
@@ -13923,16 +13982,16 @@ function isFreeDelivery() {
   // free-within-km limit. Either rule is enough on its own.
   const within = Number(dc.freeWithinKm) || 0;
   if (within > 0) {
-    const d = currentDeliveryKm();
+    const d = currentDeliveryKm(ptOverride);
     if (d && d.km < within) return true;
   }
   return false;
 }
 // Next order value at which this distance becomes free under the shop's freeTiers (0 = none / distance unknown).
-function freeTierNeedMin(dc, total) {
+function freeTierNeedMin(dc, total, ptOverride) {
   const tiers = dc && Array.isArray(dc.freeTiers) ? dc.freeTiers : [];
   if (!tiers.length) return 0;
-  const d = currentDeliveryKm();
+  const d = currentDeliveryKm(ptOverride);
   if (!d) return 0;
   let best = 0;
   tiers.forEach(t => { const mn = Number(t.min) || 0; if (Number(t.km) >= d.km && mn > total && (!best || mn < best)) best = mn; });
@@ -14931,7 +14990,7 @@ function openPaymentConfirm() {
   payAddressSummary.textContent = addressBits || pc.text || "Delivery address set";
   updateLocSummary();
   setPaymentMethod('cod');
-  const hasGpay = !!(state.selectedRestaurant && state.selectedRestaurant.gpayNumber);
+  const hasGpay = !!window.effUpi(state.selectedRestaurant);
   payGpayBtn.disabled = !hasGpay;
   payGpayBtn.title = hasGpay ? "" : "This restaurant hasn't set up UPI payment yet";
   paymentOverlay.classList.add('show');
@@ -15115,7 +15174,7 @@ async function neshNativeUpiPay() {
   if (onl) onl.disabled = true;
   let res = null;
   try {
-    const url = 'upi://pay?pa=' + encodeURIComponent(String(r.gpayNumber).trim()) +
+    const url = 'upi://pay?pa=' + encodeURIComponent(String(window.effUpi(r)).trim()) +
       '&pn=' + encodeURIComponent(r.name || 'Restaurant') +
       '&am=' + amt.toFixed(2) +
       '&cu=INR';
@@ -15141,7 +15200,7 @@ async function neshNativeUpiPay() {
 // ---------- Payment method (Cash on Delivery / GPay scanner) ----------
 function setPaymentMethod(method) {
   const r = state.selectedRestaurant;
-  if (method === 'gpay' && !(r && r.gpayNumber)) {
+  if (method === 'gpay' && !window.effUpi(r)) {
     // This restaurant hasn't set up GPay — silently fall back to COD.
     method = 'cod';
   }
@@ -15149,11 +15208,11 @@ function setPaymentMethod(method) {
   payCodBtn.classList.toggle('active', method === 'cod');
   payGpayBtn.classList.toggle('active', method === 'gpay');
 
-  if (method === 'gpay' && r && r.gpayNumber) {
+  if (method === 'gpay' && window.effUpi(r)) {
     gpayScannerBox.style.display = 'block';
-    gpayNumberText.textContent = "UPI ID: " + r.gpayNumber;
+    gpayNumberText.textContent = "UPI ID: " + window.effUpi(r);
     const cartTotal = Math.max(0, currentCartItemsTotal() + currentPlatformFee() + currentDeliveryFee() - currentCouponDiscount()) + currentRainSurgeAmount() + currentTipAmount();
-    const upiUrl = "upi://pay?pa=" + encodeURIComponent(String(r.gpayNumber).trim()) +
+    const upiUrl = "upi://pay?pa=" + encodeURIComponent(String(window.effUpi(r)).trim()) +
       "&pn=" + encodeURIComponent(r.name || 'Restaurant') +
       "&am=" + (Math.round(cartTotal * 100) / 100).toFixed(2) +
       "&cu=INR";
@@ -15813,7 +15872,7 @@ function cpFirstOpen() {
   openLocationConfirm();            // fills the address fields + map (starts from the customer's picked location)
   paymentOverlay.classList.add('show');   // "checkout is live" flag other code checks (kept invisible via CSS)
   cpLive(true);
-  const hasGpay = !!(state.selectedRestaurant && state.selectedRestaurant.gpayNumber);
+  const hasGpay = !!window.effUpi(state.selectedRestaurant);
   payGpayBtn.disabled = !hasGpay;
   payGpayBtn.title = hasGpay ? "" : "This restaurant hasn't set up UPI payment yet";
   setPaymentMethod('cod');
@@ -15853,7 +15912,7 @@ function cpSyncBar() {
   const onl = document.getElementById('cp-pay-online');
   if (onl) {
     // Show "Pay Online" only when this shop has set up UPI payment
-    onl.style.display = (r.gpayNumber ? '' : 'none');
+    onl.style.display = (window.effUpi(r) ? '' : 'none');
     onl.disabled = off;
   }
 }
@@ -16064,7 +16123,7 @@ document.getElementById('cp-conf-cancel').addEventListener('click', cpCloseSheet
 // Online (UPI scanner)
 document.getElementById('cp-pay-online').addEventListener('click', () => {
   const r = state.selectedRestaurant;
-  if (!(r && r.gpayNumber)) { showInfoModal('Online payment unavailable', "This shop hasn't set up UPI payment yet. Please choose Cash/UPI on delivery."); return; }
+  if (!window.effUpi(r)) { showInfoModal('Online payment unavailable', "This shop hasn't set up UPI payment yet. Please choose Cash/UPI on delivery."); return; }
   if (!cpPrepare()) return;
   if (neshUpiPlugin()) { neshNativeUpiPay(); return; }
   setPaymentMethod('gpay');
@@ -16343,8 +16402,8 @@ payConfirmBtn.addEventListener('click', async () => {
       orderPayload.suggestedShopId = suggestedShop.id;
       orderPayload.suggestedShopName = suggestedShop.name || suggestedShop.id;
     }
-    if (selectedPaymentMethod === 'gpay' && r.gpayNumber) {
-      orderPayload.gpayNumber = r.gpayNumber;
+    if (selectedPaymentMethod === 'gpay' && window.effUpi(r)) {
+      orderPayload.gpayNumber = window.effUpi(r);
       if (window.__neshUpiPaid) {
         orderPayload.upiAutoPaid = window.__neshUpiPaid.status === 'success';
         orderPayload.upiPaidAmount = window.__neshUpiPaid.amt;
@@ -19405,7 +19464,7 @@ async function refreshMine(){
 var mineClick=async function(e){var b=e.target.closest('.prm-x');if(!b)return;var id=b.dataset.id,f=window.fb;
   var ok=await showConfirmModal('Cancel this request?','The link will expire and nobody will be able to pay with it.','Yes, cancel','Keep it');if(!ok)return;
   b.disabled=true;
-  try{var r=await f.runTransaction(f.ref(f.db,'payRequests/'+id+'/status'),function(cur){return cur==='open'?'cancelled':undefined});
+  try{var _s0=(await f.get(f.ref(f.db,'payRequests/'+id+'/status'))).val();if(_s0!=='open'){var r={committed:false}}else var r=await f.runTransaction(f.ref(f.db,'payRequests/'+id+'/status'),function(cur){return (cur===null||cur==='open')?'cancelled':undefined});
     if(r&&r.committed){try{f.update(f.ref(f.db,'payRequests/'+id),{cancelledAt:Date.now()})}catch(e2){}
       try{localStorage.setItem('nesh_pr',JSON.stringify(mineIds().filter(function(x){return x!==id})))}catch(e3){}
       prPop('✅','Request cancelled','The link has expired. Nobody can pay with it now.','OK')}
@@ -19419,10 +19478,10 @@ function dotSync(){var on=!!((typeof activeOrderBarData!=='undefined'&&activeOrd
 setInterval(dotSync,1000);setTimeout(refreshMine,5000);
 setInterval(function(){if(!document.hidden&&mineIds().length)refreshMine()},90000);
 var _ord=false;
-function sync(){var b=$('pr-open'),r=state.selectedRestaurant,v=!!(r&&r.gpayNumber&&cnt()&&!window.__neshPayFor);if(b)b.style.display=v?'':'none';if(v&&!_vis)refreshMine();_vis=v;var os=$('screen-orders'),oa=!!(os&&os.classList.contains('active'));if(oa&&!_ord)refreshMine();_ord=oa}
+function sync(){var b=$('pr-open'),r=state.selectedRestaurant,v=!!(window.effUpi(r)&&cnt()&&!window.__neshPayFor);if(b)b.style.display=v?'':'none';if(v&&!_vis)refreshMine();_vis=v;var os=$('screen-orders'),oa=!!(os&&os.classList.contains('active'));if(oa&&!_ord)refreshMine();_ord=oa}
 setInterval(sync,700);
 $('pr-open').onclick=function(){
-  var r=state.selectedRestaurant;if(!r||!r.gpayNumber)return;
+  var r=state.selectedRestaurant;if(!r||!window.effUpi(r))return;
   if(typeof pendingLocation.lat!=='number'||!locLandmarkInput.value.trim()||digitsOnly(locContactInput.value).length<10){prPop('📍','Add your address first','Please set your delivery location, landmark and contact number above, then ask a friend to pay.','Okay, got it');return}
   var h='';CH.forEach(function(m,i){h+='<button type="button" class="pr-chip" data-i="'+i+'">'+E(m)+'</button>'});
   $('pr-chips').innerHTML=h;$('pr-text').value='';$('pr-title').value='';prv();$('pr-modal').classList.add('on')};
@@ -19462,7 +19521,7 @@ window.neshOpenPay=async function(id){
     // payer may be outside the shop's zone: force-load this shop (zone-based loading skips it otherwise)
     try{addExtraShopId(d.restId)}catch(e){}
     var t2=0,rest;await new Promise(function(ok){var iv=setInterval(function(){rest=(typeof RESTAURANTS!=='undefined'?RESTAURANTS:[]).find(function(x){return x.id===d.restId});if(rest||++t2>100){clearInterval(iv);ok()}},300)});
-    if(!rest||!rest.gpayNumber){body.innerHTML=stateCard('🏪','Shop unavailable','This shop can\'t take online payment right now.');$('pr-x').onclick=close;return}
+    if(!rest||!window.effUpi(rest)){body.innerHTML=stateCard('🏪','Shop unavailable','This shop can\'t take online payment right now.');$('pr-x').onclick=close;return}
     var rows='';Object.keys(d.cart||{}).forEach(function(k){var q=d.cart[k];var it=(rest.items||[]).find(function(i){return i&&i.id===k});if(it&&q>0)rows+='<div class="prq-it">'+(/^https?:/.test(it.image||'')?'<img src="'+E(it.image)+'" alt="">':'<span class="prq-ph">🛍️</span>')+'<span class="prq-nm">'+E(it.name)+'</span><b>× '+q+'</b></div>'});
     var nm=E(d.fromName||'Your friend'),ini=E(((d.fromName||'F').trim().charAt(0)||'F').toUpperCase());
     body.innerHTML='<div class="prq-hero"><div class="prq-conf">🎉 ✨ 🎁 ✨ 🎉</div><div class="prq-ic">💌</div><span class="prq-badge">PAYMENT REQUEST</span><h2>'+nm+' needs your help to pay!</h2>'+(d.title?'<p class="prq-sub">'+E(d.title)+'</p>':'')+'</div>'
