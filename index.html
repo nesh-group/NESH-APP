@@ -5088,20 +5088,38 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
           if ((businessType === 'groceries' || businessType === 'online_shop') && op > 0 && op < base) {
             obj.offerMrp = obj.price;
             obj.price = Math.max(1, obj.price - (base - op));
-            if (obj.shopRate !== undefined) obj.shopRate = op;
+            if (obj.shopRate !== undefined) obj.shopRate = op - ((typeof commissionFor === 'function') ? commissionFor(m) : 0);
           }
           return obj;
         };
         // Shop-set price ranges (Delivery Charges -> free-delivery ranges): items priced in [min, max) get +add on the price the
         // customer pays; that extra funds the free delivery. The shop is still paid its own price (shopRate -> shopPrice on the order).
         // Only normal per-piece items of ordinary shops (not Go Series / groceries, and not items with an operator customer price).
-        const priceTiers = (businessType !== 'groceries' && !v.goSeries && v.deliveryCharges && v.deliveryCharges.freeTiers)
-          ? (Array.isArray(v.deliveryCharges.freeTiers) ? v.deliveryCharges.freeTiers : Object.values(v.deliveryCharges.freeTiers)) : [];
+        // Go Series / groceries shops (NESH Mart): their delivery charge stays the Mart rule, and the zone rule's price ranges work as for
+        // other shops: Add ₹ on the customer price (funds free km, incl. My profit) and shop commission (shop paid price - commission).
+        const isMartShop = businessType === 'groceries' || !!v.goSeries;
+        let priceTiers = [];
+        if (!isMartShop) {
+          priceTiers = (v.deliveryCharges && v.deliveryCharges.freeTiers)
+            ? (Array.isArray(v.deliveryCharges.freeTiers) ? v.deliveryCharges.freeTiers : Object.values(v.deliveryCharges.freeTiers)) : [];
+        } else {
+          const zc = window.ZONE_DELIVERY || {};
+          const zid = Object.keys(zc).find(id => zc[id] && zc[id].shopIds && zc[id].shopIds[child.key] && zc[id].freeTiers && zc[id].freeTiers.length);
+          if (zid) priceTiers = zc[zid].freeTiers;
+        }
+        // Operator-set shop commission per price range (Operator Panel -> Shop Delivery Charges): the shop is paid its price MINUS this per item.
+        const commissionFor = (m) => {
+          if (!priceTiers.length || Number(m.customerPrice) > 0 || (m.unit && m.unit !== 'piece')) return 0;
+          const p = Number(m.price) || 0;
+          const t = priceTiers.find(t => t && p >= (Number(t.min) || 0) && (t.max == null || p < Number(t.max)));
+          return (t && Number(t.commission) > 0 && Number(t.commission) < p) ? Number(t.commission) : 0;
+        };
         const priceBump = (m) => {
           if (!priceTiers.length || Number(m.customerPrice) > 0 || (m.unit && m.unit !== 'piece')) return 0;
           const p = Number(m.price) || 0;
           const t = priceTiers.find(t => t && p >= (Number(t.min) || 0) && (t.max == null || p < Number(t.max)));
-          return (t && Number(t.add) > 0) ? Math.round(Number(t.add)) : 0;
+          const amt = Number(t && t.add);   // same for Mart shops: Add ₹ (= delivery − commission + profit) funds the free km
+          return (t && amt > 0) ? Math.round(amt) : 0;
         };
         const menuItems = v.menu
           ? Object.keys(v.menu)
@@ -5119,7 +5137,8 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
                 price: (Number(v.menu[k].customerPrice) > 0 && businessType !== 'groceries')
                   ? Number(v.menu[k].customerPrice)
                   : (Number(v.menu[k].price) || 0) + ((v.goSeries || businessType === 'groceries') ? (Number(window.GO_SERIES_ITEM_MARKUP) || 0) : 0) + priceBump(v.menu[k]),
-                shopRate: (Number(v.menu[k].customerPrice) > 0 && businessType !== 'groceries') ? (Number(v.menu[k].price) || 0) : (priceBump(v.menu[k]) > 0 ? (Number(v.menu[k].price) || 0) : undefined),
+                shopRate: (Number(v.menu[k].customerPrice) > 0 && businessType !== 'groceries') ? (Number(v.menu[k].price) || 0) : (((priceBump(v.menu[k]) > 0) || commissionFor(v.menu[k]) > 0) ? (Number(v.menu[k].price) || 0) - commissionFor(v.menu[k]) : undefined),
+                bump: priceBump(v.menu[k]),   // Add ₹ included in price (NESH Store catalog leaves it out)
                 unit: v.menu[k].unit || 'piece', // 'piece' | 'gram' | 'kg' — set by the shop; for gram/kg, `price` is the rate per gram/kg, not a flat price
                 sizes: Array.isArray(v.menu[k].sizes) ? v.menu[k].sizes.filter(Boolean) : [], // e.g. ['S','M','L','XL','2XL'] — only set on "Sports" shop items
                 image: v.menu[k].photo || itemPhotoSet[di % itemPhotoSet.length],
@@ -5502,6 +5521,7 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
     });
     window.ZONE_DELIVERY = out;
     window.ZONE_DELIVERY_LOADED = true;
+    rebuildRestaurantsFromSnapshot();   // Mart item prices depend on the zone rule's commission / profit
     if (window.onPlatformFeeUpdated) window.onPlatformFeeUpdated();
   }, () => { window.ZONE_DELIVERY_LOADED = true; });
 
@@ -11912,9 +11932,10 @@ function buildNeshStoreCatalog() {
         order.push(key);
       }
       const g = groups[key];
-      g._shopOptions.push({ shopId: shop.id, shopName: shop.name, price: it.price, itemId: it.id });
-      if (it.price > g.price) {
-        g.price = it.price;
+      const itPrice = (Number(it.price) || 0) - (Number(it.bump) || 0);   // NESH Store is unaffected by the per-range Add ₹ / commission
+      g._shopOptions.push({ shopId: shop.id, shopName: shop.name, price: itPrice, itemId: it.id });
+      if (itPrice > g.price) {
+        g.price = itPrice;
         // Display metadata (photo/description) follows whichever shop is
         // currently the priciest for this item — arbitrary but consistent
         // for as long as that stays the highest price.
