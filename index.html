@@ -1,6 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>try{var _t=localStorage.getItem('nesh_theme')||'light';if(_t==='dark'||(_t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.setAttribute('data-theme','dark');}catch(e){}</script>
+<style id="nesh-extra-css">
+/* dark mode: see #nesh-dark-theme */
+/* ---- Food filter bar (Flipkart style) ---- */
+#screen-home:not([data-cat="hotel"]) #food-filters{ display:none; }
+#food-filters{ display:flex; gap:8px; overflow-x:auto; padding:10px 24px 4px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+#food-filters::-webkit-scrollbar{ display:none; }
+.ff-chip{ flex:none; display:flex; align-items:center; gap:6px; border:1.5px solid #E6DAB0; background:#fff; color:#4A3A00; font:700 13px/1 Inter,sans-serif; padding:9px 14px; border-radius:999px; cursor:pointer; white-space:nowrap; transition:all .15s; }
+.ff-chip svg{ width:14px; height:14px; }
+.ff-chip.on{ background:#2B2410; border-color:#2B2410; color:#FFD54A; box-shadow:0 4px 10px rgba(43,36,16,.25); }
+.ff-chip .ff-badge{ background:#F2B705; color:#2B2410; border-radius:99px; min-width:18px; height:18px; display:none; align-items:center; justify-content:center; font-size:11px; padding:0 5px; }
+.ff-chip.has .ff-badge{ display:inline-flex; }
+#ff-overlay{ position:fixed; inset:0; z-index:9500; background:rgba(0,0,0,.45); display:none; align-items:flex-end; justify-content:center; }
+#ff-overlay.show{ display:flex; }
+#menu-body .item-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding-right:12px; }
+#menu-body .item-head .item-list-label{ flex:1; min-width:0; white-space:nowrap; }
+#menu-body .item-head #menu-price-bar{ flex:none; padding:18px 0 0; }
+#menu-body.rail-mode .item-head #menu-price-bar{ padding-top:6px; }
+#menu-price-bar{ display:flex; gap:6px; align-items:center; }
+#menu-price-bar .mp-chip{ position:relative; display:inline-flex; align-items:center; gap:6px; border:0; background:linear-gradient(135deg,#FFE27A,#F2B705); color:#2B2410; font:800 12.5px/1 Inter,sans-serif; padding:9px 14px; border-radius:999px; cursor:pointer; box-shadow:0 4px 12px rgba(242,183,5,.45), inset 0 1px 0 rgba(255,255,255,.6); transition:transform .12s; }
+#menu-price-bar .mp-chip:active{ transform:scale(.95); }
+#menu-price-bar .mp-chip #mp-summary{ display:none; }
+#menu-price-bar .mp-chip.on{ background:#2B2410; color:#FFD54A; box-shadow:0 4px 12px rgba(43,36,16,.35); }
+#menu-price-bar .mp-chip.on::after{ content:''; position:absolute; top:-2px; right:-2px; width:10px; height:10px; border-radius:50%; background:#F2560C; border:2px solid #fff; }
+#menu-price-bar .mp-clear{ border:0; width:26px; height:26px; border-radius:50%; background:#FFF1C9; color:#8A5800; font:800 12px Inter,sans-serif; cursor:pointer; padding:0; }
+#mp-panel{ margin-top:8px; padding:10px 14px; border:1.5px solid #F7D56A; border-radius:16px; background:#fff; }
+#mp-panel .mp-row{ display:flex; align-items:center; gap:10px; font:600 12.5px Inter,sans-serif; color:#4A3A00; }
+#mp-panel .mp-row span{ width:28px; }
+#mp-panel .mp-row b{ width:56px; text-align:right; font-family:'IBM Plex Mono',monospace; }
+#mp-panel input[type=range]{ flex:1; accent-color:#F2A900; min-width:0; }
+html[data-theme="dark"] #menu-price-bar .mp-chip, html[data-theme="dark"] #mp-panel{ background:#221E15; border-color:#534B33; color:#E2DBC3; }
+html[data-theme="dark"] #mp-panel .mp-row{ color:#E2DBC3; }
+#ff-sheet{ width:100%; max-width:520px; background:#fff; border-radius:22px 22px 0 0; padding:18px 20px calc(18px + env(safe-area-inset-bottom,0px)); max-height:85vh; overflow-y:auto; animation:ffUp .22s ease-out; }
+@keyframes ffUp{ from{ transform:translateY(40px); opacity:0; } to{ transform:none; opacity:1; } }
+#ff-sheet h3{ margin:0 0 4px; font:800 20px 'Poppins',sans-serif; color:#2B2410; display:flex; justify-content:space-between; align-items:center; }
+#ff-sheet h3 button{ background:none; border:0; font-size:22px; color:#6B5E3D; cursor:pointer; }
+.ff-sec{ font:700 12px Inter,sans-serif; letter-spacing:.6px; text-transform:uppercase; color:#8A7A4A; margin:16px 0 8px; }
+.ff-opts{ display:flex; flex-wrap:wrap; gap:8px; }
+.ff-opt{ border:1.5px solid #E6DAB0; background:#fff; color:#4A3A00; font:600 14px Inter,sans-serif; padding:10px 16px; border-radius:12px; cursor:pointer; }
+.ff-opt.on{ border-color:#C97F00; background:#FFF6E3; color:#8A5800; }
+.ff-price-head{ display:flex; justify-content:space-between; align-items:baseline; font:700 15px Inter,sans-serif; color:#2B2410; margin-bottom:6px; }
+.ff-price-head small{ font:500 12px Inter,sans-serif; color:#8A7A4A; }
+#ff-overlay, #mp-overlay{ position:fixed; inset:0; z-index:9500; background:rgba(0,0,0,.45); display:none; align-items:flex-end; justify-content:center; }
+#mp-overlay.show{ display:flex; }
+#mp-sheet{ width:100%; max-width:520px; background:#fff; border-radius:22px 22px 0 0; padding:18px 20px calc(18px + env(safe-area-inset-bottom,0px)); animation:ffU .22s ease-out; }
+#mp-sheet h3{ margin:0 0 4px; font:800 20px 'Poppins',sans-serif; color:#2B2410; display:flex; justify-content:space-between; align-items:center; }
+#mp-sheet h3 button{ background:none; border:0; font-size:22px; color:#6B5E3D; cursor:pointer; }
+html[data-theme="dark"] #mp-sheet{ background:#221E15; }
+html[data-theme="dark"] #mp-sheet h3{ color:#E7E0CD; }
+.dr{ position:relative; height:36px; margin:4px 0 2px; }
+.dr-track{ position:absolute; left:12px; right:12px; top:15px; height:6px; border-radius:3px; background:#E6DAB0; }
+.dr-fill{ position:absolute; top:0; height:100%; background:#F2A900; border-radius:3px; }
+.dr input[type=range]{ position:absolute; left:0; top:0; width:100%; height:36px; margin:0; background:none; pointer-events:none; -webkit-appearance:none; appearance:none; }
+.dr input[type=range]::-webkit-slider-runnable-track{ background:transparent; height:36px; }
+.dr input[type=range]::-moz-range-track{ background:transparent; }
+.dr input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; pointer-events:auto; width:24px; height:24px; margin-top:6px; border-radius:50%; background:#fff; border:3px solid #F2A900; box-shadow:0 2px 6px rgba(43,36,16,.3); cursor:pointer; }
+.dr input[type=range]::-moz-range-thumb{ pointer-events:auto; width:18px; height:18px; border-radius:50%; background:#fff; border:3px solid #F2A900; box-shadow:0 2px 6px rgba(43,36,16,.3); cursor:pointer; }
+.pr-boxes{ display:flex; gap:12px; margin-top:6px; }
+.pr-boxes div{ flex:1; border:1.5px solid #E6DAB0; border-radius:12px; padding:8px 12px; font:500 11px Inter,sans-serif; color:#8A7A4A; }
+.pr-boxes b{ display:block; font:700 16px 'IBM Plex Mono',monospace; color:#2B2410; margin-top:2px; }
+html[data-theme="dark"] .pr-boxes b{ color:#E7E0CD; }
+html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
+.ff-actions{ display:flex; gap:10px; margin-top:22px; }
+.ff-actions button{ flex:1; padding:14px; border-radius:14px; font:700 15px Inter,sans-serif; cursor:pointer; border:2px solid #E6DAB0; background:#fff; color:#2B2410; }
+.ff-actions #ff-apply, .ff-actions #mp-apply{ border-color:#F2B705; background:linear-gradient(135deg,#FFD84D,#F2A900); color:#2B2410; flex:1.6; }
+</style>
 <style id="nesh-splash-css">
   html{ background:#F2B705; }
   /* Yellow strip behind the system status bar (edge-to-edge Android) */
@@ -3286,6 +3352,493 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
 </style>
 <link rel="preconnect" href="https://router.project-osrm.org" crossorigin>
 <link rel="preconnect" href="https://routing.openstreetmap.de" crossorigin>
+<style id="nesh-header-fit">
+/* Header fit: keep every button inside the screen width (no overflow / squeezed buttons) */
+#screen-home .home-top-row{ grid-template-columns:minmax(0,1fr) auto !important; max-width:100%; box-sizing:border-box; }
+#screen-home .home-top-row > *{ min-width:0; }
+#screen-home .home-top-row .top-row-right{ gap:4px !important; flex-wrap:nowrap; }
+#screen-home .home-top-row .top-row-right > *{ flex:none; }
+#screen-home .home-top-row .home-back-btn{ width:34px !important; height:34px !important; margin-left:-4px !important; }
+#screen-home .home-top-row .home-back-btn svg{ width:22px !important; height:22px !important; }
+#screen-home .home-top-row .top-row-right .home-notif-btn,
+#screen-home .home-top-row .top-row-right .account-btn,
+#screen-home .home-top-row .top-row-right .home-track-btn{ width:34px !important; height:34px !important; }
+#screen-home .home-top-row .top-row-right .your-orders-pill{ padding:6px 9px !important; gap:4px !important; }
+#screen-home .home-top-row .home-loc-card{ max-width:100%; min-width:0; box-sizing:border-box; }
+/* Deliver-to pill: span the WHOLE header width (the 2-column template above made "1 / -1" stop short, so the pill shrank and hid the place name) */
+#screen-home[data-cat="hotel"] .home-top-row .home-loc-card,
+#screen-home[data-cat="online_shop"] .home-top-row .home-loc-card{ grid-column:1 / span 8 !important; justify-self:stretch; width:auto; }
+/* dark mode: pill is dark, so the place name / label must be light (were dark-on-dark = invisible) */
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .home-top-row .home-loc-card-value,
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .home-top-row .home-loc-card-value{ color:#F3EDDA !important; }
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .home-top-row .home-loc-card-label,
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .home-top-row .home-loc-card-label{ color:#ECB351 !important; }
+@media (max-width:390px){
+  #screen-home .home-top-row .top-row-right .your-orders-pill p{ display:none !important; }
+}
+</style>
+<style id="nesh-dark-theme">
+/* ---- NESH dark theme (generated) ---- */
+
+html[data-theme="dark"]{color-scheme:dark;--bg:#16130C;--bg-outer:#0C0A06;--ink:#F3EDDA;--cloud:#221E15;--muted:#8C8160;--muted-2:#B9AE88;--field-bg:#2A2519;--field-border:#443C28;--card-shadow:0 2px 14px rgba(0,0,0,.5);}
+html[data-theme="dark"] body{background:var(--bg-outer);color:#F3EDDA}
+html[data-theme="dark"] #app{background:var(--bg)}
+html[data-theme="dark"] input,html[data-theme="dark"] textarea,html[data-theme="dark"] select{color:#F3EDDA}
+html[data-theme="dark"] ::placeholder{color:#8C8160;opacity:1}
+html[data-theme="dark"] .leaflet-tile-pane{filter:brightness(.68) contrast(1.15) saturate(.75)}
+html[data-theme="dark"] img{filter:brightness(.92)}
+html[data-theme="dark"] [style*="background:#fff" i],html[data-theme="dark"] [style*="background: #fff" i],html[data-theme="dark"] [style*="background:#ffffff" i],html[data-theme="dark"] [style*="background:white" i],html[data-theme="dark"] [style*="background-color:#fff" i]{background:#221E15 !important}
+html[data-theme="dark"] .ff-chip{border:1.5px solid #534B33;background:#221E15;color:#E2DBC3}
+html[data-theme="dark"] .ff-chip.on{border-color:#E7E0CD}
+html[data-theme="dark"] #ff-sheet{background:#221E15}
+html[data-theme="dark"] #ff-sheet h3{color:#E7E0CD}
+html[data-theme="dark"] #ff-sheet h3 button{color:#BCAE8A}
+html[data-theme="dark"] .ff-sec{color:#B6AA87}
+html[data-theme="dark"] .ff-opt{border:1.5px solid #534B33;background:#221E15;color:#E2DBC3}
+html[data-theme="dark"] .ff-opt.on{background:#30250F;color:#CDBA98}
+html[data-theme="dark"] .ff-actions button{border:2px solid #534B33;background:#221E15;color:#E7E0CD}
+html[data-theme="dark"] #area-unavail{background:#221E15}
+html[data-theme="dark"] #nesh-bnav{background:#221E15}
+html[data-theme="dark"] .nb-btn.active{color:#E4A658}
+html[data-theme="dark"] #nb-trending.active svg{color:#E48558}
+html[data-theme="dark"] #screen-trending{background:linear-gradient(180deg,#3E3413 0,#32290F 230px,rgba(34,30,21,0.00) 470px)}
+html[data-theme="dark"] #screen-trending .tr-sub{color:#BCAE8A}
+html[data-theme="dark"] .tr-card{background:#221E15}
+html[data-theme="dark"] .tr-img{background:radial-gradient(circle at 50% 38%,#221E15 0,#392F12 100%)}
+html[data-theme="dark"] .tr-shopchip{background:rgba(34,30,21,0.94);color:#CCBD99}
+html[data-theme="dark"] .tr-save{background:#12301F;color:#5DDFAE}
+html[data-theme="dark"] .tr-cta{color:#E7E0CD}
+html[data-theme="dark"] .tr-add{color:#E7E0CD}
+html[data-theme="dark"] .tr-stepper button{color:#E7E0CD}
+html[data-theme="dark"] .tr-empty{color:#BCAE8A}
+html[data-theme="dark"] .au-loc{background:#221E15}
+html[data-theme="dark"] .au-prof{background:#221E15}
+html[data-theme="dark"] .au-hero{background:#221E15}
+html[data-theme="dark"] .au-sheet{background:#221E15}
+html[data-theme="dark"] .au-sub{color:#BCAE8A}
+html[data-theme="dark"] .au-near{background:#383111}
+html[data-theme="dark"] .au-btn{background:#332C1A}
+html[data-theme="dark"] #nesh-blocked-overlay{background:#332C1A}
+html[data-theme="dark"] .btn-primary:disabled{background:#2E281F}
+html[data-theme="dark"] #item-detail-share-btn{color:#E7E0CD}
+html[data-theme="dark"] #item-detail-share-btn svg{stroke:#E7E0CD}
+html[data-theme="dark"] .card{background:#221E15}
+html[data-theme="dark"] .cat-card-icon{background:rgba(34,30,21,0.95)}
+html[data-theme="dark"] .cat-card-arrow{background:rgba(34,30,21,0.92)}
+html[data-theme="dark"] .cat-card-orders-compact-icon{background:rgba(34,30,21,0.95)}
+html[data-theme="dark"] .cat-loc-card-icon{background:rgba(34,30,21,0.95)}
+html[data-theme="dark"] .home-brand-mark{color:#ECB351}
+html[data-theme="dark"] #menu-body.rail-mode #nesh-cat-rail{background:#221E15}
+html[data-theme="dark"] #screen-menu #menu-search-wrap{background:linear-gradient(180deg,#221E15 78%,rgba(34,30,21,0.00))}
+html[data-theme="dark"] #screen-menu #menu-search-wrap .field{background:#221E15}
+html[data-theme="dark"] #menu-body.rail-mode{background:linear-gradient(180deg,#31290F 0,#221E15 260px,#221E15 100%)}
+html[data-theme="dark"] #menu-body.rail-mode #nesh-cat-rail{background:linear-gradient(180deg,#3C3212 0%,#342C10 45%,#221E15 100%)}
+html[data-theme="dark"] .nrail-item .nrail-name{color:#BCAE8A}
+html[data-theme="dark"] .nrail-item .nrail-img{background:#221E15;border:2px solid #333333}
+html[data-theme="dark"] .nrail-item:nth-child(6n+2) .nrail-img{background:linear-gradient(135deg,#123B26,#8EDDB8);color:#5DDFAE}
+html[data-theme="dark"] .nrail-item:nth-child(6n+3) .nrail-img{background:linear-gradient(135deg,#351610,#411B14);color:#CE7B6E}
+html[data-theme="dark"] .nrail-item:nth-child(6n+4) .nrail-img{background:linear-gradient(135deg,#3E3113,#FFC965);color:#C0A57D}
+html[data-theme="dark"] .nrail-item:nth-child(6n+5) .nrail-img{background:linear-gradient(135deg,#191033,#1D133D);color:#8675C7}
+html[data-theme="dark"] .nrail-item:nth-child(6n+6) .nrail-img{background:linear-gradient(135deg,#102436,#152B43);color:#6798D5}
+html[data-theme="dark"] .nrail-item:nth-child(6n+7) .nrail-img{background:linear-gradient(135deg,#351022,#411428);color:#D16BA8}
+html[data-theme="dark"] #nesh-cat-rail.no-photo .nrail-item.active{background:linear-gradient(90deg,#483C16,rgba(72,60,22,0.00))}
+html[data-theme="dark"] #menu-body.rail-mode .item-card2{background:#221E15}
+html[data-theme="dark"] #menu-body.rail-mode .item-img-wrap{background:linear-gradient(160deg,#332B10,#221E15)}
+html[data-theme="dark"] #menu-body.rail-mode .item-price2{color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"]{background:linear-gradient(180deg,#342C10 0,#221E15 300px,#221E15 560px)}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .rest-card2{background:#221E15}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .rest-heart{background:rgba(34,30,21,0.92);color:#ECB351}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .rest-dots span{background:rgba(34,30,21,0.60)}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .rest-dots span:first-child{background:#221E15}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .rest-rating2{background:#103020;color:#5FDDAE}
+html[data-theme="dark"] .nrail-item{color:var(--muted-2, #B1A98C)}
+html[data-theme="dark"] .nrail-item.active .nrail-img{background:#383111}
+html[data-theme="dark"] #nesh-cat-rail.no-photo .nrail-item.active{background:#383111}
+html[data-theme="dark"] .menu-header-logo{background:#221E15;border:4px solid #333333}
+html[data-theme="dark"] .menu-header.has-logo .menu-header-logo{border:3px solid #333333;background:#221E15}
+html[data-theme="dark"] .menu-header.has-logo .btn-back{background:rgba(34,30,21,0.95)}
+html[data-theme="dark"] .add-btn{background:#221E15}
+html[data-theme="dark"] .cart-info-ic{background:rgba(34,30,21,0.12)}
+html[data-theme="dark"] .cart-info.freeitem::after{background:linear-gradient(100deg,transparent,rgba(34,30,21,0.45),transparent)}
+html[data-theme="dark"] .cart-info.freeitem .cart-info-ic{background:#221E15;border:2px solid #333333}
+html[data-theme="dark"] .cart-info.freeitem .cart-info-prog > i{background:#221E15}
+html[data-theme="dark"] .cart-info.unlocked::after{background:linear-gradient(100deg,transparent,rgba(34,30,21,0.35),transparent)}
+html[data-theme="dark"] .cart-info.unlocked .cart-info-ic{background:#221E15}
+html[data-theme="dark"] .cart-info-prog{background:rgba(34,30,21,0.18)}
+html[data-theme="dark"] .loc-sheet{background:#221E15}
+html[data-theme="dark"] #browse-loc-overlay{background:#221E15}
+html[data-theme="dark"] #browse-loc-overlay .loc-sheet{background:#221E15}
+html[data-theme="dark"] #browse-loc-overlay .blp-head{background:#221E15;border-bottom:1px solid #47422E}
+html[data-theme="dark"] #browse-loc-overlay .blp-back{background:#2D2815;color:#E7E0CD}
+html[data-theme="dark"] #browse-loc-overlay .blp-title{color:#E7E0CD}
+html[data-theme="dark"] #browse-loc-overlay .blp-search{background:#221E15}
+html[data-theme="dark"] #browse-loc-overlay .blp-bar{background:#221E15;border-top:1px solid #47422E}
+html[data-theme="dark"] .pay-method-btn{background:#221E15}
+html[data-theme="dark"] .gpay-scanner-box img{background:#221E15}
+html[data-theme="dark"] .loc-search-results{background:#221E15}
+html[data-theme="dark"] .zone-pick-item{background:#221E15}
+html[data-theme="dark"] .timeline-dot{background:#221E15}
+html[data-theme="dark"] #screen-track .track-hero::before,html[data-theme="dark"] #screen-track .track-hero::after{background:rgba(34,30,21,0.16)}
+html[data-theme="dark"] #screen-track .track-hero-icon{background:#221E15}
+html[data-theme="dark"] #screen-track .track-progress{background:rgba(34,30,21,0.55)}
+html[data-theme="dark"] #screen-track .track-hero.delivered .ticket-divider,html[data-theme="dark"] #screen-track .track-hero.cancelled .ticket-divider{border-top-color:rgba(51,51,51,0.40)}
+html[data-theme="dark"] #screen-track .track-hero.delivered .track-progress-fill{background:#221E15}
+html[data-theme="dark"] #track-timeline{background:#221E15}
+html[data-theme="dark"] #track-timeline .timeline-step.current .timeline-dot{background:#362D11}
+html[data-theme="dark"] .track-reason-box{background:#221E15;border:1px solid #4C2F2F}
+html[data-theme="dark"] .track-reason-label{color:#C57777}
+html[data-theme="dark"] .track-reason-text{color:#CE7C6E}
+html[data-theme="dark"] .bus-line-dot{background:#221E15}
+html[data-theme="dark"] .bus-line-row.next .bus-line-dot{background:#221E15}
+html[data-theme="dark"] .bus-line-bus{border:2px solid #333333}
+html[data-theme="dark"] .taxi-header .btn-back{background:rgba(34,30,21,0.55)}
+html[data-theme="dark"] .taxi-route-card{background:#221E15}
+html[data-theme="dark"] .taxi-pin-dot{background:#221E15}
+html[data-theme="dark"] .taxi-map-hint{background:#221E15}
+html[data-theme="dark"] .nav-pill{background:#221E15;color:#E7E0CD}
+html[data-theme="dark"] .track-rider{background:linear-gradient(135deg,#221E15 0%,#3A3112 100%)}
+html[data-theme="dark"] .track-rider-ava{background:#221E15}
+html[data-theme="dark"] .track-rider-sub{color:#60DCAF}
+html[data-theme="dark"] .track-rate{background:linear-gradient(160deg,#221E15 0%,#362D11 100%)}
+html[data-theme="dark"] .rate-head{color:#CDC198}
+html[data-theme="dark"] .rate-star.on{color:#E8C354}
+html[data-theme="dark"] .rate-label{color:#ECB351}
+html[data-theme="dark"] .rate-done{color:#ECB351}
+html[data-theme="dark"] .rate-comment{background:#221E15}
+html[data-theme="dark"] .nav-rider-badge{background:#221E15;color:#E7E0CD}
+html[data-theme="dark"] .nav-rider-bike{background:#221E15}
+html[data-theme="dark"] .nav-stop{background:#221E15}
+html[data-theme="dark"] .ride-option{background:#221E15}
+html[data-theme="dark"] .taxi-driver-card{background:#221E15}
+html[data-theme="dark"] .taxi-rating-card{background:#221E15}
+html[data-theme="dark"] .taxi-candidate-card{background:#221E15}
+html[data-theme="dark"] .btn-outline{background:#221E15}
+html[data-theme="dark"] .order-row-reason{color:#C57777}
+html[data-theme="dark"] .chat-msg.theirs{background:#221E15}
+html[data-theme="dark"] .chat-send-btn:disabled{background:#2E281F}
+html[data-theme="dark"] .home-notif-btn{background:#221E15}
+html[data-theme="dark"] .logout-btn{background:#221E15}
+html[data-theme="dark"] .account-btn{background:#221E15}
+html[data-theme="dark"] .account-dropdown{background:#221E15}
+html[data-theme="dark"] .track-support-btn{background:#221E15}
+html[data-theme="dark"] .account-dropdown-delete{border:1.5px solid #4D332F;background:#221E15;color:#CF766D}
+html[data-theme="dark"] .order-notify-toast-close{background:rgba(34,30,21,0.12)}
+html[data-theme="dark"] .order-progress-icon{background:rgba(34,30,21,0.18)}
+html[data-theme="dark"] .order-progress-icon::after{border:1.5px solid rgba(51,51,51,0.50)}
+html[data-theme="dark"] .scratch-modal-close{background:rgba(34,30,21,0.14)}
+html[data-theme="dark"] .scratch-modal-card{background:radial-gradient(circle at 20% 20%, rgba(34,30,21,0.18) 0, transparent 40%),
+      radial-gradient(circle at 80% 75%, rgba(34,30,21,0.14) 0, transparent 40%),
+      linear-gradient(160deg, #F2B705, #D69E00)}
+html[data-theme="dark"] .scratch-modal-reveal{background:#221E15}
+html[data-theme="dark"] .scratch-modal-claim-btn{background:#221E15}
+html[data-theme="dark"] .your-orders-card-icon{background:rgba(34,30,21,0.95)}
+html[data-theme="dark"] .loc-suggest{background:#342910}
+html[data-theme="dark"] .loc-suggest-text{color:#D7CAAC}
+html[data-theme="dark"] .loc-suggest-btn{color:#E7E0CD}
+html[data-theme="dark"] .order-status-chip.cancelled{background:#28231A}
+html[data-theme="dark"] .rest-dots span{background:rgba(34,30,21,0.55)}
+html[data-theme="dark"] .rest-dots span:first-child{background:#221E15}
+html[data-theme="dark"] .rest-badge-discount{background:#221E15}
+html[data-theme="dark"] .item-chip{background:#221E15}
+html[data-theme="dark"] .item-card2{background:#221E15}
+html[data-theme="dark"] .item-veg{background:#221E15}
+html[data-theme="dark"] .bus-video-skip-btn{background:rgba(34,30,21,0.15)}
+html[data-theme="dark"] .bus-video-close-btn{color:var(--ink, #DDD7D2)}
+html[data-theme="dark"] .img-fallback{background:#24211A}
+html[data-theme="dark"] #play-banner{background:#342A10;color:#E7E0CD}
+html[data-theme="dark"] #play-banner .pb-x{color:#E7E0CD}
+html[data-theme="dark"] .shared-install{background:#342A10;color:#E7E0CD}
+html[data-theme="dark"] .shared-install .pb-x{color:#E7E0CD}
+html[data-theme="dark"] .taxi-auto-scene .ta-sun{background:#383111}
+html[data-theme="dark"] #screen-taxi-book .taxi-pin-row{background:#221E15}
+html[data-theme="dark"] #screen-taxi-book .taxi-pin-row.active{background:#221E15}
+html[data-theme="dark"] #screen-taxi-book .taxi-pin-dot::after{background:#221E15}
+html[data-theme="dark"] #screen-taxi-book #taxi-pickup-row .taxi-pin-label{color:#5FDDAE}
+html[data-theme="dark"] #screen-taxi-book .taxi-pin-row input::placeholder{color:#B8AC84}
+html[data-theme="dark"] .mart-chip{background:#221E15;color:#D2C6A2}
+html[data-theme="dark"] .mart-chips-sort .mart-chip{border-color:#504A31;color:#C2B380;background:#221E15}
+html[data-theme="dark"] .mart-chips-sort .mart-chip.active{border-color:#E7E0CD}
+html[data-theme="dark"] .mart-deal{background:linear-gradient(135deg,#3C3412,#FFD84D)}
+html[data-theme="dark"] .mart-deal-amt{color:#E7E0CE}
+html[data-theme="dark"] .mart-deal-name{color:#E7E0CE}
+html[data-theme="dark"] .mart-shop-row{background:#221E15}
+html[data-theme="dark"] .mart-shop-row-logo{background:#362D11}
+html[data-theme="dark"] .mart-shop-row-go{color:#ECB351}
+html[data-theme="dark"] .mart-logo-img{background:#221E15}
+html[data-theme="dark"] .mart-prod-img{background:#362D11}
+html[data-theme="dark"] .mart-prod-price{color:#5FDDAE}
+html[data-theme="dark"] .mart-see-all{color:#ECB351}
+html[data-theme="dark"] .mart-card{background:#221E15}
+html[data-theme="dark"] .mart-card-img{background:#362D11}
+html[data-theme="dark"] .mart-card-rating{background:#103020;color:#5FDDAE}
+html[data-theme="dark"] .mart-pill.open{background:#103020;color:#5FDDAE}
+html[data-theme="dark"] .mart-pill.closed{background:#2F1A16;color:#CB7971}
+html[data-theme="dark"] .mart-pill.deal{background:#3C3412;color:#D2C3A2}
+html[data-theme="dark"] .mart-closed-msg{color:#CB7971}
+html[data-theme="dark"] .poster-slide{background:#312A0F}
+html[data-theme="dark"] .posters-dots i{background:#463D17}
+html[data-theme="dark"] #screen-menu{background:#221E15}
+html[data-theme="dark"] .menu-mini-logo{background:#221E15;border:2px solid #333333}
+html[data-theme="dark"] #menu-body.rail-mode #nesh-cat-rail.no-photo .nrail-item{background:#221E15}
+html[data-theme="dark"] #menu-body.rail-mode #nesh-cat-rail.no-photo .nrail-item .nrail-name{color:#DDD3B8}
+html[data-theme="dark"] #screen-category{background:#221E15}
+html[data-theme="dark"] #screen-category .sw-head{background:radial-gradient(120px 120px at 92% 8%, rgba(34,30,21,0.34), rgba(34,30,21,0.00) 70%),
+    radial-gradient(180px 140px at -6% 100%, rgba(168,123,0,.30), rgba(168,123,0,0) 72%),
+    linear-gradient(180deg,#F7C61F 0%,#F2B705 55%,#E3A500 100%)}
+html[data-theme="dark"] #screen-category .sw-hello .eyebrow{color:#E7E0CD}
+html[data-theme="dark"] #screen-category .cat-badge-verified{background:#221E15;color:#64D9A4}
+html[data-theme="dark"] #screen-category .cat-loc-card{background:#221E15}
+html[data-theme="dark"] #screen-category .cat-loc-card-icon{background:#3A3212}
+html[data-theme="dark"] #screen-category .cat-loc-card-label{color:#B6AA86}
+html[data-theme="dark"] #screen-category .cat-loc-card-value{color:#E7E0CD}
+html[data-theme="dark"] #screen-category .cat-loc-card > svg{background:#3A3212;stroke:#E7E0CD}
+html[data-theme="dark"] #screen-category .cat-wrap{background:#221E15}
+html[data-theme="dark"] #screen-category .posters-dots i{background:#433916}
+html[data-theme="dark"] #screen-category .sw-sec-title{color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="hotel"]{background:#221E15}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .home-back-btn{background:#221E15}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .home-back-btn svg{stroke:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .home-notif-btn,html[data-theme="dark"] #screen-home[data-cat="hotel"] .top-row-right .account-btn{background:#221E15}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .home-notif-btn svg,html[data-theme="dark"] #screen-home[data-cat="hotel"] .top-row-right .account-btn svg{stroke:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .loc-suggest-text{color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{border:2px solid #E7E0CD;background:#221E15}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field:focus-within{border-color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .posters-dots i{background:#433916}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .food-chip{border:1.5px solid #514A31;background:#221E15;color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .food-chip.active{border-color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .food-count{color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .food-pill{background:rgba(34,30,21,0.18);border:1px solid rgba(51,51,51,0.22)}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"]{background:#221E15}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .home-brand-mark{color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .home-track-btn{background:#221E15}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .top-row-right .your-orders-pill{background:#221E15;border:2px solid #E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .home-top-row .home-loc-card{background:rgba(34,30,21,0.35)}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .loc-suggest-text{color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .search-wrap .field{background:#221E15}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-chip{background:rgba(34,30,21,0.60);color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-chip.active{border-color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-chips-sort .mart-chip{color:#E2DBC3}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-chips-sort .mart-chip.active{background:#221E15;border-color:#333333;color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-see-all{color:#E7E0CD;text-decoration-color:#E8C354}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-card{background:#221E15;border:2px solid #E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-card-img{border:2px solid #E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-card-name{color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-card-rating{background:#463B16;color:#E2DBC3}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-deal{border:2px solid #E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-logo-chip.active .mart-logo-img{border-color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-logo-chip.active .mart-logo-name{color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-trend-shopname{color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-prod-img{border:2px solid #E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"]{background:#221E15}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .top-row-right .your-orders-pill{background:rgba(34,30,21,0.90)}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .search-wrap .field{background:#221E15}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .search-wrap .field:focus-within{border:1px solid #E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-chip{color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-chip.active{border-color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-chips-sort .mart-chip.active{background:#221E15;border-color:#333333;color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-sec-title,html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-section-title{color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-see-all{color:#CDBE98}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-deal{background:#393112}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-card{background:#221E15;border:1px solid #494231}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-card:active{background:#221E15}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-card-rating{color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-card-rating::before{color:#ECC351}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-card-arrow{color:#B2A98A}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-pill.open{color:#70CCA1}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-pill.closed{color:#CA7F72}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-pill.deal{background:#393112;color:#D7CAAC}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .rest-card2{border:1px solid #494231}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .rest-info2::after{color:#B2A98A}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .rest-rating2{color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-prod-price{color:#73C9A4}
+html[data-theme="dark"] .mart-price-chip{background:#12301F;color:#5DDFAE}
+html[data-theme="dark"] .mart-prod-shopname{color:#E7E0CD !important}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-logo-img{border:1px solid #494231}
+html[data-theme="dark"] #screen-home[data-cat="online_shop"] .mart-logo-chip.active .mart-logo-img{border-color:#E7E0CD}
+html[data-theme="dark"] .mart-shops-sub{color:#AFA78D}
+html[data-theme="dark"] .mart-shop-tag{background:#3A3112;color:#D2C6A2}
+html[data-theme="dark"] .mart-card.is-closed .mart-visit{background:#332C1A;color:#AFA78D}
+html[data-theme="dark"] .order-summary-overlay{background:#2A2416}
+html[data-theme="dark"] .order-summary-sheet.cart-page{background:#2A2416}
+html[data-theme="dark"] .cp-head{background:#221E15}
+html[data-theme="dark"] .cp-back{border:1px solid #494231 !important;background:#221E15 !important}
+html[data-theme="dark"] .cp-saved{background:#103020;color:#5FDDAE}
+html[data-theme="dark"] .cp-card{background:#221E15;border:1px solid #494231}
+html[data-theme="dark"] .cp-card-head{border-bottom:1px solid #48412D}
+html[data-theme="dark"] .cp-ic{border:1px solid #494231}
+html[data-theme="dark"] .cp-card-title{color:#E7E0CD}
+html[data-theme="dark"] .os-item-total,html[data-theme="dark"] #multi-panel .mp-itemtotal{background:#122F21;color:#61DBAE}
+html[data-theme="dark"] .os-item-total span:last-child,html[data-theme="dark"] #multi-panel .mp-itemtotal span:last-child{color:#61DBAE}
+html[data-theme="dark"] .os-shop-head{background:#31290F}
+html[data-theme="dark"] .os-shop-logo{background:#221E15}
+html[data-theme="dark"] .os-shop-name{color:#DDD7D2}
+html[data-theme="dark"] .os-badge{background:#221E15}
+html[data-theme="dark"] .cp-card-sub{color:#AFA78D}
+html[data-theme="dark"] .cp-card .order-summary-row{border-bottom:1px solid #48412D}
+html[data-theme="dark"] .cp-card .order-summary-row-img{border:1px solid #48412D;background:#221E15}
+html[data-theme="dark"] .cp-row-total{color:#5FDDAE}
+html[data-theme="dark"] .cp-addmore{color:#E7E0CD}
+html[data-theme="dark"] .cp-addmore b{color:#DD5F82}
+html[data-theme="dark"] .cp-suggest-title{color:#E7E0CD}
+html[data-theme="dark"] .cp-bill .order-summary-total-row{color:#BCAE8A}
+html[data-theme="dark"] .cp-bill .order-summary-total-row span:last-child{color:#E7E0CD}
+html[data-theme="dark"] .cp-bill .order-summary-total-row .free{color:#5FDDAE}
+html[data-theme="dark"] .cp-bill .order-summary-total-row s{color:#AFA88D}
+html[data-theme="dark"] .cp-bill .order-summary-grand-row{border-top:1px solid #48412D}
+html[data-theme="dark"] .cp-bill-note{color:#AFA78D}
+html[data-theme="dark"] .cp-min-note{background:#30220F;color:#CDB598}
+html[data-theme="dark"] .pr-cta::after{background:linear-gradient(100deg,transparent,rgba(34,30,21,0.65),transparent)}
+html[data-theme="dark"] .pr-cta-ic{background:#221E15}
+html[data-theme="dark"] .pr-cta-tx b{color:#ECE5D8}
+html[data-theme="dark"] .pr-cta-tx small{color:#D8CBAD}
+html[data-theme="dark"] .cp-bar{background:#221E15;border-top:1px solid #494231}
+html[data-theme="dark"] .cp-bar-total{color:#BCAE8A}
+html[data-theme="dark"] .cp-bar-total b{color:#E7E0CD}
+html[data-theme="dark"] .cp-loc-line1{color:#E7E0CD}
+html[data-theme="dark"] .cp-loc-line2{color:#AFA78D}
+html[data-theme="dark"] .cp-loc-line2.warn{color:#E3925A}
+html[data-theme="dark"] .cp-km{background:#31220F;color:#E3925A}
+html[data-theme="dark"] #cp-addr-arrow{color:#AFA78D}
+html[data-theme="dark"] .cp-cpn-title{color:#E7E0CD}
+html[data-theme="dark"] .cp-ic-green{background:#112E1D}
+html[data-theme="dark"] .cp-cpn-text{color:#E7E0CD}
+html[data-theme="dark"] .cp-cpn-text.on{color:#5FDDAE}
+html[data-theme="dark"] .cp-cpn-arrow{color:#AFA78D}
+html[data-theme="dark"] .cp-sheet{background:#221E15}
+html[data-theme="dark"] .cp-sheet-head{color:#E7E0CD}
+html[data-theme="dark"] .cp-sheet-head button{color:#BCAE8A}
+html[data-theme="dark"] .cp-pay-online{border:1.5px solid #4E4838;background:#221E15;color:#E7E0CD}
+html[data-theme="dark"] .cp-conf-title{color:#E7E0CD}
+html[data-theme="dark"] .cp-conf-sub{color:#AFA78D}
+html[data-theme="dark"] .cp-conf-row{border-top:1px dashed #474235}
+html[data-theme="dark"] .cp-conf-row b{color:#E7E0CD}
+html[data-theme="dark"] .cp-conf-row span:not(.cp-ic){color:#AFA78D}
+html[data-theme="dark"] .cp-conf-cancel{color:#DD5F82}
+html[data-theme="dark"] .cp-online-amt{color:#BCAE8A}
+html[data-theme="dark"] .cp-online-amt b{color:#E7E0CD}
+html[data-theme="dark"] .bs-row{color:#BCAE8A}
+html[data-theme="dark"] .bs-row > span:last-child{color:#E7E0CD}
+html[data-theme="dark"] .bs-row small{color:#AFA88D}
+html[data-theme="dark"] .bs-row.free-gift-row{background:linear-gradient(120deg,#342C10,#221E15)}
+html[data-theme="dark"] .bs-row.free-gift-row::after{background:linear-gradient(100deg,transparent,rgba(34,30,21,0.70),transparent)}
+html[data-theme="dark"] .free-gift-row .fg-img{background:#221E15;border:2px solid #333333}
+html[data-theme="dark"] .free-gift-row .fg-name{color:#E7E0CD}
+html[data-theme="dark"] .free-gift-row .fg-qty{color:#B8AC84}
+html[data-theme="dark"] .free-gift-row .fg-price s{color:#AFA88D}
+html[data-theme="dark"] .free-gift-row .fg-price b{color:#5FDDAE}
+html[data-theme="dark"] .order-summary-row.gift-row{background:linear-gradient(120deg,#342C10,#221E15)}
+html[data-theme="dark"] .order-summary-row.gift-row::after{background:linear-gradient(100deg,transparent,rgba(34,30,21,0.70),transparent)}
+html[data-theme="dark"] .gift-row .fg-was s{color:#AFA88D}
+html[data-theme="dark"] .gift-row .fg-free{color:#5FDDAE}
+html[data-theme="dark"] .fgp-card{background:linear-gradient(170deg,#383111 0%,#221E15 55%)}
+html[data-theme="dark"] .fgp-photo{background:#221E15;border:4px solid #333333}
+html[data-theme="dark"] .fgp-title{color:#E7E0CD}
+html[data-theme="dark"] .fgp-name{color:#DB6164}
+html[data-theme="dark"] .fgp-price{color:#B8AC84}
+html[data-theme="dark"] .fgp-price b{color:#5FDDAE}
+html[data-theme="dark"] .fgp-sub{color:#BCAE8A}
+html[data-theme="dark"] .fgp-prog{background:#3F3613}
+html[data-theme="dark"] .gl-photo{background:#221E15;border:3px solid #333333}
+html[data-theme="dark"] .gl-lock{border:2px solid #333333}
+html[data-theme="dark"] .gl-title{color:#BCAE8A}
+html[data-theme="dark"] .gl-title b{color:#DB6164}
+html[data-theme="dark"] .gl-name{color:#E7E0CD}
+html[data-theme="dark"] .gl-prog{background:#3F3613}
+html[data-theme="dark"] .gl-note{color:#B8AC84}
+html[data-theme="dark"] .fob-card::after{background:linear-gradient(100deg,transparent,rgba(34,30,21,0.45),transparent)}
+html[data-theme="dark"] .fob-photo{background:#221E15;border:3px solid #333333}
+html[data-theme="dark"] .fob-txt{color:#ECE4D8}
+html[data-theme="dark"] .fob-name span{background:#221E15;color:#DB6164}
+html[data-theme="dark"] .fob-prog i{background:#221E15}
+html[data-theme="dark"] #loc-summary-free-hint:not(.fd-won){background:linear-gradient(120deg,#393012,#483B16) !important;color:#E7E0CD !important}
+html[data-theme="dark"] .fd-ic{background:#221E15}
+html[data-theme="dark"] .fd-big b{color:#DB6164}
+html[data-theme="dark"] .bs-row.green,html[data-theme="dark"] .bs-row.green > span{color:#5FDDAE !important}
+html[data-theme="dark"] .bs-hint{background:#332A10;color:#CDBE98}
+html[data-theme="dark"] .bs-total{border-top:1px dashed #4E4838;color:#E7E0CD}
+html[data-theme="dark"] .tip-box{background:linear-gradient(135deg,#31290F 0%,#3A2F12 100%)}
+html[data-theme="dark"] .tip-ic{background:#221E15}
+html[data-theme="dark"] .tip-head b{color:#E7E0CD}
+html[data-theme="dark"] .tip-head small{color:#CDBE98}
+html[data-theme="dark"] .tip-chip{background:#221E15;color:#E7E0CD}
+html[data-theme="dark"] .tip-chip.tip-custom{color:#CDBE98;background:rgba(34,30,21,0.70)}
+html[data-theme="dark"] .tip-chip.tip-custom.on{color:#E7E0CD}
+html[data-theme="dark"] .tip-input-box{background:#221E15}
+html[data-theme="dark"] .tip-input-box span{color:#C4AC85}
+html[data-theme="dark"] .tip-input-box input{color:#E7E0CD}
+html[data-theme="dark"] .tip-note{color:#CDBE98}
+html[data-theme="dark"] .tip-note.thanks{color:#5FDDAE}
+html[data-theme="dark"] .bs-saving{background:#103020;color:#5FDDAE}
+html[data-theme="dark"] #screen-home[data-cat="hotel"]{background:#221E15}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{background:#221E15}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field:focus-within{border-color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .food-chip{border:1px solid #4C4533;background:#221E15;color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .food-chip.active{border-color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .food-count{color:#BCAE8A}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .food-items-hint{color:#A9A289}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .food-item-logo{border:2px solid #333333}
+html[data-theme="dark"] #screen-menu[data-store="1"]{background:#221E15}
+html[data-theme="dark"] #screen-menu[data-store="1"] .menu-header.has-logo .menu-header-logo{border:2px solid #333333}
+html[data-theme="dark"] #screen-menu[data-store="1"] #menu-search-wrap{background:#221E15}
+html[data-theme="dark"] #screen-menu[data-store="1"] #menu-search-wrap .field{border:1px solid #4C4533;background:#221E15}
+html[data-theme="dark"] #screen-menu[data-store="1"] #menu-search-wrap .field:focus-within{border-color:#E7E0CD}
+html[data-theme="dark"] #screen-menu[data-store="1"] #menu-search-input::placeholder{color:#A9A289}
+html[data-theme="dark"] #screen-menu[data-store="1"] .item-list-label{color:#BCAE8A}
+html[data-theme="dark"] #screen-menu[data-store="1"] #menu-body.rail-mode #nesh-cat-rail{background:#221E15;border-right:1px solid #494231}
+html[data-theme="dark"] #screen-menu[data-store="1"] .nrail-item .nrail-img{border:1px solid #494231;background:#221E15}
+html[data-theme="dark"] #screen-menu[data-store="1"] .nrail-item.active .nrail-img{border:2px solid #E7E0CD;background:#221E15}
+html[data-theme="dark"] #screen-menu[data-store="1"] .item-card2{border:1px solid #494231;background:#221E15}
+html[data-theme="dark"] #screen-menu .item-price2,html[data-theme="dark"] #product-results-wrap .item-price2{background:#12301F;color:#5DDFAE}
+html[data-theme="dark"] #screen-menu #menu-body.rail-mode .item-price2{color:#5DDFAE}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .home-brand-mark{color:#E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .home-track-btn{background:#221E15}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .top-row-right .your-orders-pill{background:#221E15;border:2px solid #E7E0CD}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .home-top-row .home-loc-card{background:rgba(34,30,21,0.35)}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .top-row-right .your-orders-pill{background:rgba(34,30,21,0.90)}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{background:#221E15}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] .home-top-row .home-loc-card,html[data-theme="dark"] #screen-home[data-cat="online_shop"] .home-top-row .home-loc-card{background:#221E15 !important}
+html[data-theme="dark"] .set-chev{color:#ECB351}
+html[data-theme="dark"] .set-lang-btn{background:#221E15}
+html[data-theme="dark"] .set-lang-btn.on{background:#30250F;color:#CDBA98}
+html[data-theme="dark"] .shops-skel{background:linear-gradient(100deg,#302A17 30%,#2C2612 50%,#302A17 70%)}
+html[data-theme="dark"] .prm-box .prm-h{color:#BAAC83}
+html[data-theme="dark"] .prm-box .prm-row{background:#31290F}
+html[data-theme="dark"] .prm-box .prm-tx{color:#E7E0CD}
+html[data-theme="dark"] .prm-box .prm-tx small{color:#BAAC83}
+html[data-theme="dark"] .prm-box .prm-x{background:#221E15;color:#DD5F82}
+html[data-theme="dark"] .pr-sheet{background:#221E15;color:#E7E0CD}
+html[data-theme="dark"] .pr-sheet p{color:#BAAC83}
+html[data-theme="dark"] .pr-chip{border:1.5px solid #514832;background:#221E15;color:#D4C9A6}
+html[data-theme="dark"] .pr-sheet textarea{border:1.5px solid #514832}
+html[data-theme="dark"] .pr-btn.alt{background:#221E15;color:#BAAC83;border:1.5px solid #514832}
+html[data-theme="dark"] .pr-msg{background:#322B0F}
+html[data-theme="dark"] .prq-cb-ic{background:#221E15}
+html[data-theme="dark"] .prq-cb .prq-bub{background:#221E15}
+html[data-theme="dark"] .prq-cb-note{background:rgba(34,30,21,0.90);color:#61DBAE}
+html[data-theme="dark"] .prs-lbl{color:#E7E0CD}
+html[data-theme="dark"] .prs-lbl small{color:#B2A88A}
+html[data-theme="dark"] .prs-in{border:1.5px solid #544C33;background:#221E15}
+html[data-theme="dark"] #pr-modal .pr-chip{border:1.5px solid #544C33;background:#221E15}
+html[data-theme="dark"] #pr-modal .pr-chip.on{background:linear-gradient(135deg,#310F1A,#362610);color:#C77590}
+html[data-theme="dark"] #pr-modal textarea{border:1.5px solid #544C33;background:#221E15}
+html[data-theme="dark"] .prs-pv{background:#221E15;border:1.5px dashed #3B3353}
+html[data-theme="dark"] .prq-pvh{color:#8C7EBE}
+html[data-theme="dark"] .prq-pvc b{color:#E7E0CD}
+html[data-theme="dark"] .prq-pvc small{color:#C77590}
+html[data-theme="dark"] .prq-se{background:linear-gradient(135deg,#310F1A,#362610)}
+html[data-theme="dark"] .prp-card{background:#221E15;color:#E7E0CD}
+html[data-theme="dark"] .prp-card p{color:#BAAC83}
+html[data-theme="dark"] .prq-ic{background:#221E15}
+html[data-theme="dark"] .prq-bub{background:#372D11;color:#E7E0CE}
+html[data-theme="dark"] .prq-order{background:#221E15}
+html[data-theme="dark"] .prq-oh{color:#BAAC83}
+html[data-theme="dark"] .prq-oh b{color:#E7E0CD}
+html[data-theme="dark"] .prq-it{border-top:1px solid #4E4730}
+html[data-theme="dark"] .prq-it img,html[data-theme="dark"] .prq-ph{background:#221E15;border:1px solid #504931}
+html[data-theme="dark"] .prq-nm{color:#E7E0CD}
+html[data-theme="dark"] .prq-it b{color:#E7E0CD}
+html[data-theme="dark"] .prq-note{background:#103020;color:#61DBAE}
+</style>
 </head>
 <body>
 <div id="nesh-splash" class="show" aria-live="polite">
@@ -4023,6 +4576,36 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
         <input id="search-input" type="text" placeholder="Search restaurants or cuisine" />
       </div>
     </div>
+    <div id="food-filters">
+      <button type="button" class="ff-chip" id="ff-open-sheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>Filters<span class="ff-badge" id="ff-badge">0</span></button>
+      <button type="button" class="ff-chip" data-ff="rating">⭐ Rating 4.0+</button>
+      <button type="button" class="ff-chip" data-ff="open">🟢 Open now</button>
+      <button type="button" class="ff-chip" data-ff="dist">📍 Nearest</button>
+      <button type="button" class="ff-chip" data-ff="top">🏆 Top rated</button>
+    </div>
+    <div id="ff-overlay"><div id="ff-sheet">
+      <h3>Filters <button type="button" id="ff-close" aria-label="Close">✕</button></h3>
+      <p class="ff-sec">Sort by</p>
+      <div class="ff-opts" id="ff-sort-opts">
+        <button type="button" class="ff-opt" data-sort="rel">Relevance</button>
+        <button type="button" class="ff-opt" data-sort="rating">Rating: High to Low</button>
+        <button type="button" class="ff-opt" data-sort="dist">Distance: Near to Far</button>
+      </div>
+      <p class="ff-sec">Rating</p>
+      <div class="ff-opts" id="ff-rating-opts">
+        <button type="button" class="ff-opt" data-min="0">Any</button>
+        <button type="button" class="ff-opt" data-min="3.5">3.5+</button>
+        <button type="button" class="ff-opt" data-min="4">4.0+</button>
+        <button type="button" class="ff-opt" data-min="4.5">4.5+</button>
+      </div>
+      <p class="ff-sec">Price (item price)</p>
+      <div class="ff-price-head"><span id="ff-price-label">Any price</span><small id="ff-price-hint"></small></div>
+      <div class="dr" id="ff-dr"><div class="dr-track"><div class="dr-fill"></div></div><input type="range" class="dr-lo" min="0" value="0"><input type="range" class="dr-hi" min="0" value="0"></div>
+      <div class="pr-boxes"><div>Minimum<b id="ff-pmin">₹0</b></div><div>Maximum<b id="ff-pmax">₹0</b></div></div>
+      <p class="ff-sec">Availability</p>
+      <div class="ff-opts"><button type="button" class="ff-opt" id="ff-open-opt">🟢 Open now</button></div>
+      <div class="ff-actions"><button type="button" id="ff-clear">Clear all</button><button type="button" id="ff-apply">Show restaurants</button></div>
+    </div></div>
     <div class="mart-only mart-filters" id="mart-filters">
       <div class="mart-chips" id="mart-cat-chips"></div>
       <div class="mart-chips mart-chips-sort" id="mart-sort-chips"></div>
@@ -4106,7 +4689,16 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
         <input id="menu-search-input" type="text" placeholder="Search items in this menu" />
         <img class="menu-mini-logo" id="menu-mini-logo" alt="" />
       </div>
+
     </div>
+    <div id="mp-overlay"><div id="mp-sheet">
+      <h3>Filter <button type="button" id="mp-close" aria-label="Close">✕</button></h3>
+      <p class="ff-sec">Price</p>
+      <div class="ff-price-head"><span id="mp-label">Any price</span><small id="mp-hint"></small></div>
+      <div class="dr" id="mp-dr"><div class="dr-track"><div class="dr-fill"></div></div><input type="range" class="dr-lo" min="0" value="0"><input type="range" class="dr-hi" min="0" value="0"></div>
+      <div class="pr-boxes"><div>Minimum<b id="mp-pmin">₹0</b></div><div>Maximum<b id="mp-pmax">₹0</b></div></div>
+      <div class="ff-actions"><button type="button" id="mp-clear2">Clear</button><button type="button" id="mp-apply">Show items</button></div>
+    </div></div>
     <div class="nesh-cat-bar" id="nesh-cat-bar"></div>
     <div id="shop-unavailable-panel" style="display:none; text-align:center; padding:40px 24px;">
       <p style="font-size:40px; margin:0 0 12px;">🚫</p>
@@ -4117,7 +4709,13 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
       <aside id="nesh-cat-rail" aria-label="Categories"></aside>
       <div id="menu-main">
         <div id="free-offer-banner" style="display:none"></div>
-        <p class="item-list-label" id="item-list-label">Items</p>
+        <div class="item-head" id="item-head">
+          <p class="item-list-label" id="item-list-label">Items</p>
+          <div id="menu-price-bar" style="display:none">
+            <button type="button" class="mp-chip" id="mp-toggle"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>Filter<span id="mp-summary"></span></button>
+            <button type="button" class="mp-clear" id="mp-clear" style="display:none" aria-label="Clear filter">✕</button>
+          </div>
+        </div>
         <div class="item-grid" id="item-list"></div>
         <p class="item-list-label" id="menu-no-results" style="display:none; text-align:center; color:var(--muted); font-weight:500;">No items match your search</p>
       </div>
@@ -4332,6 +4930,14 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
         <div class="set-lang">
           <button type="button" class="set-lang-btn" id="lang-en-btn">English</button>
           <button type="button" class="set-lang-btn" id="lang-ml-btn">മലയാളം</button>
+        </div>
+      </div>
+      <div class="set-card">
+        <p class="set-label">Appearance</p>
+        <div class="set-lang">
+          <button type="button" class="set-lang-btn" id="theme-light-btn">☀️ Light</button>
+          <button type="button" class="set-lang-btn" id="theme-dark-btn">🌙 Dark</button>
+          <button type="button" class="set-lang-btn" id="theme-sys-btn">Auto</button>
         </div>
       </div>
     </div>
@@ -7278,6 +7884,111 @@ function neshSetLang(l) {
 }
 document.getElementById('lang-en-btn').addEventListener('click', () => neshSetLang('en'));
 document.getElementById('lang-ml-btn').addEventListener('click', () => neshSetLang('ml'));
+
+// ---------- Dark mode (Settings -> Appearance) ----------
+function neshApplyTheme() {
+  const t = localStorage.getItem('nesh_theme') || 'light';
+  const dark = t === 'dark' || (t === 'system' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  if (dark) document.documentElement.setAttribute('data-theme', 'dark'); else document.documentElement.removeAttribute('data-theme');
+  [['light', 'theme-light-btn'], ['dark', 'theme-dark-btn'], ['system', 'theme-sys-btn']].forEach(([k, id]) => {
+    const b = document.getElementById(id); if (b) b.classList.toggle('on', t === k);
+  });
+}
+function neshSetTheme(t) { try { localStorage.setItem('nesh_theme', t); } catch (e) {} neshApplyTheme(); }
+document.getElementById('theme-light-btn').addEventListener('click', () => neshSetTheme('light'));
+document.getElementById('theme-dark-btn').addEventListener('click', () => neshSetTheme('dark'));
+document.getElementById('theme-sys-btn').addEventListener('click', () => neshSetTheme('system'));
+try { window.matchMedia && matchMedia('(prefers-color-scheme: dark)').addEventListener('change', neshApplyTheme); } catch (e) {}
+neshApplyTheme();
+
+// ---------- Flipkart-style two-handle price range ----------
+function neshDualRange(el, onChange) {
+  const lo = el.querySelector('.dr-lo'), hi = el.querySelector('.dr-hi'), fill = el.querySelector('.dr-fill');
+  function paint() {
+    const t = Number(lo.max) || 1, a = Number(lo.value), b = Number(hi.value);
+    fill.style.left = (a / t * 100) + '%'; fill.style.width = ((b - a) / t * 100) + '%';
+    lo.style.zIndex = (a >= b && a > t / 2) ? 3 : 1; hi.style.zIndex = 2;
+  }
+  function inp(e) {
+    if (Number(lo.value) > Number(hi.value)) { if (e.target === lo) lo.value = hi.value; else hi.value = lo.value; }
+    paint(); onChange(Number(lo.value), Number(hi.value));
+  }
+  lo.addEventListener('input', inp); hi.addEventListener('input', inp);
+  return { set(l, h, top, step) { lo.max = hi.max = top; lo.step = hi.step = step; lo.value = l; hi.value = h; paint(); } };
+}
+function neshDRHtml(id) { return '<div class="dr" id="' + id + '"><div class="dr-track"><div class="dr-fill"></div></div><input type="range" class="dr-lo" min="0" value="0"><input type="range" class="dr-hi" min="0" value="0"></div>'; }
+// ---------- Food filters (chips + bottom sheet) ----------
+const neshFilt = { sort: 'rel', min: 0, open: false, minPrice: 0, maxPrice: 0 }; // maxPrice 0 = any
+function neshFiltCount() { return (neshFilt.sort !== 'rel' ? 1 : 0) + (neshFilt.min > 0 ? 1 : 0) + (neshFilt.open ? 1 : 0) + ((neshFilt.minPrice > 0 || neshFilt.maxPrice > 0) ? 1 : 0); }
+function neshApplyShopFilters(list) {
+  let out = list.slice();
+  if (neshFilt.min > 0) out = out.filter(r => (parseFloat(r.rating) || 0) >= neshFilt.min);
+  if (neshFilt.open) out = out.filter(r => { try { return !getShopClosedInfo(r).closed; } catch (e) { return true; } });
+  if (neshFilt.minPrice > 0 || neshFilt.maxPrice > 0) out = out.filter(r => (r.items || []).some(it => { const p = Number(it.price) || 0; return p > 0 && p >= neshFilt.minPrice && (neshFilt.maxPrice <= 0 || p <= neshFilt.maxPrice); }));
+
+  const dist = r => { const p = parseLatLng(r.location); return (state.customerPos && p) ? haversineMeters(state.customerPos.lat, state.customerPos.lng, p.lat, p.lng) : Infinity; };
+  if (neshFilt.sort === 'rating') out.sort((a, b) => (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0));
+  else if (neshFilt.sort === 'dist' && state.customerPos) out.sort((a, b) => dist(a) - dist(b));
+  return out;
+}
+
+// Highest item price across all Food shops -> slider max
+function neshMaxItemPrice() {
+  let m = 0;
+  try { RESTAURANTS.forEach(r => { if ((r.businessType || 'hotel') === 'hotel') (r.items || []).forEach(it => { const p = Number(it.price) || 0; if (p > m) m = p; }); }); } catch (e) {}
+  return m;
+}
+let _ffDR = null;
+function neshFFPriceText(lo, hi, top) {
+  document.getElementById('ff-pmin').textContent = '\u20B9' + lo; document.getElementById('ff-pmax').textContent = '\u20B9' + hi;
+  document.getElementById('ff-price-label').textContent = (lo <= 0 && hi >= top) ? 'Any price' : '\u20B9' + lo + ' \u2013 \u20B9' + hi;
+}
+function neshSyncPriceUI() {
+  const el = document.getElementById('ff-dr'); if (!el) return;
+  const top = Math.max(50, Math.ceil(neshMaxItemPrice() / 10) * 10), step = top > 300 ? 10 : 5;
+  if (!_ffDR) _ffDR = neshDualRange(el, (lo, hi) => {
+    const t = Number(el.querySelector('.dr-lo').max);
+    neshFilt.minPrice = lo; neshFilt.maxPrice = hi >= t ? 0 : hi;
+    neshFFPriceText(lo, hi, t);
+  });
+  const lo = Math.min(neshFilt.minPrice, top), hi = neshFilt.maxPrice > 0 ? Math.min(neshFilt.maxPrice, top) : top;
+  _ffDR.set(lo, hi, top, step);
+  neshFFPriceText(lo, hi, top);
+  document.getElementById('ff-price-hint').textContent = 'Highest item: \u20B9' + top;
+}
+function neshSyncFilterUI() {
+  const q = s => document.querySelector(s);
+  q('[data-ff="rating"]').classList.toggle('on', neshFilt.min >= 4);
+  q('[data-ff="open"]').classList.toggle('on', neshFilt.open);
+  q('[data-ff="dist"]').classList.toggle('on', neshFilt.sort === 'dist');
+  q('[data-ff="top"]').classList.toggle('on', neshFilt.sort === 'rating');
+  const n = neshFiltCount(), fb = document.getElementById('ff-open-sheet');
+  fb.classList.toggle('has', n > 0); document.getElementById('ff-badge').textContent = n;
+  document.querySelectorAll('#ff-sort-opts .ff-opt').forEach(b => b.classList.toggle('on', b.dataset.sort === neshFilt.sort));
+  document.querySelectorAll('#ff-rating-opts .ff-opt').forEach(b => b.classList.toggle('on', parseFloat(b.dataset.min) === neshFilt.min));
+  document.getElementById('ff-open-opt').classList.toggle('on', neshFilt.open);
+  neshSyncPriceUI();
+}
+function neshFilterChanged() { neshSyncFilterUI(); renderRestaurantList(); }
+document.getElementById('food-filters').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.id === 'ff-open-sheet') { neshSyncPriceUI(); document.getElementById('ff-overlay').classList.add('show'); return; }
+  const k = b.dataset.ff;
+  if (k === 'rating') neshFilt.min = neshFilt.min >= 4 ? 0 : 4;
+  else if (k === 'open') neshFilt.open = !neshFilt.open;
+  else if (k === 'dist') neshFilt.sort = neshFilt.sort === 'dist' ? 'rel' : 'dist';
+  else if (k === 'top') neshFilt.sort = neshFilt.sort === 'rating' ? 'rel' : 'rating';
+  neshFilterChanged();
+});
+document.getElementById('ff-sort-opts').addEventListener('click', e => { const b = e.target.closest('[data-sort]'); if (b) { neshFilt.sort = b.dataset.sort; neshSyncFilterUI(); } });
+document.getElementById('ff-rating-opts').addEventListener('click', e => { const b = e.target.closest('[data-min]'); if (b) { neshFilt.min = parseFloat(b.dataset.min); neshSyncFilterUI(); } });
+document.getElementById('ff-open-opt').addEventListener('click', () => { neshFilt.open = !neshFilt.open; neshSyncFilterUI(); });
+document.getElementById('ff-clear').addEventListener('click', () => { neshFilt.sort = 'rel'; neshFilt.min = 0; neshFilt.open = false; neshFilt.minPrice = 0; neshFilt.maxPrice = 0; neshSyncFilterUI(); });
+const neshCloseFF = () => document.getElementById('ff-overlay').classList.remove('show');
+document.getElementById('ff-apply').addEventListener('click', () => { neshCloseFF(); neshFilterChanged(); });
+document.getElementById('ff-close').addEventListener('click', neshCloseFF);
+document.getElementById('ff-overlay').addEventListener('click', e => { if (e.target.id === 'ff-overlay') neshCloseFF(); });
+neshSyncFilterUI();
 
 // ---------- SETTINGS / ACCOUNT / EDIT PROFILE ----------
 let neshSettingsReturn = 'category';
@@ -11704,9 +12415,10 @@ function renderRestaurantList() {
   // delivery zone covers that point. Restaurants that haven't drawn a zone
   // yet are still shown, so nothing disappears just because a restaurant
   // hasn't set one up yet.
-  const filtered = state.customerPos
+  let filtered = state.customerPos
     ? searchFiltered.filter(r => shopAllowedAtPoint(r.id, state.customerPos) && (!r.zone || isPointInZone(state.customerPos, r.zone)))
     : searchFiltered;
+  if (state.category === 'hotel') filtered = neshApplyShopFilters(filtered);
 
   if (state.category === 'online_shop') {
     renderMart(filtered, categoryFiltered, q, searchFiltered);
@@ -11722,6 +12434,8 @@ function renderRestaurantList() {
     const noun = state.category === 'groceries' ? 'stores' : state.category === 'online_shop' ? 'shops' : 'restaurants';
     p.textContent = isAreaUnavailable(state.customerPos)
       ? AREA_UNAVAILABLE_MSG
+      : (state.category === 'hotel' && neshFiltCount() > 0 && searchFiltered.length > 0)
+      ? 'No restaurants match these filters. Try clearing some.'
       : state.customerPos && searchFiltered.length > 0
       ? "No " + noun + " deliver to your selected location yet."
       : 'No ' + noun + ' match "' + searchInput.value + '".';
@@ -12353,6 +13067,35 @@ document.getElementById('nesh-cat-bar').addEventListener('click', e => {
   renderMenu();
 });
 
+// ---- Price range filter inside a shop menu (range follows the shop's highest item price) ----
+const neshMP = { shop: null, min: 0, max: -1, top: 0 };   // max -1 = no upper limit
+function neshItemPrice(it) { try { return isWeightUnit(it.unit) ? (Number(it.price) || 0) : (Number(getUnitPrice(it)) || 0); } catch (e) { return Number(it.price) || 0; } }
+function neshMPActive() { return neshMP.min > 0 || (neshMP.max >= 0 && neshMP.max < neshMP.top); }
+function neshMPReset() { neshMP.min = 0; neshMP.max = -1; }
+function neshMPText() {
+  document.getElementById('mp-pmin').textContent = '\u20B9' + neshMP.min; document.getElementById('mp-pmax').textContent = '\u20B9' + neshMP.max;
+  document.getElementById('mp-label').textContent = neshMPActive() ? '\u20B9' + neshMP.min + ' \u2013 \u20B9' + neshMP.max : 'Any price';
+}
+function neshSyncMenuPrice(r) {
+  const bar = document.getElementById('menu-price-bar'); if (!bar) return;
+  if (neshMP.shop !== r.id) { neshMP.shop = r.id; neshMPReset(); }
+  const prices = (r.items || []).map(neshItemPrice).filter(p => p > 0);
+  const top = prices.length ? Math.ceil(Math.max.apply(null, prices)) : 0;
+  neshMP.top = top;
+  if (prices.length < 2 || r.id === 'NESH_STORE') { bar.style.display = 'none'; neshMPReset(); return; }
+  bar.style.display = 'flex';
+  if (neshMP.max < 0 || neshMP.max > top) neshMP.max = top;
+  if (neshMP.min > neshMP.max) neshMP.min = 0;
+  const step = top > 300 ? 10 : 5;
+  if (!neshMP.dr) neshMP.dr = neshDualRange(document.getElementById('mp-dr'), (lo, hi) => { neshMP.min = lo; neshMP.max = hi; neshMPText(); neshMPChanged(); });
+  neshMP.dr.set(neshMP.min, neshMP.max, top, step);
+  neshMPText();
+  document.getElementById('mp-hint').textContent = 'Highest item: \u20B9' + top;
+  const on = neshMPActive();
+  document.getElementById('mp-toggle').classList.toggle('on', on);
+  document.getElementById('mp-summary').textContent = on ? '\u20B9' + neshMP.min + ' \u2013 \u20B9' + neshMP.max : '';
+  document.getElementById('mp-clear').style.display = on ? 'inline-block' : 'none';
+}
 function renderMenu() {
   const r = state.selectedRestaurant;
   try { document.getElementById('screen-menu').dataset.store = (r && r.id === 'NESH_STORE') ? '1' : '0'; } catch (e) {}
@@ -12394,23 +13137,26 @@ function renderMenu() {
   searchWrap.style.display = 'block';
   renderNeshCategoryBar(r);
 
+  neshSyncMenuPrice(r);
   const query = (state.menuSearch || '').trim().toLowerCase();
   // NESH Store only: a tapped category tab narrows the catalog to that
   // category's items first; the search box then filters within it.
   const activeCat = neshActiveCategory(r);
   const baseItems = activeCat ? r.items.filter(it => activeCat.has(it)) : r.items;
-  const itemsRaw = query
+  const itemsQ = query
     ? baseItems.filter(it =>
         (it.name || '').toLowerCase().includes(query) ||
         (it.desc || '').toLowerCase().includes(query)
       )
     : baseItems;
+  const mpOn = neshMPActive();
+  const itemsRaw = mpOn ? itemsQ.filter(it => { const p = neshItemPrice(it); return p >= neshMP.min && p <= neshMP.max; }) : itemsQ;
   // Trending (offer) products go to the top of the shop's menu; everything else keeps its order.
   const neshIsOffer = it => Number(it.offerMrp) > Number(it.price) && Number(it.price) > 0;
   const items = itemsRaw.map((it, i) => ({ it, i }))
     .sort((a, b) => (neshIsOffer(b.it) - neshIsOffer(a.it)) || (a.i - b.i))
     .map(x => x.it);
-  itemListLabel.textContent = query
+  itemListLabel.textContent = (query || mpOn)
     ? "Search results (" + items.length + ")"
     : activeCat
       ? activeCat.name + " (" + baseItems.length + ")"
@@ -12500,6 +13246,15 @@ function renderMenu() {
   }
   updateCartBar();
 }
+let _menuMPT = null;
+function neshMPChanged() { clearTimeout(_menuMPT); _menuMPT = setTimeout(renderMenu, 120); }
+const neshMPOverlay = document.getElementById('mp-overlay');
+document.getElementById('mp-toggle').addEventListener('click', () => neshMPOverlay.classList.add('show'));
+document.getElementById('mp-close').addEventListener('click', () => neshMPOverlay.classList.remove('show'));
+document.getElementById('mp-apply').addEventListener('click', () => neshMPOverlay.classList.remove('show'));
+neshMPOverlay.addEventListener('click', e => { if (e.target === neshMPOverlay) neshMPOverlay.classList.remove('show'); });
+document.getElementById('mp-clear').addEventListener('click', () => { neshMPReset(); renderMenu(); });
+document.getElementById('mp-clear2').addEventListener('click', () => { neshMPReset(); renderMenu(); });
 let _menuSearchT = null;
 menuSearchInput.addEventListener('input', () => {
   state.menuSearch = menuSearchInput.value;
@@ -14839,20 +15594,17 @@ async function fetchPlaceArea(lat, lng) {
 // Splash: once the GPS fix arrives, swap "Locating..." for the place name
 // (zone -> nearest locality -> Nominatim), show it briefly, then lift the splash.
 async function neshRevealPlaceThenDone(lat, lng) {
-  const finish = () => { try { window.neshSplash && window.neshSplash.done('loc'); } catch (e) {} };
+  const finish = () => {
+    try { updateHomeLocationLabel(); } catch (e) {}   // label is already cached here -> Home opens with the place name filled in
+    try { window.neshSplash && window.neshSplash.done('loc'); } catch (e) {}
+  };
   try {
     if (!window.neshSplash || !window.neshSplash.isActive()) return finish();
     const g0 = window.neshSplash.gen();
-    const resolve = (async () => {
-      await loadLocalLandmarks();
-      let name = findLocationZoneName(lat, lng);
-      if (!name) {
-        const nearest = findNearestLocality(lat, lng, 3000);
-        name = nearest ? nearest.name : await fetchPlaceAreaFromNominatim(lat, lng);
-      }
-      return name;
-    })();
-    const name = await Promise.race([resolve, new Promise(r => setTimeout(() => r(null), 1200))]);   // place name is only decoration: don't hold the splash for it
+    // Use the SAME lookup (and cache) as the Home location label, so when the splash lifts the Home screen
+    // already shows the real place name instead of filling it in a moment later.
+    const resolve = neshLabelFor({ lat: lat, lng: lng });
+    const name = await Promise.race([resolve, new Promise(r => setTimeout(() => r(null), 4500))]);   // wait for the place name (max 4.5 s, so the app never gets stuck)
     if (window.neshSplash.gen() !== g0) return;   // splash was re-shown meanwhile (fresh fix pending) — don't touch it
     if (name && window.neshSplash.isActive()) {
       // Let "Locating..." be seen first (at least ~1.3s), then swap in the place name.
