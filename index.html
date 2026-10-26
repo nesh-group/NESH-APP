@@ -18995,12 +18995,21 @@ if ('serviceWorker' in navigator) {
     try { Object.keys(state.cart || {}).forEach(function (k) { mainCount += state.cart[k] || 0; }); } catch (x) {}
     try { mainDel = currentDeliveryFee() + currentPlatformFee(); } catch (x) {}
     var items = mainItems, count = mainCount, del = mainDel, rain = 0;
+    var shopRows = '';
+    var cnt = function (n) { return '<small>· ' + n + (n === 1 ? ' item' : ' items') + '</small>'; };
+    var mainName = '';
+    try { mainName = (state.selectedRestaurant && state.selectedRestaurant.name) || ''; } catch (x) {}
+    shopRows += '<div class="bs-row"><span>' + esc(mainName || 'Shop 1') + ' ' + cnt(mainCount) + '</span><span>₹' + rup(mainItems) + '</span></div>';
     M.bills.forEach(function (b) {
-      items += b.items; b.lines.forEach(function (l) { count += l.q; });
+      var bc = 0; b.lines.forEach(function (l) { bc += Number(l.q) || 0; });
+      items += b.items; count += bc;
       del += (b.df || 0) + (b.pf || 0); rain += (b.rs || 0);
+      shopRows += '<div class="bs-row"><span>' + esc(b.name) + ' ' + cnt(bc) + '</span><span>₹' + rup(b.items) + '</span></div>';
     });
     var calc = !M.allReady || M.pending || grand == null || (state.roadDistanceLoading && true);
-    var html = '<div class="bs-row"><span>Item total <small>· ' + count + (count === 1 ? ' item' : ' items') + '</small></span><span>₹' + rup(items) + '</span></div>' +
+    // One row per shop (so it is clear every shop's items are in this order), then the combined total.
+    var html = shopRows +
+      '<div class="bs-row"><span><b>Item total</b> ' + cnt(count) + '</span><span><b>₹' + rup(items) + '</b></span></div>' +
       '<div class="bs-row"><span>Delivery charge</span><span>' + (calc ? 'Calculating…' : (del > 0 ? '₹' + rup(del) : '<b style="color:var(--leaf);">FREE</b>')) + '</span></div>';
     if (rain > 0 && !calc) html += '<div class="bs-row"><span>🌧️ Rain surge <small>(goes to your rider)</small></span><span>₹' + rup(rain) + '</span></div>';
     if (e.top.getAttribute('data-h') !== html) { e.top.setAttribute('data-h', html); e.top.innerHTML = html; }
