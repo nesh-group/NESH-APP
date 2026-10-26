@@ -3254,6 +3254,8 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
   font:800 10px/1 'Inter',sans-serif; letter-spacing:.6px;
 }
 </style>
+<link rel="preconnect" href="https://router.project-osrm.org" crossorigin>
+<link rel="preconnect" href="https://routing.openstreetmap.de" crossorigin>
 </head>
 <body>
 <div id="nesh-splash" class="show" aria-live="polite">
@@ -4224,6 +4226,7 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
       </div>
     </div>
     <div class="orders-body" id="orders-body">
+      <div id="pr-mine2" class="prm-box"></div>
       <p class="empty-text" id="orders-empty" style="display:none;">No orders yet — your placed orders will show up here.</p>
       <div id="orders-live-section"></div>
       <div id="orders-past-section"></div>
@@ -4717,7 +4720,7 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
           <button type="button" class="cp-addmore" id="os-addmore">Forgot something? <b>Add More Items</b></button>
           <div class="os-item-total" id="os-item-total"><span>Item total</span><span id="os-item-total-val">₹0</span></div>
         </div>
-        <button type="button" id="pr-open" class="pr-cta" style="display:none;"><span class="pr-cta-ic">💌</span><span class="pr-cta-tx"><b>Ask a friend to pay</b><small>Share on WhatsApp · they pay, it's delivered to you 🎁</small></span><span class="pr-cta-go">›</span></button>
+        <button type="button" id="pr-open" class="pr-cta" style="display:none;"><span class="pr-cta-ic">💌</span><span class="pr-cta-tx"><b>Ask a friend to pay</b><small>Share on WhatsApp · they pay, it's delivered to you 🎁</small></span><span class="pr-cta-go">›</span></button><div id="pr-mine" class="prm-box"></div>
         <div id="multi-panel" class="cp-card" style="display:none;"></div>
         <div id="order-summary-suggest" class="cp-card cp-suggest" style="display:none;">
           <p class="cp-suggest-title">🥤 Add something extra?</p>
@@ -5470,6 +5473,27 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
     if (window.onPlatformFeeUpdated) window.onPlatformFeeUpdated();
   });
 
+  // Per-zone NESH Mart delivery rules (Operator Panel → Shop Delivery Charges → Whole-zone rules).
+  // app_config/zoneDelivery/{zoneId} = { baseFee, perKmFee, freeAbove?, freeWithinKm?, freeTiers? }.
+  // Used by activeDeliveryCharge() for Go Series / groceries / NESH Store when the customer's pin is inside that zone.
+  onValue(ref(db, 'app_config/zoneDelivery'), (snapshot) => {
+    const v = snapshot.val() || {}, out = {};
+    Object.keys(v).forEach(id => {
+      const c = v[id] || {};
+      out[id] = {
+        baseFee: Number(c.baseFee) || 0,
+        perKmFee: Number(c.perKmFee) || 0,
+        freeAbove: Number(c.freeAbove) || 0,
+        freeWithinKm: Number(c.freeWithinKm) || 0,
+        freeTiers: Array.isArray(c.freeTiers) ? c.freeTiers : Object.values(c.freeTiers || {}),
+        shopIds: c.shopIds || null,   // which Mart shops the rule covers (null = every Mart shop in the zone)
+      };
+    });
+    window.ZONE_DELIVERY = out;
+    window.ZONE_DELIVERY_LOADED = true;
+    if (window.onPlatformFeeUpdated) window.onPlatformFeeUpdated();
+  }, () => { window.ZONE_DELIVERY_LOADED = true; });
+
   // Live-listens to the operator-set taxi per-km rate and platform fee
   // (Operator Panel → Taxi Fare). Exposed on window so the taxi booking
   // code (plain <script> below) can read it — 0 on either field means
@@ -5493,8 +5517,9 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
   // currentRainSurge() at checkout — applies to the zone the customer's pin is in.
   onValue(ref(db, 'app_config/rainSurge'), (snapshot) => {
     window.RAIN_SURGE = snapshot.val() || {};
+    window.RAIN_SURGE_LOADED = true;
     if (window.onPlatformFeeUpdated) window.onPlatformFeeUpdated();
-  });
+  }, () => { window.RAIN_SURGE_LOADED = true; });
 
   // Live-listens to the operator-set customer support phone number
   // (Operator Panel → Customer Support). Exposed on window so the plain
@@ -9858,6 +9883,7 @@ loginBackBtn.addEventListener('click', () => {
   // Back out of the login step to wherever browsing was happening. Clear
   // the pending resume so a later, unrelated login doesn't auto-book a
   // stale taxi ride or auto-open checkout.
+  window.__neshPayPending = false;
   const wasCheckout = state.authReturnTo === 'checkout';
   const prev = state.authPrevScreen;
   state.authReturnTo = null;
@@ -9913,6 +9939,10 @@ regSendOtpBtn.addEventListener('click', async () => {
 // screen — their cart / pickup+drop+vehicle choice is still intact.
 function finishAuthFlow() {
   updateVerifiedBadges();
+  if (state.authReturnTo === "payreq") {
+    state.authReturnTo = null; state.authPrevScreen = null;
+    if (window.__neshPayPending && window.__neshPayResume) { window.__neshPayPending = false; window.__neshPayResume(); return; }
+  }
   if (state.authReturnTo === "checkout") {
     state.authReturnTo = null;
     // The checkout sheet is an overlay: if the login screen is still the active screen underneath it,
@@ -12671,7 +12701,8 @@ function updateCartBar() {
     const fillEl = document.getElementById('cart-info-prog-fill');
     const short = minOrderShortfall(r, total);
     const dc = (typeof activeDeliveryCharge === 'function') ? activeDeliveryCharge() : null;
-    const freeAbove = dc ? (Number(dc.freeAbove) || 0) : 0;
+    let freeAbove = dc ? (Number(dc.freeAbove) || 0) : 0;
+    try { const tn = freeTierNeedMin(dc, total); if (tn && (!freeAbove || tn < freeAbove)) freeAbove = tn; } catch (e) {}
     let free = false;
     try { free = isFreeDelivery(); } catch (e) {}
     let pct = null;
@@ -13579,12 +13610,14 @@ setTimeout(function () {
   window.GO_SERIES_WAIT_OVER = true;
   try { if (paymentOverlay && paymentOverlay.classList.contains('show')) { updateLocSummary(); updateLocConfirmGate(); } } catch (e) {}
   try { updateCartBar(); } catch (e) {}
-}, 6000);
+}, 8000);
 function goSeriesCfgPending() {
   try {
     const r = state.selectedRestaurant;
     if (!r || !(r.goSeries || r.id === 'NESH_STORE' || r.businessType === 'groceries')) return false;
-    return !window.GO_SERIES_LOADED && !window.GO_SERIES_WAIT_OVER;
+    // Hold the amount ("Calculating…") until the live Go Series charge, the zone rule and the rain surge have ALL arrived,
+    // so the bill is worked out once and never changes under the customer's eyes.
+    return !(window.GO_SERIES_LOADED && window.ZONE_DELIVERY_LOADED && window.RAIN_SURGE_LOADED) && !window.GO_SERIES_WAIT_OVER;
   } catch (e) { return false; }
 }
 function activeDeliveryCharge() {
@@ -13594,8 +13627,25 @@ function activeDeliveryCharge() {
   // NESH Store and every groceries shop always use the operator-set Go
   // Series delivery charge. (For NESH Store the DISTANCE is still measured
   // from the highest-profit shop — see deliveryOriginPos().)
-  if (r.goSeries || r.id === 'NESH_STORE' || r.businessType === 'groceries') return goSeriesCfg;
+  if (r.goSeries || r.id === 'NESH_STORE' || r.businessType === 'groceries') return zoneDeliveryCfg(r) || goSeriesCfg;
   return r.deliveryCharges || null;
+}
+// The operator's whole-zone NESH Mart rule for the zone the customer's pin is in (null = use the global Go Series charge).
+function zoneDeliveryCfg(r) {
+  try {
+    const cfgs = window.ZONE_DELIVERY;
+    if (!cfgs || !Object.keys(cfgs).length) return null;
+    const pc = state.pendingCheckout;
+    const pt = (pc && typeof pc.lat === 'number' && typeof pc.lng === 'number') ? pc
+      : ((typeof pendingLocation !== 'undefined' && pendingLocation && typeof pendingLocation.lat === 'number') ? pendingLocation
+      : ((state.customerPos && typeof state.customerPos.lat === 'number') ? state.customerPos : null));
+    if (!pt) return null;
+    const z = zonesAtPoint(pt).find(z => cfgs[z.id]);
+    if (!z) return null;
+    const c = cfgs[z.id];
+    if (c.shopIds && Object.keys(c.shopIds).length && !(r && c.shopIds[r.id])) return null;   // this shop isn't ticked for the zone rule
+    return c;
+  } catch (e) { return null; }
 }
 
 // Asks OSRM's public routing server for the real cycling-route distance
@@ -13683,7 +13733,7 @@ function roadKmShared(restPos, pt) {
         if (typeof km === 'number') { roadCachePut(restPos, pt, km); roadLateApply(restPos, pt, km); }
         resolve(typeof km === 'number' ? km : null);
       };
-      const hardStop = setTimeout(() => finish(null), 9000);
+      const hardStop = setTimeout(() => finish(null), 7000);
       const fail = () => { failed++; if (started < urls.length) start(); else if (failed >= urls.length) finish(null); };
       const start = () => {
         if (settled || started >= urls.length) return;
@@ -13693,7 +13743,7 @@ function roadKmShared(restPos, pt) {
           const meters = data && data.routes && data.routes[0] && data.routes[0].distance;
           if (typeof meters === 'number' && meters >= 0) finish(meters / 1000); else fail();
         }).catch(() => { if (!settled) fail(); });
-        if (started < urls.length) backupTimer = setTimeout(start, 2500);
+        if (started < urls.length) backupTimer = setTimeout(start, 1200);
       };
       start();
     }).finally(() => { delete roadInflight[k]; });
@@ -13787,10 +13837,9 @@ async function ensureRoadDistance() {
 
   let km = null;
   try {
-    km = await Promise.race([
-      roadKmShared(restPos, pc),
-      new Promise(res => setTimeout(() => res(null), 3500))   // never keep the customer waiting longer than this
-    ]);
+    // Wait for the real road distance (roadKmShared has its own hard stop), so the fee is worked out ONCE.
+    // Only if routing fails completely is the straight-line estimate used - and then it stays, nothing switches it later.
+    km = await roadKmShared(restPos, pc);
   } catch (e) {}
   if (mySeq !== roadReqSeq) return;   // a newer request took over (it clears the loading flag itself)
   if (typeof km === 'number') {
@@ -13829,6 +13878,15 @@ function isFreeDelivery() {
   // Rule 1: item total reaches the free-above amount.
   const min = Number(dc.freeAbove) || 0;
   if (min > 0 && currentCartItemsTotal() >= min) return true;
+  // Rule 3: the shop's own "order value range -> free up to N km" ranges (freeTiers).
+  const tiers = Array.isArray(dc.freeTiers) ? dc.freeTiers : [];
+  if (tiers.length) {
+    const dk = currentDeliveryKm();
+    if (dk) {
+      const tot = currentCartItemsTotal();
+      if (tiers.some(t => tot >= (Number(t.min) || 0) && (t.max == null || tot < Number(t.max)) && dk.km <= Number(t.km))) return true;
+    }
+  }
   // Rule 2: the delivery distance (shop -> customer's pin) is under the
   // free-within-km limit. Either rule is enough on its own.
   const within = Number(dc.freeWithinKm) || 0;
@@ -13837,6 +13895,16 @@ function isFreeDelivery() {
     if (d && d.km < within) return true;
   }
   return false;
+}
+// Next order value at which this distance becomes free under the shop's freeTiers (0 = none / distance unknown).
+function freeTierNeedMin(dc, total) {
+  const tiers = dc && Array.isArray(dc.freeTiers) ? dc.freeTiers : [];
+  if (!tiers.length) return 0;
+  const d = currentDeliveryKm();
+  if (!d) return 0;
+  let best = 0;
+  tiers.forEach(t => { const mn = Number(t.min) || 0; if (Number(t.km) >= d.km && mn > total && (!best || mn < best)) best = mn; });
+  return best;
 }
 // What every total, discount cap, GPay amount and order record uses.
 function currentDeliveryFee() {
@@ -13973,11 +14041,13 @@ function updateLocSummary() {
   }
   if (locSummaryDeliveryRowEl) locSummaryDeliveryRowEl.style.display = (shownDelivery > 0 || showLoading || deliveryDistOk || (freeDelivery && wouldBeFee > 0)) ? "flex" : "none";   // the charge, "Calculating…" or "FREE"
   // Nudge: how much more to add to unlock free delivery.
-  const freeMin = dc ? (Number(dc.freeAbove) || 0) : 0;
+  let freeMin = dc ? (Number(dc.freeAbove) || 0) : 0;
+  try { const tn = freeTierNeedMin(dc, itemsTotal); if (tn && (!freeMin || tn < freeMin)) freeMin = tn; } catch (e) {}
+  const tiersOn = !!(dc && Array.isArray(dc.freeTiers) && dc.freeTiers.length);
   const freeHintEl = document.getElementById('loc-summary-free-hint');
   if (freeHintEl) {
     const showHint = freeMin > 0 && !freeDelivery && !showLoading && deliveryFee > 0;
-    const showWon = freeMin > 0 && freeDelivery && !showLoading && wouldBeFee > 0;
+    const showWon = (freeMin > 0 || tiersOn) && freeDelivery && !showLoading && wouldBeFee > 0;
     freeHintEl.style.display = (showHint || showWon) ? "block" : "none";
     freeHintEl.classList.toggle('fd-won', !!showWon);
     if (showHint) {
@@ -16286,6 +16356,12 @@ payConfirmBtn.addEventListener('click', async () => {
         await set(ref(db, 'customers/' + state.user.number + '/orderIndex/' + orderRef.key), { restId: r.id, createdAt: orderPayload.createdAt });
       }
     } catch (e) {}
+    // Paid by a friend for someone else: also index it under the requester's account so it shows in THEIR Orders.
+    try {
+      if (orderPayload.payRequestId && orderPayload.customerAccount && orderPayload.customerAccount !== String(state.user && state.user.number)) {
+        await set(ref(db, 'customers/' + orderPayload.customerAccount + '/orderIndex/' + orderRef.key), { restId: r.id, createdAt: orderPayload.createdAt });
+      }
+    } catch (e) {}
 
     // The shop-alert push only fires once there IS a shop — for NESH
     // Store that happens later, from the operator panel at assignment
@@ -17734,7 +17810,7 @@ try {
       window.GO_SERIES_DELIVERY = cfg.goSeries.d;
       window.GO_SERIES_PLATFORM_FEE = Number(cfg.goSeries.p) || 0;
       window.GO_SERIES_ITEM_MARKUP = Number(cfg.goSeries.m) || 0;
-      window.GO_SERIES_LOADED = true;                            // the live value still replaces it a moment later
+      // NOT marked loaded: the cached charge is only a fallback if the live one is very slow, so an old amount is never shown first
     }
   }
   const g = JSON.parse(localStorage.getItem('nesh_last_gps') || 'null');
@@ -19134,6 +19210,17 @@ if ('serviceWorker' in navigator) {
 <style id="pr-css">
 #pr-modal,#pr-view{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center}
 #pr-modal.on,#pr-view.on{display:flex}
+html.pr-fixed #os-addmore,html.pr-fixed #order-summary-proceed-btn{display:none!important}
+html.pr-fixed #cp-pay-online{flex:1}
+.prm-box{margin:8px 0}.prm-box .prm-h{font:700 12px Inter,sans-serif;color:#7a6a3a;margin:6px 4px}
+.prm-box .prm-row{display:flex;align-items:center;gap:10px;background:#FFF8E1;border:1px dashed #F0B400;border-radius:14px;padding:10px 12px;margin-bottom:6px}
+.prm-box .prm-tx{flex:1;min-width:0;display:flex;flex-direction:column;font:600 13px Inter,sans-serif;color:#2B2410}.prm-box .prm-tx small{font-weight:500;color:#7a6a3a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prm-box .prm-x{border:1.5px solid #E8265B;background:#fff;color:#E8265B;border-radius:10px;padding:7px 12px;font:700 12px Inter,sans-serif}
+html.pr-fixed .gift-locked{pointer-events:none}
+#cat-card-orders,#your-orders-btn{position:relative}
+.nesh-dot::after{content:'';position:absolute;top:-4px;right:-4px;width:14px;height:14px;border-radius:50%;background:#E5242B;border:2.5px solid #fff;box-shadow:0 0 0 0 rgba(229,36,43,.6);animation:neshDotPulse 1.6s infinite;z-index:3;pointer-events:none}
+#cat-card-orders.nesh-dot::after{top:10px;right:12px}
+@keyframes neshDotPulse{0%{box-shadow:0 0 0 0 rgba(229,36,43,.55)}70%{box-shadow:0 0 0 9px rgba(229,36,43,0)}100%{box-shadow:0 0 0 0 rgba(229,36,43,0)}}
 .pr-sheet{background:#fff;width:100%;max-width:430px;border-radius:22px 22px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));max-height:88vh;overflow:auto;font-family:'Poppins','Inter',sans-serif;color:#2B2410}
 .pr-sheet h3{margin:0 0 4px;font-size:18px}.pr-sheet p{margin:0 0 10px;font-size:13px;color:#7a6a3a}
 .pr-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
@@ -19246,18 +19333,25 @@ async function makeCard(d,lst,withPhotos){
   c.fillStyle='#2B2410';c.font='800 28px '+F;c.fillText(trunc(c,d.restName||'NESH',tw-56),28,88);
   function dash(y){c.strokeStyle='#E9D9A8';c.lineWidth=3;c.setLineDash([10,8]);c.beginPath();c.moveTo(24,y);c.lineTo(tw-24,y);c.stroke();c.setLineDash([])}
   dash(106);
-  for(var k=0;k<shown.length;k++){var ry=122+k*96,it=shown[k],im=imgs[k+1];
-    c.save();rrp(c,28,ry,80,80,18);c.clip();if(im)cover(c,im,28,ry,80,80);else{c.fillStyle='#FFF1C9';c.fillRect(28,ry,80,80);c.font='38px '+F;c.fillStyle='#000';c.textBaseline='middle';c.textAlign='center';c.fillText('🛍️',68,ry+42);c.textAlign='left';c.textBaseline='alphabetic'}c.restore();
-    c.strokeStyle='#F0E3B5';c.lineWidth=2;rrp(c,28,ry,80,80,18);c.stroke();
-    c.fillStyle='#2B2410';c.font='700 24px '+F;c.fillText(trunc(c,String(it.n||'').replace(/^[`'"]+/,''),292),124,ry+34);
-    c.fillStyle='#FF5C8A';c.font='800 26px '+F;c.fillText('× '+it.q,124,ry+66)}
-  var more=lst.length-shown.length;if(more>0){c.fillStyle='#7a6a3a';c.font='700 22px '+F;c.fillText('+ '+more+' more item'+(more>1?'s':''),28,122+shown.length*96+24)}
+  var n=shown.length,endY=122,nm=function(x){return String(x.n||'').replace(/^[`'"]+/,'')};
+  function ph(im,x,y,w,h,r,em){c.save();rrp(c,x,y,w,h,r);c.clip();if(im)cover(c,im,x,y,w,h);else{c.fillStyle='#FFF1C9';c.fillRect(x,y,w,h);c.font=em+'px '+F;c.fillStyle='#000';c.textBaseline='middle';c.textAlign='center';c.fillText('🛍️',x+w/2,y+h/2+2);c.textAlign='left';c.textBaseline='alphabetic'}c.restore();c.strokeStyle='#F0E3B5';c.lineWidth=2;rrp(c,x,y,w,h,r);c.stroke()}
+  if(n===1){var py=120,pw=394,phh=212;ph(imgs[1],28,py,pw,phh,22,90);
+    c.fillStyle='#2B2410';c.font='700 26px '+F;c.fillText(trunc(c,nm(shown[0]),pw),28,py+phh+36);
+    c.fillStyle='#FF5C8A';c.font='800 28px '+F;c.fillText('× '+shown[0].q,28,py+phh+74);endY=py+phh+74}
+  else{var sz=n===2?120:92,rh=n===2?164:100,y0=n===2?122:118,tx2=28+sz+16;
+    for(var k=0;k<n;k++){var ry=y0+k*rh,it=shown[k];ph(imgs[k+1],28,ry,sz,sz,20,sz*.45);
+      c.fillStyle='#2B2410';c.font='700 24px '+F;c.fillText(trunc(c,nm(it),tw-tx2-24),tx2,ry+sz/2-4);
+      c.fillStyle='#FF5C8A';c.font='800 26px '+F;c.fillText('× '+it.q,tx2,ry+sz/2+30);endY=ry+sz}}
+  var more=lst.length-shown.length;if(more>0){c.fillStyle='#7a6a3a';c.font='700 22px '+F;c.fillText('+ '+more+' more item'+(more>1?'s':''),28,Math.min(endY+26,th-118))}
   dash(th-104);
   c.fillStyle='#2B2410';for(var b=0,bx=28;bx<tw-28;b++){var bw=2+((b*7)%4);c.fillRect(bx,th-92,bw,30);bx+=bw+3+((b*5)%3)}
   c.fillStyle='#7a6a3a';c.font='700 18px '+F;c.fillText('NESH · TAP TO PAY',28,th-24);
   c.fillStyle='#25D366';rrp(c,tw-150,th-56,122,38,19);c.fill();c.fillStyle='#fff';c.font='800 20px '+F;c.textAlign='center';c.fillText('PAY ›',tw-89,th-30);c.textAlign='left';
   c.restore();
   return cv.toDataURL('image/jpeg',.8)}
+var PR_TTL=24*60*60*1000; // request link auto-expires after 24 hours
+function isExp(d){return !!(d&&d.createdAt&&Date.now()-d.createdAt>PR_TTL)}
+function expiredMsg(d,s){return s==='expired'?['⏳','Link expired','This payment request has expired. Ask '+(d.fromName||'your friend')+' to send a new one if needed.']:s==='cancelled'?['⏳','Link expired','This payment request was cancelled by '+(d.fromName||'your friend')+'. Ask them to send a new one if needed.']:s==='ordered'?['🎉','Already taken care of!','Someone has already paid for this order. Nothing more to do.']:['🔍','Link not found','This request is no longer available.']}
 function stateCard(ic,t,m){return '<div class="prq-state"><div class="prq-se">'+ic+'</div><h3>'+E(t)+'</h3><p>'+E(m)+'</p></div><button class="pr-btn" id="pr-x">OK</button>'}
 function prPop(ic,t,m,btn,conf){var o=$('pr-pop');if(!o){o=document.createElement('div');o.id='pr-pop';o.innerHTML='<div class="prp-card"><div class="prp-ic" id="prp-ic"></div><h3 id="prp-t"></h3><p id="prp-m"></p><button class="pr-btn" id="prp-b"></button></div>';document.body.appendChild(o);$('prp-b').onclick=function(){o.classList.remove('on')};o.onclick=function(e){if(e.target===o)o.classList.remove('on')}}
   $('prp-ic').textContent=ic;$('prp-t').textContent=t;$('prp-m').textContent=m;$('prp-b').textContent=btn||'OK';
@@ -19266,7 +19360,34 @@ function prPop(ic,t,m,btn,conf){var o=$('pr-pop');if(!o){o=document.createElemen
   o.classList.add('on')}
 function prv(){var t=$('pr-title').value.trim(),m=$('pr-text').value.trim(),n=(state.user&&state.user.name)||'You';$('pr-pv').innerHTML='<div class="prq-pvh">👀 YOUR FRIEND WILL SEE</div><div class="prq-pvc"><b>💌 '+E(n)+' needs your help to pay!</b>'+(t?'<small>'+E(t)+'</small>':'')+(m?'<div class="prq-bub">'+E(m)+'</div>':'')+'</div>'}
 function cnt(){var c=state.cart||{};return Object.keys(c).filter(function(k){return c[k]>0}).length}
-function sync(){var b=$('pr-open'),r=state.selectedRestaurant;if(b)b.style.display=(r&&r.gpayNumber&&cnt()&&!window.__neshPayFor)?'':'none'}
+var _vis=false;
+function mineIds(){try{return JSON.parse(localStorage.getItem('nesh_pr')||'[]')}catch(e){return[]}}
+async function refreshMine(){
+  var boxes=[$('pr-mine'),$('pr-mine2')].filter(Boolean),setAll=function(h){boxes.forEach(function(b){b.innerHTML=h})};
+  if(window.__neshPayFor||!state.user){if(!state.user)window.__neshOpenReq=0;setAll('');return}
+  var f=window.fb,ids=mineIds(),rows='';
+  try{for(var i=0;i<ids.length;i++){var d=(await f.get(f.ref(f.db,'payRequests/'+ids[i]))).val();
+    if(d&&d.status==='open'&&!isExp(d)&&(!d.fromAccount||d.fromAccount===state.user.number))rows+='<div class="prm-row"><div class="prm-tx"><b>💌 Waiting for a friend to pay</b><small>'+E(d.restName||'')+(d.title?' · '+E(d.title):'')+'</small></div><button type="button" class="prm-x" data-id="'+E(ids[i])+'">Cancel</button></div>'}}catch(e){}
+  window.__neshOpenReq=(rows.match(/class="prm-row"/g)||[]).length;
+  setAll(rows?'<div class="prm-h">Your payment requests</div>'+rows:'')}
+var mineClick=async function(e){var b=e.target.closest('.prm-x');if(!b)return;var id=b.dataset.id,f=window.fb;
+  var ok=await showConfirmModal('Cancel this request?','The link will expire and nobody will be able to pay with it.','Yes, cancel','Keep it');if(!ok)return;
+  b.disabled=true;
+  try{var r=await f.runTransaction(f.ref(f.db,'payRequests/'+id+'/status'),function(cur){return cur==='open'?'cancelled':undefined});
+    if(r&&r.committed){try{f.update(f.ref(f.db,'payRequests/'+id),{cancelledAt:Date.now()})}catch(e2){}
+      try{localStorage.setItem('nesh_pr',JSON.stringify(mineIds().filter(function(x){return x!==id})))}catch(e3){}
+      prPop('✅','Request cancelled','The link has expired. Nobody can pay with it now.','OK')}
+    else{var st=(await f.get(f.ref(f.db,'payRequests/'+id+'/status'))).val();
+      if(st==='ordered')prPop('🎉','Already paid!','Your friend has already paid for this order.','Yay! 🎉',true);else prPop('ℹ️','Request not active','This request is already closed.','OK')}
+  }catch(err){showInfoModal('Could not cancel','Please check your internet and try again.')}
+  refreshMine()};
+$('pr-mine').onclick=mineClick;if($('pr-mine2'))$('pr-mine2').onclick=mineClick;
+// red dot on the Orders buttons: an order in progress OR a payment request still waiting for a friend
+function dotSync(){var on=!!((typeof activeOrderBarData!=='undefined'&&activeOrderBarData)||window.__neshOpenReq>0);['cat-card-orders','your-orders-btn'].forEach(function(i){var e=$(i);if(e&&e.classList.contains('nesh-dot')!==on)e.classList.toggle('nesh-dot',on)})}
+setInterval(dotSync,1000);setTimeout(refreshMine,5000);
+setInterval(function(){if(!document.hidden&&mineIds().length)refreshMine()},90000);
+var _ord=false;
+function sync(){var b=$('pr-open'),r=state.selectedRestaurant,v=!!(r&&r.gpayNumber&&cnt()&&!window.__neshPayFor);if(b)b.style.display=v?'':'none';if(v&&!_vis)refreshMine();_vis=v;var os=$('screen-orders'),oa=!!(os&&os.classList.contains('active'));if(oa&&!_ord)refreshMine();_ord=oa}
 setInterval(sync,700);
 $('pr-open').onclick=function(){
   var r=state.selectedRestaurant;if(!r||!r.gpayNumber)return;
@@ -19284,6 +19405,7 @@ $('pr-send').onclick=async function(){
       loc:{text:pendingLocation.text,lat:pendingLocation.lat,lng:pendingLocation.lng,place:locPlaceInput.value.trim(),landmark:locLandmarkInput.value.trim(),contact:digitsOnly(locContactInput.value)}};
     var rf=f.push(f.ref(f.db,'payRequests'));await f.set(rf,d);
     try{var a=JSON.parse(localStorage.getItem('nesh_pr')||'[]');a.push(rf.key);localStorage.setItem('nesh_pr',JSON.stringify(a.slice(-10)))}catch(e){}
+    refreshMine();
     var lst=[],items=r.items||[],ks=Object.keys(state.cart||{}).filter(function(k){return state.cart[k]>0}),img='',names=[];
     ks.forEach(function(k){var i=items.find(function(x){return x&&x.id===k});if(!i)return;if(!img&&/^https?:/.test(i.image||''))img=i.image;if(names.length<3)names.push(state.cart[k]+'× '+i.name);lst.push({n:i.name,q:state.cart[k],img:/^https?:/.test(i.image||'')?i.image:''})});
     if(!img&&/^https?:/.test(r.image||''))img=r.image;
@@ -19295,17 +19417,19 @@ $('pr-send').onclick=async function(){
     try{if(cap&&cap.share)await cap.share({title:ttl,text:text,dialogTitle:'Send to a friend'});else if(navigator.share)await navigator.share({title:ttl,text:text});else window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank')}catch(e){}
   }catch(e){showInfoModal('Could not create link','Please check your internet and try again.')}
   btn.disabled=false;btn.textContent='📲 Share on WhatsApp'};
-function unlock(){window.__neshPayFor=null;try{var _b=$('pr-cbanner'),_o=$('cp-pay-online');if(_b){_b.style.display='none';_b.innerHTML=''}if(_o){_o.classList.remove('prq-payfor');_o.textContent='Pay Online'}}catch(e){}try{payCodBtn.style.display='';[locPlaceInput,locLandmarkInput,locContactInput].forEach(function(i){i.readOnly=false})}catch(e){}}
+function unlock(){window.__neshPayFor=null;document.documentElement.classList.remove('pr-fixed');try{var _b=$('pr-cbanner'),_o=$('cp-pay-online');if(_b){_b.style.display='none';_b.innerHTML=''}if(_o){_o.classList.remove('prq-payfor');_o.textContent='Pay Online'}}catch(e){}try{payCodBtn.style.display='';[locPlaceInput,locLandmarkInput,locContactInput].forEach(function(i){i.readOnly=false})}catch(e){}}
 var _co=closeOrderSummary;closeOrderSummary=function(){var r=_co.apply(this,arguments);if(window.__neshPayFor)unlock();return r};
 window.neshPayDone=function(id,key){try{window.fb.update(window.fb.ref(window.fb.db,'payRequests/'+id),{status:'ordered',orderKey:key,paidAt:Date.now(),paidByName:(state.user&&state.user.name)||''})}catch(e){}unlock()};
 function close(){$('pr-view').classList.remove('on')}
 window.neshOpenPay=async function(id){
-  var t=0;await new Promise(function(ok){var iv=setInterval(function(){if((state.user&&typeof RESTAURANTS!=='undefined'&&RESTAURANTS.length)||++t>100){clearInterval(iv);ok()}},600)});
-  if(!state.user)return;var f=window.fb,body=$('pr-body');$('pr-view').classList.add('on');body.innerHTML='<div class="prq-state"><div class="prq-se">💌</div><p>Opening request…</p></div>';
+  var t=0;await new Promise(function(ok){var iv=setInterval(function(){if((window.fb&&window.fb.get)||++t>100){clearInterval(iv);ok()}},300)});
+  var f=window.fb,body=$('pr-body');$('pr-view').classList.add('on');body.innerHTML='<div class="prq-state"><div class="prq-se">💌</div><p>Opening request…</p></div>';
   try{var sn=await f.get(f.ref(f.db,'payRequests/'+id)),d=sn.val();
     if(!d){body.innerHTML=stateCard('🔍','Link not found','This request is no longer available.');$('pr-x').onclick=close;return}
-    if(d.status!=='open'){body.innerHTML=stateCard('🎉','Already taken care of!','Someone has already paid for this order. Nothing more to do.');$('pr-x').onclick=close;return}
-    var rest=RESTAURANTS.find(function(x){return x.id===d.restId});
+    if(d.status!=='open'||isExp(d)){var em=expiredMsg(d,d.status==='open'?'expired':d.status);body.innerHTML=stateCard(em[0],em[1],em[2]);$('pr-x').onclick=close;return}
+    // payer may be outside the shop's zone: force-load this shop (zone-based loading skips it otherwise)
+    try{addExtraShopId(d.restId)}catch(e){}
+    var t2=0,rest;await new Promise(function(ok){var iv=setInterval(function(){rest=(typeof RESTAURANTS!=='undefined'?RESTAURANTS:[]).find(function(x){return x.id===d.restId});if(rest||++t2>100){clearInterval(iv);ok()}},300)});
     if(!rest||!rest.gpayNumber){body.innerHTML=stateCard('🏪','Shop unavailable','This shop can\'t take online payment right now.');$('pr-x').onclick=close;return}
     var rows='';Object.keys(d.cart||{}).forEach(function(k){var q=d.cart[k];var it=(rest.items||[]).find(function(i){return i&&i.id===k});if(it&&q>0)rows+='<div class="prq-it">'+(/^https?:/.test(it.image||'')?'<img src="'+E(it.image)+'" alt="">':'<span class="prq-ph">🛍️</span>')+'<span class="prq-nm">'+E(it.name)+'</span><b>× '+q+'</b></div>'});
     var nm=E(d.fromName||'Your friend'),ini=E(((d.fromName||'F').trim().charAt(0)||'F').toUpperCase());
@@ -19315,8 +19439,8 @@ window.neshOpenPay=async function(id){
       +'<div class="prq-note">🔒 Pay by UPI · It will be delivered to <b>'+nm+'</b>. You don\'t need to enter any address.</div>'
       +'<button class="pr-btn prq-pay" id="pr-go">💸 Pay for '+E(d.fromName||'friend')+'</button><button class="pr-btn alt" id="pr-x">Not now</button>';
     $('pr-x').onclick=close;
-    $('pr-go').onclick=function(){
-      close();var L=d.loc||{};state.selectedRestaurant=rest;state.cart=d.cart||{};state.cartGrams=d.grams||{};state.cartSizes=d.sizes||{};
+    var goPay=function(){
+      close();document.documentElement.classList.add('pr-fixed');var L=d.loc||{};state.selectedRestaurant=rest;state.cart=d.cart||{};state.cartGrams=d.grams||{};state.cartSizes=d.sizes||{};
       window.__neshPayFor={id:id,name:d.fromName,account:d.fromAccount,msg:d.msg};
       try{renderMenu();showScreen('menu')}catch(e){}openOrderSummary();
       try{var _n=E(d.fromName||'your friend'),_i=E(((d.fromName||'F').trim().charAt(0)||'F').toUpperCase()),_b=$('pr-cbanner'),_o=$('cp-pay-online');
@@ -19326,6 +19450,17 @@ window.neshOpenPay=async function(id){
       var fill=function(){Object.assign(pendingLocation,{text:L.text,lat:L.lat,lng:L.lng});locPlaceInput.value=L.place||'';locLandmarkInput.value=L.landmark||'';locContactInput.value=L.contact||'';
         [locPlaceInput,locLandmarkInput,locContactInput].forEach(function(i){i.readOnly=true});payCodBtn.style.display='none';try{cpLive(true)}catch(e){}setPaymentMethod('gpay')};
       fill();setTimeout(fill,400)};
+    var stillOpen=async function(){if(isExp(d)){var ex=expiredMsg(d,'expired');window.__neshPayPending=false;close();prPop(ex[0],ex[1],ex[2],'OK');return false}try{var s=(await f.get(f.ref(f.db,'payRequests/'+id+'/status'))).val();if(s!=='open'){var em=expiredMsg(d,s);window.__neshPayPending=false;close();prPop(em[0],em[1],em[2],'OK');return false}}catch(e){}return true};
+    window.__neshPayResume=async function(){if(await stillOpen())goPay();else{try{goToCategoryScreen()}catch(e){}}};
+    $('pr-go').onclick=async function(){
+      if(!(await stillOpen()))return;
+      if(!state.user){
+        close();window.__neshPayPending=true;state.authReturnTo='payreq';
+        try{var a=document.querySelector('.screen.active');state.authPrevScreen=a?a.id.replace('screen-',''):null}catch(e){state.authPrevScreen=null}
+        var ln=document.getElementById('login-number'),le=document.getElementById('login-error'),ls=document.getElementById('login-submit');
+        if(ln)ln.value='';if(le)le.style.display='none';if(ls)ls.disabled=true;
+        showScreen('login');return}
+      goPay()};
   }catch(e){body.innerHTML=stateCard('📶','Could not load','Check your internet and try again.');$('pr-x').onclick=close}};
 try{var pid=new URLSearchParams(location.search).get('pay');if(pid){history.replaceState({},'',location.pathname);window.neshOpenPay(pid)}}catch(e){}
 // requester: tell them when a friend has paid
