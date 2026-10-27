@@ -219,7 +219,7 @@ html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
   #multi-panel .mp-line{ display:flex; justify-content:space-between; gap:10px; font-size:13.5px; color:#3B342D; padding:2px 0; }
   #multi-panel .mp-line.dim{ color:#7A7068; }
   #multi-panel .mp-line.tot{ font-weight:800; color:#241F1B; padding-top:6px; }
-  .bs-chit.mp-on #loc-summary-items-row, .bs-chit.mp-on #loc-summary-delivery-row, .bs-chit.mp-on #loc-summary-free-hint, .bs-chit.mp-on > .bs-total:not(.mp-clone){ display:none !important; }
+  .bs-chit.mp-on #loc-summary-items-row, .bs-chit.mp-on #loc-summary-delivery-row, .bs-chit.mp-on #loc-summary-gst-row, .bs-chit.mp-on #loc-summary-free-hint, .bs-chit.mp-on > .bs-total:not(.mp-clone){ display:none !important; }
   #multi-panel .mp-logo{ width:34px; height:34px; border-radius:50%; background:#fff; border:2px solid #FFD54A; box-shadow:0 2px 6px rgba(43,36,16,.25); overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:16px; flex:none; }
   #multi-panel .mp-logo img{ width:100%; height:100%; object-fit:cover; display:block; }
   #multi-panel .mp-item{ display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid #F0EBDD; }
@@ -3157,6 +3157,26 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
 .tip-note.thanks{ color:#0E8A5C; }
 @keyframes tipPop{ 0%{ transform:scale(.92); } 60%{ transform:scale(1.07); } 100%{ transform:scale(1); } }
 
+/* "You saved ₹X" pop-up when checkout opens (Swiggy style) */
+.sp-ov{ position:fixed; inset:0; z-index:99990; background:rgba(20,16,6,.55); display:flex; align-items:flex-end; justify-content:center; opacity:0; transition:opacity .25s ease; }
+.sp-ov.on{ opacity:1; }
+.sp-card{ position:relative; width:100%; max-width:480px; background:#fff; color:#2B2410; border-radius:26px 26px 0 0; padding:30px 22px calc(22px + env(safe-area-inset-bottom,0px)); text-align:center; overflow:hidden; transform:translateY(100%); transition:transform .4s cubic-bezier(.2,.9,.3,1.08); }
+.sp-ov.on .sp-card{ transform:none; }
+.sp-emoji{ font-size:46px; line-height:1; animation:spPop .7s ease both; }
+.sp-yay{ margin:10px 0 0; font-weight:800; font-size:16px; color:#0E8A5C; letter-spacing:.2px; }
+.sp-amt{ margin:2px 0 0; font-weight:900; font-size:54px; line-height:1.05; color:#0E8A5C; }
+.sp-sub{ margin:2px 0 0; font-weight:600; font-size:14px; opacity:.7; }
+.sp-rows{ margin:16px auto 0; max-width:320px; padding:10px 14px; border-radius:14px; background:#E6F8EF; }
+.sp-row{ display:flex; justify-content:space-between; gap:12px; padding:4px 0; font-weight:700; font-size:13.5px; color:#0E8A5C; }
+.sp-btn{ margin-top:18px; width:100%; max-width:320px; padding:13px; border:0; border-radius:14px; background:#F5B800; color:#2B2410; font-weight:800; font-size:15px; cursor:pointer; }
+.sp-conf{ position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+.sp-conf i{ position:absolute; top:-14px; width:8px; height:14px; border-radius:2px; opacity:.95; animation:spFall 2.4s linear forwards; }
+@keyframes spFall{ to{ transform:translateY(420px) rotate(540deg); opacity:0; } }
+@keyframes spPop{ 0%{ transform:scale(.3); } 60%{ transform:scale(1.25); } 100%{ transform:scale(1); } }
+html[data-theme="dark"] .sp-card{ background:#221E15; color:#F5EFE0; }
+html[data-theme="dark"] .sp-yay, html[data-theme="dark"] .sp-amt{ color:#5FDDAE; }
+html[data-theme="dark"] .sp-rows{ background:#103020; }
+html[data-theme="dark"] .sp-row{ color:#5FDDAE; }
 .bs-saving{ margin-top:14px; padding:11px 12px; border-radius:10px; background:#E6F8EF; color:#0E8A5C; font-weight:800; font-size:13.5px; text-align:center; }
 </style>
 <style id="nesh-food-human">
@@ -5651,7 +5671,7 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
         <div class="bs-row" style="display:none;" id="loc-summary-rain-row"><span>🌧️ Rain surge <small>(goes to your rider)</small></span><span id="loc-summary-rain">₹0</span></div>
         <div class="bs-row green" id="loc-summary-discount-row"><span>🎁 Shop discount</span><span id="loc-summary-discount">-₹0</span></div>
         <div class="bs-row green" style="display:none;" id="loc-summary-coupon-row"><span id="loc-summary-coupon-label">Coupon</span><span id="loc-summary-coupon">-₹0</span></div>
-        <div class="bs-row" style="display:none;" id="loc-summary-gst-row"><span>🏛️ Government tax <small id="loc-summary-gst-pct"></small></span><span id="loc-summary-gst">₹0</span></div>
+        <div class="bs-row" style="display:none;" id="loc-summary-gst-row"><span>🏛️ Government charge <small id="loc-summary-gst-pct"></small></span><span id="loc-summary-gst">₹0</span></div>
         <div class="bs-row" style="display:none;" id="loc-summary-tip-row"><span>🏍️ Delivery tip <small>(100% to your rider)</small></span><span id="loc-summary-tip">₹0</span></div>
         <div class="bs-total"><span>To Pay</span><span id="loc-summary-total">₹0</span></div>
         <div class="bs-saving" id="bs-saving" style="display:none;"></div>
@@ -5970,6 +5990,18 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
           const amt = Number(t && t.add);   // same for Mart shops: Add ₹ (= delivery − commission + profit) funds the free km
           return (t && amt > 0) ? Math.round(amt) : 0;
         };
+        // Operator price markup (Operator Panel -> Price Markup): per-shop ranges [min, max] (both ends included) that add a flat ₹ or a %
+        // to the price the customer pays. Separate from delivery charges. The shop is still paid its own price (shopRate -> shopPrice).
+        const markupTiers = v.priceMarkup ? (Array.isArray(v.priceMarkup) ? v.priceMarkup : Object.values(v.priceMarkup)).filter(Boolean) : [];
+        const markupFor = (m) => {
+          if (!markupTiers.length || Number(m.customerPrice) > 0 || (m.unit && m.unit !== 'piece')) return 0;
+          const p = Number(m.price) || 0;
+          if (p <= 0) return 0;
+          const t = markupTiers.find(t => p >= (Number(t.min) || 0) && (t.max == null || t.max === '' || p <= Number(t.max)));
+          const val = Number(t && t.add) || 0;
+          if (!t || val <= 0) return 0;
+          return t.type === 'pct' ? Math.round(p * val / 100) : Math.round(val);
+        };
         const menuItems = v.menu
           ? Object.keys(v.menu)
               .filter(k => !v.menu[k].unavailable)
@@ -5985,9 +6017,9 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
                 // price (kept as shopRate and stamped on the order as shopPrice).
                 price: (Number(v.menu[k].customerPrice) > 0 && businessType !== 'groceries')
                   ? Number(v.menu[k].customerPrice)
-                  : (Number(v.menu[k].price) || 0) + ((v.goSeries || businessType === 'groceries') ? (Number(window.GO_SERIES_ITEM_MARKUP) || 0) : 0) + priceBump(v.menu[k]),
-                shopRate: (Number(v.menu[k].customerPrice) > 0 && businessType !== 'groceries') ? (Number(v.menu[k].price) || 0) : (((priceBump(v.menu[k]) > 0) || commissionFor(v.menu[k]) > 0) ? (Number(v.menu[k].price) || 0) - commissionFor(v.menu[k]) : undefined),
-                bump: priceBump(v.menu[k]),   // Add ₹ included in price (NESH Store catalog leaves it out)
+                  : (Number(v.menu[k].price) || 0) + ((v.goSeries || businessType === 'groceries') ? (Number(window.GO_SERIES_ITEM_MARKUP) || 0) : 0) + priceBump(v.menu[k]) + markupFor(v.menu[k]),
+                shopRate: (Number(v.menu[k].customerPrice) > 0 && businessType !== 'groceries') ? (Number(v.menu[k].price) || 0) : (((priceBump(v.menu[k]) > 0) || (markupFor(v.menu[k]) > 0) || commissionFor(v.menu[k]) > 0) ? (Number(v.menu[k].price) || 0) - commissionFor(v.menu[k]) : undefined),
+                bump: priceBump(v.menu[k]) + markupFor(v.menu[k]),   // Add ₹ included in price (NESH Store catalog leaves it out)
                 unit: v.menu[k].unit || 'piece', // 'piece' | 'gram' | 'kg' — set by the shop; for gram/kg, `price` is the rate per gram/kg, not a flat price
                 sizes: Array.isArray(v.menu[k].sizes) ? v.menu[k].sizes.filter(Boolean) : [], // e.g. ['S','M','L','XL','2XL'] — only set on "Sports" shop items
                 image: v.menu[k].photo || itemPhotoSet[di % itemPhotoSet.length],
@@ -13844,6 +13876,19 @@ function updateCartBar() {
     let groupOrder = false;
     try { const sm = window.neshSavedCarts ? window.neshSavedCarts() : {}; groupOrder = Object.keys(sm).some(k => k !== r.id); } catch (e) {}
     const fi = neshFreeItemStatus(r, total);
+    // No delivery location yet: still show the shop's free-delivery order-value ranges instead of staying silent.
+    let tierInfo = null;
+    try {
+      const tiersAll = (dc && !groupOrder && !free && Array.isArray(dc.freeTiers)) ? dc.freeTiers.filter(t => t && Number(t.km) > 0) : [];
+      if (tiersAll.length && !currentDeliveryKm(barPt)) {
+        const curT = tiersAll.filter(t => total >= (Number(t.min) || 0) && (t.max == null || total < Number(t.max)));
+        if (curT.length) tierInfo = { have: true, km: Math.max.apply(null, curT.map(t => Number(t.km))) };
+        else {
+          const nxt = tiersAll.filter(t => (Number(t.min) || 0) > total).sort((a, b) => (Number(a.min) || 0) - (Number(b.min) || 0))[0];
+          if (nxt) tierInfo = { have: false, min: Number(nxt.min) || 0, km: Number(nxt.km) };
+        }
+      }
+    } catch (e) {}
     info.classList.remove('unlocked');
     if (short > 0) {
       // minimum order not reached yet
@@ -13868,6 +13913,14 @@ function updateCartBar() {
       titleEl.textContent = "Add ₹" + (Math.round((freeAbove - total) * 100) / 100) + " more";
       cartTotalText.textContent = "to get FREE delivery 🛵";
       pct = Math.min(100, (total / freeAbove) * 100);
+    } else if (tierInfo && tierInfo.have) {
+      info.classList.add('unlocked');
+      titleEl.textContent = "FREE delivery 🎉";
+      cartTotalText.textContent = "up to " + tierInfo.km + " km · Items ₹" + total;
+    } else if (tierInfo) {
+      titleEl.textContent = "Add ₹" + (Math.round((tierInfo.min - total) * 100) / 100) + " more";
+      cartTotalText.textContent = "for FREE delivery up to " + tierInfo.km + " km 🛵";
+      pct = Math.min(100, (total / tierInfo.min) * 100);
     } else {
       // Not free and nothing left to unlock: show the real delivery charge once the distance is known
       let feeNow = 0;
@@ -14039,10 +14092,14 @@ function neshAutoApplyCoupons() {
     const items = currentCartItemsTotal();
     const cur = window.neshCoupon;
     if (cur && cur.restId === r.id) {
-      if (!cur.auto) return;                                   // customer's own / loyalty coupon stays
       const cd = (window.neshCoupons || []).find(x => x.id === cur.id);
-      if (cd && !couponCheck(cd, r.id, items)) return;         // auto coupon still valid
-      window.neshCoupon = null;                                // no longer qualifies (e.g. min order) -> look for another
+      const why = cd ? couponCheck(cd, r.id, items) : 'this coupon is no longer available.';
+      if (!why) return;                                        // still valid -> keep it
+      // No longer qualifies (e.g. the cart total fell below the minimum order): remove it automatically and tell the customer.
+      window.neshCoupon = null;
+      try { if (window.neshCouponSay && items > 0) window.neshCouponSay('Coupon ' + (cd ? cd.code : '') + ' removed. ' + why, false); } catch (e) {}
+      if (!cur.auto) return;                                   // customer's own / loyalty coupon: just removed
+      // an auto coupon: fall through and look for another one that qualifies
     }
     if (window.__cpnAutoOff === r.id || !(items > 0)) return;
     let best = null, bestAmt = 0;
@@ -14198,6 +14255,7 @@ function renderCouponCards() {
       }));
       try { window.neshLoyaltyRebuild && window.neshLoyaltyRebuild(); window.neshLoyaltySRebuild && window.neshLoyaltySRebuild(); } catch (e) {}
       refreshCouponUI();
+      try { if (typeof orderSummaryOverlay !== 'undefined' && orderSummaryOverlay.classList.contains('show')) updateLocSummary(); } catch (e) {}   // checkout already open: apply auto coupons now
     }, () => {});
   } catch (e) {}
 })();
@@ -15033,11 +15091,22 @@ function smallCartFeeNow(dc) {
   } catch (e) {}
   return 0;
 }
-function deliveryFeeBeforeFree() {
+// Free distance used by the "extra km only" option (free-under-km, free-within-km, or the shop's order-value free-km range).
+function neshExtraKmFreeKm(dc) {
+  let freeKm = Math.max(Number(dc.freeUnderKm) || 0, Number(dc.freeWithinKm) || 0);
+  try {
+    const tot = currentCartItemsTotal();
+    (Array.isArray(dc.freeTiers) ? dc.freeTiers : []).forEach(t => {
+      if (tot >= (Number(t.min) || 0) && (t.max == null || tot < Number(t.max))) freeKm = Math.max(freeKm, Number(t.km) || 0);
+    });
+  } catch (e) {}
+  return freeKm;
+}
+function deliveryFeeBeforeFree(ptOverride) {
   const dc = activeDeliveryCharge();
   if (!dc) return 0;
   const small = smallCartFeeNow(dc);
-  const d = currentDeliveryKm();
+  const d = currentDeliveryKm(ptOverride);
   if (!d) return (Number(dc.baseFee) || 0) + small; // distance unknown — charge the flat base fee only
   const km = d.km;
   if (dc.freeUnderKm != null && km < Number(dc.freeUnderKm)) return small;
@@ -15046,19 +15115,33 @@ function deliveryFeeBeforeFree() {
   // Operator option (Operator Panel -> "Free delivery: extra km only"): past the free distance the customer pays
   // ONLY for the km beyond it (per-km rate x extra km, no base fee) instead of the full charge for the whole trip.
   if (window.NESH_EXTRA_KM_ONLY && perKmFee > 0) {
-    let freeKm = Math.max(Number(dc.freeUnderKm) || 0, Number(dc.freeWithinKm) || 0);
-    try {
-      const tot = currentCartItemsTotal();
-      (Array.isArray(dc.freeTiers) ? dc.freeTiers : []).forEach(t => {
-        if (tot >= (Number(t.min) || 0) && (t.max == null || tot < Number(t.max))) freeKm = Math.max(freeKm, Number(t.km) || 0);
-      });
-    } catch (e) {}
+    let freeKm = neshExtraKmFreeKm(dc);
     // Per-km x extra km only (no base fee), never below ₹1: even 0.5 km past the free distance is NOT free.
     if (freeKm > 0 && km >= freeKm) return Math.max(1, Math.ceil(perKmFee * (km - freeKm) - 1e-9)) + small;   // always rounded UP to the next whole rupee (4.1 -> 5)
   }
   // Rounded to the nearest whole rupee (not paise) — this is a
   // Cash-on-Delivery app, so customers/drivers need round, practical change.
   return Math.round(baseFee + perKmFee * km) + small;
+}
+// Delivery OFFER past the free distance ("extra km only"): ₹ the customer saves versus the normal full-trip charge
+// (base + per-km x whole distance). 0 when the option is off, delivery is fully free, or no reduction applies.
+function deliveryFeeReduction(ptOverride) {
+  try {
+    if (!window.NESH_EXTRA_KM_ONLY || isFreeDelivery(ptOverride)) return 0;
+    const dc = activeDeliveryCharge();
+    if (!dc) return 0;
+    const perKmFee = Number(dc.perKmFee) || 0;
+    if (perKmFee <= 0) return 0;
+    const d = currentDeliveryKm(ptOverride);
+    if (!d) return 0;
+    const km = d.km;
+    if (dc.freeUnderKm != null && km < Number(dc.freeUnderKm)) return 0;
+    const freeKm = neshExtraKmFreeKm(dc);
+    if (!(freeKm > 0 && km >= freeKm)) return 0;
+    const full = Math.round((Number(dc.baseFee) || 0) + perKmFee * km);
+    const actual = Math.max(1, Math.ceil(perKmFee * (km - freeKm) - 1e-9));
+    return Math.max(0, full - actual);
+  } catch (e) { return 0; }
 }
 // Free delivery, read from whichever delivery-charge config is active:
 //  - freeAbove: "free on orders of ₹X and above" — the operator's Go Series
@@ -15147,7 +15230,7 @@ window.NESH_GST = (function () { try { return JSON.parse(localStorage.getItem('n
 function neshGstKey(r) {
   if (!r) return 'food';
   if (r.id === 'NESH_STORE') return 'groceries';                                    // Groceries card
-  if (r.goSeries || r.businessType === 'groceries' || r.businessType === 'online_shop') return 'mart';   // NESH Mart card
+  if (r.businessType === 'groceries' || r.businessType === 'online_shop' || (r.goSeries && r.businessType !== 'hotel')) return 'mart';   // NESH Mart card (a Go Series FOOD shop, type 'hotel', uses the Food GST instead)
   return 'food';                                                                    // Food card
 }
 function neshGstPct(r) { const v = Number((window.NESH_GST || {})[neshGstKey(r)]) || 0; return (v > 0 && v <= 100) ? v : 0; }
@@ -15267,14 +15350,18 @@ function updateLocSummary() {
   // seeing one total on screen and a slightly different one get charged.
   const showLoading = (state.roadDistanceLoading && dc) || goSeriesCfgPending();
   const shownDelivery = deliveryFee + fee;
+  // Delivery offer: charge reduced past the free distance -> shown as an offer and counted in "You saved".
+  const delRed = (showLoading || freeDelivery) ? 0 : deliveryFeeReduction();
   // "FREE" is only claimed when the 0 is real: a per-km shop whose distance is still unknown is NOT free yet.
   const deliveryDistOk = !dc || !(Number(dc.perKmFee) > 0) || !!currentDeliveryKm();
   if (locSummaryDeliveryEl) {
     if (showLoading) locSummaryDeliveryEl.textContent = "Calculating…";
     else if (freeDelivery && wouldBeFee > 0) locSummaryDeliveryEl.innerHTML = '<s style="color:var(--muted);">₹' + (wouldBeFee + fee) + '</s> ' + (fee > 0 ? '<b style="color:var(--leaf);">₹' + fee + '</b>' : '<b style="color:var(--leaf);">FREE</b>');
     else if (shownDelivery === 0 && deliveryDistOk) locSummaryDeliveryEl.innerHTML = '<b style="color:var(--leaf);">FREE 🎉</b>';   // no delivery charge set -> show it as a perk
+    else if (delRed > 0) locSummaryDeliveryEl.innerHTML = '<s style="color:var(--muted);">₹' + (shownDelivery + delRed) + '</s> <b style="color:var(--leaf);">₹' + shownDelivery + '</b>';
     else locSummaryDeliveryEl.textContent = "₹" + shownDelivery;
   }
+
   if (locSummaryDeliveryRowEl) locSummaryDeliveryRowEl.style.display = (shownDelivery > 0 || showLoading || deliveryDistOk || (freeDelivery && wouldBeFee > 0)) ? "flex" : "none";   // the charge, "Calculating…" or "FREE"
   // Nudge: how much more to add to unlock free delivery.
   let freeMin = dc ? (Number(dc.freeAbove) || 0) : 0;
@@ -15321,7 +15408,7 @@ function updateLocSummary() {
   if (gstRowEl) {
     gstRowEl.style.display = gstAmt > 0 ? 'flex' : 'none';
     const gv = document.getElementById('loc-summary-gst'); if (gv) gv.textContent = '₹' + gstAmt;
-    const gp = document.getElementById('loc-summary-gst-pct'); if (gp) gp.textContent = gstInfo.pct > 0 ? '(' + gstInfo.pct + '%)' : '';
+    const gp = document.getElementById('loc-summary-gst-pct'); if (gp) gp.textContent = '';   // percentage hidden from the customer bill
   }
   const rainAmt = currentRainSurgeAmount();
   const rainRowEl = document.getElementById('loc-summary-rain-row');
@@ -16970,13 +17057,23 @@ function openOrderSummary() {
     const delEl = document.getElementById('os-bill-delivery');
     const noteEl = document.getElementById('os-bill-note');
     const savedEl = document.getElementById('os-saved');
-    let free = false, was = 0;
-    try { free = isFreeDelivery(); if (free) was = Number(deliveryFeeBeforeFree()) || 0; } catch (e) {}
+    // Before checkout there is no delivery pin yet -> use the customer's current location (same as the cart bar)
+    const osPt = (!state.pendingCheckout && state.customerPos && typeof state.customerPos.lat === 'number') ? state.customerPos : null;
+    let free = false, was = 0, red = 0, nowFee = 0;
+    try {
+      free = isFreeDelivery(osPt);
+      if (free) was = Number(deliveryFeeBeforeFree(osPt)) || 0;
+      else { red = deliveryFeeReduction(osPt) || 0; if (red > 0) nowFee = Number(deliveryFeeBeforeFree(osPt)) || 0; }
+    } catch (e) {}
     if (free) {
       delEl.innerHTML = (was > 0 ? '<s>₹' + was + '</s>' : '') + '<span class="free">FREE</span>';
       noteEl.textContent = 'Other charges, if any, are shown at checkout.';
       if (was > 0) { savedEl.textContent = 'Yay! You saved ₹' + was + ' on delivery 🎉'; savedEl.style.display = 'block'; }
       else savedEl.style.display = 'none';
+    } else if (red > 0 && nowFee > 0) {
+      delEl.innerHTML = '<s>₹' + (nowFee + red) + '</s> <b>₹' + nowFee + '</b>';
+      noteEl.textContent = '🎉 Delivery offer applied. Other charges, if any, are shown at checkout.';
+      savedEl.textContent = 'Yay! You saved ₹' + red + ' on delivery 🎉'; savedEl.style.display = 'block';
     } else {
       delEl.textContent = 'At checkout';
       noteEl.textContent = 'Delivery & other charges are shown at checkout.';
@@ -16997,6 +17094,8 @@ function openOrderSummary() {
     orderSummaryProceedBtn.style.opacity = '';
     orderSummaryProceedBtn.textContent = "Proceed to checkout →";
   }
+  window.__cpSavedPopDone = false;   // show the "You saved ₹X" pop-up again for this checkout open
+  window.__cpnAutoOff = null;        // an auto coupon removed in an earlier visit can apply again on a fresh checkout open
   orderSummaryOverlay.classList.add('show');
   if (!cpWasOpen) cpFirstOpen(); else { updateLocSummary(); }
   cpSyncBar();
@@ -17068,6 +17167,52 @@ function cpSyncBar() {
 [locLandmarkInput, locPlaceInput, locContactInput].forEach(el => el && el.addEventListener('input', () => cpLive(false)));
 // header location line, km pill, coupons row
 let cpLastCoupon = null;
+// Savings on this order: shop discount + coupon + delivery waived + delivery offer (extra-km-only)
+function checkoutSavingsParts() {
+  let sd = 0, sc = 0, sf = 0, sr = 0;
+  try { sd = currentOrderShopDiscount() || 0; } catch (e) {}
+  try { sc = currentCouponDiscount() || 0; } catch (e) {}
+  try { if (isFreeDelivery()) sf = Number(deliveryFeeBeforeFree()) || 0; } catch (e) {}
+  try { sr = deliveryFeeReduction() || 0; } catch (e) {}
+  return { sd, sc, sf, sr, total: Math.round((sd + sc + sf + sr) * 100) / 100 };
+}
+// Swiggy-style "You saved ₹X" pop-up: slides up once when checkout opens, auto-closes after a few seconds.
+function cpShowSavedPop(p) {
+  try {
+    const old = document.getElementById('saved-pop'); if (old) old.remove();
+    const rows = [];
+    if (p.sd > 0) rows.push(['Shop discount', p.sd]);
+    if (p.sc > 0) rows.push(['Coupon', p.sc]);
+    if (p.sf + p.sr > 0) rows.push(['On delivery', Math.round((p.sf + p.sr) * 100) / 100]);
+    const ov = document.createElement('div');
+    ov.id = 'saved-pop'; ov.className = 'sp-ov';
+    ov.innerHTML = '<div class="sp-card"><div class="sp-conf"></div><div class="sp-emoji">🎉</div>' +
+      '<p class="sp-yay">Yay! You saved</p><p class="sp-amt">₹0</p><p class="sp-sub">on this order</p>' +
+      (rows.length > 1 ? '<div class="sp-rows">' + rows.map(r => '<div class="sp-row"><span>' + r[0] + '</span><span>₹' + r[1] + '</span></div>').join('') + '</div>' : '') +
+      '<button type="button" class="sp-btn">Awesome!</button></div>';
+    document.body.appendChild(ov);
+    const conf = ov.querySelector('.sp-conf'), colors = ['#F5B800', '#0E8A5C', '#E5252A', '#3B82F6', '#FF8A3D'];
+    for (let i = 0; i < 28; i++) {
+      const c = document.createElement('i');
+      c.style.left = (Math.random() * 100) + '%';
+      c.style.background = colors[i % colors.length];
+      c.style.animationDelay = (Math.random() * 0.6) + 's';
+      conf.appendChild(c);
+    }
+    let closed = false;
+    const close = () => { if (closed) return; closed = true; ov.classList.remove('on'); setTimeout(() => ov.remove(), 400); };
+    ov.addEventListener('click', e => { if (e.target === ov || e.target.classList.contains('sp-btn')) close(); });
+    requestAnimationFrame(() => requestAnimationFrame(() => ov.classList.add('on')));
+    // count the amount up
+    const amtEl = ov.querySelector('.sp-amt'), t0 = performance.now(), dur = 800;
+    (function tick(now) {
+      const k = Math.min(1, (now - t0) / dur);
+      amtEl.textContent = '₹' + (k >= 1 ? p.total : Math.round(p.total * k));
+      if (k < 1 && !closed) requestAnimationFrame(tick);
+    })(t0);
+    setTimeout(close, 4200);
+  } catch (e) {}
+}
 function cpSyncHeader() {
   const r = state.selectedRestaurant; if (!r) return;
   const addrEl = document.getElementById('cp-loc-addr'); if (!addrEl) return;
@@ -17079,11 +17224,12 @@ function cpSyncHeader() {
   if (d && isFinite(d.km)) { kmEl.textContent = d.km.toFixed(1) + ' km away'; kmEl.style.display = ''; } else kmEl.style.display = 'none';
   // savings: shop discount + coupon + delivery waived
   {
-    let sd = 0, sc = 0, sf = 0;
-    try { sd = currentOrderShopDiscount() || 0; } catch (e) {}
-    try { sc = currentCouponDiscount() || 0; } catch (e) {}
-    try { if (isFreeDelivery()) sf = Number(deliveryFeeBeforeFree()) || 0; } catch (e) {}
-    const sv = Math.round((sd + sc + sf) * 100) / 100;
+    const sp = checkoutSavingsParts(), sv = sp.total;
+    // once per checkout open, when the numbers have settled (distance / delivery config no longer loading)
+    if (sv > 0 && !window.__cpSavedPopDone && orderSummaryOverlay.classList.contains('show') && !state.roadDistanceLoading && !goSeriesCfgPending()) {
+      window.__cpSavedPopDone = true;
+      cpShowSavedPop(sp);
+    }
     const strip = document.getElementById('bs-saving'), ban = document.getElementById('os-saved');
     if (strip) { strip.style.display = sv > 0 ? 'block' : 'none'; strip.textContent = '🎉 You saved ₹' + sv + ' on this order'; }
     if (ban) { ban.style.display = sv > 0 ? 'block' : 'none'; ban.textContent = 'Yay! You saved ₹' + sv + ' on this order 🎉'; }
@@ -17577,6 +17723,8 @@ payConfirmBtn.addEventListener('click', async () => {
       const waived = deliveryFeeBeforeFree();
       if (waived > 0) { orderPayload.freeDelivery = true; orderPayload.deliveryFeeWaived = waived; }
     }
+    // Delivery offer (charge reduced past the free distance): record what the customer saved so the bill can show it.
+    try { const dRed = deliveryFeeReduction(); if (dRed > 0) orderPayload.deliverySaved = dRed; } catch (e) {}
     if (window.__neshPayFor) { const P = window.__neshPayFor;
       orderPayload.customerAccount = P.account || ''; orderPayload.customerAddress = pc.text || '';
       orderPayload.paidByName = (state.user && state.user.name) || ''; orderPayload.paidByPhone = (state.user && state.user.number) || '';
@@ -17985,9 +18133,10 @@ function renderTrackItems(o) {
   const shownDeliveryCharge = (Number(o.deliveryFee) || 0) + (Number(o.platformFee) || 0);
   if (shownDeliveryCharge > 0) html += row('Delivery charge', '₹' + shownDeliveryCharge);
   else html += row('Delivery charge', '<b style="color:#1a7f37;">FREE</b>');
+  if (Number(o.deliverySaved) > 0) html += row('🎉 Delivery offer', '<b style="color:#1a7f37;">Saved ₹' + o.deliverySaved + '</b>');
   if (Number(o.rainSurge) > 0) html += row('🌧️ Rain surge', '₹' + o.rainSurge);
   if (Number(o.tip) > 0) html += row('🏍️ Delivery tip', '₹' + o.tip);
-  if (Number(o.gst) > 0) html += row('🏛️ Government tax' + (Number(o.gstPercent) > 0 ? ' (' + o.gstPercent + '%)' : ''), '₹' + o.gst);
+  if (Number(o.gst) > 0) html += row('🏛️ Government charge' + (Number(o.gstPercent) > 0 ? ' (' + o.gstPercent + '%)' : ''), '₹' + o.gst);
   if (Number(o.shopDiscountApplied) > 0) html += row('Shop discount', '−₹' + o.shopDiscountApplied);
   if (Number(o.couponDiscount) > 0) html += row('Coupon ' + escapeHtml(o.couponCode || ''), '−₹' + o.couponDiscount);
   if (o.total != null) html += row('Total', '₹' + o.total, true);
@@ -20171,7 +20320,7 @@ if ('serviceWorker' in navigator) {
     var html = shopRows +
       '<div class="bs-row"><span><b>Item total</b> ' + cnt(count) + '</span><span><b>₹' + rup(items) + '</b></span></div>' +
       '<div class="bs-row"><span>Delivery charge</span><span>' + (calc ? 'Calculating…' : (del > 0 ? '₹' + rup(del) : '<b style="color:var(--leaf);">FREE</b>')) + '</span></div>';
-    if (gstSum > 0 && !calc) html += '<div class="bs-row"><span>🏛️ Government tax</span><span>₹' + rup(gstSum) + '</span></div>';
+    if (gstSum > 0 && !calc) html += '<div class="bs-row"><span>🏛️ Government charge</span><span>₹' + rup(gstSum) + '</span></div>';
     if (rain > 0 && !calc) html += '<div class="bs-row"><span>🌧️ Rain surge <small>(goes to your rider)</small></span><span>₹' + rup(rain) + '</span></div>';
     if (e.top.getAttribute('data-h') !== html) { e.top.setAttribute('data-h', html); e.top.innerHTML = html; }
     var th = '<span>To Pay</span><span>' + (grand == null ? '…' : '₹' + grand) + '</span>';
