@@ -1997,13 +1997,41 @@ html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
       const m = String((err && err.message) || err || '').toLowerCase();
       return { code: /denied|permission/.test(m) ? 1 : (/time/.test(m) ? 3 : 2), message: m };
     }
+    // ONE shared permission request. neshFastFix() starts watchPosition AND getCurrentPosition together; two
+    // simultaneous requestPermissions() calls made the plugin reject one of them as "permission" -> the app
+    // wrongly reported "location denied" right after the Locating screen. Now: check first, ask once, share the answer.
+    let _permP = null;
+    function ensurePerm(CapGeo) {
+      if (_permP) return _permP;
+      const granted = st => !!st && (st.location === 'granted' || st.coarseLocation === 'granted');
+      const denied = st => !!st && st.location === 'denied' && st.coarseLocation === 'denied';
+      _permP = Promise.resolve()
+        .then(() => CapGeo.checkPermissions ? CapGeo.checkPermissions() : null).catch(() => null)
+        .then(st => granted(st) ? st : CapGeo.requestPermissions().catch(() => null))
+        .then(st => { if (denied(st)) { const e = new Error('Location permission denied'); e.code = 1; throw e; } return st; });
+      // a denied answer is not cached forever: the customer may allow it in Settings and tap Try again
+      _permP.catch(() => { _permP = null; });
+      _permP.then(() => { setTimeout(() => { _permP = null; }, 30000); }, () => {});
+      return _permP;
+    }
     navigator.geolocation.getCurrentPosition = function (success, error, options) {
       const CapGeo = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation;
       if (!CapGeo) { nativeGetCurrentPosition(success, error, options); return; }
-      CapGeo.requestPermissions()
+      let settled = false;
+      const ok = pos => { if (settled) return; settled = true; try { success(pos); } catch (e) { console.error(e); } };
+      const bad = err => { if (settled) return; settled = true; if (error) error(geoErr(err)); };
+      // never hang forever: if the plugin gives no answer, report a timeout
+      const guard = setTimeout(() => bad({ code: 3, message: 'timeout' }), ((options && options.timeout) || 20000) + 4000);
+      ensurePerm(CapGeo)
         .then(() => CapGeo.getCurrentPosition(options || {}))
-        .then(pos => { try { success(pos); } catch (e) { console.error(e); } },
-              err => { if (error) error(geoErr(err)); });
+        .then(pos => { clearTimeout(guard); ok(pos); },
+              err => {
+                clearTimeout(guard);
+                const g = geoErr(err);
+                if (g.code === 1) { bad(g); return; }
+                // plugin could not get a fix (not a permission problem): one try with the WebView's own geolocation
+                try { nativeGetCurrentPosition(p => ok(p), () => bad(g), { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }); } catch (e) { bad(g); }
+              });
     };
 
     let _wid = 0; const _wmap = {};
@@ -2012,7 +2040,7 @@ html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
       if (!CapGeo) return nativeWatchPosition(success, error, options);
       // Return a real id straight away (the plugin hands its id back asynchronously), so clearWatch() can stop it.
       const id = ++_wid; const w = _wmap[id] = { cap: null, dead: false };
-      CapGeo.requestPermissions()
+      ensurePerm(CapGeo)
         .then(() => CapGeo.watchPosition(options || {}, (pos, err) => {
           if (w.dead) return;
           if (err) { if (error) error(geoErr(err)); return; }
@@ -4071,6 +4099,7 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
   // Synthesised with Web Audio (filtered noise) so no audio file is needed.
   var shCtx = null;
   function neshShh() {
+    return;   // app-open "shhh" sound turned off (customer did not want a sound on open)
     try {
       var AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
@@ -5990,6 +6019,9 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
               nm.forEach(sz => {
                 const raw = Number(sp[sz]) || 0; if (raw <= 0) return;
                 const mm = Object.assign({}, m, { price: raw, customerPrice: 0 });
+                // Operator-set customer price for THIS portion (Operator Panel -> partner -> item): customers pay exactly it, the shop is paid its own portion price.
+                const opSz = (m.customerSizePrices && typeof m.customerSizePrices === 'object') ? Number(m.customerSizePrices[sz]) : 0;
+                if (opSz > 0) { prices[sz] = opSz; rates[sz] = raw; return; }
                 prices[sz] = raw + (v.goSeries ? (Number(window.GO_SERIES_ITEM_MARKUP) || 0) : 0) + priceBump(mm) + markupFor(mm);
                 rates[sz] = (priceBump(mm) > 0 || markupFor(mm) > 0 || commissionFor(mm) > 0) ? raw - commissionFor(mm) : undefined;
               });
@@ -6224,7 +6256,8 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
     const SHOP_FIELDS = ['address', 'businessType', 'closeTime', 'deliveryCharges', 'deliveryZone', 'discountAmount', 'discountEndsAt',
       'discountCardImage', 'goSeries', 'gpayNumber', 'hoursEnabled', 'itemCategories', 'location', 'menu',
       'minOrderAmount', 'opCategory', 'openTime', 'photo', 'popularItems', 'ratingCount', 'ratingSum', 'suggestItems',
-      'restaurantName', 'shopUnavailable', 'shopUnavailableMessage', 'status', 'deliveryTimeMins', 'opDeliveryTimeMins'];
+      'restaurantName', 'shopUnavailable', 'shopUnavailableMessage', 'status', 'deliveryTimeMins', 'opDeliveryTimeMins',
+      'martRanges', 'priceMarkup'];   // operator-set price ranges / markup: without these the customer would see the shop's own price
     added.forEach(id => {
       const first = () => { if (shopInitPending) shopInitPending.delete(id); };
       const fieldSnaps = {};
@@ -16814,7 +16847,22 @@ browseLocGpsBtn.addEventListener('click', () => {
   window.neshFastFix({ onUpdate: apply, onDone: apply, onFail: (err) => { if (token === browseGpsToken) onFail(err); } });
 });
 
-browseLocCancelBtn.addEventListener('click', () => { pendingLocationRequiredAction = null; closeBrowseLocationPicker(); });
+browseLocCancelBtn.addEventListener('click', () => {
+  pendingLocationRequiredAction = null;
+  // Cancelled from checkout: put this order's address back exactly as it was (the pin moves update it live while the picker is open)
+  if (browseFromCheckout && cpAddrSnapshot) {
+    try {
+      pendingLocation = { ...cpAddrSnapshot.loc };
+      locPlaceInput.value = cpAddrSnapshot.place; locLandmarkInput.value = cpAddrSnapshot.landmark; locContactInput.value = cpAddrSnapshot.contact;
+      if (locCurrentValue) locCurrentValue.textContent = pendingLocation.text || '';
+    } catch (e) {}
+    cpAddrSnapshot = null;
+    closeBrowseLocationPicker();
+    try { cpLive(true); } catch (e) {}
+    return;
+  }
+  closeBrowseLocationPicker();
+});
 
 // ---------- Search-to-select location (OpenStreetMap Nominatim geocoding) ----------
 function hideBrowseSearchResults() {
@@ -17320,7 +17368,7 @@ function cpSyncHeader() {
     // once per checkout open, when the numbers have settled (distance / delivery config no longer loading)
     if (sv > 0 && !window.__cpSavedPopDone && orderSummaryOverlay.classList.contains('show') && !state.roadDistanceLoading && !goSeriesCfgPending()) {
       window.__cpSavedPopDone = true;
-      cpShowSavedPop(sp);
+      if (window.__cpSavedPopLast !== sv) { window.__cpSavedPopLast = sv; cpShowSavedPop(sp); }   // same saved amount already shown earlier: don't pop again
     }
     const strip = document.getElementById('bs-saving'), ban = document.getElementById('os-saved');
     if (strip) { strip.style.display = sv > 0 ? 'block' : 'none'; strip.textContent = '🎉 You saved ₹' + sv + ' on this order'; }
@@ -17382,7 +17430,9 @@ function cpPrepDetails() {
   body.style.display = 'none';                     // the card is now just a tappable summary row
 })();
 
+let cpAddrSnapshot = null;   // this order's address as it was when the picker opened (restored if the customer cancels)
 function cpOpenAddrPicker() {
+  cpAddrSnapshot = { loc: { ...pendingLocation }, place: locPlaceInput.value, landmark: locLandmarkInput.value, contact: locContactInput.value };
   browseFromCheckout = true;
   pendingLocationRequiredAction = null;
   browseLocOverlay.style.zIndex = '2100';          // above the checkout sheet (2050)
@@ -17903,6 +17953,7 @@ payConfirmBtn.addEventListener('click', async () => {
     state.cartGrams = {};
   state.cartSizes = {};
     state.pendingCheckout = null;
+    window.__cpSavedPopLast = null;   // order placed: next order may show the saved pop-up again
     if (window.__couponPending) { couponMarkUsed(window.__couponPending); window.__couponPending = null; } window.neshCoupon = null; window.__loyAutoOff = null; window.__cpnAutoOff = null;
     state.discountReveal = null;
     closePaymentConfirm();
