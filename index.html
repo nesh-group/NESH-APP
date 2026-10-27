@@ -3146,6 +3146,27 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
 .tip-chip.on{ background:linear-gradient(135deg,#F5B800,#FFCE3A); border-color:#E0A200; box-shadow:0 4px 12px rgba(245,184,0,.45); animation:tipPop .28s ease; }
 .tip-chip.tip-custom{ grid-column:1 / -1; border-style:dashed; color:#8A6400; background:rgba(255,255,255,.7); }
 .tip-chip.tip-custom.on{ color:#2B2410; border-style:solid; }
+
+/* ---- delivery instructions (checkout) ---- */
+.di-box{ margin:12px 0 4px; padding:14px 14px 12px; border-radius:16px; background:#fff; border:1.5px solid #ECE6D2; }
+.di-head{ margin-bottom:10px; }
+.di-head b{ display:block; font:800 15px/1.2 Inter,sans-serif; color:#2B2410; }
+.di-head small{ display:block; margin-top:3px; font-size:12px; font-weight:600; color:#8A7E58; }
+.di-chips{ display:flex; gap:8px; overflow-x:auto; padding:2px 2px 6px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+.di-chips::-webkit-scrollbar{ display:none; }
+.di-chip{ flex:none; width:92px; min-height:84px; padding:10px 8px; border-radius:14px; border:1.5px solid #E4DDC4; background:#FAF8F0; color:#2B2410; font:700 12.5px/1.25 Inter,sans-serif; text-align:left; cursor:pointer; display:flex; flex-direction:column; justify-content:space-between; gap:6px; -webkit-tap-highlight-color:transparent; }
+.di-chip .di-ic{ font-size:20px; line-height:1; }
+.di-chip:active{ transform:scale(.96); }
+.di-chip.on{ background:#2B2410; border-color:#2B2410; color:#fff; }
+.di-dir-wrap{ display:none; margin-top:8px; }
+.di-dir-wrap.open{ display:block; }
+.di-dir-wrap input{ width:100%; box-sizing:border-box; padding:10px 12px; border:1.5px dashed #D6A300; border-radius:10px; font-size:14px; background:#FFF8DF; color:#2B2410; }
+html[data-theme="dark"] .di-box{background:#221E15;border-color:#3A3322}
+html[data-theme="dark"] .di-head b{color:#E7E0CD}
+html[data-theme="dark"] .di-head small{color:#CDBE98}
+html[data-theme="dark"] .di-chip{background:#2B261A;border-color:#3A3322;color:#E7E0CD}
+html[data-theme="dark"] .di-chip.on{background:#F5B800;border-color:#F5B800;color:#2B2410}
+html[data-theme="dark"] .di-dir-wrap input{background:#2B261A;color:#E7E0CD;border-color:#6b5a1e}
 .tip-custom-wrap{ display:none; margin-top:10px; gap:8px; align-items:stretch; position:relative; z-index:1; }
 .tip-custom-wrap.open{ display:flex; }
 .tip-input-box{ flex:1; display:flex; align-items:center; gap:6px; background:#fff; border:1.5px solid #E9CF7C; border-radius:12px; padding:0 12px; min-width:0; }
@@ -5698,6 +5719,17 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
           </div>
           <p class="tip-note" id="tip-note">Say thanks to the person bringing your order 💛</p>
         </div>
+        <div class="di-box" id="di-box">
+          <div class="di-head"><b>Delivery instructions</b><small>Optional · tap to select, tap again to remove</small></div>
+          <div class="di-chips">
+            <button type="button" class="di-chip" data-di="Directions to reach"><span class="di-ic">🎙️</span><span>Directions to reach</span></button>
+            <button type="button" class="di-chip" data-di="Leave at the door"><span class="di-ic">🚪</span><span>Leave at the door</span></button>
+            <button type="button" class="di-chip" data-di="Avoid calling"><span class="di-ic">📵</span><span>Avoid calling</span></button>
+            <button type="button" class="di-chip" data-di="Avoid ringing bell"><span class="di-ic">🔕</span><span>Avoid ringing bell</span></button>
+            <button type="button" class="di-chip" data-di="Leave with security"><span class="di-ic">💂</span><span>Leave with security</span></button>
+          </div>
+          <div class="di-dir-wrap" id="di-dir-wrap"><input id="di-dir-input" type="text" maxlength="120" placeholder="Type directions to reach you (e.g. blue gate, 2nd house)" autocomplete="off"></div>
+        </div>
         </div>
         <div class="cp-card" style="display:none">
           <div class="cp-card-head">
@@ -5949,6 +5981,26 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
         // Offer products (Trending tab): a shop/operator-set offerPrice below the item's own price
         // lowers what the customer pays by the same amount; offerMrp keeps the normal price for the strike-through.
         const neshWithOffer = (m, obj) => {
+          // Portions (Quarter / Half / Full): the shop gives each size its own price. Every portion price goes through the
+          // same markup / commission rules as a normal item price; the first portion is the item's base (default) price.
+          try {
+            const sp = m.sizePrices, nm = Array.isArray(m.sizes) ? m.sizes.filter(Boolean) : [];
+            if (sp && typeof sp === 'object' && nm.length > 1 && businessType === 'hotel') {
+              const prices = {}, rates = {};
+              nm.forEach(sz => {
+                const raw = Number(sp[sz]) || 0; if (raw <= 0) return;
+                const mm = Object.assign({}, m, { price: raw, customerPrice: 0 });
+                prices[sz] = raw + (v.goSeries ? (Number(window.GO_SERIES_ITEM_MARKUP) || 0) : 0) + priceBump(mm) + markupFor(mm);
+                rates[sz] = (priceBump(mm) > 0 || markupFor(mm) > 0 || commissionFor(mm) > 0) ? raw - commissionFor(mm) : undefined;
+              });
+              const names = nm.filter(sz => prices[sz] > 0);
+              if (names.length > 1) {
+                obj.sizes = names; obj.sizePrices = prices; obj.price = prices[names[0]];
+                obj.shopRate = rates[names[0]];
+                obj.sizeShopRates = {}; names.forEach(sz => { if (rates[sz] !== undefined) obj.sizeShopRates[sz] = rates[sz]; });
+              }
+            }
+          } catch (e) {}
           const base = Number(m.price) || 0, op = Number(m.offerPrice) || 0;
           if ((businessType === 'groceries' || businessType === 'online_shop') && op > 0 && op < base) {
             obj.offerMrp = obj.price;
@@ -13236,7 +13288,10 @@ function renderGramChips(container, it, onChange) {
 // price for piece items, or the rate scaled to the chosen grams for
 // weight items.
 function getUnitPrice(it) {
-  if (!isWeightUnit(it.unit)) return it.price;
+  if (!isWeightUnit(it.unit)) {
+    if (it.sizePrices && hasSizes(it)) { const sp = Number(it.sizePrices[getSelectedSize(it)]); if (sp > 0) return sp; }
+    return it.price;
+  }
   const grams = getSelectedGrams(it);
   const perGramRate = it.unit === 'kg' ? it.price / 1000 : it.price;
   return Math.round(perGramRate * grams * 100) / 100;
@@ -13507,7 +13562,12 @@ function renderMenu() {
       }
       const sizeRow = card.querySelector('.item-size-row');
       if (sizeRow) {
-        renderSizeChips(sizeRow, it, () => {}); // qty/price don't change on size switch, just remember the pick
+        renderSizeChips(sizeRow, it, () => {   // normal sizes: price is the same; portions (Half/Full): price changes
+          if (!it.sizePrices) return;
+          const priceEl = card.querySelector('.item-price2');
+          if (priceEl) priceEl.textContent = `₹${getUnitPrice(it)}`;
+          updateCartBar();
+        });
       }
       if (shopIsClosed) {
         card.querySelectorAll('input, button').forEach(el => { el.disabled = true; });
@@ -13566,7 +13626,7 @@ function renderSizeChips(container, it, onChange) {
       border:1.5px solid ${sz === selected ? 'var(--marigold-dark,#C97F00)' : '#ddd'};
       background:${sz === selected ? 'var(--marigold-dark,#C97F00)' : '#fff'};
       color:${sz === selected ? '#fff' : '#444'};
-    ">${sz}</button>
+    ">${sz}${(it.sizePrices && it.sizePrices[sz] > 0) ? ' · ₹' + it.sizePrices[sz] : ''}</button>
   `).join('');
   container.querySelectorAll('.size-chip-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -13731,13 +13791,14 @@ function renderItemDetail() {
   } else {
     document.getElementById('item-detail-gram-chips').style.display = 'none';
     itemDetailWeightRow.style.display = 'none';
-    itemDetailPrice.textContent = `₹${it.price}`;
+    itemDetailPrice.textContent = `₹${getUnitPrice(it)}`;
   }
   const sizeRow = document.getElementById('item-detail-size-row');
   const sizeChips = document.getElementById('item-detail-size-chips');
   if (hasSizes(it)) {
     sizeRow.style.display = 'block';
-    renderSizeChips(sizeChips, it, () => {});
+    { const lb = sizeRow.querySelector('p'); if (lb) lb.textContent = it.sizePrices ? 'Select portion' : 'Select size'; }
+    renderSizeChips(sizeChips, it, () => { if (it.sizePrices) { itemDetailPrice.textContent = `₹${getUnitPrice(it)}`; updateCartBar(); } });
   } else {
     sizeRow.style.display = 'none';
   }
@@ -14132,6 +14193,7 @@ function couponCheck(c, restId, items) {   // '' = fine, otherwise the reason it
   if (c.off || (c.exp && c.exp <= Date.now())) return 'This coupon has expired.';
   if (!c.allShops && !(c.shops && c.shops[restId])) return 'This coupon is not valid at this shop.';
   if (c.minOrder > 0 && items < c.minOrder) return 'Add items worth \u20B9' + c.minOrder + ' or more to use this coupon.';
+  if (c.maxOrder > 0 && items > c.maxOrder) return 'This coupon works only for orders up to \u20B9' + c.maxOrder + '.';
   if (couponUsed(c.id) >= c.perCustomer) return 'You have already used this coupon.';
   if (c.maxUses > 0 && couponTotalLeft(c) <= 0) return 'Sorry, this coupon is fully claimed.';
   return '';
@@ -14228,7 +14290,7 @@ function renderCouponCards() {
       '<div style="flex:1;min-width:0;padding:9px 10px 9px 14px;display:flex;flex-direction:column;gap:3px;">' +
         '<span style="font-size:13px;font-weight:800;letter-spacing:.8px;color:#2B2410;border:1.5px dashed ' + (applied ? '#1C7A3B' : '#D6A300') + ';border-radius:6px;padding:1px 6px;align-self:flex-start;">' + escapeHtml(c.code) + '</span>' +
         (c.desc ? '<span style="font-size:11.5px;font-weight:700;color:#2B2410;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(c.desc) + '</span>' : '') +
-        '<span style="font-size:11.5px;color:#6b5a1e;">' + (c.minOrder > 0 ? 'Min order \u20B9' + c.minOrder : 'No minimum order') + (c.type === 'percent' && c.maxDiscount > 0 ? ' \u00B7 up to \u20B9' + c.maxDiscount : '') + '</span>' +
+        '<span style="font-size:11.5px;color:#6b5a1e;">' + (c.minOrder > 0 ? 'Min order \u20B9' + c.minOrder : 'No minimum order') + (c.maxOrder > 0 ? ' \u00B7 Max order \u20B9' + c.maxOrder : '') + (c.type === 'percent' && c.maxDiscount > 0 ? ' \u00B7 up to \u20B9' + c.maxDiscount : '') + '</span>' +
         '<span style="font-size:11px;color:#a07d00;">' + [couponExpText(c), c.maxUses > 0 ? (couponTotalLeft(c) > 0 ? 'Only ' + couponTotalLeft(c) + ' left' : 'Fully claimed') : ''].filter(Boolean).join(' \u00B7 ') + '</span>' +
         '<button type="button" style="margin-top:3px;border:none;border-radius:8px;padding:6px 8px;font-size:12px;font-weight:800;cursor:pointer;background:' + (applied ? '#1C7A3B' : (why ? '#e9e2c8' : '#2B2410')) + ';color:' + (why && !applied ? '#7a6a2a' : '#fff') + ';">' +
           (applied ? 'APPLIED \u2713 (tap to remove)' : (short ? 'Add \u20B9' + short + ' more' : (why ? 'Not available' : (c.gift ? 'TAP TO APPLY \u2014 free ' + escapeHtml(c.giftName || 'gift') : 'TAP TO APPLY \u2014 save \u20B9' + couponAmount(c, items))))) + '</button>' +
@@ -14250,7 +14312,7 @@ function renderCouponCards() {
       const v = snap.val() || {};
       window.neshCoupons = Object.keys(v).filter(k => v[k] && v[k].code).map(k => ({
         id: k, code: String(v[k].code).toUpperCase(), type: v[k].type === 'percent' ? 'percent' : 'flat', value: +v[k].value || 0,
-        minOrder: +v[k].minOrder || 0, maxDiscount: +v[k].maxDiscount || 0, exp: +v[k].expiresAt || 0, off: !!v[k].off,
+        minOrder: +v[k].minOrder || 0, maxOrder: +v[k].maxOrder || 0, maxDiscount: +v[k].maxDiscount || 0, exp: +v[k].expiresAt || 0, off: !!v[k].off,
         desc: String(v[k].desc || '').slice(0, 40), allShops: !!v[k].allShops, secret: !!v[k].secret, auto: !!v[k].auto, shops: v[k].shops || {}, perCustomer: Math.max(1, +v[k].perCustomer || 1), maxUses: Math.max(0, +v[k].maxUses || 0)
       }));
       try { window.neshLoyaltyRebuild && window.neshLoyaltyRebuild(); window.neshLoyaltySRebuild && window.neshLoyaltySRebuild(); } catch (e) {}
@@ -15256,6 +15318,36 @@ function currentCartItemsTotal() {
   if (!r) return 0;
   return Math.round(r.items.reduce((sum, it) => sum + (state.cart[it.id] || 0) * getUnitPrice(it), 0) * 100) / 100;
 }
+// ---- Delivery instructions: optional chips saved on the order as deliveryInstructions (array) + deliveryDirections (text) ----
+window.neshDelInstr = [];
+function currentDelInstr() {
+  const a = (window.neshDelInstr || []).slice();
+  const inp = document.getElementById('di-dir-input');
+  const dir = (a.indexOf('Directions to reach') !== -1 && inp) ? String(inp.value || '').trim().slice(0, 120) : '';
+  return { list: a, directions: dir };
+}
+function renderDelInstrUI() {
+  const box = document.getElementById('di-box'); if (!box) return;
+  const a = window.neshDelInstr || [];
+  box.querySelectorAll('.di-chip').forEach(b => b.classList.toggle('on', a.indexOf(b.dataset.di) !== -1));
+  const wrap = document.getElementById('di-dir-wrap');
+  if (wrap) wrap.classList.toggle('open', a.indexOf('Directions to reach') !== -1);
+}
+function resetDelInstr() {
+  window.neshDelInstr = [];
+  const inp = document.getElementById('di-dir-input'); if (inp) inp.value = '';
+  renderDelInstrUI();
+}
+(function initDelInstrUI() {
+  const box = document.getElementById('di-box'); if (!box) return;
+  box.querySelectorAll('.di-chip').forEach(b => b.addEventListener('click', () => {
+    const k = b.dataset.di, a = window.neshDelInstr || [], ix = a.indexOf(k);
+    if (ix === -1) a.push(k); else a.splice(ix, 1);
+    window.neshDelInstr = a;
+    renderDelInstrUI();
+    if (k === 'Directions to reach' && a.indexOf(k) !== -1) { const inp = document.getElementById('di-dir-input'); if (inp) setTimeout(() => inp.focus(), 50); }
+  }));
+})();
 // ---- Delivery tip: added on top of the bill, 100% goes to the rider ----
 window.neshTip = 0;
 const TIP_MAX = 500;
@@ -16992,7 +17084,7 @@ function openOrderSummary() {
     const priceLine = isWeightUnit(it.unit)
       ? `₹${unitPrice} (${weightLabel(it)}) × ${qty}`
       : `₹${unitPrice} × ${qty}`;
-    const sizeLine = hasSizes(it) ? `<p class="order-summary-row-price">Size: ${getSelectedSize(it)}</p>` : '';
+    const sizeLine = hasSizes(it) ? `<p class="order-summary-row-price">${it.sizePrices ? 'Portion' : 'Size'}: ${getSelectedSize(it)}</p>` : '';
     const row = document.createElement('div');
     row.className = "order-summary-row";
     row.innerHTML = `
@@ -17595,6 +17687,10 @@ payConfirmBtn.addEventListener('click', async () => {
       }
       if (hasSizes(it)) {
         const size = getSelectedSize(it);
+        const isPortion = !!(it.sizePrices && it.sizePrices[size] > 0);
+        const upSz = isPortion ? Number(it.sizePrices[size]) : it.price;
+        const srSz = isPortion ? (it.sizeShopRates && it.sizeShopRates[size] != null ? it.sizeShopRates[size] : null) : null;
+        if (isPortion) { const o2 = { name: `${it.name} (${size})`, desc: it.desc || '', price: upSz, qty: state.cart[it.id], size, portion: size, ...(shopOptions ? { shopOptions } : {}) }; return srSz != null ? { ...o2, shopPrice: Math.round(srSz * 100) / 100 } : o2; }
         // Size is baked into the display name too (not just the `size`
         // field) so it shows up everywhere an order's items are printed —
         // shop order popup, order detail, delivery route, payment summary —
@@ -17690,6 +17786,7 @@ payConfirmBtn.addEventListener('click', async () => {
       deliveryFee,
       ...(rainSurgeInfo ? { rainSurge: rainSurgeInfo.amount, rainSurgeDriver: rainSurgeInfo.driverAmount, rainSurgeZone: rainSurgeInfo.zoneName } : {}),
       ...(tipAmount > 0 ? { tip: tipAmount } : {}),
+      ...(function () { const di = currentDelInstr(); return di.list.length ? Object.assign({ deliveryInstructions: di.list }, di.directions ? { deliveryDirections: di.directions } : {}) : {}; })(),
       ...(gstInfoOrder.amount > 0 ? { gst: gstInfoOrder.amount, gstPercent: gstInfoOrder.pct } : {}),
       shopDiscountApplied: shopDiscount,
       ...(couponDef ? { couponCode: couponDef.code, couponDiscount } : {}),
@@ -17737,6 +17834,7 @@ payConfirmBtn.addEventListener('click', async () => {
     state.lastOrder = { restId: r.id, orderKey: orderRef.key, orderNumber, restName: r.name, businessType: r.businessType };
     try { localStorage.setItem('asfood_last_order', JSON.stringify(state.lastOrder)); } catch (e) {}
     window.neshTip = 0; try { renderTipUI(); } catch (e) {}   // tip is per-order
+    try { resetDelInstr(); } catch (e) {}   // instructions are per-order
 
     // Per-customer order index (see ensureOrderIndex): lets the app find this
     // customer's orders without downloading every shop's data. Never blocks
