@@ -13341,12 +13341,14 @@ function weightLabel(it) {
 function hasSizes(it) { return Array.isArray(it.sizes) && it.sizes.length > 0; }
 function getSelectedSize(it) {
   if (!hasSizes(it)) return '';
-  const s = state.cartSizes && state.cartSizes[it.id];
+  const s0 = state.cartSizes && state.cartSizes[it.id];
+  const s = (s0 && typeof s0 === 'object') ? s0.sel : s0;
   return (s && it.sizes.includes(s)) ? s : it.sizes[0];
 }
 function setSelectedSize(itemId, size) {
   if (!state.cartSizes) state.cartSizes = {};
-  state.cartSizes[itemId] = size;
+  const c0 = state.cartSizes[itemId];
+  if (c0 && typeof c0 === 'object') c0.sel = size; else state.cartSizes[itemId] = size;
 }
 
 // ---------- NESH Store category tabs ----------
@@ -13594,14 +13596,8 @@ function renderMenu() {
         });
       }
       const sizeRow = card.querySelector('.item-size-row');
-      if (sizeRow) {
-        renderSizeChips(sizeRow, it, () => {   // normal sizes: price is the same; portions (Half/Full): price changes
-          if (!it.sizePrices) return;
-          const priceEl = card.querySelector('.item-price2');
-          if (priceEl) priceEl.textContent = `₹${getUnitPrice(it)}`;
-          updateCartBar();
-        });
-      }
+      card._it = it;
+      if (sizeRow) { qtySlot.dataset.sheet = '1'; qtySlot._it = it; neshSyncSizedCard(card); }   // Swiggy-style: chips replaced by a bottom-sheet picker
       if (shopIsClosed) {
         card.querySelectorAll('input, button').forEach(el => { el.disabled = true; });
         card.querySelectorAll('.item-weight-row, .item-gram-chips, .item-size-row').forEach(el => { el.style.pointerEvents = 'none'; el.style.opacity = '.55'; });
@@ -13651,6 +13647,161 @@ menuSearchInput.addEventListener('input', () => {
 // is currently selected for it and persisting the pick to state.cartSizes
 // on tap. `onChange` fires after the pick so the caller can refresh price
 // or any other size-dependent text on screen.
+// ---------- Swiggy-style portion / size picker (bottom sheet) ----------
+(function () {
+  const st = document.createElement('style');
+  st.textContent = `
+  .nsz-hint{font:600 11px/1.2 Inter,sans-serif;color:#8A7A4A}
+  .nsz-link{border:1px solid #E8D48A;background:#FFF8DC;color:#6B5200;font:700 11.5px/1 Inter,sans-serif;padding:6px 10px;border-radius:999px;cursor:pointer}
+  #nsz-ov{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center;opacity:0;transition:opacity .2s}
+  #nsz-ov.show{display:flex}#nsz-ov.in{opacity:1}
+  #nsz-sheet{width:100%;max-width:520px;background:#F4F2EA;border-radius:22px 22px 0 0;max-height:88vh;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .25s ease;font-family:Inter,sans-serif;color:#2B2410;padding-bottom:env(safe-area-inset-bottom,0px)}
+  #nsz-ov.in #nsz-sheet{transform:none}
+  .nsz-head{display:flex;align-items:center;gap:12px;padding:16px;background:#fff;border-radius:22px 22px 0 0}
+  .nsz-head img{width:52px;height:52px;border-radius:10px;object-fit:cover;flex:none;background:#eee}
+  .nsz-head b{flex:1;font:700 17px/1.25 Inter,sans-serif}
+  .nsz-x{border:0;width:34px;height:34px;border-radius:50%;background:#EEE9D6;color:#2B2410;font:700 15px Inter,sans-serif;cursor:pointer;flex:none}
+  .nsz-body{padding:16px;overflow:auto}
+  .nsz-sec{margin:0;font:800 16px/1.2 Inter,sans-serif}.nsz-sub{margin:3px 0 12px;font:500 12.5px/1.2 Inter,sans-serif;color:#7A7068}
+  .nsz-list{background:#fff;border-radius:14px;border:1px solid #E9E4CF;overflow:hidden}
+  .nsz-row{display:flex;align-items:center;gap:12px;padding:15px 14px;cursor:pointer;border-bottom:1px solid #F0ECD9}
+  .nsz-row:last-child{border-bottom:0}
+  .nsz-row .n{flex:1;font:600 15px/1.2 Inter,sans-serif}
+  .nsz-row .p{font:700 14px/1 Inter,sans-serif;color:#2B2410}
+  .nsz-row .r{width:22px;height:22px;border-radius:50%;border:2px solid #A8A08A;flex:none;position:relative;box-sizing:border-box}
+  .nsz-row.on .r{border-color:#E8590C}.nsz-row.on .r::after{content:'';position:absolute;inset:3px;border-radius:50%;background:#E8590C}
+  .nsz-foot{display:flex;gap:12px;padding:12px 16px 16px;background:#fff;border-top:1px solid #EAE5CF}
+  .nsz-step{display:flex;align-items:center;justify-content:space-between;width:112px;border:1.5px solid #D9D2B5;border-radius:12px;padding:0 6px;flex:none}
+  .nsz-step button{border:0;background:none;font:800 20px/1 Inter,sans-serif;color:#0E8A5C;width:32px;height:44px;cursor:pointer}
+  .nsz-step span{font:800 16px Inter,sans-serif}
+  .nsz-go{flex:1;border:0;border-radius:12px;background:#F2B705;color:#2B2410;font:800 15px Inter,sans-serif;padding:0 12px;height:48px;cursor:pointer;box-shadow:0 4px 12px rgba(242,183,5,.4)}
+  .nsz-add{border:1.5px solid #0E8A5C;color:#0E8A5C;background:#fff;font:800 12.5px/1 Inter,sans-serif;padding:8px 20px;border-radius:9px;cursor:pointer;flex:none}
+  .nsz-mini{display:flex;align-items:center;border:1.5px solid #0E8A5C;border-radius:9px;background:#E3F6EB;flex:none}
+  .nsz-mini button{border:0;background:none;color:#0E8A5C;font:800 18px/1 Inter,sans-serif;width:32px;height:32px;cursor:pointer}
+  .nsz-mini span{min-width:20px;text-align:center;font:800 14px Inter,sans-serif;color:#0B7A50}
+  .nsz-go:disabled{background:#E2DCC4;color:#9A9170;box-shadow:none;cursor:not-allowed}
+  html[data-theme="dark"] .nsz-add{background:#221E15;color:#5DDFAE;border-color:#5DDFAE}
+  html[data-theme="dark"] .nsz-mini{background:#12301F;border-color:#5DDFAE}
+  html[data-theme="dark"] .nsz-mini button,html[data-theme="dark"] .nsz-mini span{color:#5DDFAE}
+  html[data-theme="dark"] #nsz-sheet{background:#17140D;color:#E7E0CD}
+  html[data-theme="dark"] .nsz-head,html[data-theme="dark"] .nsz-foot,html[data-theme="dark"] .nsz-list{background:#221E15;border-color:#3A3321}
+  html[data-theme="dark"] .nsz-x{background:#3A3321;color:#E7E0CD}
+  html[data-theme="dark"] .nsz-row{border-color:#3A3321}html[data-theme="dark"] .nsz-row .p{color:#E7E0CD}
+  html[data-theme="dark"] .nsz-link{background:#2A2618;border-color:#4A4326;color:#FFD54A}
+  html[data-theme="dark"] .nsz-step{border-color:#4A4326}html[data-theme="dark"] .nsz-step button{color:#5DDFAE}`;
+  document.head.appendChild(st);
+})();
+// Item behind a menu-card Add/+/- control when it has portions/sizes (null for ordinary items and the cart screen)
+function neshSheetItem(slot, itemId) {
+  if (!slot || slot.dataset.sheet !== '1') return null;
+  let it = slot._it;
+  if (!it) { const r = state.selectedRestaurant; it = r && (r.items || []).find(i => i.id === itemId); }
+  return (it && hasSizes(it) && !isWeightUnit(it.unit)) ? it : null;
+}
+function neshEsc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function neshSizePrice(it, sz) { const sp = it.sizePrices ? Number(it.sizePrices[sz]) : 0; return sp > 0 ? sp : Number(it.price) || 0; }
+// Portions of one item in the cart, e.g. [['Half',1],['Full',2]]. Old carts (one size) still work.
+function neshPortions(it) {
+  const qty = state.cart[it.id] || 0;
+  if (!qty) return [];
+  if (!hasSizes(it)) return [[null, qty]];
+  const s = state.cartSizes && state.cartSizes[it.id];
+  if (s && typeof s === 'object' && Array.isArray(s.q)) {
+    const e = s.q.filter(x => x && x.n > 0 && it.sizes.includes(x.s)).sort((a, b) => it.sizes.indexOf(a.s) - it.sizes.indexOf(b.s)).map(x => [x.s, x.n]);
+    if (e.reduce((a, x) => a + x[1], 0) === qty) return e;
+  }
+  return [[getSelectedSize(it), qty]];
+}
+function neshLineTotal(it) {
+  const qty = state.cart[it.id] || 0;
+  if (!qty) return 0;
+  if (hasSizes(it) && !isWeightUnit(it.unit)) return neshPortions(it).reduce((a, x) => a + x[1] * neshSizePrice(it, x[0]), 0);
+  return qty * getUnitPrice(it);
+}
+function neshAdjustPortion(it, delta, size) {
+  if (!state.cartSizes) state.cartSizes = {};
+  const sz = size || getSelectedSize(it);
+  const map = {};
+  neshPortions(it).forEach(x => { map[x[0]] = x[1]; });
+  map[sz] = Math.max(0, (map[sz] || 0) + delta);
+  const q = it.sizes.filter(x => map[x] > 0).map(x => ({ s: x, n: map[x] }));
+  state.cartSizes[it.id] = { sel: map[sz] > 0 ? sz : (q[0] ? q[0].s : sz), q };
+  return q.reduce((a, x) => a + x.n, 0);
+}
+function neshSyncSizedCard(card) {
+  const it = card && card._it;
+  if (!it || !hasSizes(it)) return;
+  const qty = state.cart[it.id] || 0;
+  const row = card.querySelector('.item-size-row');
+  const priceEl = card.querySelector('.item-price2');
+  const hasP = !!it.sizePrices;
+  const ps = neshPortions(it);
+  if (row) {
+    if (qty > 0) {
+      row.innerHTML = `<button type="button" class="nsz-link">${ps.map(x => neshEsc(x[0]) + (x[1] > 1 ? ' ×' + x[1] : '')).join(' · ')} ▾</button>`;
+      row.querySelector('.nsz-link').addEventListener('click', e => { e.stopPropagation(); neshOpenSizeSheet(it); });
+    } else {
+      row.innerHTML = `<span class="nsz-hint">Customisable · ${it.sizes.length} ${hasP ? 'portions' : 'sizes'}</span>`;
+    }
+  }
+  if (priceEl && hasP) {
+    const prices = it.sizes.map(sz => neshSizePrice(it, sz));
+    const lo = Math.min(...prices), hi = Math.max(...prices);
+    priceEl.textContent = qty > 0 ? `₹${ps.length > 1 ? neshLineTotal(it) : neshSizePrice(it, ps[0][0])}` : (lo === hi ? `₹${lo}` : `₹${lo}+`);
+  }
+}
+function neshOpenSizeSheet(it) {
+  try { const r = state.selectedRestaurant; if (r) { const ci = getShopClosedInfo(r); if (ci.closed) { showInfoModal('Shop closed', ci.message); return; } } } catch (e) {}
+  let ov = document.getElementById('nsz-ov');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'nsz-ov';
+    ov.innerHTML = '<div id="nsz-sheet" role="dialog" aria-modal="true"></div>';
+    document.body.appendChild(ov);
+  }
+  const sheet = ov.querySelector('#nsz-sheet');
+  const hasP = !!it.sizePrices;
+  const draft = {};
+  neshPortions(it).forEach(x => { draft[x[0]] = x[1]; });
+  let last = getSelectedSize(it);
+  const close = () => { ov.classList.remove('in'); setTimeout(() => ov.classList.remove('show'), 220); };
+  const apply = () => {
+    const count = it.sizes.reduce((a, sz) => a + (draft[sz] || 0), 0);
+    const q = it.sizes.filter(sz => draft[sz] > 0).map(sz => ({ s: sz, n: draft[sz] }));
+    if (!state.cartSizes) state.cartSizes = {};
+    state.cartSizes[it.id] = { sel: (draft[last] > 0 ? last : (q[0] ? q[0].s : last)), q };
+    if (count > 0) state.cart[it.id] = count; else delete state.cart[it.id];
+    const card = itemListEl.querySelector('.item-card2[data-item-id="' + (window.CSS && CSS.escape ? CSS.escape(String(it.id)) : String(it.id)) + '"]');
+    if (card) { const slot = card.querySelector('.qty-slot'); if (slot) renderQtyControl(slot, it.id, count); neshSyncSizedCard(card); }
+    updateCartBar(); persistCart();
+  };
+  const draw = () => {
+    const count = it.sizes.reduce((a, sz) => a + (draft[sz] || 0), 0);
+    const total = Math.round(it.sizes.reduce((a, sz) => a + (draft[sz] || 0) * neshSizePrice(it, sz), 0) * 100) / 100;
+    const label = count === 0 ? 'Select a portion' : `Done | ${count} ${count === 1 ? 'item' : 'items'} | ₹${total}`;
+    sheet.innerHTML = `
+      <div class="nsz-head"><img src="${neshEsc(it.image || 'icon-192.png')}" alt="" onerror="this.onerror=null;this.src='icon-192.png'"><b>${neshEsc(it.name)}</b><button type="button" class="nsz-x" aria-label="Close">✕</button></div>
+      <div class="nsz-body">
+        <p class="nsz-sec">${hasP ? 'Select portion' : 'Select size'}</p><p class="nsz-sub">You can add more than one</p>
+        <div class="nsz-list">${it.sizes.map(sz => { const n = draft[sz] || 0; return `<div class="nsz-row${n ? ' on' : ''}"><span class="n">${neshEsc(sz)}</span>${hasP ? `<span class="p">₹${neshSizePrice(it, sz)}</span>` : ''}${n ? `<div class="nsz-mini"><button type="button" data-sz="${neshEsc(sz)}" data-d="-1">−</button><span>${n}</span><button type="button" data-sz="${neshEsc(sz)}" data-d="1">+</button></div>` : `<button type="button" class="nsz-add" data-sz="${neshEsc(sz)}" data-d="1">ADD</button>`}</div>`; }).join('')}</div>
+      </div>
+      <div class="nsz-foot"><button type="button" class="nsz-go"${count === 0 ? ' disabled' : ''}>${label}</button></div>`;
+    sheet.querySelector('.nsz-x').onclick = close;
+    sheet.querySelectorAll('[data-sz]').forEach(b => b.onclick = () => {
+      const sz = b.dataset.sz;
+      draft[sz] = Math.max(0, Math.min(99, (draft[sz] || 0) + Number(b.dataset.d)));
+      if (draft[sz]) last = sz;
+      apply();
+      draw();
+    });
+    sheet.querySelector('.nsz-go').onclick = close;
+  };
+  ov.onclick = e => { if (e.target === ov) close(); };
+  draw();
+  ov.classList.add('show');
+  requestAnimationFrame(() => requestAnimationFrame(() => ov.classList.add('in')));
+}
+
 function renderSizeChips(container, it, onChange) {
   const selected = getSelectedSize(it);
   container.innerHTML = it.sizes.map(sz => `
@@ -13671,13 +13822,17 @@ function renderSizeChips(container, it, onChange) {
   });
 }
 
-function renderQtyControl(slot, itemId, qty) {
+function renderQtyControl(slot, itemId, qty, size) {
   slot.innerHTML = "";
   if (qty === 0) {
     const btn = document.createElement('button');
     btn.className = "add-btn";
     btn.textContent = "Add";
-    btn.addEventListener('click', () => changeQty(itemId, 1));
+    btn.addEventListener('click', () => {
+      const _it = neshSheetItem(slot, itemId);
+      if (_it) { neshOpenSizeSheet(_it); return; }
+      changeQty(itemId, 1);
+    });
     slot.appendChild(btn);
   } else {
     const wrap = document.createElement('div');
@@ -13691,23 +13846,33 @@ function renderQtyControl(slot, itemId, qty) {
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2B2410" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
     `;
-    wrap.querySelector('.minus-btn').addEventListener('click', () => changeQty(itemId, -1));
-    wrap.querySelector('.plus-btn').addEventListener('click', () => changeQty(itemId, 1));
+    wrap.querySelector('.minus-btn').addEventListener('click', () => {
+      const _it = neshSheetItem(slot, itemId);
+      if (_it && neshPortions(_it).length > 1) { neshOpenSizeSheet(_it); return; }   // several portions: choose which one in the sheet
+      changeQty(itemId, -1, size);
+    });
+    wrap.querySelector('.plus-btn').addEventListener('click', () => {
+      const _it = neshSheetItem(slot, itemId);
+      if (_it) { neshOpenSizeSheet(_it); return; }   // portion items: + opens the sheet, never adds blindly
+      changeQty(itemId, 1, size);
+    });
     slot.appendChild(wrap);
   }
 }
 
-function changeQty(itemId, delta) {
+function changeQty(itemId, delta, size) {
   try { if (delta > 0 && state.selectedRestaurant && getShopClosedInfo(state.selectedRestaurant).closed) { showInfoModal('Shop closed', getShopClosedInfo(state.selectedRestaurant).message); return; } } catch (e) {}
   const current = state.cart[itemId] || 0;
-  const next = Math.max(0, current + delta);
+  let next = Math.max(0, current + delta);
+  { const _r = state.selectedRestaurant, _it = _r && (_r.items || []).find(i => i.id === itemId);
+    if (_it && hasSizes(_it) && !isWeightUnit(_it.unit)) next = neshAdjustPortion(_it, delta, size); }
   if (next === 0) delete state.cart[itemId];
   else state.cart[itemId] = next;
   // Instant: only swap this item's Add / − qty + control and refresh the cart bar. Re-rendering the whole
   // menu on every tap (all cards + photos rebuilt) was what made Add feel slow.
   const card = itemListEl.querySelector('.item-card2[data-item-id="' + (window.CSS && CSS.escape ? CSS.escape(String(itemId)) : String(itemId)) + '"]');
   const slot = card && card.querySelector('.qty-slot');
-  if (slot) { renderQtyControl(slot, itemId, next); updateCartBar(); }
+  if (slot) { renderQtyControl(slot, itemId, next); updateCartBar(); if (card._it) neshSyncSizedCard(card); }
   else renderMenu();
   if (state.selectedItem === itemId) renderItemDetail();
   if (orderSummaryOverlay.classList.contains('show')) {
@@ -13841,7 +14006,7 @@ function renderItemDetail() {
 // Item total of the current cart (no delivery / platform fee) and how far
 // it is below the shop's minimum order amount (0 when it's met or unset).
 function cartItemsTotal(r) {
-  return Math.round((r.items || []).reduce((sum, it) => sum + (state.cart[it.id] || 0) * getUnitPrice(it), 0) * 100) / 100;
+  return Math.round((r.items || []).reduce((sum, it) => sum + neshLineTotal(it), 0) * 100) / 100;
 }
 function minOrderShortfall(r, itemsTotal) {
   const min = Number(r && r.minOrderAmount) || 0;
@@ -13887,7 +14052,7 @@ function neshFreeItemStatus(r, itemsTotal) {
 function openFreeGiftPopup() {
   try {
     const r = state.selectedRestaurant; if (!r) return;
-    const total = r.items.reduce((sum, it) => sum + (state.cart[it.id] || 0) * getUnitPrice(it), 0);
+    const total = r.items.reduce((sum, it) => sum + neshLineTotal(it), 0);
     const fi = neshFreeItemStatus(r, total); if (!fi) return;
     const won = fi.next ? null : fi.won, x = fi.next || fi.won; if (!x) return;
     const it = x.item, q = Number(x.offer.qty) || 1, min = Number(x.offer.minAmount) || 0;
@@ -13929,7 +14094,7 @@ function renderFreeOfferBanner(query) {
   });
   if (!list.length || query) { box.style.display = 'none'; box.innerHTML = ''; return; }
   list.sort((a, b) => Number(a.offer.minAmount) - Number(b.offer.minAmount));
-  const total = r.items.reduce((sum, it) => sum + (state.cart[it.id] || 0) * getUnitPrice(it), 0);
+  const total = r.items.reduce((sum, it) => sum + neshLineTotal(it), 0);
   box.innerHTML = '<div class="fob-head">🎁 FREE GIFT OFFER</div><div class="fob-row">' + list.map(x => {
     const min = Number(x.offer.minAmount) || 0, q = Number(x.offer.qty) || 1, got = total >= min;
     const left = Math.max(0, Math.round((min - total) * 100) / 100);
@@ -13948,7 +14113,7 @@ function updateCartBar() {
   try { renderFreeOfferBanner(''); } catch (e) {}
   const count = Object.values(state.cart).reduce((a, b) => a + b, 0);
   const r = state.selectedRestaurant;
-  const total = r.items.reduce((sum, it) => sum + (state.cart[it.id] || 0) * getUnitPrice(it), 0);
+  const total = r.items.reduce((sum, it) => sum + neshLineTotal(it), 0);
   if (count > 0) {
     try { prefetchRoadDistance(); } catch (e) {}   // delivery distance gets ready while the customer keeps shopping
     cartBar.classList.add('visible');
@@ -15349,7 +15514,7 @@ function currentGstAmount() { try { return currentGstInfo().amount; } catch (e) 
 function currentCartItemsTotal() {
   const r = state.selectedRestaurant;
   if (!r) return 0;
-  return Math.round(r.items.reduce((sum, it) => sum + (state.cart[it.id] || 0) * getUnitPrice(it), 0) * 100) / 100;
+  return Math.round(r.items.reduce((sum, it) => sum + neshLineTotal(it), 0) * 100) / 100;
 }
 // ---- Delivery instructions: optional chips saved on the order as deliveryInstructions (array) + deliveryDirections (text) ----
 window.neshDelInstr = [];
@@ -17124,8 +17289,9 @@ function openOrderSummary() {
     if (shEl) { shEl.innerHTML = `<span class="os-shop-logo">${shopLogoHtml}</span><span class="os-shop-name">${escapeHtml(r.name || '')}</span>`; shEl.style.display = ''; }
   } catch (e) {}
   let itemsTotal = 0;
-  r.items.forEach(it => {
-    const qty = state.cart[it.id] || 0;
+  r.items.forEach(it0 => {
+   ((hasSizes(it0) && !isWeightUnit(it0.unit)) ? neshPortions(it0) : [[null, state.cart[it0.id] || 0]]).forEach(([pSize, qty]) => {
+    const it = pSize ? Object.assign({}, it0, { sizes: [pSize] }) : it0;
     if (qty === 0) return;
     const unitPrice = getUnitPrice(it);
     itemsTotal = Math.round((itemsTotal + qty * unitPrice) * 100) / 100;
@@ -17147,8 +17313,9 @@ function openOrderSummary() {
         <span class="cp-row-total">₹${qty * unitPrice}</span>
       </div>
     `;
-    renderQtyControl(row.querySelector('.qty-slot'), it.id, qty);
+    renderQtyControl(row.querySelector('.qty-slot'), it.id, qty, pSize || undefined);
     orderSummaryListEl.appendChild(row);
+   });
   });
   try {
     const fg = neshFreeItemStatus(r, itemsTotal);
@@ -17720,7 +17887,7 @@ payConfirmBtn.addEventListener('click', async () => {
     : "ORD-" + Math.floor(1000 + Math.random() * 9000);
   const orderItems = r.items
     .filter(it => state.cart[it.id])
-    .map(it => {
+    .flatMap(it => {
       // NESH Store's merged catalog items carry _shopOptions (every real
       // shop that stocks this item name, with that shop's own price) —
       // copied onto the order item so the operator can see the same
@@ -17735,18 +17902,17 @@ payConfirmBtn.addEventListener('click', async () => {
       if (isWeightUnit(it.unit)) {
         return withShop({ name: `${it.name} (${weightLabel(it)})`, desc: it.desc || '', price: getUnitPrice(it), qty: state.cart[it.id], unit: it.unit, weightGrams: getSelectedGrams(it), ...(shopOptions ? { shopOptions } : {}) });
       }
-      if (hasSizes(it)) {
-        const size = getSelectedSize(it);
+      if (hasSizes(it)) return neshPortions(it).map(([size, pq]) => {
         const isPortion = !!(it.sizePrices && it.sizePrices[size] > 0);
         const upSz = isPortion ? Number(it.sizePrices[size]) : it.price;
         const srSz = isPortion ? (it.sizeShopRates && it.sizeShopRates[size] != null ? it.sizeShopRates[size] : null) : null;
-        if (isPortion) { const o2 = { name: `${it.name} (${size})`, desc: it.desc || '', price: upSz, qty: state.cart[it.id], size, portion: size, ...(shopOptions ? { shopOptions } : {}) }; return srSz != null ? { ...o2, shopPrice: Math.round(srSz * 100) / 100 } : o2; }
+        if (isPortion) { const o2 = { name: `${it.name} (${size})`, desc: it.desc || '', price: upSz, qty: pq, size, portion: size, ...(shopOptions ? { shopOptions } : {}) }; return srSz != null ? { ...o2, shopPrice: Math.round(srSz * 100) / 100 } : o2; }
         // Size is baked into the display name too (not just the `size`
         // field) so it shows up everywhere an order's items are printed —
         // shop order popup, order detail, delivery route, payment summary —
         // without those screens needing to know about sizes at all.
-        return withShop({ name: `${it.name} (Size: ${size})`, desc: it.desc || '', price: it.price, qty: state.cart[it.id], size, ...(shopOptions ? { shopOptions } : {}) });
-      }
+        return withShop({ name: `${it.name} (Size: ${size})`, desc: it.desc || '', price: it.price, qty: pq, size, ...(shopOptions ? { shopOptions } : {}) });
+      });
       return withShop({ name: it.name, desc: it.desc || '', price: it.price, qty: state.cart[it.id], ...(shopOptions ? { shopOptions } : {}) });
     });
   const itemsTotal = Math.round(orderItems.reduce((sum, it) => sum + it.price * it.qty, 0) * 100) / 100;
@@ -20029,7 +20195,7 @@ if ('serviceWorker' in navigator) {
       (r.items || []).forEach(function (it) {
         var q = state.cart[it.id] || 0;
         if (!q) return;
-        count += q; total += q * getUnitPrice(it);
+        count += q; total += neshLineTotal(it);
       });
       m[r.id] = {
         restId: r.id, restName: r.name, count: count, total: Math.round(total * 100) / 100,
@@ -20227,10 +20393,13 @@ if ('serviceWorker' in navigator) {
       } else if (dc && !(pc && typeof pc.lat === 'number')) ready = false;   // no pin yet
       var lines = [];
       rest.items.forEach(function (it) {
-        var q = state.cart[it.id] || 0; if (!q) return;
-        var up = getUnitPrice(it);
-        var nm = it.name + (isWeightUnit(it.unit) ? ' (' + weightLabel(it) + ')' : (hasSizes(it) ? ' (' + getSelectedSize(it) + ')' : ''));
-        lines.push({ img: it.image || '', unit: up, name: nm, base: String(it.name || '').trim().toLowerCase(), itemId: it.id, q: q, amt: rup(q * up) });
+        var _pl = (hasSizes(it) && !isWeightUnit(it.unit)) ? neshPortions(it) : [[null, state.cart[it.id] || 0]];
+        _pl.forEach(function (p) {
+          var q = p[1]; if (!q) return;
+          var up = p[0] ? neshSizePrice(it, p[0]) : getUnitPrice(it);
+          var nm = it.name + (isWeightUnit(it.unit) ? ' (' + weightLabel(it) + ')' : (p[0] ? ' (' + p[0] + ')' : ''));
+          lines.push({ img: it.image || '', unit: up, name: nm, base: String(it.name || '').trim().toLowerCase(), itemId: it.id, sz: p[0], q: q, amt: rup(q * up) });
+        });
       });
       var items = currentCartItemsTotal();
       var pf = currentPlatformFee(), df = ready ? currentDeliveryFee() : 0, rs = ready ? currentRainSurgeAmount() : 0, gs = currentGstAmount();
@@ -20385,7 +20554,7 @@ if ('serviceWorker' in navigator) {
       html += '<div class="mp-shop"><div class="mp-top"><span class="mp-logo">' + logoHtml + '</span><span class="mp-name">' + esc(b.name) + '</span>' +
         '<button type="button" class="mp-link" data-rm="' + esc(b.id) + '">Remove</button></div>';
       b.lines.forEach(function (l) {
-        var key = esc(b.id) + '|' + esc(l.itemId);
+        var key = esc(b.id) + '|' + esc(l.itemId) + (l.sz ? '@@' + esc(l.sz) : '');
         html += '<div class="mp-item"><div class="mp-photo"><img class="mp-img" src="' + esc(l.img) + '" alt="" loading="lazy" onerror="this.onerror=null;this.src=\'icon-192.png\';">' +
           '<span class="mp-badge" title="' + esc(b.name) + '">' + logoHtml + '</span></div>' +
           '<div class="mp-mid"><p class="mp-iname">' + esc(l.name) + '</p><p class="mp-iprice">₹' + rup(l.unit) + ' × ' + l.q + '</p></div>' +
@@ -20639,7 +20808,7 @@ if ('serviceWorker' in navigator) {
         }
         if (changed) {
           var cnt = 0, tot = 0;
-          withShop(tr, td, function () { tr.items.forEach(function (it) { var q = state.cart[it.id] || 0; if (q) { cnt += q; tot += q * getUnitPrice(it); } }); });
+          withShop(tr, td, function () { tr.items.forEach(function (it) { var q = state.cart[it.id] || 0; if (q) { cnt += q; tot += neshLineTotal(it); } }); });
           td.count = cnt; td.total = rup(tot);
         }
       });
@@ -20713,16 +20882,23 @@ if ('serviceWorker' in navigator) {
   panel().addEventListener('click', function (ev) {
     var e = ev.target.closest('[data-edit]'), rm = ev.target.closest('[data-rm]'), ri = ev.target.closest('[data-rmitem]'), qb = ev.target.closest('[data-q]');
     if (qb && M) {
-      var qp = qb.getAttribute('data-q').split('|'), delta = parseInt(qp.pop(), 10), qsid = qp.shift(), qiid = qp.join('|');
+      var qp = qb.getAttribute('data-q').split('|'), delta = parseInt(qp.pop(), 10), qsid = qp.shift(), qiid = qp.join('|'), qsz = null;
+      { var _ix = qiid.indexOf('@@'); if (_ix >= 0) { qsz = qiid.slice(_ix + 2); qiid = qiid.slice(0, _ix); } }
       var qmp = saved(), qd = qmp[qsid], qr = M.rests[qsid];
       if (!qd || !qr || !qd.cart || !(qiid in qd.cart)) return;
-      var nq = Math.max(0, (qd.cart[qiid] || 0) + delta);
+      var nq, _sz = qd.sizes && qd.sizes[qiid];
+      if (qsz && _sz && typeof _sz === 'object' && Array.isArray(_sz.q)) {
+        _sz.q.forEach(function (x) { if (x.s === qsz) x.n = Math.max(0, (x.n || 0) + delta); });
+        _sz.q = _sz.q.filter(function (x) { return x.n > 0; });
+        nq = _sz.q.reduce(function (a, x) { return a + x.n; }, 0);
+        if (_sz.q.length && !_sz.q.some(function (x) { return x.s === _sz.sel; })) _sz.sel = _sz.q[0].s;
+      } else nq = Math.max(0, (qd.cart[qiid] || 0) + delta);
       if (nq === 0) { delete qd.cart[qiid]; if (qd.grams) delete qd.grams[qiid]; if (qd.sizes) delete qd.sizes[qiid]; }
       else qd.cart[qiid] = nq;
       if (!Object.keys(qd.cart).length) { delete qmp[qsid]; M.ids = M.ids.filter(function (x) { return x !== qsid; }); }
       else {
         var qc = 0, qt = 0;
-        withShop(qr, qd, function () { qr.items.forEach(function (it) { var q = state.cart[it.id] || 0; if (q) { qc += q; qt += q * getUnitPrice(it); } }); });
+        withShop(qr, qd, function () { qr.items.forEach(function (it) { var q = state.cart[it.id] || 0; if (q) { qc += q; qt += neshLineTotal(it); } }); });
         qd.count = qc; qd.total = rup(qt);
       }
       window.neshPutSavedCarts(qmp);
@@ -20738,7 +20914,7 @@ if ('serviceWorker' in navigator) {
       if (!Object.keys(dd.cart).length) { delete mp[sid]; M.ids = M.ids.filter(function (x) { return x !== sid; }); }
       else {
         var cnt = 0, tot = 0;
-        withShop(rr, dd, function () { rr.items.forEach(function (it) { var q = state.cart[it.id] || 0; if (q) { cnt += q; tot += q * getUnitPrice(it); } }); });
+        withShop(rr, dd, function () { rr.items.forEach(function (it) { var q = state.cart[it.id] || 0; if (q) { cnt += q; tot += neshLineTotal(it); } }); });
         dd.count = cnt; dd.total = rup(tot);
       }
       window.neshPutSavedCarts(mp);
