@@ -67,6 +67,18 @@ html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
 .ff-actions button{ flex:1; padding:14px; border-radius:14px; font:700 15px Inter,sans-serif; cursor:pointer; border:2px solid #E6DAB0; background:#fff; color:#2B2410; }
 .ff-actions #ff-apply, .ff-actions #mp-apply{ border-color:#F2B705; background:linear-gradient(135deg,#FFD84D,#F2A900); color:#2B2410; flex:1.6; }
 </style>
+<style id="nesh-lp-css">
+/* "Delivery Fee | 2.0 kms" label */
+#loc-summary-delivery-label{ display:inline; }
+#loc-summary-delivery-km, .bs-km{ font-style:normal; display:none; white-space:pre; }
+#loc-summary-delivery-km.on, .bs-km.on{ display:inline; }
+.has-km{ text-decoration:underline dashed; text-decoration-color:#B4A87F; text-underline-offset:4px; text-decoration-thickness:1px; }
+/* "Everyday Lowest Price" stamp next to To Pay */
+.bs-total{ position:relative; }
+.bs-total .lp-stamp{ flex:none; width:104px; height:46px; margin:-8px 4px -8px auto; transform:rotate(-7deg); opacity:.9; pointer-events:none; }
+.bs-total .lp-stamp svg{ width:100%; height:100%; display:block; overflow:visible; }
+@media (max-width:360px){ .bs-total .lp-stamp{ width:84px; height:38px; } }
+</style>
 <style id="nesh-splash-css">
   html{ background:#F2B705; }
   /* Yellow strip behind the system status bar (edge-to-edge Android) */
@@ -3922,6 +3934,18 @@ html[data-theme="dark"] .prq-nm{color:#E7E0CD}
 html[data-theme="dark"] .prq-it b{color:#E7E0CD}
 html[data-theme="dark"] .prq-note{background:#103020;color:#61DBAE}
 </style>
+<style id="nesh-home-popup-css">
+#home-popup{position:fixed;inset:0;z-index:9500;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);padding:18px;box-sizing:border-box}
+#home-popup.show{display:flex}
+#home-popup .hp-card{position:relative;width:100%;max-width:360px;border-radius:26px;overflow:hidden;background:var(--hp-bg,#FF4FB4);padding:34px 20px 20px;box-sizing:border-box;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.45);animation:hpPop .28s ease-out}
+@keyframes hpPop{from{transform:scale(.86);opacity:0}to{transform:none;opacity:1}}
+#home-popup .hp-x{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:50%;border:0;background:rgba(0,0,0,.35);color:#fff;font:700 18px/1 Inter,sans-serif;cursor:pointer;padding:0}
+#home-popup .hp-title{margin:6px 0 0;font:900 44px/1 'Poppins',Inter,sans-serif;color:var(--hp-title,#FFF04D);letter-spacing:-1px;white-space:pre-line;text-shadow:2px 3px 0 rgba(0,0,0,.28)}
+#home-popup .hp-line{margin:12px 0 0;font:800 18px/1.25 Inter,sans-serif;color:var(--hp-text,#FFF04D)}
+#home-popup .hp-chip{display:inline-block;margin:12px 0 0;padding:5px 14px;border-radius:6px;background:var(--hp-chip-bg,#FFF04D);color:var(--hp-chip-fg,#2B2410);font:800 17px Inter,sans-serif;transform:rotate(-1.5deg)}
+#home-popup .hp-img{display:block;margin:16px auto 0;max-width:100%;max-height:200px;object-fit:contain;border-radius:14px}
+#home-popup .hp-btn{display:block;width:100%;margin-top:18px;padding:15px 10px;border:0;border-radius:999px;background:var(--hp-btn-bg,#F4FF3A);color:var(--hp-btn-fg,#14206B);font:900 17px Inter,sans-serif;letter-spacing:.4px;cursor:pointer}
+</style>
 <style id="nesh-promo-css">
 .np-banner{position:relative;border-radius:20px;overflow:hidden;background:#F2A900;box-shadow:0 8px 20px rgba(201,127,0,.35)}
 .np-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
@@ -4124,38 +4148,32 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
     } catch (e) {}
   }
   window.neshShh = neshShh;
-  // Refresh-finished sound: the customer's own sound file (embedded, so no extra download).
-  var POP_B64 = "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";
-  var popBuf = null, popLoading = false;
-  function loadPop(cb) {
-    try {
-      if (popBuf) { cb && cb(); return; }
-      if (popLoading) return;
-      var AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return;
-      if (!shCtx) shCtx = new AC();
-      popLoading = true;
-      var bin = atob(POP_B64), arr = new Uint8Array(bin.length);
-      for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-      var done = function (buf) { popBuf = buf; popLoading = false; cb && cb(); };
-      var fail = function () { popLoading = false; };
-      var pr = shCtx.decodeAudioData(arr.buffer, done, fail);
-      if (pr && pr.catch) pr.catch(fail);
-    } catch (e) { popLoading = false; }
-  }
+  // Refresh-finished sound: a soft water-drop "bloop" (Swiggy-style), synthesised with Web Audio
+  // so no audio file is embedded. A drop plus a smaller ripple drop right after it.
   window.neshPop = function () {
     try {
       var AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
       if (!shCtx) shCtx = new AC();
-      var play = function () {
-        var src = shCtx.createBufferSource(); src.buffer = popBuf;
-        var g = shCtx.createGain(); g.gain.value = 1;
-        src.connect(g); g.connect(shCtx.destination); src.start();
+      var drop = function (c, t, f0, f1, vol, len) {
+        var o = c.createOscillator(), g = c.createGain(), lp = c.createBiquadFilter();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(f0, t);
+        o.frequency.exponentialRampToValueAtTime(f1, t + 0.085);
+        lp.type = 'lowpass'; lp.frequency.value = 3200;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+        o.connect(lp); lp.connect(g); g.connect(c.destination);
+        o.start(t); o.stop(t + len + 0.02);
       };
-      var go = function () { if (popBuf) play(); else loadPop(play); };
-      if (shCtx.state === 'suspended') { shCtx.resume().then(function () { if (shCtx.state === 'running') go(); }).catch(function () {}); }
-      else go();
+      var play = function () {
+        var c = shCtx, t = c.currentTime + 0.01;
+        drop(c, t, 420, 1250, 0.55, 0.20);          // main drop: pitch glides up = "bloop"
+        drop(c, t + 0.115, 640, 1750, 0.26, 0.15);  // small ripple drop
+      };
+      if (shCtx.state === 'suspended') { shCtx.resume().then(function () { if (shCtx.state === 'running') play(); }).catch(function () {}); }
+      else play();
     } catch (e) {}
   };
   // Browsers only let audio start after a tap on the page: unlock the audio engine on the very first tap
@@ -4166,7 +4184,6 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
       if (!AC) return;
       if (!shCtx) shCtx = new AC();
       if (shCtx.state === 'suspended') shCtx.resume();
-      loadPop();
     } catch (e) {}
   }
   ['pointerdown', 'touchend', 'click'].forEach(function (ev) { document.addEventListener(ev, neshShhPrime, { passive: true }); });
@@ -4298,6 +4315,18 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
         <button class="loc-cancel-btn" id="pay-cancel-btn">Cancel</button>
         <button class="btn-primary" id="pay-confirm-btn" style="flex:1;">Confirm & place order</button>
       </div>
+    </div>
+  </div>
+
+  <!-- HOME POPUP BANNER (set from Operator Panel → Home Popup Banner; app_config/homePopup) -->
+  <div id="home-popup" aria-hidden="true">
+    <div class="hp-card" id="hp-card">
+      <button type="button" class="hp-x" id="hp-x" aria-label="Close">✕</button>
+      <h2 class="hp-title" id="hp-title"></h2>
+      <p class="hp-line" id="hp-line"></p>
+      <span class="hp-chip" id="hp-chip"></span>
+      <img class="hp-img" id="hp-img" alt="">
+      <button type="button" class="hp-btn" id="hp-btn">ORDER NOW</button>
     </div>
   </div>
 
@@ -5716,14 +5745,14 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
         <div class="bs-row"><span>Item total <small id="bs-count"></small></span><span id="loc-summary-items">₹0</span></div>
         <div class="bs-row green" id="loc-summary-freeitem-row" style="display:none;"><span class="fg-main" id="loc-summary-freeitem-name"></span><span class="fg-price" id="loc-summary-freeitem-price"><s></s><b>FREE</b></span></div>
         <div class="bs-row" id="loc-summary-fee-row"><span>Platform fee</span><span id="loc-summary-fee">₹0</span></div>
-        <div class="bs-row" id="loc-summary-delivery-row"><span>Delivery charge</span><span id="loc-summary-delivery">₹0</span></div>
+        <div class="bs-row" id="loc-summary-delivery-row"><span id="loc-summary-delivery-label"><span>Delivery charge</span><em id="loc-summary-delivery-km"></em></span><span id="loc-summary-delivery">₹0</span></div>
         <p id="loc-summary-free-hint" class="bs-hint" style="display:none;"></p>
         <div class="bs-row" style="display:none;" id="loc-summary-rain-row"><span>🌧️ Rain surge <small>(goes to your rider)</small></span><span id="loc-summary-rain">₹0</span></div>
         <div class="bs-row green" id="loc-summary-discount-row"><span>🎁 Shop discount</span><span id="loc-summary-discount">-₹0</span></div>
         <div class="bs-row green" style="display:none;" id="loc-summary-coupon-row"><span id="loc-summary-coupon-label">Coupon</span><span id="loc-summary-coupon">-₹0</span></div>
         <div class="bs-row" style="display:none;" id="loc-summary-gst-row"><span>🏛️ Government charge <small id="loc-summary-gst-pct"></small></span><span id="loc-summary-gst">₹0</span></div>
         <div class="bs-row" style="display:none;" id="loc-summary-tip-row"><span>🏍️ Delivery tip <small>(100% to your rider)</small></span><span id="loc-summary-tip">₹0</span></div>
-        <div class="bs-total"><span>To Pay</span><span id="loc-summary-total">₹0</span></div>
+        <div class="bs-total"><span>To Pay</span><span class="lp-stamp" aria-hidden="true"><svg viewBox="0 0 104 46" xmlns="http://www.w3.org/2000/svg"><defs><path id="lpArc" d="M14 17 Q52 -3 90 17"/></defs><circle cx="52" cy="23" r="21" fill="none" stroke="#E86AA6" stroke-width="1" stroke-dasharray="2 3" opacity=".55"/><text font-family="Poppins,Inter,sans-serif" font-size="8.5" font-weight="800" letter-spacing="1.6" fill="#E86AA6" opacity=".85"><textPath href="#lpArc" startOffset="50%" text-anchor="middle">EVERYDAY</textPath></text><rect x="3" y="19" width="98" height="19" rx="3" fill="#FF7DB8" stroke="#E04F93" stroke-width="1.2"/><text x="52" y="32.5" text-anchor="middle" font-family="Poppins,Inter,sans-serif" font-size="11" font-weight="800" font-style="italic" fill="#fff" letter-spacing=".3">LOWEST PRICE</text></svg></span><span id="loc-summary-total">₹0</span></div>
         <div class="bs-saving" id="bs-saving" style="display:none;"></div>
       </div>
 
@@ -6319,6 +6348,71 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
     try { window.neshCfg.save('bus', enabled); } catch (e) {}
     try { window.neshSplash && window.neshSplash.done('bus'); } catch (e) {}
   });
+
+  // Home-screen offer popup — operator sets it in Panel → Home Popup Banner
+  // (app_config/homePopup). "Order Now" taps the chosen home card.
+  (function () {
+    var THEMES = {
+      pink:   { bg:'#FF4FB4', title:'#FFF04D', text:'#FFF04D', chipBg:'#FFF04D', chipFg:'#2B2410', btnBg:'#F4FF3A', btnFg:'#14206B' },
+      green:  { bg:'#0E6459', title:'#FFD54A', text:'#FFFFFF', chipBg:'#FFD54A', chipFg:'#2B2410', btnBg:'#FFD54A', btnFg:'#0E3B34' },
+      orange: { bg:'#FF7A1A', title:'#FFFFFF', text:'#FFF3C4', chipBg:'#FFF3C4', chipFg:'#7A2E00', btnBg:'#2B2410', btnFg:'#FFD54A' },
+      purple: { bg:'#7B3FE4', title:'#FFE45C', text:'#FFFFFF', chipBg:'#FFE45C', chipFg:'#2B1566', btnBg:'#FFE45C', btnFg:'#2B1566' },
+      yellow: { bg:'#FFC400', title:'#2B2410', text:'#2B2410', chipBg:'#2B2410', chipFg:'#FFD54A', btnBg:'#2B2410', btnFg:'#FFD54A' }
+    };
+    var TARGETS = { food:'cat-card-food', groceries:'cat-card-groceries', online_shop:'cat-card-online-shop', taxi:'cat-card-taxi', bus:'cat-card-bus', orders:'cat-card-orders' };
+    var cfg = null, shownThisOpen = false, timer = null;
+    function $(id) { return document.getElementById(id); }
+    function lsGet() { try { return JSON.parse(localStorage.getItem('nesh_home_popup_seen') || '{}'); } catch (e) { return {}; } }
+    function lsSet(o) { try { localStorage.setItem('nesh_home_popup_seen', JSON.stringify(o)); } catch (e) {} }
+    function hide() { var el = $('home-popup'); if (el) { el.classList.remove('show'); el.setAttribute('aria-hidden', 'true'); } }
+    function allowed() {
+      if (shownThisOpen) return false;
+      var seen = lsGet();
+      if (cfg.freq === 'once') return seen.v !== cfg.version;
+      if (cfg.freq === 'daily') return !(seen.v === cfg.version && seen.d === new Date().toDateString());
+      return true;
+    }
+    function show() {
+      var th = THEMES[cfg.bg] || THEMES.pink, el = $('home-popup'), card = $('hp-card');
+      if (!el || !card) return;
+      card.style.setProperty('--hp-bg', th.bg); card.style.setProperty('--hp-title', th.title); card.style.setProperty('--hp-text', th.text);
+      card.style.setProperty('--hp-chip-bg', th.chipBg); card.style.setProperty('--hp-chip-fg', th.chipFg);
+      card.style.setProperty('--hp-btn-bg', th.btnBg); card.style.setProperty('--hp-btn-fg', th.btnFg);
+      $('hp-title').textContent = cfg.title || ''; $('hp-title').style.display = cfg.title ? '' : 'none';
+      $('hp-line').textContent = cfg.line || ''; $('hp-line').style.display = cfg.line ? '' : 'none';
+      $('hp-chip').textContent = cfg.chip || ''; $('hp-chip').style.display = cfg.chip ? '' : 'none';
+      var img = $('hp-img');
+      if (cfg.image) { img.src = cfg.image; img.style.display = ''; } else { img.removeAttribute('src'); img.style.display = 'none'; }
+      $('hp-btn').textContent = cfg.btn || 'ORDER NOW';
+      el.classList.add('show'); el.setAttribute('aria-hidden', 'false');
+      shownThisOpen = true;
+      lsSet({ v: cfg.version, d: new Date().toDateString() });
+    }
+    function tryShow() {
+      if (!cfg || !cfg.on) return;
+      var sc = $('screen-category');
+      if (!sc || !sc.classList.contains('active')) return;
+      if ($('home-popup').classList.contains('show') || !allowed()) return;
+      show();
+    }
+    function schedule(ms) { clearTimeout(timer); timer = setTimeout(tryShow, ms); }
+    $('hp-x').addEventListener('click', hide);
+    $('home-popup').addEventListener('click', function (e) { if (e.target === this) hide(); });
+    $('hp-btn').addEventListener('click', function () {
+      var t = TARGETS[cfg && cfg.target], card = t && $(t);
+      hide();
+      if (card && card.style.display !== 'none') setTimeout(function () { card.click(); }, 60);
+    });
+    var sc0 = $('screen-category');
+    if (sc0 && window.MutationObserver) new MutationObserver(function () { schedule(700); }).observe(sc0, { attributes: true, attributeFilter: ['class'] });
+    onValue(ref(db, 'app_config/homePopup'), function (snapshot) {
+      var c = snapshot.val();
+      if (cfg && c && c.version !== cfg.version) shownThisOpen = false;
+      cfg = c;
+      if (!c || !c.on) { hide(); return; }
+      schedule(1800);
+    });
+  })();
 
   // Live-listens to the operator-set order for the home-screen category
   // cards (Food / Groceries / Other Shop / Taxi). Exposed on window so the
@@ -7906,6 +8000,8 @@ Object.assign(NESH_ML, {
  "UPI ID:": "UPI ID:",
  "This coupon has expired.": "ഈ കൂപ്പണിന്റെ കാലാവധി കഴിഞ്ഞു.",
  "This coupon is not valid at this shop.": "ഈ കൂപ്പൺ ഈ കടയിൽ സാധുവല്ല.",
+ "This coupon is not valid in this section.": "ഈ കൂപ്പൺ ഈ വിഭാഗത്തിൽ സാധുവല്ല.",
+ "This coupon is not valid in your delivery area.": "ഈ കൂപ്പൺ നിങ്ങളുടെ ഡെലിവറി ഏരിയയിൽ സാധുവല്ല.",
  "You have already used this coupon.": "ഈ കൂപ്പൺ നിങ്ങൾ ഇതിനകം ഉപയോഗിച്ചു.",
  "Sorry, this coupon is fully claimed.": "ക്ഷമിക്കണം, ഈ കൂപ്പൺ പൂർണ്ണമായും ഉപയോഗിച്ചുകഴിഞ്ഞു.",
  "Coupon removed.": "കൂപ്പൺ നീക്കം ചെയ്തു.",
@@ -13876,7 +13972,8 @@ function changeQty(itemId, delta, size) {
   else renderMenu();
   if (state.selectedItem === itemId) renderItemDetail();
   if (orderSummaryOverlay.classList.contains('show')) {
-    const count = Object.values(state.cart).reduce((a, b) => a + b, 0);
+    const _rr = state.selectedRestaurant;
+    const count = _rr ? (_rr.items || []).reduce((a, it) => a + (Number(state.cart[it.id]) > 0 ? Number(state.cart[it.id]) : 0), 0) : Object.values(state.cart).reduce((a, b) => a + b, 0);
     if (count === 0) {
       // Multi-shop checkout: when the first shop's last item goes, stay in checkout (next shop takes its place);
       // only when every cart is empty, go back to where checkout was opened from.
@@ -14005,6 +14102,12 @@ function renderItemDetail() {
 
 // Item total of the current cart (no delivery / platform fee) and how far
 // it is below the shop's minimum order amount (0 when it's met or unset).
+// Count of items in the cart that really belong to this shop (stale / orphan cart entries are ignored)
+function cartItemsCount(r) {
+  r = r || state.selectedRestaurant;
+  if (!r) return Object.values(state.cart).reduce((a, b) => a + b, 0);
+  return (r.items || []).reduce((a, it) => { const q = Number(state.cart[it.id]); return a + (q > 0 ? q : 0); }, 0);
+}
 function cartItemsTotal(r) {
   return Math.round((r.items || []).reduce((sum, it) => sum + neshLineTotal(it), 0) * 100) / 100;
 }
@@ -14111,7 +14214,7 @@ function renderFreeOfferBanner(query) {
 function updateCartBar() {
   try { if (state.selectedRestaurant && getShopClosedInfo(state.selectedRestaurant).closed) { cartBar.classList.remove('visible'); return; } } catch (e) {}
   try { renderFreeOfferBanner(''); } catch (e) {}
-  const count = Object.values(state.cart).reduce((a, b) => a + b, 0);
+  const count = cartItemsCount(state.selectedRestaurant);
   const r = state.selectedRestaurant;
   const total = r.items.reduce((sum, it) => sum + neshLineTotal(it), 0);
   if (count > 0) {
@@ -14330,7 +14433,7 @@ function neshAutoApplyLoyalty() {
     if (!window.NESH_LOY_AUTO && !claimedLive) return;
     const r = state.selectedRestaurant;
     if (!r || window.neshCoupon || window.__loyAutoOff === r.id) return;
-    const items = currentCartItemsTotal();
+    const items = couponItemsTotal(r.id);
     if (!(items > 0)) return;
     const ids = window.NESH_LOY_AUTO ? ['LOYALTY', 'LOYALTY_S'] : ['LOYALTY'];
     for (let i = 0; i < ids.length; i++) {
@@ -14348,7 +14451,7 @@ window.__cpnAutoOff = null;
 function neshAutoApplyCoupons() {
   try {
     const r = state.selectedRestaurant; if (!r) return;
-    const items = currentCartItemsTotal();
+    const items = couponItemsTotal(r.id);
     const cur = window.neshCoupon;
     if (cur && cur.restId === r.id) {
       const cd = (window.neshCoupons || []).find(x => x.id === cur.id);
@@ -14372,7 +14475,42 @@ function neshAutoApplyCoupons() {
     try { if (window.neshCouponSay) window.neshCouponSay('Coupon ' + best.code + ' applied automatically \u2705', true); } catch (e) {}
   } catch (e) {}
 }
-function couponsForShop(restId) { return window.neshCoupons.filter(c => !c.off && (!c.exp || c.exp > Date.now()) && (c.allShops || (c.shops && c.shops[restId]))); }
+// ---- Coupon scope: card (Food / Groceries / NESH Mart) + delivery zone. Nothing ticked = works everywhere. ----
+function couponCardKey(restId) {   // same card logic as the GST: 'food' | 'groceries' | 'mart'
+  if (restId === 'NESH_STORE') return 'groceries';
+  let r = (state.selectedRestaurant && state.selectedRestaurant.id === restId) ? state.selectedRestaurant : null;
+  if (!r) { try { r = (window.RESTAURANTS || []).find(x => x.id === restId) || null; } catch (e) {} }
+  try { return neshGstKey(r || { id: restId }); } catch (e) { return 'food'; }
+}
+function couponPoint() {   // the delivery pin the customer is ordering to (same order as the zone delivery rule)
+  try {
+    const pc = state.pendingCheckout;
+    if (pc && typeof pc.lat === 'number' && typeof pc.lng === 'number') return pc;
+    if (typeof pendingLocation !== 'undefined' && pendingLocation && typeof pendingLocation.lat === 'number') return pendingLocation;
+    if (state.customerPos && typeof state.customerPos.lat === 'number') return state.customerPos;
+  } catch (e) {}
+  return null;
+}
+function couponCardOk(c, restId) {
+  const cards = c.cards ? Object.keys(c.cards).filter(k => c.cards[k]) : [];
+  if (!cards.length) return true;   // general coupon (no card ticked): works everywhere, any shop mix
+  // Multi-shop checkout: EVERY shop in the cart must belong to a card the coupon is made for (e.g. Food + Food = ok, Food + Mart = not ok)
+  try {
+    const mr = (typeof window.neshMultiCartRests === 'function') ? window.neshMultiCartRests() : null;
+    if (mr && mr.length > 1 && mr.some(r => r && r.id === restId)) {
+      return mr.every(r => { let k; try { k = neshGstKey(r); } catch (e) { k = 'food'; } return cards.indexOf(k) > -1; });
+    }
+  } catch (e) {}
+  return cards.indexOf(couponCardKey(restId)) > -1;
+}
+function couponZoneOk(c) {
+  const zs = c.zones ? Object.keys(c.zones).filter(k => c.zones[k]) : [];
+  if (!zs.length) return true;
+  const pt = couponPoint(); if (!pt) return false;
+  try { return zonesAtPoint(pt).some(z => zs.indexOf(z.id) > -1); } catch (e) { return false; }
+}
+function couponScopeOk(c, restId) { return couponCardOk(c, restId) && couponZoneOk(c); }
+function couponsForShop(restId) { return window.neshCoupons.filter(c => !c.off && (!c.exp || c.exp > Date.now()) && (c.allShops || (c.shops && c.shops[restId])) && couponScopeOk(c, restId)); }
 function couponCheck(c, restId, items) {   // '' = fine, otherwise the reason it can't be used
   if (c.loyaltyS) {
     if (restId !== 'NESH_STORE') return 'This reward is only for Groceries.';
@@ -14390,11 +14528,22 @@ function couponCheck(c, restId, items) {   // '' = fine, otherwise the reason it
   }
   if (c.off || (c.exp && c.exp <= Date.now())) return 'This coupon has expired.';
   if (!c.allShops && !(c.shops && c.shops[restId])) return 'This coupon is not valid at this shop.';
+  if (!couponCardOk(c, restId)) return 'This coupon is not valid in this section.';
+  if (!couponZoneOk(c)) return 'This coupon is not valid in your delivery area.';
   if (c.minOrder > 0 && items < c.minOrder) return 'Add items worth \u20B9' + c.minOrder + ' or more to use this coupon.';
   if (c.maxOrder > 0 && items > c.maxOrder) return 'This coupon works only for orders up to \u20B9' + c.maxOrder + '.';
   if (couponUsed(c.id) >= c.perCustomer) return 'You have already used this coupon.';
   if (c.maxUses > 0 && couponTotalLeft(c) <= 0) return 'Sorry, this coupon is fully claimed.';
   return '';
+}
+function couponItemsTotal(restId) {   // item total the coupon works on: ALL shops' items in a multi-shop checkout, else this shop's items
+  try {
+    const mr = (typeof window.neshMultiCartRests === 'function') ? window.neshMultiCartRests() : null;
+    if (mr && mr.length > 1 && mr.some(r => r && r.id === restId) && typeof window.neshMultiItemsTotal === 'function') {
+      const t = window.neshMultiItemsTotal(); if (typeof t === 'number') return t;
+    }
+  } catch (e) {}
+  return currentCartItemsTotal();
 }
 function couponAmount(c, items) {
   let a = c.type === 'percent' ? Math.round(items * c.value / 100) : c.value;
@@ -14405,9 +14554,10 @@ function currentCouponDiscount() {
   const r = state.selectedRestaurant, sel = window.neshCoupon;
   if (!r || !sel || sel.restId !== r.id) return 0;
   const c = window.neshCoupons.find(x => x.id === sel.id); if (!c) return 0;
-  const items = currentCartItemsTotal();
+  const items = couponItemsTotal(r.id);
   if (couponCheck(c, r.id, items)) return 0;
-  const room = items + currentPlatformFee() + currentDeliveryFee() - currentOrderShopDiscount();
+  // the discount is taken off the FIRST shop's order, so it can never be more than that shop's own bill (items of the other shops are not part of this order)
+  const room = currentCartItemsTotal() + currentPlatformFee() + currentDeliveryFee() - currentOrderShopDiscount();
   return Math.max(0, Math.min(couponAmount(c, items), room));
 }
 function refreshCouponUI() {
@@ -14422,11 +14572,12 @@ function refreshCouponUI() {
   function say(t, ok) { msg.textContent = t; msg.style.color = ok ? '#1C7A3B' : '#C62828'; msg.style.display = t ? 'block' : 'none'; }
   function apply(code) {
     const r = state.selectedRestaurant; if (!r) return;
+    window.__cpnPending = null;   // customer's own choice: never re-apply an earlier auto-removed coupon
     code = String(code || '').trim().toUpperCase();
     if (!code) { if (window.neshCoupon) { if (/^LOYALTY/.test(String(window.neshCoupon.id))) window.__loyAutoOff = window.neshCoupon.restId; else window.__cpnAutoOff = window.neshCoupon.restId; window.neshCoupon = null; say('Coupon removed.', true); updateLocSummary(); try { renderLoyaltyCard(); renderLoyaltySCard(); } catch (e) {} if (typeof selectedPaymentMethod !== 'undefined' && selectedPaymentMethod === 'gpay') setPaymentMethod('gpay'); } return; }
     const c = couponsForShop(r.id).find(x => x.code === code);
     if (!c) { say('This code is not valid for this shop.', false); return; }
-    const why = couponCheck(c, r.id, currentCartItemsTotal());
+    const why = couponCheck(c, r.id, couponItemsTotal(r.id));
     if (why) { say(why, false); return; }
     window.neshCoupon = { id: c.id, restId: r.id };
     inp.value = '';
@@ -14455,7 +14606,7 @@ function renderCouponCards() {
     document.head.appendChild(st);
   }
   if (!(window.neshCoupon && window.neshCoupon.restId === r.id)) window.__cpnPopId = null;
-  const items = currentCartItemsTotal();
+  const items = couponItemsTotal(r.id);
   const rmBtn = document.getElementById('nesh-coupon-remove');
   if (rmBtn) rmBtn.style.display = (window.neshCoupon && window.neshCoupon.restId === r.id) ? 'block' : 'none';
   const list = couponsForShop(r.id).filter(c => {
@@ -14511,7 +14662,7 @@ function renderCouponCards() {
       window.neshCoupons = Object.keys(v).filter(k => v[k] && v[k].code).map(k => ({
         id: k, code: String(v[k].code).toUpperCase(), type: v[k].type === 'percent' ? 'percent' : 'flat', value: +v[k].value || 0,
         minOrder: +v[k].minOrder || 0, maxOrder: +v[k].maxOrder || 0, maxDiscount: +v[k].maxDiscount || 0, exp: +v[k].expiresAt || 0, off: !!v[k].off,
-        desc: String(v[k].desc || '').slice(0, 40), allShops: !!v[k].allShops, secret: !!v[k].secret, auto: !!v[k].auto, shops: v[k].shops || {}, perCustomer: Math.max(1, +v[k].perCustomer || 1), maxUses: Math.max(0, +v[k].maxUses || 0)
+        desc: String(v[k].desc || '').slice(0, 40), allShops: !!v[k].allShops, secret: !!v[k].secret, auto: !!v[k].auto, shops: v[k].shops || {}, zones: v[k].zones || {}, cards: v[k].cards || {}, perCustomer: Math.max(1, +v[k].perCustomer || 1), maxUses: Math.max(0, +v[k].maxUses || 0)
       }));
       try { window.neshLoyaltyRebuild && window.neshLoyaltyRebuild(); window.neshLoyaltySRebuild && window.neshLoyaltySRebuild(); } catch (e) {}
       refreshCouponUI();
@@ -15483,7 +15634,7 @@ window.NESH_EXTRA_KM_ONLY = (function () { try { return localStorage.getItem('ne
       try { localStorage.setItem('nesh_extra_km_only', window.NESH_EXTRA_KM_ONLY ? '1' : '0'); } catch (e) {}
       try { if (state.selectedRestaurant) updateCartBar(); } catch (e) {}
       try { if (paymentOverlay && paymentOverlay.classList.contains('show')) updateLocSummary(); } catch (e) {}
-    }, () => {});
+    }, err => { try { console.warn('NESH: cannot read the extra-km setting (check Firebase read rules for app_config):', err && err.message); } catch (e) {} });
   } catch (e) {}
 })();
 window.NESH_GST = (function () { try { return JSON.parse(localStorage.getItem('nesh_gst_cfg') || '{}') || {}; } catch (e) { return {}; } })();
@@ -15508,10 +15659,12 @@ function currentGstAmount() { try { return currentGstInfo().amount; } catch (e) 
       try { localStorage.setItem('nesh_gst_cfg', JSON.stringify(window.NESH_GST)); } catch (e) {}
       try { if (state.selectedRestaurant) updateCartBar(); } catch (e) {}
       try { if (paymentOverlay && paymentOverlay.classList.contains('show')) updateLocSummary(); } catch (e) {}
-    }, () => {});
+    }, err => { try { console.warn('NESH: cannot read the GST setting (check Firebase read rules for app_config):', err && err.message); } catch (e) {} });
   } catch (e) {}
 })();
 function currentCartItemsTotal() {
+  // Multi-shop trip where every shop is covered by the SAME zone delivery rule: the free-delivery / small-cart checks use the combined total
+  if (typeof window.__neshComboItems === 'number') return window.__neshComboItems;
   const r = state.selectedRestaurant;
   if (!r) return 0;
   return Math.round(r.items.reduce((sum, it) => sum + neshLineTotal(it), 0) * 100) / 100;
@@ -15652,6 +15805,14 @@ function updateLocSummary() {
     else locSummaryDeliveryEl.textContent = "₹" + shownDelivery;
   }
 
+  try {
+    const kmEl = document.getElementById('loc-summary-delivery-km'), kmI = showLoading ? null : currentDeliveryKm();
+    if (kmEl) {
+      const lbl = document.getElementById('loc-summary-delivery-label');
+      if (kmI && isFinite(kmI.km) && kmI.km > 0) { kmEl.textContent = ' | ' + kmI.km.toFixed(1) + ' kms'; kmEl.classList.add('on'); if (lbl) lbl.classList.add('has-km'); }
+      else { kmEl.textContent = ''; kmEl.classList.remove('on'); if (lbl) lbl.classList.remove('has-km'); }
+    }
+  } catch (e) {}
   if (locSummaryDeliveryRowEl) locSummaryDeliveryRowEl.style.display = (shownDelivery > 0 || showLoading || deliveryDistOk || (freeDelivery && wouldBeFee > 0)) ? "flex" : "none";   // the charge, "Calculating…" or "FREE"
   // Nudge: how much more to add to unlock free delivery.
   let freeMin = dc ? (Number(dc.freeAbove) || 0) : 0;
@@ -17356,7 +17517,7 @@ function openOrderSummary() {
   try { const itv = document.getElementById('os-item-total-val'); if (itv) itv.textContent = "₹" + itemsTotal; } catch (e) {}
   orderSummaryGrandTotalEl.textContent = "₹" + itemsTotal;
   {
-    const cnt = Object.values(state.cart).reduce((a, b) => a + b, 0);
+    const cnt = (r.items || []).reduce((a, it) => a + (Number(state.cart[it.id]) > 0 ? Number(state.cart[it.id]) : 0), 0);
     const mins = (typeof shopDeliveryMins === 'function') ? shopDeliveryMins(r) : 0;
     document.getElementById('os-deliver-title').textContent = mins > 0 ? 'Delivering in ' + mins + ' mins' : 'Your items';
     document.getElementById('os-deliver-sub').textContent = cnt + (cnt === 1 ? ' item' : ' items');
@@ -17540,7 +17701,7 @@ function cpSyncHeader() {
     const strip = document.getElementById('bs-saving'), ban = document.getElementById('os-saved');
     if (strip) { strip.style.display = sv > 0 ? 'block' : 'none'; strip.textContent = '🎉 You saved ₹' + sv + ' on this order'; }
     if (ban) { ban.style.display = sv > 0 ? 'block' : 'none'; ban.textContent = 'Yay! You saved ₹' + sv + ' on this order 🎉'; }
-    const cnt = Object.values(state.cart).reduce((a, b) => a + b, 0), ce = document.getElementById('bs-count');
+    const cnt = cartItemsCount(r), ce = document.getElementById('bs-count');
     if (ce) ce.textContent = '· ' + cnt + (cnt === 1 ? ' item' : ' items');
   }
   // coupons
@@ -17654,7 +17815,7 @@ orderSummaryOverlay.addEventListener('click', (e) => {
 });
 // Shared first part of both pay buttons: cart / min-order / login checks + the existing address validation.
 function cpPrepare() {
-  const count = Object.values(state.cart).reduce((a, b) => a + b, 0);
+  const count = cartItemsCount(state.selectedRestaurant);
   if (count === 0) { closeOrderSummary(); return false; }
   const rr = state.selectedRestaurant;
   const short = rr ? minOrderShortfall(rr, cartItemsTotal(rr)) : 0;
@@ -20444,13 +20605,31 @@ if ('serviceWorker' in navigator) {
       });
     })();
   }
-  function routeFeeFor(far, km, pc) {
+  // All shops of this trip covered by the same Operator-Panel zone rule (Shop Delivery Charges -> Whole-zone rules)?
+  // Then the free-delivery rule looks at the COMBINED item total of all shops instead of the carrying shop's own total.
+  function zoneComboTotal(all) {
+    try {
+      var cfg = null;
+      for (var i = 0; i < all.length; i++) {
+        var rs = M.rests[all[i].id];
+        if (!rs || !(rs.goSeries || rs.id === 'NESH_STORE' || rs.businessType === 'groceries')) return null;
+        var c = zoneDeliveryCfg(rs);
+        if (!c || (cfg && c !== cfg)) return null;
+        cfg = c;
+      }
+      return rup(all.reduce(function (a, b) { return a + (b.items || 0); }, 0));
+    } catch (e) { return null; }
+  }
+  function routeFeeFor(far, km, pc, combo) {
     var rest = M.rests[far.id], d = saved()[far.id];
     M.raw = true;
     try { return withShop(rest, d, function () {
       state.roadDistanceKey = deliveryDistanceKey(far.pos, pc); state.roadDistanceKm = km;
-      var free = isFreeDelivery();
-      return { df: free ? 0 : deliveryFeeBeforeFree(), free: free, was: free ? (Number(deliveryFeeBeforeFree()) || 0) : 0 };
+      if (typeof combo === 'number') window.__neshComboItems = combo;
+      try {
+        var free = isFreeDelivery();
+        return { df: free ? 0 : deliveryFeeBeforeFree(), free: free, was: free ? (Number(deliveryFeeBeforeFree()) || 0) : 0 };
+      } finally { window.__neshComboItems = null; }
     }); } finally { M.raw = false; }
   }
   function coverage(all) {
@@ -20460,7 +20639,7 @@ if ('serviceWorker' in navigator) {
     var order = routeOrder(all), far = order[0], key = routeKey(order, pc), km = RC[key];
     if (km == null) { var rch = rcGet(key); if (rch != null) { RC[key] = km = rch; } }
     if (km == null) { fetchRoute(order, pc, key); res.pending = true; return res; }
-    var fee = routeFeeFor(far, km, pc);
+    var fee = routeFeeFor(far, km, pc, zoneComboTotal(all));
     all.forEach(function (b) { if (b === far) res.ov[b.id] = fee.df; else { res.ov[b.id] = 0; b.covered = far.name; } });
     res.far = far; res.km = km; res.fee = fee;
     return res;
@@ -20504,6 +20683,30 @@ if ('serviceWorker' in navigator) {
     if (state.pendingCheckout) M.pc = Object.assign({}, state.pendingCheckout);
     M.need = {};
     var liveIds = M.ids.filter(function (id) { return saved()[id]; });
+    // an applied coupon that is not valid for this mix of shops (e.g. a Food-only coupon with a Mart shop added) is taken off
+    try {
+      var _ac = window.neshCoupon;
+      if (_ac && !_ac.auto && !/^LOYALTY/.test(String(_ac.id))) {
+        var _cd = (window.neshCoupons || []).find(function (x) { return x.id === _ac.id; });
+        var _why = _cd ? couponCheck(_cd, _ac.restId, couponItemsTotal(_ac.restId)) : '';
+        if (_cd && _why && /section/.test(_why)) {
+          window.neshCoupon = null; window.__cpnPending = _cd.id;
+          if (window.neshCouponSay) window.neshCouponSay('Coupon ' + _cd.code + ' removed. ' + _why, false);
+          try { updateLocSummary(); } catch (e) {}
+        }
+      }
+      // the shop that made it invalid was removed again -> put the same coupon back
+      if (!window.neshCoupon && window.__cpnPending) {
+        var _pd = (window.neshCoupons || []).find(function (x) { return x.id === window.__cpnPending; });
+        var _pr = state.selectedRestaurant;
+        if (!_pd) window.__cpnPending = null;
+        else if (_pr && couponsForShop(_pr.id).some(function (x) { return x.id === _pd.id; }) && !couponCheck(_pd, _pr.id, couponItemsTotal(_pr.id))) {
+          window.neshCoupon = { id: _pd.id, restId: _pr.id }; window.__cpnPending = null;
+          if (window.neshCouponSay) window.neshCouponSay('Coupon ' + _pd.code + ' applied \u2705', true);
+          try { updateLocSummary(); } catch (e) {}
+        }
+      }
+    } catch (e) {}
     if (liveIds.length < 2) {
       var wasMulti = !!(M.bills || M.pending || M.block || (M.override && Object.keys(M.override).length));
       box.style.display = 'none'; M.block = ''; M.pending = false; M.override = {}; M.bills = null; M.othersSum = 0; M.allReady = true;
@@ -20609,7 +20812,7 @@ if ('serviceWorker' in navigator) {
   function setBill(show) {
     var e = billEls(); if (!e) return;
     e.chit.classList.toggle('mp-on', !!show);
-    if (!show) { e.top.innerHTML = ''; e.tot.innerHTML = ''; e.top.style.display = 'none'; e.tot.style.display = 'none'; }
+    if (!show) { e.top.innerHTML = ''; e.tot.innerHTML = ''; e.top.removeAttribute('data-h'); e.tot.removeAttribute('data-h'); e.top.style.display = 'none'; e.tot.style.display = 'none'; }
     else { e.top.style.display = ''; e.tot.style.display = ''; }
   }
   function applyBill(grand) {
@@ -20634,14 +20837,16 @@ if ('serviceWorker' in navigator) {
       shopRows += '<div class="bs-row"><span>' + esc(b.name) + ' ' + cnt(bc) + '</span><span>₹' + rup(b.items) + '</span></div>';
     });
     var calc = !M.allReady || M.pending || grand == null || (state.roadDistanceLoading && true);
+    var wrKm = ''; try { M.bills.forEach(function (b) { if (b.routeKm > 0) wrKm = (Math.round(b.routeKm * 10) / 10).toFixed(1); }); } catch (x) {}   // whole route of all shops, same as the Delivery charge line in the panel
     // One row per shop (so it is clear every shop's items are in this order), then the combined total.
     var html = shopRows +
       '<div class="bs-row"><span><b>Item total</b> ' + cnt(count) + '</span><span><b>₹' + rup(items) + '</b></span></div>' +
-      '<div class="bs-row"><span>Delivery charge</span><span>' + (calc ? 'Calculating…' : (del > 0 ? '₹' + rup(del) : '<b style="color:var(--leaf);">FREE</b>')) + '</span></div>';
+      '<div class="bs-row"><span' + (wrKm ? ' class="has-km"' : '') + '>Delivery charge' + (wrKm ? '<em class="bs-km on"> | ' + wrKm + ' kms</em>' : '') + '</span><span>' + (calc ? 'Calculating…' : (del > 0 ? '₹' + rup(del) : '<b style="color:var(--leaf);">FREE</b>')) + '</span></div>';
     if (gstSum > 0 && !calc) html += '<div class="bs-row"><span>🏛️ Government charge</span><span>₹' + rup(gstSum) + '</span></div>';
     if (rain > 0 && !calc) html += '<div class="bs-row"><span>🌧️ Rain surge <small>(goes to your rider)</small></span><span>₹' + rup(rain) + '</span></div>';
     if (e.top.getAttribute('data-h') !== html) { e.top.setAttribute('data-h', html); e.top.innerHTML = html; }
-    var th = '<span>To Pay</span><span>' + (grand == null ? '…' : '₹' + grand) + '</span>';
+    var stEl = document.querySelector('.bs-total:not(.mp-clone) .lp-stamp'), stH = stEl ? stEl.outerHTML.split('lpArc').join('lpArc2') : '';
+    var th = '<span>To Pay</span>' + stH + '<span>' + (grand == null ? '…' : '₹' + grand) + '</span>';
     if (e.tot.getAttribute('data-h') !== th) { e.tot.setAttribute('data-h', th); e.tot.innerHTML = th; }
   }
   function applyBar() {
@@ -20705,6 +20910,27 @@ if ('serviceWorker' in navigator) {
   }
 
   // ---- entry from the Home cart bar ----
+  // shops currently in the multi-shop checkout (2 or more carts), else null - used by the coupon card check
+  window.neshMultiCartRests = function () {
+    if (!M || !M.ids) return null;
+    var sv = saved(), live = M.ids.filter(function (id) { return sv[id]; });
+    if (live.length < 2) return null;
+    return live.map(function (id) { return M.rests[id]; }).filter(Boolean);
+  };
+  // combined item total of every shop in the multi-shop checkout (the coupon discount is worked out on this)
+  window.neshMultiItemsTotal = function () {
+    if (!M || !M.ids) return null;
+    var sv = saved(), live = M.ids.filter(function (id) { return sv[id]; });
+    if (live.length < 2) return null;
+    var cur = state.selectedRestaurant, curId = cur && cur.id, total = 0;
+    try { total += currentCartItemsTotal(); } catch (e) {}
+    live.forEach(function (id) {
+      if (id === curId) return;
+      var rest = M.rests[id], d = sv[id]; if (!rest || !d) return;
+      try { total += withShop(rest, d, function () { return currentCartItemsTotal(); }); } catch (e) {}
+    });
+    return total;
+  };
   window.neshStartMulti = function () {
     dedupeSaved();
     var all = saved();
@@ -20750,6 +20976,15 @@ if ('serviceWorker' in navigator) {
       if (left[0] === 'NESH_STORE') state.category = 'groceries';
       else if (rest.businessType === 'hotel' || rest.businessType === 'online_shop') state.category = rest.businessType;
       state.cart = d.cart; state.cartGrams = d.grams || {}; state.cartSizes = d.sizes || {};
+      try {
+        var _pc = window.neshCoupon;
+        if (_pc && !_pc.auto) {
+          var _pcd = (window.neshCoupons || []).find(function (x) { return x.id === _pc.id; });
+          if (_pcd && couponsForShop(rest.id).some(function (x) { return x.id === _pcd.id; })) _pc.restId = rest.id;
+          else { window.neshCoupon = null; }
+        }
+      } catch (e) {}
+      M.override = {};   // the old route charge belonged to the shops that were in the cart before; never reuse it for the new first shop
       try { renderMenu(); } catch (e) {}
       try { persistScreen('menu', { restaurantId: left[0], cart: state.cart }); } catch (e) {}
       openOrderSummary();
@@ -20853,7 +21088,10 @@ if ('serviceWorker' in navigator) {
   var _cdf = currentDeliveryFee;
   currentDeliveryFee = function () {
     var r = state.selectedRestaurant;
-    if (M && !M.raw && M.override && r && typeof M.override[r.id] === 'number') return M.override[r.id];
+    if (M && !M.raw && M.override && r && typeof M.override[r.id] === 'number') {
+      var _sv = saved(), _live = (M.ids || []).filter(function (id) { return _sv[id]; }).length;
+      if (_live >= 2) return M.override[r.id];   // a single shop left -> its own delivery rule, never a leftover multi-shop charge
+    }
     return _cdf.apply(this, arguments);
   };
   var _ou = updateLocSummary;
