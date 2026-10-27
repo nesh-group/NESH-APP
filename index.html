@@ -5651,6 +5651,7 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
         <div class="bs-row" style="display:none;" id="loc-summary-rain-row"><span>🌧️ Rain surge <small>(goes to your rider)</small></span><span id="loc-summary-rain">₹0</span></div>
         <div class="bs-row green" id="loc-summary-discount-row"><span>🎁 Shop discount</span><span id="loc-summary-discount">-₹0</span></div>
         <div class="bs-row green" style="display:none;" id="loc-summary-coupon-row"><span id="loc-summary-coupon-label">Coupon</span><span id="loc-summary-coupon">-₹0</span></div>
+        <div class="bs-row" style="display:none;" id="loc-summary-gst-row"><span>🏛️ Government tax <small id="loc-summary-gst-pct"></small></span><span id="loc-summary-gst">₹0</span></div>
         <div class="bs-row" style="display:none;" id="loc-summary-tip-row"><span>🏍️ Delivery tip <small>(100% to your rider)</small></span><span id="loc-summary-tip">₹0</span></div>
         <div class="bs-total"><span>To Pay</span><span id="loc-summary-total">₹0</span></div>
         <div class="bs-saving" id="bs-saving" style="display:none;"></div>
@@ -14029,6 +14030,32 @@ function neshAutoApplyLoyalty() {
     }
   } catch (e) {}
 }
+// Coupons the operator marked "Auto-apply": the best qualifying one goes on the order by itself at checkout (no code typed).
+// If the customer removes it, it is not re-applied for that shop until the order is placed.
+window.__cpnAutoOff = null;
+function neshAutoApplyCoupons() {
+  try {
+    const r = state.selectedRestaurant; if (!r) return;
+    const items = currentCartItemsTotal();
+    const cur = window.neshCoupon;
+    if (cur && cur.restId === r.id) {
+      if (!cur.auto) return;                                   // customer's own / loyalty coupon stays
+      const cd = (window.neshCoupons || []).find(x => x.id === cur.id);
+      if (cd && !couponCheck(cd, r.id, items)) return;         // auto coupon still valid
+      window.neshCoupon = null;                                // no longer qualifies (e.g. min order) -> look for another
+    }
+    if (window.__cpnAutoOff === r.id || !(items > 0)) return;
+    let best = null, bestAmt = 0;
+    couponsForShop(r.id).forEach(c => {
+      if (!c.auto || c.loyalty || c.loyaltyS || couponCheck(c, r.id, items)) return;
+      const a = couponAmount(c, items);
+      if (a > bestAmt) { best = c; bestAmt = a; }
+    });
+    if (!best) return;
+    window.neshCoupon = { id: best.id, restId: r.id, auto: true };
+    try { if (window.neshCouponSay) window.neshCouponSay('Coupon ' + best.code + ' applied automatically \u2705', true); } catch (e) {}
+  } catch (e) {}
+}
 function couponsForShop(restId) { return window.neshCoupons.filter(c => !c.off && (!c.exp || c.exp > Date.now()) && (c.allShops || (c.shops && c.shops[restId]))); }
 function couponCheck(c, restId, items) {   // '' = fine, otherwise the reason it can't be used
   if (c.loyaltyS) {
@@ -14079,7 +14106,7 @@ function refreshCouponUI() {
   function apply(code) {
     const r = state.selectedRestaurant; if (!r) return;
     code = String(code || '').trim().toUpperCase();
-    if (!code) { if (window.neshCoupon) { if (/^LOYALTY/.test(String(window.neshCoupon.id))) window.__loyAutoOff = window.neshCoupon.restId; window.neshCoupon = null; say('Coupon removed.', true); updateLocSummary(); try { renderLoyaltyCard(); renderLoyaltySCard(); } catch (e) {} if (typeof selectedPaymentMethod !== 'undefined' && selectedPaymentMethod === 'gpay') setPaymentMethod('gpay'); } return; }
+    if (!code) { if (window.neshCoupon) { if (/^LOYALTY/.test(String(window.neshCoupon.id))) window.__loyAutoOff = window.neshCoupon.restId; else window.__cpnAutoOff = window.neshCoupon.restId; window.neshCoupon = null; say('Coupon removed.', true); updateLocSummary(); try { renderLoyaltyCard(); renderLoyaltySCard(); } catch (e) {} if (typeof selectedPaymentMethod !== 'undefined' && selectedPaymentMethod === 'gpay') setPaymentMethod('gpay'); } return; }
     const c = couponsForShop(r.id).find(x => x.code === code);
     if (!c) { say('This code is not valid for this shop.', false); return; }
     const why = couponCheck(c, r.id, currentCartItemsTotal());
@@ -14167,7 +14194,7 @@ function renderCouponCards() {
       window.neshCoupons = Object.keys(v).filter(k => v[k] && v[k].code).map(k => ({
         id: k, code: String(v[k].code).toUpperCase(), type: v[k].type === 'percent' ? 'percent' : 'flat', value: +v[k].value || 0,
         minOrder: +v[k].minOrder || 0, maxDiscount: +v[k].maxDiscount || 0, exp: +v[k].expiresAt || 0, off: !!v[k].off,
-        desc: String(v[k].desc || '').slice(0, 40), allShops: !!v[k].allShops, secret: !!v[k].secret, shops: v[k].shops || {}, perCustomer: Math.max(1, +v[k].perCustomer || 1), maxUses: Math.max(0, +v[k].maxUses || 0)
+        desc: String(v[k].desc || '').slice(0, 40), allShops: !!v[k].allShops, secret: !!v[k].secret, auto: !!v[k].auto, shops: v[k].shops || {}, perCustomer: Math.max(1, +v[k].perCustomer || 1), maxUses: Math.max(0, +v[k].maxUses || 0)
       }));
       try { window.neshLoyaltyRebuild && window.neshLoyaltyRebuild(); window.neshLoyaltySRebuild && window.neshLoyaltySRebuild(); } catch (e) {}
       refreshCouponUI();
@@ -15016,6 +15043,19 @@ function deliveryFeeBeforeFree() {
   if (dc.freeUnderKm != null && km < Number(dc.freeUnderKm)) return small;
   const baseFee = Number(dc.baseFee) || 0;
   const perKmFee = Number(dc.perKmFee) || 0;
+  // Operator option (Operator Panel -> "Free delivery: extra km only"): past the free distance the customer pays
+  // ONLY for the km beyond it (per-km rate x extra km, no base fee) instead of the full charge for the whole trip.
+  if (window.NESH_EXTRA_KM_ONLY && perKmFee > 0) {
+    let freeKm = Math.max(Number(dc.freeUnderKm) || 0, Number(dc.freeWithinKm) || 0);
+    try {
+      const tot = currentCartItemsTotal();
+      (Array.isArray(dc.freeTiers) ? dc.freeTiers : []).forEach(t => {
+        if (tot >= (Number(t.min) || 0) && (t.max == null || tot < Number(t.max))) freeKm = Math.max(freeKm, Number(t.km) || 0);
+      });
+    } catch (e) {}
+    // Per-km x extra km only (no base fee), never below ₹1: even 0.5 km past the free distance is NOT free.
+    if (freeKm > 0 && km >= freeKm) return Math.max(1, Math.ceil(perKmFee * (km - freeKm) - 1e-9)) + small;   // always rounded UP to the next whole rupee (4.1 -> 5)
+  }
   // Rounded to the nearest whole rupee (not paise) — this is a
   // Cash-on-Delivery app, so customers/drivers need round, practical change.
   return Math.round(baseFee + perKmFee * km) + small;
@@ -15088,6 +15128,46 @@ function currentRainSurge() {
   } catch (e) { return null; }
 }
 function currentRainSurgeAmount() { const x = currentRainSurge(); return x ? x.amount : 0; }
+// ---- Government tax (GST): operator sets a % per card in Operator Panel -> GST (app_config/gst) ----
+// Applied to the ITEM TOTAL only (not delivery / fees), rounded to a whole rupee, shown as its own bill line.
+window.NESH_EXTRA_KM_ONLY = (function () { try { return localStorage.getItem('nesh_extra_km_only') === '1'; } catch (e) { return false; } })();
+(function extraKmWatch() {
+  if (!window.fb) return setTimeout(extraKmWatch, 400);
+  try {
+    window.fb.onValue(window.fb.ref(window.fb.db, 'app_config/deliveryExtraKmOnly'), snap => {
+      const v = snap.val();
+      window.NESH_EXTRA_KM_ONLY = !!(v && v.on);
+      try { localStorage.setItem('nesh_extra_km_only', window.NESH_EXTRA_KM_ONLY ? '1' : '0'); } catch (e) {}
+      try { if (state.selectedRestaurant) updateCartBar(); } catch (e) {}
+      try { if (paymentOverlay && paymentOverlay.classList.contains('show')) updateLocSummary(); } catch (e) {}
+    }, () => {});
+  } catch (e) {}
+})();
+window.NESH_GST = (function () { try { return JSON.parse(localStorage.getItem('nesh_gst_cfg') || '{}') || {}; } catch (e) { return {}; } })();
+function neshGstKey(r) {
+  if (!r) return 'food';
+  if (r.id === 'NESH_STORE') return 'groceries';                                    // Groceries card
+  if (r.goSeries || r.businessType === 'groceries' || r.businessType === 'online_shop') return 'mart';   // NESH Mart card
+  return 'food';                                                                    // Food card
+}
+function neshGstPct(r) { const v = Number((window.NESH_GST || {})[neshGstKey(r)]) || 0; return (v > 0 && v <= 100) ? v : 0; }
+function neshGstAmountFor(r, itemsTotal) { const p = neshGstPct(r); return p > 0 ? Math.round((Number(itemsTotal) || 0) * p / 100) : 0; }
+function currentGstInfo() {
+  const r = state.selectedRestaurant, pct = neshGstPct(r);
+  return { pct, amount: pct > 0 ? neshGstAmountFor(r, currentCartItemsTotal()) : 0 };
+}
+function currentGstAmount() { try { return currentGstInfo().amount; } catch (e) { return 0; } }
+(function gstWatch() {
+  if (!window.fb) return setTimeout(gstWatch, 400);
+  try {
+    window.fb.onValue(window.fb.ref(window.fb.db, 'app_config/gst'), snap => {
+      window.NESH_GST = snap.val() || {};
+      try { localStorage.setItem('nesh_gst_cfg', JSON.stringify(window.NESH_GST)); } catch (e) {}
+      try { if (state.selectedRestaurant) updateCartBar(); } catch (e) {}
+      try { if (paymentOverlay && paymentOverlay.classList.contains('show')) updateLocSummary(); } catch (e) {}
+    }, () => {});
+  } catch (e) {}
+})();
 function currentCartItemsTotal() {
   const r = state.selectedRestaurant;
   if (!r) return 0;
@@ -15158,6 +15238,7 @@ function setTip(v) {
 })();
 function updateLocSummary() {
   neshAutoApplyLoyalty();   // unlocked loyalty reward goes on the order automatically (removable in Coupons & offers)
+  neshAutoApplyCoupons();   // operator's "Auto-apply" coupons
   const itemsTotal = currentCartItemsTotal();
   const fee = currentPlatformFee();
   const dc = activeDeliveryCharge();
@@ -15235,13 +15316,20 @@ function updateLocSummary() {
     tipRowEl.style.display = tipAmt > 0 ? 'flex' : 'none';
     const tv = document.getElementById('loc-summary-tip'); if (tv) tv.textContent = '₹' + tipAmt;
   }
+  const gstInfo = currentGstInfo(), gstAmt = showLoading ? 0 : gstInfo.amount;
+  const gstRowEl = document.getElementById('loc-summary-gst-row');
+  if (gstRowEl) {
+    gstRowEl.style.display = gstAmt > 0 ? 'flex' : 'none';
+    const gv = document.getElementById('loc-summary-gst'); if (gv) gv.textContent = '₹' + gstAmt;
+    const gp = document.getElementById('loc-summary-gst-pct'); if (gp) gp.textContent = gstInfo.pct > 0 ? '(' + gstInfo.pct + '%)' : '';
+  }
   const rainAmt = currentRainSurgeAmount();
   const rainRowEl = document.getElementById('loc-summary-rain-row');
   if (rainRowEl) {
     rainRowEl.style.display = rainAmt > 0 ? 'flex' : 'none';
     const rv = document.getElementById('loc-summary-rain'); if (rv) rv.textContent = '₹' + rainAmt;
   }
-  if (locSummaryTotalEl) locSummaryTotalEl.textContent = showLoading ? "…" : "₹" + (Math.max(0, itemsTotal + fee + deliveryFee - discount - cpn) + rainAmt + tipAmt);
+  if (locSummaryTotalEl) locSummaryTotalEl.textContent = showLoading ? "…" : "₹" + (Math.max(0, itemsTotal + fee + deliveryFee - discount - cpn) + rainAmt + tipAmt + gstAmt);
   cpSyncBar();
 }
 // If the operator changes the fee while this checkout sheet happens to be
@@ -16198,7 +16286,7 @@ function neshUpiAutoPaid() {
   return !!(p && (p.status === 'success' || p.status === 'pending'));
 }
 function neshUpiAmount() {
-  return Math.max(0, currentCartItemsTotal() + currentPlatformFee() + currentDeliveryFee() - currentCouponDiscount()) + currentRainSurgeAmount() + currentTipAmount();
+  return Math.max(0, currentCartItemsTotal() + currentPlatformFee() + currentDeliveryFee() - currentCouponDiscount()) + currentRainSurgeAmount() + currentTipAmount() + currentGstAmount();
 }
 function neshUpiLegacySheet() {
   setPaymentMethod('gpay');
@@ -16272,7 +16360,7 @@ function setPaymentMethod(method) {
   if (method === 'gpay' && window.effUpi(r)) {
     gpayScannerBox.style.display = 'block';
     gpayNumberText.textContent = "UPI ID: " + window.effUpi(r);
-    const cartTotal = Math.max(0, currentCartItemsTotal() + currentPlatformFee() + currentDeliveryFee() - currentCouponDiscount()) + currentRainSurgeAmount() + currentTipAmount();
+    const cartTotal = Math.max(0, currentCartItemsTotal() + currentPlatformFee() + currentDeliveryFee() - currentCouponDiscount()) + currentRainSurgeAmount() + currentTipAmount() + currentGstAmount();
     const upiUrl = "upi://pay?pa=" + encodeURIComponent(String(window.effUpi(r)).trim()) +
       "&pn=" + encodeURIComponent(r.name || 'Restaurant') +
       "&am=" + (Math.round(cartTotal * 100) / 100).toFixed(2) +
@@ -17405,7 +17493,8 @@ payConfirmBtn.addEventListener('click', async () => {
   window.__couponPending = couponDef ? couponDef.id : (window.__loyaltyGiftPending || null);
   const rainSurgeInfo = currentRainSurge();
   const tipAmount = currentTipAmount();
-  const total = Math.max(0, itemsTotal + platformFee + deliveryFee - shopDiscount - couponDiscount) + (rainSurgeInfo ? rainSurgeInfo.amount : 0) + tipAmount;
+  const gstInfoOrder = currentGstInfo();
+  const total = Math.max(0, itemsTotal + platformFee + deliveryFee - shopDiscount - couponDiscount) + (rainSurgeInfo ? rainSurgeInfo.amount : 0) + tipAmount + gstInfoOrder.amount;
 
   payConfirmBtn.disabled = true;
   payConfirmBtn.textContent = "Placing order…";
@@ -17455,6 +17544,7 @@ payConfirmBtn.addEventListener('click', async () => {
       deliveryFee,
       ...(rainSurgeInfo ? { rainSurge: rainSurgeInfo.amount, rainSurgeDriver: rainSurgeInfo.driverAmount, rainSurgeZone: rainSurgeInfo.zoneName } : {}),
       ...(tipAmount > 0 ? { tip: tipAmount } : {}),
+      ...(gstInfoOrder.amount > 0 ? { gst: gstInfoOrder.amount, gstPercent: gstInfoOrder.pct } : {}),
       shopDiscountApplied: shopDiscount,
       ...(couponDef ? { couponCode: couponDef.code, couponDiscount } : {}),
       paymentMethod: (isNeshStore || selectedPaymentMethod !== 'gpay') ? 'Cash on Delivery' : 'UPI (Scanner)'
@@ -17567,7 +17657,7 @@ payConfirmBtn.addEventListener('click', async () => {
     state.cartGrams = {};
   state.cartSizes = {};
     state.pendingCheckout = null;
-    if (window.__couponPending) { couponMarkUsed(window.__couponPending); window.__couponPending = null; } window.neshCoupon = null; window.__loyAutoOff = null;
+    if (window.__couponPending) { couponMarkUsed(window.__couponPending); window.__couponPending = null; } window.neshCoupon = null; window.__loyAutoOff = null; window.__cpnAutoOff = null;
     state.discountReveal = null;
     closePaymentConfirm();
     showScreen('placed');
@@ -17897,6 +17987,7 @@ function renderTrackItems(o) {
   else html += row('Delivery charge', '<b style="color:#1a7f37;">FREE</b>');
   if (Number(o.rainSurge) > 0) html += row('🌧️ Rain surge', '₹' + o.rainSurge);
   if (Number(o.tip) > 0) html += row('🏍️ Delivery tip', '₹' + o.tip);
+  if (Number(o.gst) > 0) html += row('🏛️ Government tax' + (Number(o.gstPercent) > 0 ? ' (' + o.gstPercent + '%)' : ''), '₹' + o.gst);
   if (Number(o.shopDiscountApplied) > 0) html += row('Shop discount', '−₹' + o.shopDiscountApplied);
   if (Number(o.couponDiscount) > 0) html += row('Coupon ' + escapeHtml(o.couponCode || ''), '−₹' + o.couponDiscount);
   if (o.total != null) html += row('Total', '₹' + o.total, true);
@@ -19844,11 +19935,11 @@ if ('serviceWorker' in navigator) {
         lines.push({ img: it.image || '', unit: up, name: nm, base: String(it.name || '').trim().toLowerCase(), itemId: it.id, q: q, amt: rup(q * up) });
       });
       var items = currentCartItemsTotal();
-      var pf = currentPlatformFee(), df = ready ? currentDeliveryFee() : 0, rs = ready ? currentRainSurgeAmount() : 0;
+      var pf = currentPlatformFee(), df = ready ? currentDeliveryFee() : 0, rs = ready ? currentRainSurgeAmount() : 0, gs = currentGstAmount();
       var free = ready && isFreeDelivery(), was = free ? (Number(deliveryFeeBeforeFree()) || 0) : 0;
       var short = minOrderShortfall(rest, items), closed = getShopClosedInfo(rest);
       return { id: id, name: rest.name, pos: pos, km: kmVal, covered: '', lines: lines, items: items, pf: pf, df: df, rs: rs, free: free, was: was, ready: ready,
-        short: short, closed: closed && closed.closed ? closed.message : '', total: rup(items + pf + df + rs) };
+        short: short, closed: closed && closed.closed ? closed.message : '', gs: gs, total: rup(items + pf + df + rs + gs) };
     }); } finally { M.raw = false; }
   }
 
@@ -20062,7 +20153,8 @@ if ('serviceWorker' in navigator) {
     try { mainItems = currentCartItemsTotal(); } catch (x) {}
     try { Object.keys(state.cart || {}).forEach(function (k) { mainCount += state.cart[k] || 0; }); } catch (x) {}
     try { mainDel = currentDeliveryFee() + currentPlatformFee(); } catch (x) {}
-    var items = mainItems, count = mainCount, del = mainDel, rain = 0;
+    var items = mainItems, count = mainCount, del = mainDel, rain = 0, gstSum = 0;
+    try { gstSum = currentGstAmount(); } catch (x) {}
     var shopRows = '';
     var cnt = function (n) { return '<small>· ' + n + (n === 1 ? ' item' : ' items') + '</small>'; };
     var mainName = '';
@@ -20071,7 +20163,7 @@ if ('serviceWorker' in navigator) {
     M.bills.forEach(function (b) {
       var bc = 0; b.lines.forEach(function (l) { bc += Number(l.q) || 0; });
       items += b.items; count += bc;
-      del += (b.df || 0) + (b.pf || 0); rain += (b.rs || 0);
+      del += (b.df || 0) + (b.pf || 0); rain += (b.rs || 0); gstSum += (b.gs || 0);
       shopRows += '<div class="bs-row"><span>' + esc(b.name) + ' ' + cnt(bc) + '</span><span>₹' + rup(b.items) + '</span></div>';
     });
     var calc = !M.allReady || M.pending || grand == null || (state.roadDistanceLoading && true);
@@ -20079,6 +20171,7 @@ if ('serviceWorker' in navigator) {
     var html = shopRows +
       '<div class="bs-row"><span><b>Item total</b> ' + cnt(count) + '</span><span><b>₹' + rup(items) + '</b></span></div>' +
       '<div class="bs-row"><span>Delivery charge</span><span>' + (calc ? 'Calculating…' : (del > 0 ? '₹' + rup(del) : '<b style="color:var(--leaf);">FREE</b>')) + '</span></div>';
+    if (gstSum > 0 && !calc) html += '<div class="bs-row"><span>🏛️ Government tax</span><span>₹' + rup(gstSum) + '</span></div>';
     if (rain > 0 && !calc) html += '<div class="bs-row"><span>🌧️ Rain surge <small>(goes to your rider)</small></span><span>₹' + rup(rain) + '</span></div>';
     if (e.top.getAttribute('data-h') !== html) { e.top.setAttribute('data-h', html); e.top.innerHTML = html; }
     var th = '<span>To Pay</span><span>' + (grand == null ? '…' : '₹' + grand) + '</span>';
@@ -20661,8 +20754,9 @@ setTimeout(async function(){try{var a=JSON.parse(localStorage.getItem('nesh_pr')
   }
   var t=setInterval(function(){
     if(shown){ clearInterval(t); return; }
-    var h=document.getElementById('screen-home');
-    if(h && h.classList.contains('active') && h.dataset.cat==='hotel' && !document.hidden) show();
+    var h=document.getElementById('screen-category');   // main Home (Food / Groceries / Taxi cards)
+    var sp=window.neshSplash;
+    if(h && h.classList.contains('active') && !document.hidden && !(sp && sp.isActive && sp.isActive())) show();
   }, 400);
 })();
 </script>
