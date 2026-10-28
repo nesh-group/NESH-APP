@@ -21464,12 +21464,20 @@ setTimeout(async function(){try{var a=JSON.parse(localStorage.getItem('nesh_pr')
     setTimeout(function(){ bar.classList.remove('in'); }, 3000);
     setTimeout(function(){ if(bar&&bar.parentNode) bar.parentNode.removeChild(bar); }, 3800);
   }
+  // The ₹0 bar comes AFTER the Home popup banner: if the popup opens, wait until it is closed (then ~0.4s);
+  // if no popup opens (off / already seen), the popup's own delay is up to ~1.8s, so give it 2.6s before showing the bar.
+  var popWas=false, closedAt=0, readySince=0;
   var t=setInterval(function(){
     if(shown){ clearInterval(t); return; }
     var h=document.getElementById('screen-category');   // main Home (Food / Groceries / Taxi cards)
     var sp=window.neshSplash;
-    if(h && h.classList.contains('active') && !document.hidden && !(sp && sp.isActive && sp.isActive())) show();
-  }, 400);
+    if(!(h && h.classList.contains('active') && !document.hidden && !(sp && sp.isActive && sp.isActive()))){ readySince=0; return; }
+    var pop=document.getElementById('home-popup');
+    if(pop && pop.classList.contains('show')){ popWas=true; closedAt=0; return; }
+    if(popWas){ if(!closedAt) closedAt=Date.now(); if(Date.now()-closedAt>400) show(); return; }
+    if(!readySince) readySince=Date.now();
+    if(Date.now()-readySince>2600) show();
+  }, 250);
 })();
 </script>
 <script id="nesh-stuck-js">
