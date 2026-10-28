@@ -6596,6 +6596,7 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
     });
     window.ZONE_DELIVERY = out;
     window.ZONE_DELIVERY_LOADED = true;
+    try { window.neshCfg.save('zoneDelivery', out); } catch (e) {}   // last known zone rule: fallback if the next open is slow
     rebuildRestaurantsFromSnapshot();   // Mart item prices depend on the zone rule's commission / profit
     if (window.onPlatformFeeUpdated) window.onPlatformFeeUpdated();
   }, () => { window.ZONE_DELIVERY_LOADED = true; });
@@ -14776,6 +14777,7 @@ const neshLoyErr = e => String((e && (e.code || e.message)) || e);
   window.neshLoyaltyCount = function (key) { window.__neshLoyGroup = key; record(key, key); };   // first order of a group checkout
   window.neshLoyaltySync = function () { try { seen = (state.lastOrder && state.lastOrder.orderKey) || seen; } catch (e) {} };
   setInterval(() => {
+    if (document.hidden) return;
     let k = ''; try { k = (state.lastOrder && state.lastOrder.orderKey) || ''; } catch (e) {}
     if (seen === null) { seen = k; return; }
     if (!k || k === seen) return;
@@ -15018,6 +15020,7 @@ function neshLoyaltySGiftFor(r, itemsTotal) {
   window.neshLoyaltySCount = function (key) { if (isStore()) record(key, key); };   // called for the first order of a group checkout
   window.neshLoyaltySSync = function () { try { seen = (state.lastOrder && state.lastOrder.orderKey) || seen; } catch (e) {} };
   setInterval(() => {
+    if (document.hidden) return;
     let k = ''; try { k = (state.lastOrder && state.lastOrder.orderKey) || ''; } catch (e) {}
     if (seen === null) { seen = k; return; }
     if (!k || k === seen) return;
@@ -15368,14 +15371,21 @@ function roadKmShared(restPos, pt) {
     roadInflight[k] = new Promise(resolve => {
       let settled = false, failed = 0, started = 0, backupTimer = null;
       const ctrls = [];
+      let resolved = false;
+      const settle = (km) => { if (resolved) return; resolved = true; resolve(typeof km === 'number' ? km : null); };
       const finish = (km) => {
         if (settled) return; settled = true;
-        clearTimeout(backupTimer); clearTimeout(hardStop);
+        clearTimeout(backupTimer); clearTimeout(hardStop); clearTimeout(lateStop);
         ctrls.forEach(c => { try { c.abort(); } catch (e) {} });
+        delete roadInflight[k];
         if (typeof km === 'number') { roadCachePut(restPos, pt, km); roadLateApply(restPos, pt, km); try { updateCartBar(); } catch (e) {} }
-        resolve(typeof km === 'number' ? km : null);
+        settle(km);
       };
-      const hardStop = setTimeout(() => finish(null), 7000);
+      // Checkout stops WAITING after 7s (it shows the straight-line estimate), but the request is no longer cancelled:
+      // on a slow network the real road distance can still arrive (up to 30s) and is then applied, so the
+      // free-delivery rules (free under km / free within km / order-value ranges) are judged on the real distance.
+      const hardStop = setTimeout(() => settle(null), 7000);
+      const lateStop = setTimeout(() => finish(null), 30000);
       const fail = () => { failed++; if (started < urls.length) start(); else if (failed >= urls.length) finish(null); };
       const start = () => {
         if (settled || started >= urls.length) return;
@@ -15388,7 +15398,7 @@ function roadKmShared(restPos, pt) {
         if (started < urls.length) backupTimer = setTimeout(start, 1200);
       };
       start();
-    }).finally(() => { delete roadInflight[k]; });
+    });
   }
   return roadInflight[k];
 }
@@ -16913,6 +16923,7 @@ function setPaymentMethod(method) {
 }
 
 function updateLocConfirmGate() {
+  if (window.__neshPlacing) return;   // order in flight: keep the button disabled (late distance / config updates call this)
   const needsPaymentConfirm = selectedPaymentMethod === 'gpay' && !gpayPaidCheckbox.checked && !neshUpiAutoPaid();
   const dc = activeDeliveryCharge();
   const stillCalculating = (state.roadDistanceLoading && dc) || goSeriesCfgPending();
@@ -18011,6 +18022,7 @@ payCancelBtn.addEventListener('click', () => {
 });
 
 payConfirmBtn.addEventListener('click', async () => {
+  if (window.__neshPlacing) return;   // an order is already being sent: a second tap must never create a duplicate
   const r = state.selectedRestaurant;
   const pc = state.pendingCheckout;
   if (!r || !pc) { closePaymentConfirm(); return; }
@@ -18115,8 +18127,11 @@ payConfirmBtn.addEventListener('click', async () => {
   const gstInfoOrder = currentGstInfo();
   const total = Math.max(0, itemsTotal + platformFee + deliveryFee - shopDiscount - couponDiscount) + (rainSurgeInfo ? rainSurgeInfo.amount : 0) + tipAmount + gstInfoOrder.amount;
 
+  window.__neshPlacing = true;
   payConfirmBtn.disabled = true;
   payConfirmBtn.textContent = "Placing order…";
+  // Slow network: Firebase waits for the server before the write resolves. Tell the customer instead of leaving a frozen button.
+  const _slowT = setTimeout(() => { try { if (window.__neshPlacing) payConfirmBtn.textContent = "Slow network… still placing your order"; } catch (e) {} }, 12000);
   let orderSaved = false;
 
   try {
@@ -18297,6 +18312,8 @@ payConfirmBtn.addEventListener('click', async () => {
       showInfoModal('Oops', neshUpiAutoPaid() ? "Your payment went through but the order could not be saved. Check your connection and tap Pay Online again. You will not be charged twice." : "Couldn't place the order. Please check your connection and try again.");
     }
   } finally {
+    clearTimeout(_slowT);
+    window.__neshPlacing = false;
     payConfirmBtn.disabled = false;
     payConfirmBtn.textContent = "Confirm & place order";
   }
@@ -19686,6 +19703,11 @@ try {
       window.GO_SERIES_PLATFORM_FEE = Number(cfg.goSeries.p) || 0;
       window.GO_SERIES_ITEM_MARKUP = Number(cfg.goSeries.m) || 0;
       // NOT marked loaded: the cached charge is only a fallback if the live one is very slow, so an old amount is never shown first
+    }
+    // Same for the whole-zone delivery rule (free above / free within km / ranges). Without this, a slow network made
+    // the app fall back to the global charge (no free-delivery rule) once the 8s wait was over. Live data replaces it.
+    if (cfg.zoneDelivery && typeof cfg.zoneDelivery === 'object' && !live.zoneDelivery && !window.ZONE_DELIVERY) {
+      window.ZONE_DELIVERY = cfg.zoneDelivery;
     }
   }
   const g = JSON.parse(localStorage.getItem('nesh_last_gps') || 'null');
@@ -21357,11 +21379,11 @@ var mineClick=async function(e){var b=e.target.closest('.prm-x');if(!b)return;va
 $('pr-mine').onclick=mineClick;if($('pr-mine2'))$('pr-mine2').onclick=mineClick;
 // red dot on the Orders buttons: an order in progress OR a payment request still waiting for a friend
 function dotSync(){var on=!!((typeof activeOrderBarData!=='undefined'&&activeOrderBarData)||window.__neshOpenReq>0);['cat-card-orders','your-orders-btn'].forEach(function(i){var e=$(i);if(e&&e.classList.contains('nesh-dot')!==on)e.classList.toggle('nesh-dot',on)})}
-setInterval(dotSync,1000);setTimeout(refreshMine,5000);
+setInterval(function(){if(!document.hidden)dotSync()},1000);setTimeout(refreshMine,5000);
 setInterval(function(){if(!document.hidden&&mineIds().length)refreshMine()},90000);
 var _ord=false;
 function sync(){var b=$('pr-open'),r=state.selectedRestaurant,v=!!(window.effUpi(r)&&cnt()&&!window.__neshPayFor);if(b)b.style.display=v?'':'none';if(v&&!_vis)refreshMine();_vis=v;var os=$('screen-orders'),oa=!!(os&&os.classList.contains('active'));if(oa&&!_ord)refreshMine();_ord=oa}
-setInterval(sync,700);
+setInterval(function(){if(!document.hidden)sync()},700);
 $('pr-open').onclick=function(){
   var r=state.selectedRestaurant;if(!r||!window.effUpi(r))return;
   if(typeof pendingLocation.lat!=='number'||!locLandmarkInput.value.trim()||digitsOnly(locContactInput.value).length<10){prPop('📍','Add your address first','Please set your delivery location, landmark and contact number above, then ask a friend to pay.','Okay, got it');return}
