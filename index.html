@@ -2108,7 +2108,9 @@ html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
       // Location is ON but GPS never got within 100 m (indoors / weak signal / battery saver).
       // Do NOT report that as "location off": use the best loose fix we have (the pin can still be adjusted), else one quick network fix.
       if (best && acc(best) <= 3000) { useLoose(best); return; }
-      if (lastErr && (lastErr.code === 1 || lastErr.code === 2)) { failNow(lastErr); return; }   // permission denied / services off: a real failure
+      // permission denied / location services switched off: a real failure. A plain "position unavailable" (GPS has not locked yet, code 2
+      // without an "off" message) is NOT: it still gets the quick network fix below instead of showing "Turn on location" right away.
+      if (lastErr && (lastErr.code === 1 || (lastErr.code === 2 && /not enabled|disabled|turned off|off/i.test(String(lastErr.message || ''))))) { failNow(lastErr); return; }
       try {
         geo.getCurrentPosition(
           p => { if (p && p.coords) useLoose(p); else failNow(); },
@@ -3053,6 +3055,10 @@ html:has(#order-summary-overlay.show), html:has(#order-summary-overlay.show) bod
 .cp-cpn-text{ flex:1; font:600 15px/1.2 Inter,sans-serif; color:#2B2410; }
 .cp-cpn-text.on{ color:#0E8A5C; font-weight:800; }
 .cp-cpn-arrow{ font-size:24px; color:#8A7E58; line-height:1; }
+/* ---- coupon nudge: same look as the free-delivery hint (fd-* classes) ---- */
+.cn-nudge{ margin:0 14px 14px; padding:12px 14px; border-radius:16px; cursor:pointer; text-align:left; position:relative; overflow:hidden; background:linear-gradient(120deg,#FFF1C2,#FFE08A); border:1.5px dashed #F2B705; color:#2B2410; }
+.cn-nudge .fd-pill{ background:#1C7A3B; }
+html[data-theme="dark"] .cn-nudge{ background:linear-gradient(120deg,#393012,#483B16); color:#E7E0CD; }
 .cp-sheet-ov{ position:absolute; inset:0; z-index:30; background:rgba(36,31,27,.55); display:none; align-items:flex-end; }
 .cp-sheet-ov.show{ display:flex; }
 .cp-sheet{ width:100%; max-height:82%; background:#fff; border-radius:20px 20px 0 0; display:flex; flex-direction:column; animation:locUp .22s ease-out; }
@@ -5649,6 +5655,7 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
             <span class="cp-cpn-text" id="cp-coupon-text">View coupons</span>
             <span class="cp-cpn-arrow">›</span>
           </button>
+          <div id="cp-cpn-nudge" class="cn-nudge" style="display:none;"></div>
         </div>
         <div class="cp-card">
           <div class="cp-card-head">
@@ -8204,7 +8211,7 @@ const NESH_ML_PAT = [
  [/^Ends in (\d+) days?$/, "$1 ദിവസത്തിൽ അവസാനിക്കും"],
  [/^Ends in (\d+) h$/, "$1 മണിക്കൂറിൽ അവസാനിക്കും"],
  [/^Min order ₹(\d+)(.*)$/, "മിനിമം ഓർഡർ ₹$1$2"],
- [/^Only (\d+) left$/, "$1 എണ്ണം മാത്രം ബാക്കി"],
+ [/^Only (\d+) left$/, "$1 എണ്ണം മാത്രം ബാക്കി"],  [/^Add ₹(\d+) more · get (.+)$/, "₹$1 കൂടി ചേർക്കൂ · $2 നേടൂ"],
  [/^Add items worth ₹(\d+).*$/, "₹$1-ന്റെ ഐറ്റംസ് കൂടി ചേർക്കൂ"],
  [/^Auto-accepts in (\d+)s if you don't respond$/, "പ്രതികരിച്ചില്ലെങ്കിൽ $1 സെക്കൻഡിൽ ഓട്ടോ-സ്വീകരിക്കും"],
  [/^Trip complete — (.+)$/, "യാത്ര പൂർത്തിയായി — $1"],
@@ -14274,7 +14281,7 @@ function updateCartBar() {
       cartTotalText.textContent = "No delivery charge · Items ₹" + total;
     } else if (freeAbove > 0 && total < freeAbove && !groupOrder) {
       titleEl.textContent = "Add ₹" + (Math.round((freeAbove - total) * 100) / 100) + " more";
-      cartTotalText.textContent = "to get FREE delivery 🛵";
+      cartTotalText.textContent = (dc && Number(dc.freeAbove) === freeAbove && (Number(dc.baseFee) || 0) > 0) ? ("for delivery at just ₹" + Math.round(Number(dc.baseFee)) + " (1 km) 🛵") : "to get FREE delivery 🛵";
       pct = Math.min(100, (total / freeAbove) * 100);
     } else if (tierInfo && tierInfo.have) {
       info.classList.add('unlocked');
@@ -14440,7 +14447,7 @@ function neshAutoApplyLoyalty() {
     for (let i = 0; i < ids.length; i++) {
       const c = (window.neshCoupons || []).find(x => x.id === ids[i]);
       if (!c || !couponsForShop(r.id).some(x => x.id === c.id)) continue;
-      if (couponCheck(c, r.id, items)) continue;   // not unlocked / min order not met
+      if (couponCheck(c, r.id, couponItemsTotal(r.id, c))) continue;   // not unlocked / min order not met
       window.neshCoupon = { id: c.id, restId: r.id, restName: r.name };
       return;
     }
@@ -14452,11 +14459,12 @@ window.__cpnAutoOff = null;
 function neshAutoApplyCoupons() {
   try {
     const r = state.selectedRestaurant; if (!r) return;
+    neshCouponRetarget(r);
     const items = couponItemsTotal(r.id);
     const cur = window.neshCoupon;
     if (cur && cur.restId === r.id) {
       const cd = (window.neshCoupons || []).find(x => x.id === cur.id);
-      const why = cd ? couponCheck(cd, r.id, items) : 'this coupon is no longer available.';
+      const why = cd ? couponCheck(cd, r.id, couponItemsTotal(r.id, cd)) : 'this coupon is no longer available.';
       if (!why) return;                                        // still valid -> keep it
       // No longer qualifies (e.g. the cart total fell below the minimum order): remove it automatically and tell the customer.
       window.neshCoupon = null;
@@ -14467,8 +14475,9 @@ function neshAutoApplyCoupons() {
     if (window.__cpnAutoOff === r.id || !(items > 0)) return;
     let best = null, bestAmt = 0;
     couponsForShop(r.id).forEach(c => {
-      if (!c.auto || c.loyalty || c.loyaltyS || couponCheck(c, r.id, items)) return;
-      const a = couponAmount(c, items);
+      const ci = couponItemsTotal(r.id, c);
+      if (!c.auto || c.loyalty || c.loyaltyS || couponCheck(c, r.id, ci)) return;
+      const a = couponAmount(c, ci);
       if (a > bestAmt) { best = c; bestAmt = a; }
     });
     if (!best) return;
@@ -14511,7 +14520,31 @@ function couponZoneOk(c) {
   try { return zonesAtPoint(pt).some(z => zs.indexOf(z.id) > -1); } catch (e) { return false; }
 }
 function couponScopeOk(c, restId) { return couponCardOk(c, restId) && couponZoneOk(c); }
-function couponsForShop(restId) { return window.neshCoupons.filter(c => !c.off && (!c.exp || c.exp > Date.now()) && (c.allShops || (c.shops && c.shops[restId])) && couponScopeOk(c, restId)); }
+// Is this coupon made for this shop? In a multi-shop checkout the coupon also counts when ANY other shop in the cart is one of its shops
+// (the first shop of the checkout can be a different shop; the coupon still works on its own shops' items).
+function couponShopOk(c, restId) {
+  if (c.allShops || (c.shops && c.shops[restId])) return true;
+  try {
+    const mr = (typeof window.neshMultiCartRests === 'function') ? window.neshMultiCartRests() : null;
+    if (mr && mr.length > 1 && c.shops && mr.some(r => r && r.id === restId)) return mr.some(r => r && c.shops[r.id]);
+  } catch (e) {}
+  return false;
+}
+// Customer applied a coupon on shop A, then added shop B (B became the first shop of the checkout): move the coupon to the new first shop
+// as long as it still qualifies, instead of silently dropping it.
+function neshCouponRetarget(r) {
+  try {
+    const cur = window.neshCoupon;
+    if (!r || !cur || cur.restId === r.id) return;
+    const mr = (typeof window.neshMultiCartRests === 'function') ? window.neshMultiCartRests() : null;
+    if (!mr || mr.length < 2 || !mr.some(x => x && x.id === cur.restId) || !mr.some(x => x && x.id === r.id)) return;
+    const cd = (window.neshCoupons || []).find(x => x.id === cur.id); if (!cd) return;
+    if (!couponsForShop(r.id).some(x => x.id === cd.id)) return;
+    if (couponCheck(cd, r.id, couponItemsTotal(r.id, cd))) return;
+    cur.restId = r.id; if (cur.restName) cur.restName = r.name;
+  } catch (e) {}
+}
+function couponsForShop(restId) { return window.neshCoupons.filter(c => !c.off && (!c.exp || c.exp > Date.now()) && couponShopOk(c, restId) && couponScopeOk(c, restId)); }
 function couponCheck(c, restId, items) {   // '' = fine, otherwise the reason it can't be used
   if (c.loyaltyS) {
     if (restId !== 'NESH_STORE') return 'This reward is only for Groceries.';
@@ -14520,7 +14553,7 @@ function couponCheck(c, restId, items) {   // '' = fine, otherwise the reason it
     return '';
   }
   if (c.loyalty) {   // loyalty reward: unlocked by the customer's order count, not by couponUses
-    if (restId === 'NESH_STORE' || (!c.allShops && !(c.shops && c.shops[restId]))) return 'This reward is not valid at this shop.';
+    if (restId === 'NESH_STORE' || !couponShopOk(c, restId)) return 'This reward is not valid at this shop.';
     { const ce = loyaltyClaimExpiry(); if (ce && ce <= Date.now()) return 'This reward has expired.'; }
     { const ts = loyaltyTimeState(window.NESH_LOYALTY); if (ts === 'ended') return 'This reward has expired.'; if (ts === 'soon') return 'This reward has not started yet.'; }
     if (loyaltyAvail() <= 0) return 'Complete ' + loyaltyN() + ' orders to unlock this reward.';
@@ -14528,7 +14561,7 @@ function couponCheck(c, restId, items) {   // '' = fine, otherwise the reason it
     return '';
   }
   if (c.off || (c.exp && c.exp <= Date.now())) return 'This coupon has expired.';
-  if (!c.allShops && !(c.shops && c.shops[restId])) return 'This coupon is not valid at this shop.';
+  if (!couponShopOk(c, restId)) return 'This coupon is not valid at this shop.';
   if (!couponCardOk(c, restId)) return 'This coupon is not valid in this section.';
   if (!couponZoneOk(c)) return 'This coupon is not valid in your delivery area.';
   if (c.minOrder > 0 && items < c.minOrder) return 'Add items worth \u20B9' + c.minOrder + ' or more to use this coupon.';
@@ -14537,11 +14570,15 @@ function couponCheck(c, restId, items) {   // '' = fine, otherwise the reason it
   if (c.maxUses > 0 && couponTotalLeft(c) <= 0) return 'Sorry, this coupon is fully claimed.';
   return '';
 }
-function couponItemsTotal(restId) {   // item total the coupon works on: ALL shops' items in a multi-shop checkout, else this shop's items
+function couponItemsTotal(restId, c) {   // item total the coupon works on: in a multi-shop checkout ONLY the items of the shops the coupon is made for (all shops if it is for every shop), else this shop's items
   try {
     const mr = (typeof window.neshMultiCartRests === 'function') ? window.neshMultiCartRests() : null;
-    if (mr && mr.length > 1 && mr.some(r => r && r.id === restId) && typeof window.neshMultiItemsTotal === 'function') {
-      const t = window.neshMultiItemsTotal(); if (typeof t === 'number') return t;
+    if (mr && mr.length > 1 && mr.some(r => r && r.id === restId)) {
+      if (c && !c.allShops && !c.loyaltyS && c.shops && Object.keys(c.shops).length && typeof window.neshMultiItemsTotalFor === 'function') {
+        const t0 = window.neshMultiItemsTotalFor(function (id) { return !!c.shops[id]; });
+        if (typeof t0 === 'number') return t0;
+      }
+      if (typeof window.neshMultiItemsTotal === 'function') { const t = window.neshMultiItemsTotal(); if (typeof t === 'number') return t; }
     }
   } catch (e) {}
   return currentCartItemsTotal();
@@ -14555,7 +14592,17 @@ function currentCouponDiscount() {
   const r = state.selectedRestaurant, sel = window.neshCoupon;
   if (!r || !sel || sel.restId !== r.id) return 0;
   const c = window.neshCoupons.find(x => x.id === sel.id); if (!c) return 0;
-  const items = couponItemsTotal(r.id);
+  // Multi-shop checkout where the first shop is NOT one of the coupon's shops: the reward is taken off the coupon shop's own order
+  // (planned by the multi-shop module), never off the first shop's bill.
+  try {
+    const plan = (typeof window.neshMultiCouponPlan === 'function') ? window.neshMultiCouponPlan() : null;
+    if (plan && plan.id === sel.id) {
+      if (plan.shopId !== r.id) return 0;
+      const roomP = currentCartItemsTotal() + currentPlatformFee() + currentDeliveryFee() - currentOrderShopDiscount();
+      return Math.max(0, Math.min(plan.amount, roomP));
+    }
+  } catch (e) {}
+  const items = couponItemsTotal(r.id, c);
   if (couponCheck(c, r.id, items)) return 0;
   // the discount is taken off the FIRST shop's order, so it can never be more than that shop's own bill (items of the other shops are not part of this order)
   const room = currentCartItemsTotal() + currentPlatformFee() + currentDeliveryFee() - currentOrderShopDiscount();
@@ -14578,7 +14625,7 @@ function refreshCouponUI() {
     if (!code) { if (window.neshCoupon) { if (/^LOYALTY/.test(String(window.neshCoupon.id))) window.__loyAutoOff = window.neshCoupon.restId; else window.__cpnAutoOff = window.neshCoupon.restId; window.neshCoupon = null; say('Coupon removed.', true); updateLocSummary(); try { renderLoyaltyCard(); renderLoyaltySCard(); } catch (e) {} if (typeof selectedPaymentMethod !== 'undefined' && selectedPaymentMethod === 'gpay') setPaymentMethod('gpay'); } return; }
     const c = couponsForShop(r.id).find(x => x.code === code);
     if (!c) { say('This code is not valid for this shop.', false); return; }
-    const why = couponCheck(c, r.id, couponItemsTotal(r.id));
+    const why = couponCheck(c, r.id, couponItemsTotal(r.id, c));
     if (why) { say(why, false); return; }
     window.neshCoupon = { id: c.id, restId: r.id };
     inp.value = '';
@@ -14619,6 +14666,7 @@ function renderCouponCards() {
   });
   list.forEach(c => {
     const applied = !!(window.neshCoupon && window.neshCoupon.id === c.id && window.neshCoupon.restId === r.id);
+    const items = couponItemsTotal(r.id, c);   // only the items of the shops this coupon is made for
     const why = couponCheck(c, r.id, items), short = (why && c.minOrder > 0 && items < c.minOrder) ? c.minOrder - items : 0;
     const off = c.gift ? 'FREE' : (c.type === 'percent' ? c.value + '%' : '\u20B9' + c.value);
     const bc = applied ? '#1C7A3B' : '#F2B705';
@@ -14643,7 +14691,7 @@ function renderCouponCards() {
         '<span style="font-size:11.5px;color:#6b5a1e;">' + (c.minOrder > 0 ? 'Min order \u20B9' + c.minOrder : 'No minimum order') + (c.maxOrder > 0 ? ' \u00B7 Max order \u20B9' + c.maxOrder : '') + (c.type === 'percent' && c.maxDiscount > 0 ? ' \u00B7 up to \u20B9' + c.maxDiscount : '') + '</span>' +
         '<span style="font-size:11px;color:#a07d00;">' + [couponExpText(c), c.maxUses > 0 ? (couponTotalLeft(c) > 0 ? 'Only ' + couponTotalLeft(c) + ' left' : 'Fully claimed') : ''].filter(Boolean).join(' \u00B7 ') + '</span>' +
         '<button type="button" style="margin-top:3px;border:none;border-radius:8px;padding:6px 8px;font-size:12px;font-weight:800;cursor:pointer;background:' + (applied ? '#1C7A3B' : (why ? '#e9e2c8' : '#2B2410')) + ';color:' + (why && !applied ? '#7a6a2a' : '#fff') + ';">' +
-          (applied ? 'APPLIED \u2713 (tap to remove)' : (short ? 'Add \u20B9' + short + ' more' : (why ? 'Not available' : (c.gift ? 'TAP TO APPLY \u2014 free ' + escapeHtml(c.giftName || 'gift') : 'TAP TO APPLY \u2014 save \u20B9' + couponAmount(c, items))))) + '</button>' +
+          (applied ? 'APPLIED \u2713 (tap to remove)' : (short ? 'Add \u20B9' + short + ' more \u00B7 get ' + (c.gift ? 'FREE gift' : '\u20B9' + couponAmount(c, c.minOrder) + ' OFF') : (why ? 'Not available' : (c.gift ? 'TAP TO APPLY \u2014 free ' + escapeHtml(c.giftName || 'gift') : 'TAP TO APPLY \u2014 save \u20B9' + couponAmount(c, items))))) + '</button>' +
       '</div>';
     card.querySelector('button').addEventListener('click', () => {
       if (applied) { window.neshApplyCoupon(''); return; }
@@ -15523,6 +15571,16 @@ function neshExtraKmFreeKm(dc) {
   } catch (e) {}
   return freeKm;
 }
+// "Free above" now means: item total reached the free-above amount -> the customer pays ONLY the shop's basic (base) charge
+// for the first 1 km, plus the per-km charge for every km beyond that 1 km (1 km = base only, 2 km = base + 1 km charge ...).
+function neshFreeAboveReached(dc) {
+  try { const min = Number(dc && dc.freeAbove) || 0; return min > 0 && currentCartItemsTotal() >= min; } catch (e) { return false; }
+}
+function neshFreeAboveFee(dc, km) {
+  const baseFee = Number(dc.baseFee) || 0, perKmFee = Number(dc.perKmFee) || 0;
+  const extra = Math.max(0, (Number(km) || 0) - 1);
+  return Math.round(baseFee + perKmFee * extra);
+}
 function deliveryFeeBeforeFree(ptOverride) {
   const dc = activeDeliveryCharge();
   if (!dc) return 0;
@@ -15533,12 +15591,16 @@ function deliveryFeeBeforeFree(ptOverride) {
   if (dc.freeUnderKm != null && km < Number(dc.freeUnderKm)) return small;
   const baseFee = Number(dc.baseFee) || 0;
   const perKmFee = Number(dc.perKmFee) || 0;
+  // (if a km-range / free-within-km rule already makes it fully free, the full charge stays the "waived" amount)
+  if (neshFreeAboveReached(dc) && !neshFreeByRangeRules(dc, ptOverride)) return neshFreeAboveFee(dc, km) + small;
   // Operator option (Operator Panel -> "Free delivery: extra km only"): past the free distance the customer pays
   // ONLY for the km beyond it (per-km rate x extra km, no base fee) instead of the full charge for the whole trip.
   if (window.NESH_EXTRA_KM_ONLY && perKmFee > 0) {
     let freeKm = neshExtraKmFreeKm(dc);
     // Per-km x extra km only (no base fee), never below ₹1: even 0.5 km past the free distance is NOT free.
-    if (freeKm > 0 && km >= freeKm) return Math.max(1, Math.ceil(perKmFee * (km - freeKm) - 1e-9)) + small;   // always rounded UP to the next whole rupee (4.1 -> 5)
+    // Never below the shop's basic (base) charge: that is the minimum delivery charge once the free distance is over.
+    // Basic charge covers the first km past the free distance; every km beyond that first km is added on top (per-km x km), rounded UP to the next whole rupee.
+    if (freeKm > 0 && km >= freeKm) return Math.max(1, Math.ceil(baseFee + perKmFee * Math.max(0, km - freeKm - 1) - 1e-9)) + small;
   }
   // Rounded to the nearest whole rupee (not paise) — this is a
   // Cash-on-Delivery app, so customers/drivers need round, practical change.
@@ -15548,8 +15610,18 @@ function deliveryFeeBeforeFree(ptOverride) {
 // (base + per-km x whole distance). 0 when the option is off, delivery is fully free, or no reduction applies.
 function deliveryFeeReduction(ptOverride) {
   try {
-    if (!window.NESH_EXTRA_KM_ONLY || isFreeDelivery(ptOverride)) return 0;
-    const dc = activeDeliveryCharge();
+    if (isFreeDelivery(ptOverride)) return 0;
+    const dc0 = activeDeliveryCharge();
+    // Free-above offer: normal full-trip charge (base + per-km x whole distance) struck through, basic charge + extra km shown as the offer price
+    if (dc0 && neshFreeAboveReached(dc0)) {
+      const d0 = currentDeliveryKm(ptOverride);
+      if (!d0) return 0;
+      if (dc0.freeUnderKm != null && d0.km < Number(dc0.freeUnderKm)) return 0;
+      const full0 = Math.round((Number(dc0.baseFee) || 0) + (Number(dc0.perKmFee) || 0) * d0.km);
+      return Math.max(0, full0 - neshFreeAboveFee(dc0, d0.km));
+    }
+    if (!window.NESH_EXTRA_KM_ONLY) return 0;
+    const dc = dc0;
     if (!dc) return 0;
     const perKmFee = Number(dc.perKmFee) || 0;
     if (perKmFee <= 0) return 0;
@@ -15560,7 +15632,7 @@ function deliveryFeeReduction(ptOverride) {
     const freeKm = neshExtraKmFreeKm(dc);
     if (!(freeKm > 0 && km >= freeKm)) return 0;
     const full = Math.round((Number(dc.baseFee) || 0) + perKmFee * km);
-    const actual = Math.max(1, Math.ceil(perKmFee * (km - freeKm) - 1e-9));
+    const actual = Math.max(1, Math.ceil((Number(dc.baseFee) || 0) + perKmFee * Math.max(0, km - freeKm - 1) - 1e-9));
     return Math.max(0, full - actual);
   } catch (e) { return 0; }
 }
@@ -15575,8 +15647,13 @@ function isFreeDelivery(ptOverride) {
   const dc = activeDeliveryCharge();
   if (!dc) return false;
   // Rule 1: item total reaches the free-above amount.
-  const min = Number(dc.freeAbove) || 0;
-  if (min > 0 && currentCartItemsTotal() >= min) return true;
+  // (Now only fully free when the shop has no charge at all; otherwise the basic charge + extra km applies - see neshFreeAboveFee.)
+  if (neshFreeAboveReached(dc) && (Number(dc.baseFee) || 0) <= 0 && (Number(dc.perKmFee) || 0) <= 0) return true;
+  return neshFreeByRangeRules(dc, ptOverride);
+}
+// Rules 3 + 2 (shop's order-value km ranges, free-within-km): these still make delivery completely free.
+function neshFreeByRangeRules(dc, ptOverride) {
+  if (!dc) return false;
   // Rule 3: the shop's own "order value range -> free up to N km" ranges (freeTiers).
   const tiers = Array.isArray(dc.freeTiers) ? dc.freeTiers : [];
   if (tiers.length) {
@@ -15830,7 +15907,7 @@ function updateLocSummary() {
   const tiersOn = !!(dc && Array.isArray(dc.freeTiers) && dc.freeTiers.length);
   const freeHintEl = document.getElementById('loc-summary-free-hint');
   if (freeHintEl) {
-    const showHint = freeMin > 0 && !freeDelivery && !showLoading && deliveryFee > 0;
+    const showHint = freeMin > 0 && itemsTotal < freeMin && !freeDelivery && !showLoading && deliveryFee > 0;
     const showWon = (freeMin > 0 || tiersOn) && freeDelivery && !showLoading && wouldBeFee > 0;
     freeHintEl.style.display = (showHint || showWon) ? "block" : "none";
     freeHintEl.classList.toggle('fd-won', !!showWon);
@@ -15839,9 +15916,9 @@ function updateLocSummary() {
       const pct = Math.max(4, Math.min(100, itemsTotal / freeMin * 100));
       freeHintEl.innerHTML =
         '<div class="fd-top"><span class="fd-ic">🛵</span><div class="fd-txt"><div class="fd-big">Add <b>₹' + left + '</b> more</div>' +
-        '<div class="fd-small">to get <span class="fd-pill">FREE delivery</span> · save ₹' + deliveryFee + '</div></div></div>' +
+        '<div class="fd-small">to get <span class="fd-pill">' + ((dc && Number(dc.freeAbove) === freeMin && (Number(dc.baseFee) || 0) > 0) ? 'basic delivery charge' : 'FREE delivery') + '</span> · save ₹' + (function () { try { const dk = currentDeliveryKm(); return (dc && Number(dc.freeAbove) === freeMin && dk) ? Math.max(0, deliveryFee - neshFreeAboveFee(dc, dk.km)) : deliveryFee; } catch (e) { return deliveryFee; } })() + '</div></div></div>' +
         '<div class="fd-track"><i style="width:' + pct + '%"></i><span class="fd-rider" style="left:' + pct + '%">🛵</span><em class="fd-goal">🎁</em></div>' +
-        '<div class="fd-scale"><span>₹' + itemsTotal + '</span><span>₹' + freeMin + ' = FREE</span></div>';
+        '<div class="fd-scale"><span>₹' + itemsTotal + '</span><span>₹' + freeMin + (((dc && Number(dc.freeAbove) === freeMin && (Number(dc.baseFee) || 0) > 0)) ? ' = BASIC CHARGE' : ' = FREE') + '</span></div>';
     } else if (showWon) {
       freeHintEl.innerHTML = '<div class="fd-top"><span class="fd-ic">🎉</span><div class="fd-txt"><div class="fd-big">FREE delivery unlocked!</div><div class="fd-small">You saved ₹' + wouldBeFee + ' on delivery</div></div></div>';
     }
@@ -17651,6 +17728,7 @@ function checkoutSavingsParts() {
   let sd = 0, sc = 0, sf = 0, sr = 0;
   try { sd = currentOrderShopDiscount() || 0; } catch (e) {}
   try { sc = currentCouponDiscount() || 0; } catch (e) {}
+  try { const _pl = (typeof window.neshMultiCouponPlan === 'function') ? window.neshMultiCouponPlan() : null; if (!sc && _pl && window.neshCoupon && _pl.id === window.neshCoupon.id) sc = Number(_pl.amount) || 0; } catch (e) {}
   try { if (isFreeDelivery()) sf = Number(deliveryFeeBeforeFree()) || 0; } catch (e) {}
   try { sr = deliveryFeeReduction() || 0; } catch (e) {}
   return { sd, sc, sf, sr, total: Math.round((sd + sc + sf + sr) * 100) / 100 };
@@ -17721,11 +17799,39 @@ function cpSyncHeader() {
   card.style.display = has ? '' : 'none';
   const txt = document.getElementById('cp-coupon-text');
   const ap = (window.neshCoupon && window.neshCoupon.restId === r.id) ? (window.neshCoupons || []).find(x => x.id === window.neshCoupon.id) : null;
-  if (ap) { let sv = 0; try { sv = currentCouponDiscount(); } catch (e) {} txt.textContent = 'Coupon ' + ap.code + ' applied' + (sv > 0 ? ' · saved ₹' + sv : ''); txt.classList.add('on'); }
+  if (ap) { let sv = 0; try { sv = currentCouponDiscount(); if (!sv) { const _pl = (typeof window.neshMultiCouponPlan === 'function') ? window.neshMultiCouponPlan() : null; if (_pl && _pl.id === ap.id) sv = Number(_pl.amount) || 0; } } catch (e) {} txt.textContent = 'Coupon ' + ap.code + ' applied' + (sv > 0 ? ' · saved ₹' + sv : ''); txt.classList.add('on'); }
   else { txt.textContent = 'View coupons'; txt.classList.remove('on'); }
   const apId = ap ? ap.id : null;
   if (apId && apId !== cpLastCoupon) document.getElementById('cp-coupon-sheet').classList.remove('show');
   cpLastCoupon = apId;
+  try { neshCouponNudge(r); } catch (e) {}
+}
+// "Add Rs X more & get Rs Y OFF": the nearest coupon the customer has not reached yet (only the minimum order is missing)
+const NESH_CPN_NUDGE_WITHIN = 70;   // show the coupon nudge only when this many rupees (or fewer) are missing
+function neshCouponNudge(r) {
+  const el = document.getElementById('cp-cpn-nudge'); if (!el) return;
+  const applied = (window.neshCoupon && window.neshCoupon.restId === r.id) ? window.neshCoupon.id : null;
+  let cur = 0; if (applied) { try { cur = currentCouponDiscount(); } catch (e) {} }
+  let best = null;
+  (couponsForShop(r.id) || []).forEach(c => {
+    if (c.secret || c.loyalty || c.loyaltyS || c.id === applied || !(c.minOrder > 0)) return;
+    const items = couponItemsTotal(r.id, c), short = c.minOrder - items;
+    if (short <= 0 || short > NESH_CPN_NUDGE_WITHIN || couponCheck(c, r.id, c.minOrder)) return;   // only when the coupon is almost unlocked   // already reachable, or blocked for another reason
+    const amt = c.gift ? 0 : couponAmount(c, c.minOrder);
+    if (applied && (c.gift || amt <= cur)) return;                // with a coupon on, only suggest a better one
+    if (!best || short < best.short || (short === best.short && amt > best.amt)) best = { c: c, items: items, short: short, amt: amt };
+  });
+  if (!best) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  const c = best.c, pct = Math.max(4, Math.min(100, Math.round(best.items / c.minOrder * 100)));
+  const prize = c.gift ? 'FREE ' + escapeHtml(c.giftName || 'gift') : '\u20B9' + best.amt + ' OFF';
+  const tail = applied ? '\u20B9' + (best.amt - cur) + ' more savings' : 'code ' + escapeHtml(c.code);
+  el.innerHTML =
+    '<div class="fd-top"><span class="fd-ic">\uD83C\uDFF7\uFE0F</span><div class="fd-txt"><div class="fd-big">Add <b>\u20B9' + best.short + '</b> more</div>' +
+    '<div class="fd-small">to get <span class="fd-pill">' + prize + '</span> \u00B7 ' + tail + '</div></div></div>' +
+    '<div class="fd-track"><i style="width:' + pct + '%"></i><span class="fd-rider" style="left:' + pct + '%">\uD83C\uDF9F\uFE0F</span><em class="fd-goal">\uD83C\uDF81</em></div>' +
+    '<div class="fd-scale"><span>\u20B9' + best.items + '</span><span>\u20B9' + c.minOrder + ' = ' + prize + '</span></div>';
+  el.style.display = 'block';
+  el.onclick = () => { const o = document.getElementById('cp-coupon-open'); if (o) o.click(); };
 }
 // Zepto-style: tapping the address opens the full-screen "Select delivery location" page;
 // Confirm brings the customer straight back to this card with the new pin applied.
@@ -20650,7 +20756,7 @@ if ('serviceWorker' in navigator) {
       if (typeof combo === 'number') window.__neshComboItems = combo;
       try {
         var free = isFreeDelivery();
-        return { df: free ? 0 : deliveryFeeBeforeFree(), free: free, was: free ? (Number(deliveryFeeBeforeFree()) || 0) : 0 };
+        return { df: free ? 0 : deliveryFeeBeforeFree(), free: free, was: free ? (Number(deliveryFeeBeforeFree()) || 0) : 0, red: free ? 0 : (Number(deliveryFeeReduction()) || 0) };
       } finally { window.__neshComboItems = null; }
     }); } finally { M.raw = false; }
   }
@@ -20710,7 +20816,7 @@ if ('serviceWorker' in navigator) {
       var _ac = window.neshCoupon;
       if (_ac && !_ac.auto && !/^LOYALTY/.test(String(_ac.id))) {
         var _cd = (window.neshCoupons || []).find(function (x) { return x.id === _ac.id; });
-        var _why = _cd ? couponCheck(_cd, _ac.restId, couponItemsTotal(_ac.restId)) : '';
+        var _why = _cd ? couponCheck(_cd, _ac.restId, couponItemsTotal(_ac.restId, _cd)) : '';
         if (_cd && _why && /section/.test(_why)) {
           window.neshCoupon = null; window.__cpnPending = _cd.id;
           if (window.neshCouponSay) window.neshCouponSay('Coupon ' + _cd.code + ' removed. ' + _why, false);
@@ -20722,7 +20828,7 @@ if ('serviceWorker' in navigator) {
         var _pd = (window.neshCoupons || []).find(function (x) { return x.id === window.__cpnPending; });
         var _pr = state.selectedRestaurant;
         if (!_pd) window.__cpnPending = null;
-        else if (_pr && couponsForShop(_pr.id).some(function (x) { return x.id === _pd.id; }) && !couponCheck(_pd, _pr.id, couponItemsTotal(_pr.id))) {
+        else if (_pr && couponsForShop(_pr.id).some(function (x) { return x.id === _pd.id; }) && !couponCheck(_pd, _pr.id, couponItemsTotal(_pr.id, _pd))) {
           window.neshCoupon = { id: _pd.id, restId: _pr.id }; window.__cpnPending = null;
           if (window.neshCouponSay) window.neshCouponSay('Coupon ' + _pd.code + ' applied \u2705', true);
           try { updateLocSummary(); } catch (e) {}
@@ -20732,6 +20838,8 @@ if ('serviceWorker' in navigator) {
     if (liveIds.length < 2) {
       var wasMulti = !!(M.bills || M.pending || M.block || (M.override && Object.keys(M.override).length));
       box.style.display = 'none'; M.block = ''; M.pending = false; M.override = {}; M.bills = null; M.othersSum = 0; M.allReady = true;
+      M.routeKm = null; M.routeRed = 0; M.routeFar = null; M.routeFree = false; M.cpn = null;
+      if (!M.placing && !(state.lastOrder && state.lastOrder.orderKey !== M.baseKey)) M.cpnSnap = null;
       try { setBill(false); } catch (e) {}
       // Recompute the single-shop bill, bottom bar and Pay button (they still showed the old multi-shop total / "Calculating delivery…").
       // Only once (wasMulti), otherwise updateLocSummary -> schedule -> refresh would loop.
@@ -20742,6 +20850,9 @@ if ('serviceWorker' in navigator) {
     Object.keys(M.need).forEach(function (k) { fetchKm(M.need[k], k); });
     specRoute(all, M.pc);
     var cov = coverage(all);
+    M.routeKm = cov.km || null;
+    M.routeRed = cov.fee ? (cov.fee.free ? (Number(cov.fee.was) || 0) : (Number(cov.fee.red) || 0)) : 0;
+    M.routeFar = cov.far ? cov.far.id : null; M.routeFree = !!(cov.fee && cov.fee.free);
     var ovKey = JSON.stringify(cov.ov);
     if (ovKey !== JSON.stringify(M.override || {})) {          // the normal bill / order code reads M.override (see currentDeliveryFee below)
       M.override = cov.ov;
@@ -20758,9 +20869,11 @@ if ('serviceWorker' in navigator) {
     });
     var bills = all.slice(1);
     bills.forEach(function (b) {
-      if (b.covered) { b.df = 0; b.free = false; b.was = 0; b.total = rup(b.items + b.pf + b.rs); }
-      else if (cov.far && b.id === cov.far.id) { b.df = cov.fee.df; b.free = cov.fee.free; b.was = cov.fee.was; b.routeKm = cov.km; b.total = rup(b.items + b.pf + b.df + b.rs); }
+      if (b.covered) { b.df = 0; b.free = false; b.was = 0; b.total = rup(b.items + b.pf + b.rs + (b.gs || 0)); }
+      else if (cov.far && b.id === cov.far.id) { b.df = cov.fee.df; b.free = cov.fee.free; b.was = cov.fee.was; b.routeKm = cov.km; b.total = rup(b.items + b.pf + b.df + b.rs + (b.gs || 0)); }
     });
+    try { cpnPlan(all, bills); } catch (x) { M.cpn = null; }
+    M.cpnSnap = M.cpn;   // kept for the other shops' orders, which are placed after the first order has cleared the cart
     M.bills = bills;
     M.pending = cov.pending || all.some(function (b) { return !b.ready; });
     var warn = bills.filter(function (b) { return b.closed || b.short > 0; })[0];
@@ -20860,11 +20973,14 @@ if ('serviceWorker' in navigator) {
     });
     var calc = !M.allReady || M.pending || grand == null || (state.roadDistanceLoading && true);
     var wrKm = ''; try { M.bills.forEach(function (b) { if (b.routeKm > 0) wrKm = (Math.round(b.routeKm * 10) / 10).toFixed(1); }); } catch (x) {}   // whole route of all shops, same as the Delivery charge line in the panel
+    if (!wrKm && M.routeKm > 0) wrKm = (Math.round(M.routeKm * 10) / 10).toFixed(1);   // the farthest shop can be the main shop (not in M.bills)
+    var wrRed = (!calc && Number(M.routeRed) > 0) ? Number(M.routeRed) : 0;
     // One row per shop (so it is clear every shop's items are in this order), then the combined total.
     var html = shopRows +
       '<div class="bs-row"><span><b>Item total</b> ' + cnt(count) + '</span><span><b>₹' + rup(items) + '</b></span></div>' +
-      '<div class="bs-row"><span' + (wrKm ? ' class="has-km"' : '') + '>Delivery charge' + (wrKm ? '<em class="bs-km on"> | ' + wrKm + ' kms</em>' : '') + '</span><span>' + (calc ? 'Calculating…' : (del > 0 ? '₹' + rup(del) : '<b style="color:var(--leaf);">FREE</b>')) + '</span></div>';
+      '<div class="bs-row"><span' + (wrKm ? ' class="has-km"' : '') + '>Delivery charge' + (wrKm ? '<em class="bs-km on"> | ' + wrKm + ' kms</em>' : '') + '</span><span>' + (calc ? 'Calculating…' : ((wrRed > 0 ? '<s style="color:var(--muted);">₹' + rup(del + wrRed) + '</s> ' : '') + (del > 0 ? '<b style="color:var(--leaf);">₹' + rup(del) + '</b>' : '<b style="color:var(--leaf);">FREE</b>'))) + '</span></div>';
     if (gstSum > 0 && !calc) html += '<div class="bs-row"><span>🏛️ Government charge</span><span>₹' + rup(gstSum) + '</span></div>';
+    if (M.cpn && M.cpn.amount > 0 && !calc) html += '<div class="bs-row"><span>🎟️ Coupon ' + esc(M.cpn.code) + ' <small>(' + esc(M.cpn.shopName) + ')</small></span><span style="color:var(--leaf);">−₹' + rup(M.cpn.amount) + '</span></div>';
     if (rain > 0 && !calc) html += '<div class="bs-row"><span>🌧️ Rain surge <small>(goes to your rider)</small></span><span>₹' + rup(rain) + '</span></div>';
     if (e.top.getAttribute('data-h') !== html) { e.top.setAttribute('data-h', html); e.top.innerHTML = html; }
     var stEl = document.querySelector('.bs-total:not(.mp-clone) .lp-stamp'), stH = stEl ? stEl.outerHTML.split('lpArc').join('lpArc2') : '';
@@ -20897,6 +21013,8 @@ if ('serviceWorker' in navigator) {
       state.selectedRestaurant = rest; state.cart = d.cart; state.cartGrams = d.grams || {}; state.cartSizes = d.sizes || {};
       state.pendingCheckout = Object.assign({}, mm.pc);
       state.roadDistanceKey = null; state.roadDistanceKm = null;
+      var _cp = mm.cpn || mm.cpnSnap;
+      window.neshCoupon = (_cp && _cp.shopId === id) ? { id: _cp.id, restId: id } : null;   // the reward goes on the coupon shop's own order
       try { await ensureRoadDistance(); } catch (e) {}
       try { setPaymentMethod('cod'); } catch (e) {}
       var before = state.lastOrder && state.lastOrder.orderKey;
@@ -20953,6 +21071,41 @@ if ('serviceWorker' in navigator) {
     });
     return total;
   };
+  // same, but only for the shops pred(shopId) accepts (a coupon made for selected shops works on THEIR items only)
+  window.neshMultiItemsTotalFor = function (pred) {
+    if (!M || !M.ids) return null;
+    var sv = saved(), live = M.ids.filter(function (id) { return sv[id]; });
+    if (live.length < 2) return null;
+    var cur = state.selectedRestaurant, curId = cur && cur.id, total = 0;
+    if (curId && pred(curId)) { try { total += currentCartItemsTotal(); } catch (e) {} }
+    live.forEach(function (id) {
+      if (id === curId || !pred(id)) return;
+      var rest = M.rests[id], d = sv[id]; if (!rest || !d) return;
+      try { total += withShop(rest, d, function () { return currentCartItemsTotal(); }); } catch (e) {}
+    });
+    return total;
+  };
+  window.neshMultiCouponPlan = function () { return M ? (M.cpn || (M.placing ? M.cpnSnap : null) || null) : null; };
+  // A coupon made for selected shops: the reward comes off THOSE shops' items. If the first shop of the checkout is one of them nothing changes
+  // (reward on the first order). If not, the reward is placed on the order of the first coupon shop in the cart.
+  function cpnPlan(all, bills) {
+    M.cpn = null;
+    var sel = window.neshCoupon; if (!sel || !all.length) return;
+    var c = (window.neshCoupons || []).find(function (x) { return x.id === sel.id; });
+    if (!c || c.allShops || c.gift || c.loyalty || c.loyaltyS || !c.shops) return;
+    var first = all[0];
+    if (c.shops[first.id]) return;
+    var rec = null;
+    for (var i = 0; i < bills.length; i++) { if (c.shops[bills[i].id]) { rec = bills[i]; break; } }
+    if (!rec || !rec.ready) return;
+    var items = couponItemsTotal(first.id, c);
+    if (couponCheck(c, first.id, items)) return;
+    var room = rec.items + (rec.pf || 0) + (rec.df || 0) + (rec.rs || 0);
+    var amt = Math.max(0, Math.min(couponAmount(c, items), room));
+    if (!(amt > 0)) return;
+    M.cpn = { id: c.id, code: c.code, shopId: rec.id, shopName: rec.name, amount: amt };
+    rec.cpn = amt; rec.total = rup(rec.total - amt);
+  }
   window.neshStartMulti = function () {
     dedupeSaved();
     var all = saved();
@@ -21115,6 +21268,17 @@ if ('serviceWorker' in navigator) {
       if (_live >= 2) return M.override[r.id];   // a single shop left -> its own delivery rule, never a leftover multi-shop charge
     }
     return _cdf.apply(this, arguments);
+  };
+  // Delivery offer (free-above saving) in a multi-shop order: the customer pays ONE whole-route charge, carried by the farthest shop.
+  // So the offer / "You saved" / order.deliverySaved must come from that route charge, not from this shop's own distance.
+  var _cdr = deliveryFeeReduction;
+  deliveryFeeReduction = function () {
+    var r = state.selectedRestaurant;
+    if (M && !M.raw && M.override && r && typeof M.override[r.id] === 'number') {
+      var _sv2 = saved(), _live2 = (M.ids || []).filter(function (id) { return _sv2[id]; }).length;
+      if (_live2 >= 2) return (M.routeFar === r.id && !M.routeFree) ? (Number(M.routeRed) || 0) : 0;
+    }
+    return _cdr.apply(this, arguments);
   };
   var _ou = updateLocSummary;
   updateLocSummary = function () { var r = _ou.apply(this, arguments); schedule(); return r; };
