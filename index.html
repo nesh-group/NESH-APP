@@ -11245,6 +11245,8 @@ loginSubmitBtn.addEventListener('click', async () => {
   const number = loginNumberInput.value;
   if (number.length !== 10) return;
   loginSubmitBtn.disabled = true;
+  const OTP_REQUIRED = false;   // set to true to turn OTP back on
+  if (!OTP_REQUIRED) { await loginAfterVerified(number); return; }
   try {
     if (!window.fbAuth && !nativeAuth()) throw new Error('auth-missing');
     await sendOtp(number);
