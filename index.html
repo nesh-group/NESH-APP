@@ -4494,6 +4494,18 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
       </div>
       <p class="error-text" id="login-error" style="display:none;"></p>
       <button class="btn-primary" id="login-submit" disabled>Continue</button>
+      <div id="login-otp-wrap" style="display:none;">
+        <p class="subtitle" id="login-otp-sub">Enter the 6-digit code we sent you.</p>
+        <div class="field">
+          <input id="login-otp" type="tel" maxlength="6" placeholder="6-digit code" inputmode="numeric" autocomplete="one-time-code" />
+        </div>
+        <button class="btn-primary" id="login-otp-verify" disabled style="margin-top:14px;">Verify &amp; continue</button>
+        <div style="display:flex;justify-content:space-between;margin-top:14px;">
+          <button id="login-otp-resend" type="button" style="background:none;border:0;color:#C97F00;font:700 14px Inter,sans-serif;cursor:pointer;padding:6px 0;" disabled>Resend code</button>
+          <button id="login-otp-change" type="button" style="background:none;border:0;color:#C97F00;font:700 14px Inter,sans-serif;cursor:pointer;padding:6px 0;">Change number</button>
+        </div>
+      </div>
+      <div id="recaptcha-container"></div>
     </div>
   </section>
 
@@ -5884,6 +5896,16 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
 
   const fbApp = initializeApp(firebaseConfig);
   const db = getDatabase(fbApp);
+  // Web OTP (browser / website). The Android app uses the native Firebase plugin instead.
+  // Loaded lazily and fully guarded so a problem here can never stop the shops from loading.
+  try {
+    const isNativeApp = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+    if (!isNativeApp) {
+      import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js").then(m => {
+        window.fbAuth = { auth: m.getAuth(fbApp), RecaptchaVerifier: m.RecaptchaVerifier, signInWithPhoneNumber: m.signInWithPhoneNumber };
+      }).catch(e => console.warn('web auth unavailable', e));
+    }
+  } catch (e) { console.warn('web auth unavailable', e); }
 
   // ---------- Reliable reconnect after the app is minimized ----------
   // Mobile browsers/PWAs freeze the RTDB websocket while the tab/app is in
@@ -10018,6 +10040,7 @@ taxiBookBtn.addEventListener('click', async () => {
     loginNumberInput.value = "";
     loginErrorEl.style.display = "none";
     loginSubmitBtn.disabled = true;
+    if (window.neshOtpReset) window.neshOtpReset();
     showScreen('login');
     return;
   }
@@ -10398,6 +10421,7 @@ taxiChoiceDriverOpenBtn.addEventListener('click', async () => {
     loginNumberInput.value = "";
     loginErrorEl.style.display = "none";
     loginSubmitBtn.disabled = true;
+    if (window.neshOtpReset) window.neshOtpReset();
     showScreen('login');
     return;
   }
@@ -11083,8 +11107,7 @@ loginNumberInput.addEventListener('input', () => {
 // account. Either way this whole screen is only ever shown once — after a
 // successful login/register the session is saved and reused on every
 // future visit/checkout until the customer explicitly logs out.
-loginSubmitBtn.addEventListener('click', async () => {
-  const number = loginNumberInput.value;
+async function loginAfterVerified(number) {
   loginSubmitBtn.disabled = true;
   try {
     const { db, ref, get } = window.fb;
@@ -11111,9 +11134,183 @@ loginSubmitBtn.addEventListener('click', async () => {
   } finally {
     loginSubmitBtn.disabled = false;
   }
+}
+
+// ---------- OTP (Firebase Phone Auth) ----------
+const otpWrap = document.getElementById('login-otp-wrap');
+const otpInput = document.getElementById('login-otp');
+const otpVerifyBtn = document.getElementById('login-otp-verify');
+const otpResendBtn = document.getElementById('login-otp-resend');
+const otpChangeBtn = document.getElementById('login-otp-change');
+const otpSub = document.getElementById('login-otp-sub');
+let otpConfirmation = null, otpNumber = '', otpTimer = null, otpVerifier = null, otpSends = 0;
+const OTP_MAX_SENDS = 3, OTP_RESEND_SECS = 120;
+function fmtSecs(n) { return Math.floor(n / 60) + ':' + String(n % 60).padStart(2, '0'); }
+
+function neshOtpReset() {
+  otpConfirmation = null; otpNumber = ''; otpSends = 0;
+  clearInterval(otpTimer);
+  otpWrap.style.display = 'none';
+  otpInput.value = '';
+  otpVerifyBtn.disabled = true;
+  loginNumberInput.readOnly = false;
+  loginSubmitBtn.style.display = '';
+}
+window.neshOtpReset = neshOtpReset;
+
+function startResendTimer() {
+  clearInterval(otpTimer);
+  let left = OTP_RESEND_SECS;
+  otpResendBtn.disabled = true;
+  otpResendBtn.textContent = 'Resend in ' + fmtSecs(left);
+  otpTimer = setInterval(() => {
+    left--;
+    if (left <= 0) {
+      clearInterval(otpTimer);
+      otpResendBtn.disabled = otpSends >= OTP_MAX_SENDS;
+      otpResendBtn.textContent = otpSends >= OTP_MAX_SENDS ? 'Limit reached' : 'Resend code';
+    } else otpResendBtn.textContent = 'Resend in ' + fmtSecs(left);
+  }, 1000);
+}
+
+function nativeAuth() {
+  try {
+    const C = window.Capacitor;
+    return (C && C.isNativePlatform && C.isNativePlatform() && C.Plugins && C.Plugins.FirebaseAuthentication) || null;
+  } catch (_) { return null; }
+}
+let otpAutoVerified = false;
+
+async function sendOtp(number) {
+  const na = nativeAuth();
+  if (na) {
+    // Android app: native Firebase Phone Auth (no reCAPTCHA).
+    await new Promise(async (resolve, reject) => {
+      const handles = [];
+      let finished = false;
+      const cleanup = () => { handles.forEach(h => { try { h.remove(); } catch (_) {} }); };
+      const done = (fn, v) => { if (finished) return; finished = true; clearTimeout(tm); cleanup(); fn(v); };
+      const tm = setTimeout(() => { const e = new Error('timeout'); e.code = 'auth/timeout'; done(reject, e); }, 60000);
+      try {
+        handles.push(await na.addListener('phoneCodeSent', ev => {
+          otpConfirmation = { confirm: code => na.confirmVerificationCode({ verificationId: ev.verificationId, verificationCode: code }) };
+          done(resolve);
+        }));
+        handles.push(await na.addListener('phoneVerificationCompleted', () => {
+          otpAutoVerified = true; otpConfirmation = { confirm: async () => ({}) }; done(resolve);
+        }));
+        handles.push(await na.addListener('phoneVerificationFailed', ev => {
+          const msg = (ev && ev.message) || '';
+          const e = new Error(msg); e.code = /quota/i.test(msg) ? 'auth/quota-exceeded' : 'auth/native-failed'; done(reject, e);
+        }));
+        await na.signInWithPhoneNumber({ phoneNumber: '+91' + number });
+      } catch (err) {
+        if (err && /quota/i.test(err.message || '')) err.code = 'auth/quota-exceeded';
+        done(reject, err);
+      }
+    });
+    otpSends++;
+    return;
+  }
+  // Browser / website: web Firebase Phone Auth with invisible reCAPTCHA.
+  const { auth, RecaptchaVerifier, signInWithPhoneNumber } = window.fbAuth;
+  if (!otpVerifier) otpVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+  try {
+    otpConfirmation = await signInWithPhoneNumber(auth, '+91' + number, otpVerifier);
+    otpSends++;
+  } catch (e) {
+    try { otpVerifier.clear(); } catch (_) {}
+    otpVerifier = null;
+    throw e;
+  }
+}
+
+function showOtpStep(number) {
+  otpNumber = number;
+  loginNumberInput.readOnly = true;
+  loginSubmitBtn.style.display = 'none';
+  otpSub.textContent = 'Enter the 6-digit code sent to +91 ' + number + '.';
+  otpWrap.style.display = 'block';
+  otpInput.value = '';
+  otpVerifyBtn.disabled = true;
+  startResendTimer();
+  setTimeout(() => otpInput.focus(), 50);
+}
+
+// Returns true if the error means "daily SMS quota used up".
+// TEMPORARY: in that case login continues without OTP (quota resets daily).
+function isQuotaError(e) { return !!e && e.code === 'auth/quota-exceeded'; }
+
+loginSubmitBtn.addEventListener('click', async () => {
+  const number = loginNumberInput.value;
+  if (number.length !== 10) return;
+  loginSubmitBtn.disabled = true;
+  try {
+    if (!window.fbAuth && !nativeAuth()) throw new Error('auth-missing');
+    await sendOtp(number);
+    loginErrorEl.style.display = 'none';
+    if (otpAutoVerified) { otpAutoVerified = false; await loginAfterVerified(number); return; }
+    showOtpStep(number);
+  } catch (e) {
+    if (isQuotaError(e)) {
+      await loginAfterVerified(number);   // quota over -> skip OTP for now
+      return;
+    }
+    const c = e && e.code;
+    if (c === 'auth/invalid-phone-number') showLoginError('Enter a valid 10-digit mobile number.');
+    else if (c === 'auth/too-many-requests') showLoginError('Too many attempts. Please try again after some time.');
+    else if (c === 'auth/network-request-failed') showLoginError("Couldn't send the code — check your connection and try again.");
+    else showLoginError("Couldn't send the code. Please try again.");
+    loginSubmitBtn.disabled = false;
+  }
+});
+
+otpInput.addEventListener('input', () => {
+  otpInput.value = digitsOnly(otpInput.value);
+  otpVerifyBtn.disabled = otpInput.value.length !== 6;
+  loginErrorEl.style.display = 'none';
+});
+
+otpVerifyBtn.addEventListener('click', async () => {
+  if (!otpConfirmation || otpInput.value.length !== 6) return;
+  otpVerifyBtn.disabled = true;
+  try {
+    await otpConfirmation.confirm(otpInput.value);
+  } catch (e) {
+    const c = e && e.code;
+    showLoginError(c === 'auth/code-expired' ? 'Code expired. Tap Resend code.' :
+                   c === 'auth/network-request-failed' ? 'Check your connection and try again.' :
+                   'Wrong code. Please check and try again.');
+    otpVerifyBtn.disabled = false;
+    return;
+  }
+  const n = otpNumber;
+  await loginAfterVerified(n);
+});
+
+otpResendBtn.addEventListener('click', async () => {
+  if (otpSends >= OTP_MAX_SENDS || !otpNumber) return;
+  otpResendBtn.disabled = true;
+  try {
+    await sendOtp(otpNumber);
+    loginErrorEl.style.display = 'none';
+    startResendTimer();
+  } catch (e) {
+    if (isQuotaError(e)) { await loginAfterVerified(otpNumber); return; }
+    showLoginError("Couldn't resend the code. Please try again.");
+    otpResendBtn.disabled = false;
+  }
+});
+
+otpChangeBtn.addEventListener('click', () => {
+  neshOtpReset();
+  loginErrorEl.style.display = 'none';
+  loginSubmitBtn.disabled = loginNumberInput.value.length !== 10;
+  loginNumberInput.focus();
 });
 
 loginBackBtn.addEventListener('click', () => {
+  neshOtpReset();
   // Back out of the login step to wherever browsing was happening. Clear
   // the pending resume so a later, unrelated login doesn't auto-book a
   // stale taxi ride or auto-open checkout.
@@ -17945,6 +18142,7 @@ function cpPrepare() {
     loginNumberInput.value = "";
     loginErrorEl.style.display = "none";
     loginSubmitBtn.disabled = true;
+    if (window.neshOtpReset) window.neshOtpReset();
     showScreen('login');
     return false;
   }
@@ -19275,6 +19473,7 @@ function logoutUser() {
   loginNumberInput.value = "";
   loginErrorEl.style.display = "none";
   loginSubmitBtn.disabled = true;
+  if (window.neshOtpReset) window.neshOtpReset();
   goToCategoryScreen();
 }
 document.getElementById('logout-btn').addEventListener('click', () => {
