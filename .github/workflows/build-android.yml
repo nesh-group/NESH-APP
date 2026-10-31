@@ -278,6 +278,7 @@ jobs:
           npm install @capacitor/push-notifications
           npm install @capacitor/local-notifications
           npm install @capacitor/share
+          npm install @capacitor-firebase/authentication firebase
           npm install @capawesome/capacitor-app-update
           npm install @capacitor/assets --save-dev
 
@@ -304,6 +305,9 @@ jobs:
                 "launchAutoHide": true,
                 "backgroundColor": "#F2B705",
                 "showSpinner": false
+              },
+              "FirebaseAuthentication": {
+                "providers": ["phone"]
               }
             }
           }
