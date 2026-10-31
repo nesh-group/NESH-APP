@@ -11260,7 +11260,8 @@ loginSubmitBtn.addEventListener('click', async () => {
     if (c === 'auth/invalid-phone-number') showLoginError('Enter a valid 10-digit mobile number.');
     else if (c === 'auth/too-many-requests') showLoginError('Too many attempts. Please try again after some time.');
     else if (c === 'auth/network-request-failed') showLoginError("Couldn't send the code — check your connection and try again.");
-    else showLoginError("Couldn't send the code. Please try again.");
+    else showLoginError("Couldn't send the code. Please try again.  [DEBUG: " + (c || 'no-code') + " | " + ((e && e.message) || String(e)).slice(0, 160) + "]");
+    console.error('OTP send failed', e);
     loginSubmitBtn.disabled = false;
   }
 });
