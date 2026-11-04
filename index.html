@@ -11245,8 +11245,6 @@ loginSubmitBtn.addEventListener('click', async () => {
   const number = loginNumberInput.value;
   if (number.length !== 10) return;
   loginSubmitBtn.disabled = true;
-  const OTP_REQUIRED = false;   // set to true to turn OTP back on
-  if (!OTP_REQUIRED) { await loginAfterVerified(number); return; }
   try {
     if (!window.fbAuth && !nativeAuth()) throw new Error('auth-missing');
     await sendOtp(number);
@@ -11262,8 +11260,7 @@ loginSubmitBtn.addEventListener('click', async () => {
     if (c === 'auth/invalid-phone-number') showLoginError('Enter a valid 10-digit mobile number.');
     else if (c === 'auth/too-many-requests') showLoginError('Too many attempts. Please try again after some time.');
     else if (c === 'auth/network-request-failed') showLoginError("Couldn't send the code — check your connection and try again.");
-    else showLoginError("Couldn't send the code. Please try again.  [DEBUG: " + (c || 'no-code') + " | " + ((e && e.message) || String(e)).slice(0, 160) + "]");
-    console.error('OTP send failed', e);
+    else showLoginError("Couldn't send the code. Please try again.");
     loginSubmitBtn.disabled = false;
   }
 });
@@ -21942,5 +21939,169 @@ setTimeout(async function(){try{var a=JSON.parse(localStorage.getItem('nesh_pr')
   document.addEventListener('touchcancel', function () { active = false; reset(); }, { passive: true });
 })();
 </script>
+<style id="nesh-desktop-css">
+/* Desktop (mouse) support: same phone-style app, usable with mouse + keyboard */
+@media (hover:hover) and (pointer:fine){
+  .nesh-dragging, .nesh-dragging *{ cursor:grabbing !important; user-select:none !important; -webkit-user-select:none !important; }
+  .nesh-dragging{ scroll-snap-type:none !important; scroll-behavior:auto !important; }
+  .nesh-hscroll{ cursor:grab; }
+  .nesh-hscroll img{ -webkit-user-drag:none; user-drag:none; }
+  /* thin visible scrollbar for the app column on desktop */
+  html{ scrollbar-width:thin; }
+}
+</style>
+<script id="nesh-desktop-js">
+(function(){
+  if (!window.matchMedia || !matchMedia('(hover:hover) and (pointer:fine)').matches) return;
+
+  function hScroller(el){
+    while (el && el !== document.body && el !== document.documentElement){
+      if (el.nodeType === 1){
+        var cs = getComputedStyle(el), ox = cs.overflowX;
+        if ((ox === 'auto' || ox === 'scroll') && el.scrollWidth > el.clientWidth + 2) return el;
+      }
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  var sc = null, sx = 0, sl = 0, moved = false, down = false;
+
+  document.addEventListener('pointerdown', function(e){
+    if (e.pointerType !== 'mouse' || e.button !== 0) return;
+    moved = false;
+    if (e.target.closest('input,textarea,select,[contenteditable],.dr')) return;
+    sc = hScroller(e.target); if (!sc) return;
+    down = true; moved = false; sx = e.clientX; sl = sc.scrollLeft;
+    sc.classList.add('nesh-hscroll');
+  }, true);
+
+  document.addEventListener('pointermove', function(e){
+    if (!down || !sc) return;
+    var dx = e.clientX - sx;
+    if (!moved && Math.abs(dx) > 5){ moved = true; sc.classList.add('nesh-dragging'); try{ sc.dispatchEvent(new Event('touchstart')); }catch(_){} }
+    if (moved){ sc.scrollLeft = sl - dx; e.preventDefault(); }
+  }, true);
+
+  function end(){
+    if (!down) return;
+    down = false;
+    if (sc){ var s = sc; if (moved){ try{ s.dispatchEvent(new Event('touchend')); }catch(_){} } setTimeout(function(){ s.classList.remove('nesh-dragging'); }, 0); }
+    sc = null;
+  }
+  document.addEventListener('pointerup', end, true);
+  document.addEventListener('pointercancel', end, true);
+  window.addEventListener('blur', end);
+
+  // a drag must not count as a click on the card/chip under the mouse
+  document.addEventListener('click', function(e){
+    if (moved){ e.stopPropagation(); e.preventDefault(); moved = false; }
+  }, true);
+
+  // mark all sideways rails with the grab cursor
+  function mark(){
+    document.querySelectorAll('.posters-track,.np-track,.np-meals-row,.mart-hscroll,.mart-chips,.mart-logo-strip,.food-chips,.food-items-row,.fob-row,.di-chips,.nesh-cat-bar,#food-filters,.item-toolbar,#order-summary-suggest-row,#nesh-coupon-cards')
+      .forEach(function(el){ el.classList.add('nesh-hscroll'); });
+  }
+  mark(); setInterval(mark, 3000);
+
+  // mouse wheel / trackpad sideways over a rail scrolls it (vertical wheel still scrolls the page)
+  document.addEventListener('wheel', function(e){
+    if (!e.deltaX && !e.shiftKey) return;
+    var s = hScroller(e.target); if (!s) return;
+    s.scrollLeft += (e.deltaX || e.deltaY);
+    e.preventDefault();
+  }, { passive:false });
+
+  // Enter key on login / register / OTP fields presses the Continue button
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Enter' || e.isComposing) return;
+    var map = { 'login-number':'login-submit', 'login-otp':'login-otp-verify', 'reg-name':'reg-send-otp' };
+    var id = e.target && e.target.id;
+    if (map[id]){
+      var b = document.getElementById(map[id]);
+      if (b && !b.disabled){ e.preventDefault(); b.click(); }
+    }
+  });
+
+  // Esc key = phone back button (closes the open popup, otherwise goes back one screen; does nothing on the home screen)
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Escape') return;
+    try{
+      var a = document.querySelector('.screen.active');
+      var popup = document.querySelector('[id$="overlay"].show, .overlay.show, .modal.show, #account-dropdown.show, #cat-account-dropdown.show');
+      if ((!a || a.id === 'screen-category') && !popup) return;
+      if (typeof window.neshHandleBack === 'function') window.neshHandleBack();
+    }catch(_){}
+  });
+
+  // pull-to-refresh equivalent on desktop: press R (outside text fields) = soft refresh
+  document.addEventListener('keydown', function(e){
+    if ((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !e.altKey &&
+        !/INPUT|TEXTAREA|SELECT/.test((e.target.tagName||'')) && !e.target.isContentEditable){
+      try { if (window.neshSoftRefresh) window.neshSoftRefresh(); } catch(_){}
+    }
+  });
+})();
+</script>
+<style id="nesh-desktop-layout">
+/* ===== Desktop layout (computer screens only, >=1000px wide). Phone layout is untouched. ===== */
+@media (min-width:1000px){
+  :root{ --nd-w:1180px; }
+  #app{ max-width:var(--nd-w); box-shadow:0 0 0 1px rgba(43,36,16,.06), 0 10px 40px rgba(43,36,16,.10); }
+  #area-unavail, #nesh-bnav, #nz-bar, .order-progress-bar, .cart-bar{ max-width:var(--nd-w); }
+
+  /* Home: Food / Groceries / Taxi cards in a row */
+  .cat-wrap{ padding:28px 32px 32px !important; grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:20px !important; }
+  .cat-wrap > .cat-card, .cat-wrap > .cat-card.span2{ height:200px !important; }
+
+  /* Shop / restaurant list: cards in a grid */
+  .rest-list{ padding:24px 32px 0 !important; display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px !important; }
+  .rest-list > *{ min-width:0; }
+
+  /* Side paddings that were sized for a phone */
+  #food-filters, .nesh-cat-bar, .mart-chips, .mart-hscroll, .mart-logo-strip{ padding-left:32px; padding-right:32px; }
+  .item-toolbar{ padding-left:32px; padding-right:32px; }
+  .orders-body{ padding:20px 32px 28px; max-width:860px; margin:0 auto; }
+  .item-detail-body{ padding-left:32px; padding-right:32px; }
+  .posters{ margin-left:0 !important; margin-right:0 !important; max-width:100%; }
+  .posters-track{ padding-left:32px; padding-right:32px; }
+
+  /* Menu: category rail on the left + many item columns */
+  #menu-body.rail-mode #nesh-cat-rail{ flex:0 0 120px !important; width:120px !important; max-height:calc(100vh - 110px); }
+  #menu-body.rail-mode #nesh-cat-rail.no-photo{ flex-basis:120px !important; width:120px !important; }
+  #menu-body.rail-mode .nrail-item .nrail-name{ font-size:12px; }
+  #menu-body.rail-mode .item-grid, .item-grid{ grid-template-columns:repeat(auto-fill,minmax(210px,1fr)) !important; padding:20px 32px 120px !important; gap:20px !important; }
+  #menu-body.rail-mode .item-img-wrap{ height:150px; }
+  #menu-body.rail-mode .item-name2{ font-size:13.5px; }
+  #menu-body.rail-mode .item-row2 .add-btn{ padding:8px 16px; }
+
+  /* Cart page: centred panel instead of a stretched phone page */
+  .order-summary-sheet.cart-page{ max-width:560px; box-shadow:0 0 40px rgba(0,0,0,.25); }
+  .order-summary-sheet{ max-width:560px; }
+  /* Bottom sheets (filters, location, etc.): centred cards */
+  #ff-sheet, #mp-sheet, #nsz-sheet{ max-width:560px; border-radius:22px; margin-bottom:auto; margin-top:auto; }
+  #ff-overlay, #mp-overlay{ align-items:center; }
+
+  /* Cart bar sits centred under the content */
+  .cart-bar{ left:50%; transform:translateX(-50%); padding-left:32px; padding-right:32px; }
+
+  /* Other screens: keep forms and tracking readable, centred */
+  #screen-login, #screen-register, #screen-settings, #screen-account, #screen-edit-profile,
+  #screen-placed, #screen-track, #screen-taxi-book, #screen-taxi-choice-zone, #screen-taxi-choice-driver,
+  #screen-taxi-track, #screen-taxi-chat, #screen-bus-list, #screen-bus-add-stop, #screen-bus-track{ max-width:760px; margin-left:auto; margin-right:auto; width:100%; }
+
+  /* Hover feedback like a desktop site */
+  .cat-card, .rest-list > *, .item-card2, .ff-chip, .nrail-item{ transition:transform .15s, box-shadow .15s; }
+  .cat-card:hover, .rest-list > *:hover, .item-card2:hover{ transform:translateY(-3px); box-shadow:0 12px 26px rgba(43,36,16,.18); }
+}
+/* Medium screens (tablet / small laptop) */
+@media (min-width:700px) and (max-width:999px){
+  #app{ max-width:760px; }
+  #area-unavail, #nesh-bnav, #nz-bar, .order-progress-bar, .cart-bar{ max-width:760px; }
+  .rest-list{ display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .item-grid{ grid-template-columns:repeat(3,minmax(0,1fr)) !important; }
+}
+</style>
 </body>
 </html>
