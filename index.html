@@ -2397,6 +2397,8 @@ html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
 
   #screen-home:not([data-cat="online_shop"]) #posters-mart{ display:none !important; }
   #screen-home:not([data-cat="hotel"]) #posters-food{ display:none !important; }
+  #screen-home[data-mart] #posters-food{ display:none !important; }
+  #screen-home[data-mart] #posters-mart{ display:block !important; }
   .posters{ margin:-4px -20px 0; position:relative; display:none; }
   .posters.has{ display:block; }
   .posters-track{ display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; padding:4px 20px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
@@ -3951,6 +3953,19 @@ html[data-theme="dark"] .prq-note{background:#103020;color:#61DBAE}
 #home-popup .hp-chip{display:inline-block;margin:12px 0 0;padding:5px 14px;border-radius:6px;background:var(--hp-chip-bg,#FFF04D);color:var(--hp-chip-fg,#2B2410);font:800 17px Inter,sans-serif;transform:rotate(-1.5deg)}
 #home-popup .hp-img{display:block;margin:16px auto 0;max-width:100%;max-height:200px;object-fit:contain;border-radius:14px}
 #home-popup .hp-btn{display:block;width:100%;margin-top:18px;padding:15px 10px;border:0;border-radius:999px;background:var(--hp-btn-bg,#F4FF3A);color:var(--hp-btn-fg,#14206B);font:900 17px Inter,sans-serif;letter-spacing:.4px;cursor:pointer}
+@media (min-width:700px){
+#home-popup .hp-card{max-width:520px;padding:46px 34px 30px;border-radius:32px}
+#home-popup .hp-title{font-size:60px;letter-spacing:-1.5px}
+#home-popup .hp-line{font-size:24px;margin-top:16px}
+#home-popup .hp-chip{font-size:21px;padding:7px 18px;margin-top:16px}
+#home-popup .hp-img{max-height:min(340px,38vh);margin-top:22px;border-radius:18px}
+#home-popup .hp-btn{font-size:21px;padding:19px 12px;margin-top:24px}
+#home-popup .hp-x{width:42px;height:42px;font-size:22px;top:16px;right:16px}
+}
+@media (min-width:1000px){
+#home-popup .hp-card{max-width:600px;padding:52px 40px 34px}
+#home-popup .hp-title{font-size:68px}
+}
 </style>
 <style id="nesh-promo-css">
 .np-banner{position:relative;border-radius:20px;overflow:hidden;background:#F2A900;box-shadow:0 8px 20px rgba(201,127,0,.35)}
@@ -13005,6 +13020,8 @@ setTimeout(() => { try { if (!restaurantsLoadedOnce) renderRestaurantList(); } c
 setTimeout(() => { try { if (!restaurantsLoadedOnce) renderRestaurantList(); } catch (e) {} }, 20200);
 setTimeout(() => { try { if (!restaurantsLoadedOnce) renderRestaurantList(); } catch (e) {} }, 45200);
 
+// NESH Mart on a computer screen (>=1000px) uses the Food home look/layout; on phones Mart keeps its own layout.
+function martFoodLook() { return state.category === 'online_shop' && !!window.matchMedia && window.matchMedia('(min-width:1000px)').matches; }
 function renderRestaurantList() {
   const q = searchInput.value.toLowerCase();
   // No category picked and the shop list isn't on screen (e.g. the category picker is showing while shop data
@@ -13023,7 +13040,7 @@ function renderRestaurantList() {
     state.category = (sb === 'hotel' || sb === 'online_shop') ? sb : 'hotel';
   }
   const categoryFiltered = visibleShops.filter(r => (r.businessType || 'hotel') === state.category);
-  { const hs = document.getElementById('screen-home'); if (hs) hs.dataset.cat = state.category || ''; } // lets CSS style NESH Mart (online_shop) / Food (hotel) separately
+  { const hs = document.getElementById('screen-home'); if (hs) { const _mf = martFoodLook(); hs.dataset.cat = _mf ? 'hotel' : (state.category || ''); if (_mf) hs.dataset.mart = '1'; else delete hs.dataset.mart; } } // lets CSS style NESH Mart (online_shop) / Food (hotel) separately
 
   // Apply the operator-set shop order for this category (Operator Panel →
   // Shop Order), if one has been saved. Shops in the saved order come
@@ -13054,9 +13071,9 @@ function renderRestaurantList() {
   let filtered = state.customerPos
     ? searchFiltered.filter(r => shopAllowedAtPoint(r.id, state.customerPos) && (!r.zone || isPointInZone(state.customerPos, r.zone)))
     : searchFiltered;
-  if (state.category === 'hotel') filtered = neshApplyShopFilters(filtered);
+  if (state.category === 'hotel' || martFoodLook()) filtered = neshApplyShopFilters(filtered);
 
-  if (state.category === 'online_shop') {
+  if (state.category === 'online_shop' && !martFoodLook()) {
     renderMart(filtered, categoryFiltered, q, searchFiltered);
     renderProductResults(q, categoryFiltered);
     return;
@@ -13070,15 +13087,15 @@ function renderRestaurantList() {
     const noun = state.category === 'groceries' ? 'stores' : state.category === 'online_shop' ? 'shops' : 'restaurants';
     p.textContent = isAreaUnavailable(state.customerPos)
       ? AREA_UNAVAILABLE_MSG
-      : (state.category === 'hotel' && neshFiltCount() > 0 && searchFiltered.length > 0)
-      ? 'No restaurants match these filters. Try clearing some.'
+      : ((state.category === 'hotel' || martFoodLook()) && neshFiltCount() > 0 && searchFiltered.length > 0)
+      ? 'No ' + noun + ' match these filters. Try clearing some.'
       : state.customerPos && searchFiltered.length > 0
       ? "No " + noun + " deliver to your selected location yet."
       : 'No ' + noun + ' match "' + searchInput.value + '".';
     restListEl.appendChild(p);
     return;
   }
-  if (state.category === 'hotel') { renderFoodList(filtered); renderProductResults(q, categoryFiltered); return; }
+  if (state.category === 'hotel' || martFoodLook()) { renderFoodList(filtered); renderProductResults(q, categoryFiltered); return; }
   filtered.forEach(r => {
     const card = document.createElement('div');
     card.className = "card rest-card2";
@@ -13173,6 +13190,7 @@ function buildMealsUnder99Strip(rows,limit){
   return wrap;
 }
 function renderFoodList(list) {
+  const isMart = state.category === 'online_shop';
   const info = list.map(r => {
     const pos = parseLatLng(r.location);
     const km = (state.customerPos && pos) ? haversineMeters(state.customerPos.lat, state.customerPos.lng, pos.lat, pos.lng) / 1000 : null;
@@ -13183,7 +13201,7 @@ function renderFoodList(list) {
   else if (foodState.filter === 'nearest') rows.sort((a, b) => (a.closed.closed - b.closed.closed) || ((a.km ?? 1e9) - (b.km ?? 1e9)));
   else if (foodState.filter === 'rating') rows.sort((a, b) => (a.closed.closed - b.closed.closed) || ((Number(b.r.rating) || 0) - (Number(a.r.rating) || 0)));
   restListEl.innerHTML = '';
-  { const _slot = document.getElementById('np-banner-slot'); if (_slot) { _slot.innerHTML = ''; if (!searchInput.value) _slot.appendChild(buildNeshPromoBanner()); } }
+  { const _slot = document.getElementById('np-banner-slot'); if (_slot) { _slot.innerHTML = ''; if (!searchInput.value && !isMart) _slot.appendChild(buildNeshPromoBanner()); } }
   const chips = document.createElement('div');
   chips.className = 'food-chips';
   [['all', 'All'], ['open', 'Open now'], ['nearest', 'Nearest'], ['rating', 'Top rated']].forEach(([k, label]) => {
@@ -13197,10 +13215,10 @@ function renderFoodList(list) {
   const openCount = info.filter(x => !x.closed.closed).length;
   const cnt = document.createElement('p');
   cnt.className = 'food-count';
-  cnt.textContent = openCount + ' restaurant' + (openCount === 1 ? '' : 's') + ' open now';
+  cnt.textContent = isMart ? (openCount + ' shop' + (openCount === 1 ? '' : 's') + ' open now') : (openCount + ' restaurant' + (openCount === 1 ? '' : 's') + ' open now');
   restListEl.appendChild(cnt);
   if (!rows.length) {
-    const p = document.createElement('p'); p.className = 'empty-text'; p.textContent = 'No restaurants are open right now.';
+    const p = document.createElement('p'); p.className = 'empty-text'; p.textContent = isMart ? 'No shops are open right now.' : 'No restaurants are open right now.';
     restListEl.appendChild(p); return;
   }
   rows.forEach(({ r, km, closed }, idx) => {
@@ -13219,7 +13237,7 @@ function renderFoodList(list) {
         <div class="food-pills">
           ${shopDeliveryLabel(r) ? `<span class="food-pill">${shopDeliveryLabel(r)}</span>` : ''}
           ${km !== null ? `<span class="food-pill">📍 ${km.toFixed(1)} km</span>` : ''}
-          <span class="food-pill">₹${r.priceForTwo} for two</span>
+          <span class="food-pill">₹${r.priceForTwo}${isMart ? ' avg order' : ' for two'}</span>
           ${r.ratingCount ? `<span class="food-pill">${r.ratingCount} ratings</span>` : ''}
         </div>
         ${closed.closed && closed.message ? `<p class="food-closed-msg">${escapeHtml(closed.message)}</p>` : ''}
@@ -13248,7 +13266,7 @@ function buildFoodItemStrip(rows) {
   if (!tiles.length) return null;
   const wrap = document.createElement('div');
   wrap.className = 'food-items-wrap';
-  wrap.innerHTML = '<div class="food-items-head"><span class="food-items-badge">ITEMS</span><p class="food-items-title">Dishes you’ll love</p><span class="food-items-hint">Swipe →</span></div>';
+  wrap.innerHTML = '<div class="food-items-head"><span class="food-items-badge">ITEMS</span><p class="food-items-title">' + (state.category === 'online_shop' ? 'Products you’ll love' : 'Dishes you’ll love') + '</p><span class="food-items-hint">Swipe →</span></div>';
   const row = document.createElement('div');
   row.className = 'food-items-row';
   tiles.forEach(({ r, it, closed }) => {
@@ -13271,6 +13289,7 @@ function buildFoodItemStrip(rows) {
   return wrap;
 }
 searchInput.addEventListener('input', renderRestaurantList);
+try { window.matchMedia('(min-width:1000px)').addEventListener('change', () => { try { if (state.category === 'online_shop') renderRestaurantList(); } catch (e) {} }); } catch (e) {}
 
 const productResultsWrap = document.getElementById('product-results-wrap');
 const productResultsLabel = document.getElementById('product-results-label');
@@ -22081,8 +22100,17 @@ setTimeout(async function(){try{var a=JSON.parse(localStorage.getItem('nesh_pr')
   .order-summary-sheet.cart-page{ max-width:560px; box-shadow:0 0 40px rgba(0,0,0,.25); }
   .order-summary-sheet{ max-width:560px; }
   /* Bottom sheets (filters, location, etc.): centred cards */
-  #ff-sheet, #mp-sheet, #nsz-sheet{ max-width:560px; border-radius:22px; margin-bottom:auto; margin-top:auto; }
-  #ff-overlay, #mp-overlay{ align-items:center; }
+  /* Popups (portion picker, filters, price filter, cart coupon/confirm/pay) are FULL SCREEN on computer screens; content stays in a readable centred column */
+  #ff-overlay, #mp-overlay, #nsz-ov, .cp-sheet-ov{ align-items:stretch; justify-content:stretch; }
+  #ff-sheet, #mp-sheet, #nsz-sheet, .cp-sheet{ width:100%; max-width:none; height:100%; max-height:none; border-radius:0; margin:0; box-sizing:border-box; }
+  #ff-sheet, #mp-sheet{ overflow-y:auto; padding-left:max(24px, calc((100% - 640px) / 2)); padding-right:max(24px, calc((100% - 640px) / 2)); padding-top:28px; }
+  #nsz-sheet .nsz-head{ border-radius:0; padding-left:max(16px, calc((100% - 640px) / 2)); padding-right:max(16px, calc((100% - 640px) / 2)); }
+  #nsz-sheet .nsz-body{ flex:1 1 auto; min-height:0; padding-left:max(16px, calc((100% - 640px) / 2)); padding-right:max(16px, calc((100% - 640px) / 2)); }
+  #nsz-sheet .nsz-foot{ padding-left:max(16px, calc((100% - 640px) / 2)); padding-right:max(16px, calc((100% - 640px) / 2)); }
+  .cp-sheet{ overflow-y:auto; }
+  .cp-sheet.cp-confirm{ justify-content:center; padding-left:max(20px, calc((100% - 560px) / 2)); padding-right:max(20px, calc((100% - 560px) / 2)); }
+  .cp-sheet-head{ padding-left:max(18px, calc((100% - 640px) / 2)); padding-right:max(18px, calc((100% - 640px) / 2)); }
+  .cp-sheet-body{ flex:1 1 auto; padding-left:max(16px, calc((100% - 640px) / 2)); padding-right:max(16px, calc((100% - 640px) / 2)); }
 
   /* Cart bar sits centred under the content */
   .cart-bar{ left:50%; transform:translateX(-50%); padding-left:32px; padding-right:32px; }
@@ -22128,6 +22156,19 @@ setTimeout(async function(){try{var a=JSON.parse(localStorage.getItem('nesh_pr')
 @media (min-width:1000px){
   #nesh-open-choice{ justify-content:center !important; padding-top:24px !important; padding-bottom:24px !important; }
   #nesh-open-choice > div[style*="flex:1"]{ flex:0 0 44px !important; min-height:0 !important; }
+}
+/* Product page on computer screens: whole photo visible (not cropped) on the left, name / price / portions / Add on the right */
+@media (min-width:700px){
+  #screen-item-detail.active{ display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr); column-gap:36px; align-items:start; align-content:start; max-width:1040px; margin:0 auto; padding:0 24px 140px; }
+  #screen-item-detail > .shared-install, #screen-item-detail > .item-detail-back-row{ grid-column:1 / -1; }
+  #screen-item-detail .item-detail-photo-wrap{ grid-column:1; height:auto; aspect-ratio:1 / 1; max-height:72vh; border-radius:22px; overflow:hidden; background:#F6F1E3; }
+  #screen-item-detail .item-detail-photo{ object-fit:contain; }
+  #screen-item-detail .item-detail-body{ grid-column:2; padding:6px 4px 24px; }
+  #screen-item-detail .item-detail-name{ font-size:28px; line-height:1.2; }
+  #screen-item-detail .item-detail-price{ font-size:30px; }
+  #screen-item-detail .item-detail-qty-row{ margin-top:26px; }
+  #screen-item-detail .item-detail-qty-row .add-btn{ padding:16px 44px; font-size:16px; border-radius:14px; }
+  #screen-item-detail .item-detail-qty-row .qty-wrap{ padding:12px 18px; }
 }
 </style>
 <style id="nesh-desktop-topbar-css">
@@ -22246,5 +22287,183 @@ html[data-theme="dark"] #nd-top .nd-loc{ background:#2b2619; border-color:#534B3
   });
 })();
 </script>
+<style id="nesh-desktop-v2">
+/* ===== NESH desktop v2: Swiggy-style checkout + bigger home cards (computer / wide screens only) ===== */
+
+/* Tablet, or phone opened in "Desktop site" mode (700-999px) */
+@media (min-width:700px) and (max-width:999px){
+  #screen-category .cat-wrap{ grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:18px !important; padding:22px 22px 28px !important; }
+  #screen-category .cat-wrap > .cat-card, #screen-category .cat-wrap > .cat-card.span2{ height:190px !important; }
+  .order-summary-overlay .order-summary-sheet.cart-page{ max-width:none; width:100%; }
+}
+
+/* Computer (>=1000px) */
+@media (min-width:1000px){
+  /* ---------- Home: bigger category cards ---------- */
+  #screen-category .cat-wrap{ grid-template-columns:repeat(auto-fit,minmax(250px,1fr)) !important; gap:22px !important; padding:32px 32px 36px !important; }
+  #screen-category .cat-wrap > .cat-card, #screen-category .cat-wrap > .cat-card.span2{ height:250px !important; border-radius:26px !important; }
+  #screen-category .cat-wrap .cat-card-icon{ width:54px; height:54px; font-size:27px; top:18px; left:18px; }
+  #screen-category .cat-wrap .cat-card-title{ font-size:24px; }
+  #screen-category .cat-wrap .cat-card-sub{ font-size:13.5px; }
+  #screen-category .cat-wrap .cat-card-text{ left:22px; right:22px; bottom:20px; }
+
+  /* ---------- Checkout: two columns (details left, bill right) ---------- */
+  .order-summary-overlay{ background:#E9E4D4; }
+  .order-summary-overlay .order-summary-sheet.cart-page{
+    max-width:none; width:100%; background:#F4F1EA; box-shadow:none;
+  }
+  .order-summary-sheet.cart-page .cp-head{ padding-left:max(32px, calc((100% - 1400px) / 2)); padding-right:max(32px, calc((100% - 1400px) / 2)); }
+  .order-summary-sheet.cart-page .cp-saved{ padding-left:max(32px, calc((100% - 1400px) / 2)); padding-right:max(32px, calc((100% - 1400px) / 2)); }
+
+  .order-summary-sheet.cart-page .cp-scroll{
+    display:grid; grid-template-columns:minmax(0,1.6fr) minmax(380px,1fr);
+    column-gap:32px; row-gap:0; align-content:start; align-items:start;
+    padding:28px max(32px, calc((100% - 1400px) / 2)) 130px;
+  }
+  .order-summary-sheet.cart-page .cp-scroll > *{ grid-column:1; min-width:0; margin:0 0 16px !important; }
+  /* bill summary = right column, stays in view while the left side scrolls */
+  .order-summary-sheet.cart-page .cp-scroll > .cp-card:has(.bs-chit){
+    grid-column:2; grid-row:1 / span 12; position:sticky; top:0; align-self:start;
+  }
+  .order-summary-sheet.cart-page .cp-scroll > div[style*="height:96px"]{ display:none; }
+
+  /* items: bigger rows */
+  .order-summary-sheet.cart-page .cp-card .order-summary-row{ padding:16px 20px; gap:16px; }
+  .order-summary-sheet.cart-page .cp-card .order-summary-row-img{ width:84px; height:84px; border-radius:14px; }
+  .order-summary-sheet.cart-page .cp-card .order-summary-row-name{ font-size:16px; }
+  .order-summary-sheet.cart-page .cp-card .order-summary-row-price{ font-size:13.5px; }
+  .order-summary-sheet.cart-page .cp-row-total{ font-size:16px; }
+  .order-summary-sheet.cart-page .cp-card-head{ padding:18px 20px; }
+  .order-summary-sheet.cart-page .cp-card-title{ font-size:18px; }
+  .order-summary-sheet.cart-page .os-shop-head{ padding:10px 20px; }
+  .order-summary-sheet.cart-page .os-item-total{ margin:10px 20px 18px; }
+  .order-summary-sheet.cart-page .cp-body{ padding-left:20px; padding-right:20px; }
+
+  /* tip + delivery instructions: wrap instead of sideways scroll */
+  .order-summary-sheet.cart-page .di-chips{ flex-wrap:wrap; overflow:visible; }
+
+  /* pay bar: spans the panel, buttons a sensible size */
+  .order-summary-sheet.cart-page .cp-bar{ padding-left:max(32px, calc((100% - 1400px) / 2)); padding-right:max(32px, calc((100% - 1400px) / 2)); gap:16px; }
+  .order-summary-sheet.cart-page .cp-bar-total{ margin-right:auto; }
+  .order-summary-sheet.cart-page .cp-bar-total b{ font-size:22px; }
+  .order-summary-sheet.cart-page .cp-pay-online, .order-summary-sheet.cart-page .cp-pay{ flex:0 0 260px; }
+}
+/* Floating home cart bar (shop pill + Cart button): was fixed at 396px, tiny on wide screens */
+@media (min-width:700px){
+  .home-cart-stack{ max-width:600px; bottom:18px; }
+  .home-cart-stack .cart-info{ padding:12px 18px; }
+  .home-cart-stack .cart-info-title{ font-size:16px; }
+  .home-cart-stack .cart-info-sub{ font-size:13.5px; }
+  .home-cart-stack .cart-btn{ padding-left:22px; padding-right:22px; }
+}
+@media (min-width:1000px){
+  .home-cart-stack{ max-width:680px; }
+}
+/* Food list on computer: filters become a left sidebar (same buttons, same logic, just re-laid-out with CSS) */
+@media (min-width:1000px){
+  #screen-home.active[data-cat="hotel"]{ display:grid; grid-template-columns:260px minmax(0,1fr); align-content:start; }
+  #screen-home.active[data-cat="hotel"] > *{ grid-column:2; min-width:0; }
+  #screen-home.active[data-cat="hotel"] > .top-row,
+  #screen-home.active[data-cat="hotel"] > .account-backdrop,
+  #screen-home.active[data-cat="hotel"] > #np-banner-slot,
+  #screen-home.active[data-cat="hotel"] > .home-loc-card,
+  #screen-home.active[data-cat="hotel"] > .loc-suggest,
+  #screen-home.active[data-cat="hotel"] > .greeting,
+  #screen-home.active[data-cat="hotel"] > #home-rate-card,
+  #screen-home.active[data-cat="hotel"] > .search-wrap,
+  #screen-home.active[data-cat="hotel"] > .nd-footer{ grid-column:1 / -1; }
+  #screen-home.active[data-cat="hotel"] > #food-filters{
+    grid-column:1; grid-row:span 40; position:sticky; top:16px; align-self:start;
+    display:flex !important; flex-direction:column; gap:10px; overflow:visible;
+    margin:10px 0 0 32px; padding:18px 16px !important; box-sizing:border-box;
+    background:#fff; border:1px solid #E9E3D3; border-radius:18px; box-shadow:0 6px 18px rgba(43,36,16,.08);
+  }
+  #screen-home.active[data-cat="hotel"] > #food-filters::before{ content:"Quick filters"; font:800 17px/1.2 Poppins,Inter,sans-serif; color:#2B2410; margin:0 0 4px 2px; }
+  #screen-home.active[data-cat="hotel"] > #food-filters .ff-chip{ width:100%; justify-content:flex-start; border-radius:12px; padding:12px 14px; }
+  #screen-home.active[data-cat="hotel"] .rest-list{ padding:24px 32px 0 20px !important; }
+  html[data-theme="dark"] #screen-home.active[data-cat="hotel"] > #food-filters{ background:#221E15; border-color:#3a3322; }
+  html[data-theme="dark"] #screen-home.active[data-cat="hotel"] > #food-filters::before{ color:#E7E0CD; }
+}
+/* Home popup poster ("Free delivery for 199"): bigger on wide screens */
+@media (min-width:700px){
+  #home-popup .hp-card{ max-width:500px; padding:42px 30px 28px; }
+  #home-popup .hp-title{ font-size:60px; }
+  #home-popup .hp-line{ font-size:22px; }
+  #home-popup .hp-chip{ font-size:20px; padding:7px 18px; }
+  #home-popup .hp-img{ max-height:300px; width:100%; object-fit:cover; }
+  #home-popup .hp-btn{ font-size:20px; padding:18px 10px; }
+  #home-popup .hp-x{ width:40px; height:40px; top:16px; right:16px; }
+}
+@media (min-width:1000px){
+  #home-popup .hp-card{ max-width:560px; }
+}
+/* Full-width layout on wide screens (no narrow centred column) */
+@media (min-width:700px) and (max-width:999px){
+  #app{ max-width:none; }
+  #area-unavail, #nesh-bnav, #nz-bar, .order-progress-bar, .cart-bar{ max-width:none; }
+  .cart-bar{ left:50%; transform:translateX(-50%); }
+}
+@media (min-width:1000px){
+  :root{ --nd-w:1600px; }
+  #screen-category .cat-wrap > .cat-card, #screen-category .cat-wrap > .cat-card.span2{ height:280px !important; }
+  #screen-category .cat-wrap .cat-card-title{ font-size:26px; }
+}
+@media (min-width:1300px){
+  #screen-home .rest-list{ grid-template-columns:repeat(3,minmax(0,1fr)); }
+}
+/* Home category cards on wide screens: same look as the phone cards (wide poster shape), sized to the screen */
+@media (min-width:700px){
+  #screen-category.active .cat-wrap{ gap:20px !important; grid-auto-rows:auto; align-content:start !important; }
+  #screen-category.active .cat-wrap .cat-card-icon{ width:64px; height:64px; font-size:32px; top:20px; left:20px; border-radius:18px; }
+  #screen-category.active .cat-wrap .cat-card-arrow{ width:46px; height:46px; top:22px; right:20px; }
+  #screen-category.active .cat-wrap .cat-card-text{ left:28px; right:28px; bottom:24px; }
+  #screen-category.active .cat-wrap .cat-card-title{ font-size:36px; line-height:1.1; }
+  #screen-category.active .cat-wrap .cat-card-sub{ font-size:17px; margin-top:6px; }
+}
+/* Tall / portrait screens (e.g. phone in Desktop-site mode): one card per row, like the phone, filling the screen */
+@media (min-width:700px) and (orientation:portrait){
+  #screen-category.active .cat-wrap{ grid-template-columns:minmax(0,1fr) !important; }
+  #screen-category.active .cat-wrap > .cat-card, #screen-category.active .cat-wrap > .cat-card.span2{
+    height:clamp(220px, calc((100vh - 860px) / 4), 440px) !important;
+    height:clamp(220px, calc((100dvh - 860px) / 4), 440px) !important;
+  }
+}
+/* Landscape tablet */
+@media (min-width:700px) and (max-width:999px) and (orientation:landscape){
+  #screen-category.active .cat-wrap{ grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+  #screen-category.active .cat-wrap > .cat-card, #screen-category.active .cat-wrap > .cat-card.span2{ height:clamp(200px, 30vh, 320px) !important; }
+}
+/* Computer */
+@media (min-width:1000px) and (orientation:landscape){
+  #screen-category.active .cat-wrap{ grid-template-columns:repeat(auto-fit,minmax(280px,1fr)) !important; }
+  #screen-category.active .cat-wrap > .cat-card, #screen-category.active .cat-wrap > .cat-card.span2{ height:clamp(260px, 36vh, 440px) !important; }
+}
+/* Food list: every shop card is the same size. "Dishes you'll love" strip moves above the cards instead of splitting them */
+@media (min-width:700px){
+  #screen-home[data-cat="hotel"] .rest-list > .food-items-wrap{ order:1; }
+  #screen-home[data-cat="hotel"] .rest-list > .food-card{ order:2; grid-column:auto !important; }
+}
+/* Food header on wide screens: banner content centred and bigger instead of pushed to the two edges */
+@media (min-width:700px){
+  #screen-home[data-cat="hotel"] .np-slide{ justify-content:center; gap:64px; min-height:240px !important;
+    padding-left:max(24px, calc((100% - 720px) / 2)) !important; padding-right:max(24px, calc((100% - 720px) / 2)) !important; }
+  #screen-home[data-cat="hotel"] .np-left{ flex:0 1 auto; }
+  #screen-home[data-cat="hotel"] .np-hh{ font-size:38px !important; }
+  #screen-home[data-cat="hotel"] .np-heads{ height:84px !important; margin-bottom:16px !important; }
+  #screen-home[data-cat="hotel"] .np-btn{ font-size:14px; padding:12px 26px !important; }
+  #screen-home[data-cat="hotel"] .np-art{ zoom:1.3; }
+  #screen-home[data-cat="hotel"] .np-strip{ font-size:13px !important; padding:10px 6px !important; }
+  #screen-home[data-cat="hotel"] .np-tk{ font-size:13px; }
+  #screen-home[data-cat="hotel"] .np-tk b{ font-size:20px; }
+  #screen-home[data-cat="hotel"] .np-free{ font-size:13px; }
+}
+@media (min-width:1000px){
+  #screen-home[data-cat="hotel"] .np-slide{ padding-left:max(32px, calc((100% - 960px) / 2)) !important; padding-right:max(32px, calc((100% - 960px) / 2)) !important; }
+  #screen-home .home-top-row{ padding-left:32px; padding-right:32px; }
+  #screen-home[data-cat="hotel"] .home-loc-card{ padding-left:32px !important; padding-right:32px !important; }
+  #screen-home[data-cat="hotel"] .search-wrap .field{ padding-left:32px !important; padding-right:32px !important; }
+}
+html[data-theme="dark"] .order-summary-overlay{ background:#1D1910; }
+</style>
 </body>
 </html>
