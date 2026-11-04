@@ -22052,7 +22052,7 @@ setTimeout(async function(){try{var a=JSON.parse(localStorage.getItem('nesh_pr')
   #area-unavail, #nesh-bnav, #nz-bar, .order-progress-bar, .cart-bar{ max-width:var(--nd-w); }
 
   /* Home: Food / Groceries / Taxi cards in a row */
-  .cat-wrap{ padding:28px 32px 32px !important; grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:20px !important; }
+  .cat-wrap{ padding:28px 32px 32px !important; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)) !important; gap:20px !important; }
   .cat-wrap > .cat-card, .cat-wrap > .cat-card.span2{ height:200px !important; }
 
   /* Shop / restaurant list: cards in a grid */
@@ -22063,6 +22063,7 @@ setTimeout(async function(){try{var a=JSON.parse(localStorage.getItem('nesh_pr')
   #food-filters, .nesh-cat-bar, .mart-chips, .mart-hscroll, .mart-logo-strip{ padding-left:32px; padding-right:32px; }
   .item-toolbar{ padding-left:32px; padding-right:32px; }
   .orders-body{ padding:20px 32px 28px; max-width:860px; margin:0 auto; }
+  .orders-header{ max-width:860px; margin-left:auto; margin-right:auto; }
   .item-detail-body{ padding-left:32px; padding-right:32px; }
   .posters{ margin-left:0 !important; margin-right:0 !important; max-width:100%; }
   .posters-track{ padding-left:32px; padding-right:32px; }
@@ -22107,6 +22108,26 @@ setTimeout(async function(){try{var a=JSON.parse(localStorage.getItem('nesh_pr')
   .rest-list > *{ grid-column:1 / -1; }
   .rest-list > .food-card, .rest-list > .rest-card2, .rest-list > .mart-card{ grid-column:auto; }
   .rest-list > .food-count + .food-card{ grid-column:1 / -1; }
+}
+/* Posters: heights were fixed in px for a ~390px phone, so on wide screens the banner got cropped to a thin strip.
+   Keep the same shape as on the phone (aspect ratio) so the whole banner shows. */
+@media (min-width:700px){
+  .poster-slide{ height:auto !important; aspect-ratio:3.73 / 1 !important; }
+  #screen-home[data-cat="hotel"] .poster-slide{ aspect-ratio:3.13 / 1 !important; }
+  #posters-trending .poster-slide{ aspect-ratio:2.8 / 1 !important; }
+  #posters-store .poster-slide{ aspect-ratio:5.4 / 1 !important; }
+}
+/* On big screens the banner is a centred, moderate-size slide (same shape as on the phone), not a full-width giant */
+@media (min-width:1000px){
+  .posters{ --pw:780px; }
+  #posters-trending, #screen-home[data-cat="hotel"] .posters{ --pw:640px; }
+  .posters-track{ padding-left:max(32px, calc((100% - var(--pw)) / 2)) !important; padding-right:max(32px, calc((100% - var(--pw)) / 2)) !important; }
+  .poster-slide{ flex:0 0 min(100%, var(--pw)) !important; }
+}
+/* Opening screen ("Where should we deliver?"): keep everything together in the middle on a big screen */
+@media (min-width:1000px){
+  #nesh-open-choice{ justify-content:center !important; padding-top:24px !important; padding-bottom:24px !important; }
+  #nesh-open-choice > div[style*="flex:1"]{ flex:0 0 44px !important; min-height:0 !important; }
 }
 </style>
 <style id="nesh-desktop-topbar-css">
