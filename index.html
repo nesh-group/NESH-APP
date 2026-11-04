@@ -22092,8 +22092,8 @@ setTimeout(async function(){try{var a=JSON.parse(localStorage.getItem('nesh_pr')
   #screen-taxi-track, #screen-taxi-chat, #screen-bus-list, #screen-bus-add-stop, #screen-bus-track{ max-width:760px; margin-left:auto; margin-right:auto; width:100%; }
 
   /* Hover feedback like a desktop site */
-  .cat-card, .rest-list > *, .item-card2, .ff-chip, .nrail-item{ transition:transform .15s, box-shadow .15s; }
-  .cat-card:hover, .rest-list > *:hover, .item-card2:hover{ transform:translateY(-3px); box-shadow:0 12px 26px rgba(43,36,16,.18); }
+  .cat-card, .rest-list > .food-card, .rest-list > .rest-card2, .rest-list > .mart-card, .item-card2, .ff-chip, .nrail-item{ transition:transform .15s, box-shadow .15s; }
+  .cat-card:hover, .rest-list > .food-card:hover, .rest-list > .rest-card2:hover, .rest-list > .mart-card:hover, .item-card2:hover{ transform:translateY(-3px); box-shadow:0 12px 26px rgba(43,36,16,.18); }
 }
 /* Medium screens (tablet / small laptop) */
 @media (min-width:700px) and (max-width:999px){
@@ -22102,6 +22102,128 @@ setTimeout(async function(){try{var a=JSON.parse(localStorage.getItem('nesh_pr')
   .rest-list{ display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)); }
   .item-grid{ grid-template-columns:repeat(3,minmax(0,1fr)) !important; }
 }
+/* Shop list grid: only the shop cards sit in columns; chips, counts, 'Dishes you'll love', mart sections etc. take the full row */
+@media (min-width:700px){
+  .rest-list > *{ grid-column:1 / -1; }
+  .rest-list > .food-card, .rest-list > .rest-card2, .rest-list > .mart-card{ grid-column:auto; }
+  .rest-list > .food-count + .food-card{ grid-column:1 / -1; }
+}
 </style>
+<style id="nesh-desktop-topbar-css">
+#nd-top, .nd-footer{ display:none; }
+@media (min-width:1000px){
+  body{ padding-top:68px; }
+  #nd-top{ display:block; position:absolute; top:0; left:0; right:0; height:68px; z-index:800; background:#fff; border-bottom:1px solid rgba(43,36,16,.08); box-shadow:0 2px 14px rgba(43,36,16,.06); }
+  html.au-on #nd-top{ display:none; }
+  #nd-top .nd-in{ max-width:var(--nd-w,1180px); height:100%; margin:0 auto; padding:0 32px; display:flex; align-items:center; gap:18px; box-sizing:border-box; font-family:Inter,sans-serif; }
+  #nd-top .nd-logo{ border:0; background:none; cursor:pointer; padding:0; font:900 26px Poppins,Inter,sans-serif; letter-spacing:-.5px; color:#2B2410; display:flex; align-items:center; gap:8px; }
+  #nd-top .nd-logo i{ width:34px; height:34px; border-radius:10px; background:#F2B705; display:inline-flex; align-items:center; justify-content:center; font-style:normal; font-size:18px; }
+  #nd-top .nd-loc{ flex:0 1 300px; min-width:0; display:flex; align-items:center; gap:8px; border:1.5px solid #E6DAB0; background:#FFFBEE; border-radius:999px; padding:9px 14px; cursor:pointer; font:600 13.5px Inter,sans-serif; color:#2B2410; }
+  #nd-top .nd-loc span{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #nd-top .nd-loc small{ color:#8A7A4A; font-weight:600; flex:none; }
+  #nd-top .nd-sp{ flex:1; }
+  #nd-top .nd-nav{ display:flex; align-items:center; gap:6px; }
+  #nd-top .nd-btn{ border:0; background:transparent; cursor:pointer; padding:10px 14px; border-radius:12px; font:700 14px Inter,sans-serif; color:#4A3A00; display:flex; align-items:center; gap:7px; transition:background .15s; }
+  #nd-top .nd-btn:hover{ background:#FFF1C9; }
+  #nd-top .nd-btn.on{ background:#2B2410; color:#FFD54A; }
+  #nd-top .nd-btn svg{ width:18px; height:18px; }
+  #nd-top .nd-cart{ background:linear-gradient(135deg,#FFD84D,#F2A900); color:#2B2410; }
+  #nd-top .nd-cart:hover{ background:linear-gradient(135deg,#FFE27A,#F2B705); }
+  #nd-top .nd-cart b{ background:#2B2410; color:#FFD54A; border-radius:99px; min-width:20px; height:20px; padding:0 6px; font-size:12px; display:none; align-items:center; justify-content:center; }
+  #nd-top .nd-cart.has b{ display:inline-flex; }
+  #nd-top [hidden]{ display:none !important; }
+
+  .nd-footer{ display:block; margin:36px 0 0; padding:36px 32px 28px; background:#2B2410; color:#E9DFBE; font-family:Inter,sans-serif; }
+  .nd-footer .nd-fin{ display:flex; flex-wrap:wrap; gap:28px 60px; justify-content:space-between; max-width:1100px; margin:0 auto; }
+  .nd-footer h4{ margin:0 0 10px; font:800 18px Poppins,Inter,sans-serif; color:#FFD54A; }
+  .nd-footer p{ margin:0; font-size:13.5px; line-height:1.55; max-width:340px; color:#CFC49C; }
+  .nd-footer a{ display:block; color:#E9DFBE; text-decoration:none; font-size:14px; padding:4px 0; cursor:pointer; }
+  .nd-footer a:hover{ color:#FFD54A; }
+  .nd-footer .nd-copy{ max-width:1100px; margin:26px auto 0; padding-top:16px; border-top:1px solid rgba(255,255,255,.12); font-size:12.5px; color:#A89E7C; }
+}
+html[data-theme="dark"] #nd-top{ background:#221E15; border-color:#3a3322; }
+html[data-theme="dark"] #nd-top .nd-logo, html[data-theme="dark"] #nd-top .nd-btn, html[data-theme="dark"] #nd-top .nd-loc{ color:#E7E0CD; }
+html[data-theme="dark"] #nd-top .nd-loc{ background:#2b2619; border-color:#534B33; }
+</style>
+<script id="nesh-desktop-topbar-js">
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var PLAY = 'https://play.google.com/store/apps/details?id=com.neshgroup.nesh';
+  var PRIV = 'https://nesh-group.github.io/NESH-APP/privacy.html';
+  function call(fn){ try{ if (typeof window[fn] === 'function') return window[fn](); }catch(_){} }
+
+  var bar = document.createElement('div');
+  bar.id = 'nd-top';
+  bar.innerHTML =
+    '<div class="nd-in">' +
+      '<button type="button" class="nd-logo" id="nd-logo" aria-label="NESH home"><i>🛵</i>NESH</button>' +
+      '<button type="button" class="nd-loc" id="nd-loc" title="Change location"><small>Deliver to</small><span id="nd-loc-txt">Select your location</span></button>' +
+      '<div class="nd-sp"></div>' +
+      '<div class="nd-nav">' +
+        '<button type="button" class="nd-btn" id="nd-home">Home</button>' +
+        '<button type="button" class="nd-btn" id="nd-offers" hidden>🔥 Offers</button>' +
+        '<button type="button" class="nd-btn" id="nd-orders">📦 Orders</button>' +
+        '<button type="button" class="nd-btn" id="nd-acc">Account</button>' +
+        '<button type="button" class="nd-btn nd-cart" id="nd-cart">🛒 Cart <b id="nd-cart-n">0</b></button>' +
+      '</div>' +
+    '</div>';
+  document.body.insertBefore(bar, document.body.firstChild);
+
+  function goHomeThen(sel){
+    var a = document.querySelector('.screen.active');
+    var onHome = a && a.id === 'screen-category';
+    if (!onHome) call('goToCategoryScreen');
+    setTimeout(function(){ var el = $(sel); if (el) el.click(); }, onHome ? 0 : 250);
+  }
+  $('nd-logo').addEventListener('click', function(){ call('goToCategoryScreen'); window.scrollTo(0,0); });
+  $('nd-home').addEventListener('click', function(){ call('goToCategoryScreen'); window.scrollTo(0,0); });
+  $('nd-loc').addEventListener('click', function(){ goHomeThen('cat-loc-card'); });
+  $('nd-acc').addEventListener('click', function(){ goHomeThen('cat-account-btn'); });
+  $('nd-orders').addEventListener('click', function(){ call('openOrdersScreen'); });
+  $('nd-offers').addEventListener('click', function(){
+    try{ showScreen('trending'); persistScreen('category'); }catch(_){}
+  });
+  $('nd-cart').addEventListener('click', function(){
+    var cb = $('cart-bar');
+    if (cb && cb.classList.contains('visible') && $('cart-btn')) { $('cart-btn').click(); return; }
+    var st = $('home-cart-stack'); var b = st && st.querySelector('button');
+    if (b) b.click();
+  });
+
+  // keep location text, cart count, active tab and Offers button in sync
+  function sync(){
+    try{
+      var lv = $('cat-loc-card-value'); var t = lv && lv.textContent.trim();
+      if (t) $('nd-loc-txt').textContent = t;
+      var a = document.querySelector('.screen.active'); var id = a ? a.id : '';
+      $('nd-home').classList.toggle('on', id === 'screen-category');
+      $('nd-orders').classList.toggle('on', id === 'screen-orders');
+      $('nd-offers').classList.toggle('on', id === 'screen-trending');
+      var has = (typeof window.neshHasOffers === 'function') ? !!window.neshHasOffers() : false;
+      $('nd-offers').hidden = !has && id !== 'screen-trending';
+      var m = ($('cart-count-text') && $('cart-count-text').textContent || '').match(/\d+/);
+      var cb = $('cart-bar'); var n = (cb && cb.classList.contains('visible') && m) ? parseInt(m[0],10) : 0;
+      $('nd-cart-n').textContent = n; $('nd-cart').classList.toggle('has', n > 0);
+    }catch(_){}
+  }
+  sync(); setInterval(sync, 700);
+
+  // footer on the main browse screens
+  function footer(){
+    var f = document.createElement('footer');
+    f.className = 'nd-footer';
+    f.innerHTML =
+      '<div class="nd-fin">' +
+        '<div><h4>NESH</h4><p>Food, groceries, shopping and taxi — delivered fast in your area.</p></div>' +
+        '<div><h4>Get the app</h4><a href="'+PLAY+'" target="_blank" rel="noopener">Download on Google Play</a></div>' +
+        '<div><h4>Help</h4><a href="'+PRIV+'" target="_blank" rel="noopener">Privacy Policy</a></div>' +
+      '</div><div class="nd-copy">© NESH Group</div>';
+    return f;
+  }
+  ['screen-category','screen-home'].forEach(function(id){
+    var s = $(id); if (s) s.appendChild(footer());
+  });
+})();
+</script>
 </body>
 </html>
