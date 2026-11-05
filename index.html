@@ -5778,10 +5778,18 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
       </div>
       <div class="loc-search-results" id="loc-landmark-suggestions"></div>
 
-      <p class="loc-field-label">Contact number for this order</p>
+      <p class="loc-field-label" id="loc-contact-label">Contact number for this order</p>
       <div class="field" style="background:#fff; border:1px solid #E4DFD2;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A66600" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
         <input id="loc-contact" type="tel" maxlength="10" inputmode="numeric" placeholder="10-digit mobile number" style="color:var(--ink);" />
+      </div>
+      <div id="loc-abroad-wrap" style="display:none;">
+        <p class="loc-field-label">Your number in the other country <span style="color:var(--chili);">* Required</span></p>
+        <p style="margin:-2px 0 6px; font-size:12px; color:var(--muted-2);">The mobile number you use abroad, with country code (e.g. +971 50 123 4567).</p>
+        <div class="field" style="background:#fff; border:1px solid #E4DFD2;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A66600" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>
+          <input id="loc-contact-abroad" type="tel" maxlength="20" inputmode="tel" placeholder="+971 50 123 4567" style="color:var(--ink);" />
+        </div>
       </div>
 
           </div>
@@ -6423,10 +6431,10 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
       yellow: { bg:'#FFC400', title:'#2B2410', text:'#2B2410', chipBg:'#2B2410', chipFg:'#FFD54A', btnBg:'#2B2410', btnFg:'#FFD54A' }
     };
     var TARGETS = { food:'cat-card-food', groceries:'cat-card-groceries', online_shop:'cat-card-online-shop', taxi:'cat-card-taxi', bus:'cat-card-bus', pravasi:'cat-card-pravasi', orders:'cat-card-orders' };
-    var cfg = null, shownThisOpen = false, timer = null;
+    var cfg = null, inCfg = null, shownThisOpen = false, timer = null, SEEN_KEY = 'nesh_home_popup_seen', lastAbVer = null;
     function $(id) { return document.getElementById(id); }
-    function lsGet() { try { return JSON.parse(localStorage.getItem('nesh_home_popup_seen') || '{}'); } catch (e) { return {}; } }
-    function lsSet(o) { try { localStorage.setItem('nesh_home_popup_seen', JSON.stringify(o)); } catch (e) {} }
+    function lsGet() { try { return JSON.parse(localStorage.getItem(SEEN_KEY) || '{}'); } catch (e) { return {}; } }
+    function lsSet(o) { try { localStorage.setItem(SEEN_KEY, JSON.stringify(o)); } catch (e) {} }
     function hide() { var el = $('home-popup'); if (el) { el.classList.remove('show'); el.setAttribute('aria-hidden', 'true'); } }
     function allowed() {
       if (shownThisOpen) return false;
@@ -6452,9 +6460,16 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
       lsSet({ v: cfg.version, d: new Date().toDateString() });
     }
     function tryShow() {
+      // Customers abroad get their own popup (Operator Panel > Abroad Popup, pravasi/popup) on the Pravasi screen;
+      // customers in India keep the normal home popup on the home cards screen.
+      var ab = false; try { ab = !!(typeof neshAbroadActive === 'function' && neshAbroadActive()); } catch (e) {}
+      cfg = ab ? ((window.PRAVASI_CFG || {}).popup || null) : inCfg;
+      SEEN_KEY = ab ? 'nesh_home_popup_seen_ab' : 'nesh_home_popup_seen';
       if (!cfg || !cfg.on) return;
-      var sc = $('screen-category');
+      if (ab && cfg.version !== lastAbVer) { lastAbVer = cfg.version; shownThisOpen = false; }
+      var sc = ab ? $('screen-home') : $('screen-category');
       if (!sc || !sc.classList.contains('active')) return;
+      if (ab && sc.dataset.pravasi !== '1') return;
       if ($('home-popup').classList.contains('show') || !allowed()) return;
       show();
     }
@@ -6464,14 +6479,18 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
     $('hp-btn').addEventListener('click', function () {
       var t = TARGETS[cfg && cfg.target], card = t && $(t);
       hide();
+      if (cfg && cfg.target === 'airport') { setTimeout(function () { try { pvOpenAirportPicker(); } catch (e) {} }, 60); return; }
       if (card && card.style.display !== 'none' && getComputedStyle(card).display !== 'none') setTimeout(function () { card.click(); }, 60);
     });
     var sc0 = $('screen-category');
     if (sc0 && window.MutationObserver) new MutationObserver(function () { schedule(700); }).observe(sc0, { attributes: true, attributeFilter: ['class'] });
+    var hs0 = $('screen-home');
+    if (hs0 && window.MutationObserver) new MutationObserver(function () { schedule(700); }).observe(hs0, { attributes: true, attributeFilter: ['class', 'data-pravasi'] });
+    setInterval(function () { try { if (typeof neshAbroadActive === 'function' && neshAbroadActive()) tryShow(); } catch (e) {} }, 3000);   // picks up a newly saved abroad popup
     onValue(ref(db, 'app_config/homePopup'), function (snapshot) {
       var c = snapshot.val();
-      if (cfg && c && c.version !== cfg.version) shownThisOpen = false;
-      cfg = c;
+      if (inCfg && c && c.version !== inCfg.version) shownThisOpen = false;
+      inCfg = c;
       if (!c || !c.on) { hide(); return; }
       schedule(1800);
     });
@@ -6760,16 +6779,21 @@ window.onNeshPricesUpdated = () => {
   }
 };
 
-// Reorders the four home-screen category cards (Food, Groceries, Other
-// Shop, Taxi) inside .cat-wrap according to the operator-set order coming
+// Reorders the five home-screen category cards (Pravasi Hampers, Food, Groceries,
+// Other Shop, Taxi) inside .cat-wrap according to the operator-set order coming
 // from app_config/categoryOrder. Falls back to the original markup order
 // if nothing's been set (or the saved value looks malformed), so the home
 // screen never ends up with a missing/duplicated card.
-const CATEGORY_CARD_IDS = { hotel: 'cat-card-food', groceries: 'cat-card-groceries', online_shop: 'cat-card-online-shop', taxi: 'cat-card-taxi' };
-const CATEGORY_DEFAULT_ORDER = ['hotel', 'groceries', 'online_shop', 'taxi'];
+const CATEGORY_CARD_IDS = { pravasi: 'cat-card-pravasi', hotel: 'cat-card-food', groceries: 'cat-card-groceries', online_shop: 'cat-card-online-shop', taxi: 'cat-card-taxi' };
+// Pravasi first = where its card already showed (it sat right above these four), so nothing jumps until the operator moves it.
+const CATEGORY_DEFAULT_ORDER = ['pravasi', 'hotel', 'groceries', 'online_shop', 'taxi'];
+const CATEGORY_LEGACY_KEYS = ['hotel', 'groceries', 'online_shop', 'taxi'];   // an order saved before Pravasi was added
 window.applyCategoryOrder = function (order) {
-  const valid = Array.isArray(order) && order.length === CATEGORY_DEFAULT_ORDER.length && CATEGORY_DEFAULT_ORDER.every(k => order.includes(k));
-  const finalOrder = valid ? order : CATEGORY_DEFAULT_ORDER;
+  let finalOrder = CATEGORY_DEFAULT_ORDER;
+  if (Array.isArray(order) && CATEGORY_LEGACY_KEYS.every(k => order.includes(k))) {
+    finalOrder = order.filter((k, n) => CATEGORY_CARD_IDS[k] && order.indexOf(k) === n);   // known cards only, no duplicates
+    if (!finalOrder.includes('pravasi')) finalOrder.unshift('pravasi');                     // old 4-card order: Pravasi stays where it was
+  }
   const wrap = document.querySelector('.cat-wrap');
   if (!wrap) return;
   finalOrder.forEach(key => {
@@ -7519,6 +7543,129 @@ function isPravasiShop(r) {
   if (e) return e.active !== false && e.active !== 'false';
   return String(r.opCategory || '').trim().toLowerCase() === 'pravasi hampers';
 }
+// ---------- Pravasi airports (customers abroad pick an airport instead of a location) ----------
+// Operator Panel > Pravasi Airports (Firebase pravasi/airports/{id} = { name, code, lat, lng, active, shopIds:{shopId:true} }).
+function pvAirports() {
+  const a = (window.PRAVASI_CFG && window.PRAVASI_CFG.airports) || {};
+  return Object.keys(a).map(id => Object.assign({ id }, a[id])).filter(x => x && x.name && x.active !== false && x.active !== 'false' && typeof x.lat === 'number' && typeof x.lng === 'number')
+    .sort((x, y) => String(x.name).localeCompare(String(y.name)));
+}
+function pvAirportActive() { try { return neshAbroadActive() && pvAirports().length > 0; } catch (e) { return false; } }
+function pvAirportId() {
+  if (state.pvAirportId == null) { try { state.pvAirportId = localStorage.getItem('nesh_pv_airport') || ''; } catch (e) { state.pvAirportId = ''; } }
+  return state.pvAirportId;
+}
+function pvSelectedAirport() { const id = pvAirportId(); return id ? (pvAirports().find(a => a.id === id) || null) : null; }
+function pvShopInAirport(r) { const a = pvSelectedAirport(); if (!a) return true; return !!(a.shopIds && r && a.shopIds[r.id]); }
+function pvAirportUiOn() { try { return pvAirportActive() && state.category === 'online_shop' && !!state.pravasi; } catch (e) { return false; } }
+function pvApplyAirportPos(a) {
+  if (a && typeof a.lat === 'number' && typeof a.lng === 'number') {
+    const c = state.customerPos;
+    if (!c || c.lat !== a.lat || c.lng !== a.lng) state.customerPos = { lat: a.lat, lng: a.lng };
+  }
+}
+function pvSyncAirportHeader() {
+  const on = pvAirportUiOn();
+  const el = document.getElementById('home-location');
+  document.documentElement.classList.toggle('pv-airport-ui', on);
+  let note = document.getElementById('pv-ap-note');
+  if (!el) return;
+  if (on) {
+    const a = pvSelectedAirport();
+    pvApplyAirportPos(a);
+    el.textContent = a ? ('✈️ ' + a.name + (a.code ? ' (' + a.code + ')' : '')) : '✈️ Select airport · showing all shops';
+    el.dataset.pvAp = '1';
+    const cnt = a ? (window.RESTAURANTS || []).filter(r => isPravasiShop(r) && pvShopInAirport(r)).length : 1;
+    if (!note) { note = document.createElement('p'); note.id = 'pv-ap-note'; note.className = 'empty-text'; if (restListEl && restListEl.parentNode) restListEl.parentNode.insertBefore(note, restListEl); }
+    if (note) { note.style.display = cnt ? 'none' : ''; note.textContent = a ? ('No shops deliver to ' + a.name + ' yet. Tap “Deliver to” to choose another airport.') : ''; }
+  } else {
+    if (note) note.style.display = 'none';
+    if (el.dataset.pvAp === '1') { delete el.dataset.pvAp; try { updateHomeLocationLabel(); } catch (e) {} }
+  }
+}
+function pvSetAirport(id) {
+  const old = pvAirportId();
+  state.pvAirportId = id || '';
+  try { if (id) localStorage.setItem('nesh_pv_airport', id); else localStorage.removeItem('nesh_pv_airport'); } catch (e) {}
+  if (old !== state.pvAirportId) state.pendingCheckout = null;   // checkout re-fills from the new airport
+  try { pvSyncAirportHeader(); } catch (e) {}
+  try { renderRestaurantList(); } catch (e) {}
+}
+function pvOpenAirportPicker(onPick) {
+  const list = pvAirports(); if (!list.length) return;
+  const old = document.getElementById('pv-ap-ov'); if (old) old.remove();
+  const sel = pvSelectedAirport();
+  const ov = document.createElement('div');
+  ov.id = 'pv-ap-ov';
+  const row = (id, ic, title, sub, on) => '<button type="button" class="pv-ap-row' + (on ? ' on' : '') + '" data-ap="' + escapeHtml(id) + '"><span class="pv-ap-ic">' + ic + '</span><span class="pv-ap-txt"><b>' + escapeHtml(title) + '</b><small>' + escapeHtml(sub) + '</small></span>' + (on ? '<span class="pv-ap-tick">✓</span>' : '') + '</button>';
+  const shopCount = a => (window.RESTAURANTS || []).filter(r => isPravasiShop(r) && a.shopIds && a.shopIds[r.id]).length;
+  ov.innerHTML = '<div class="pv-ap-sheet"><div class="pv-ap-grab"></div>' +
+    '<div class="pv-ap-head"><span class="pv-ap-title">Deliver to which airport?</span><button type="button" id="pv-ap-x" class="pv-ap-x" aria-label="Close">✕</button></div>' +
+    '<p class="pv-ap-sub">Pick your airport — you’ll see the shops that deliver there.</p>' +
+    list.map(a => { const n = shopCount(a); return row(a.id, '✈️', a.name + (a.code ? ' (' + a.code + ')' : ''), n + ' shop' + (n === 1 ? '' : 's') + ' deliver here', !!sel && sel.id === a.id); }).join('') +
+    (sel ? row('', '🛍️', 'Show all shops', 'Clear the airport', false) : '') +
+    '<button type="button" id="pv-ap-in" class="pv-ap-in">Not abroad? I’m in India</button></div>';
+  document.body.appendChild(ov);
+  const close = () => { try { ov.remove(); } catch (e) {} };
+  ov.addEventListener('click', e => {
+    if (e.target === ov || (e.target.closest && e.target.closest('#pv-ap-x'))) { close(); return; }
+    if (e.target.closest && e.target.closest('#pv-ap-in')) { close(); neshSetWhere('in'); return; }
+    const b = e.target.closest && e.target.closest('[data-ap]'); if (!b) return;
+    pvSetAirport(b.getAttribute('data-ap')); close();
+    if (typeof onPick === 'function' && pvSelectedAirport()) { try { onPick(); } catch (err) {} }
+  });
+}
+// Header "Deliver to" on the Pravasi screen opens the airport list instead of the location picker.
+document.addEventListener('click', function (e) {
+  if (!pvAirportUiOn()) return;
+  const row = e.target && e.target.closest && e.target.closest('#home-loc-row');
+  if (!row) return;
+  e.stopPropagation(); e.stopImmediatePropagation();
+  pvOpenAirportPicker();
+}, true);
+function pvGate(next) { if (pvAirportActive()) next(); else requireLocationThen(next); }
+// Checkout side
+function pvOrderIsAirport() { try { const r = state.selectedRestaurant; return pvAirportActive() && !!r && isPravasiShop(r); } catch (e) { return false; } }
+function pvCheckoutGate(retry) {   // true = blocked
+  if (!pvOrderIsAirport()) return false;
+  const a = pvSelectedAirport(), r = state.selectedRestaurant;
+  if (!a) { pvOpenAirportPicker(retry); return true; }
+  if (!(a.shopIds && a.shopIds[r.id])) { showInfoModal('Not available at this airport', (r.name || 'This shop') + " doesn't deliver to " + a.name + '. Please choose another airport or shop.'); return true; }
+  pvApplyAirportPos(a);   // delivery point = the airport even if the shop was opened from a shared link / after a reload
+  if (state.pendingCheckout && state.pendingCheckout.airportId !== a.id) state.pendingCheckout = null;
+  return false;
+}
+function pvAbroadDigits() { const i = document.getElementById('loc-contact-abroad'); return i ? String(i.value).replace(/\D/g, '') : ''; }
+function pvCheckoutExtra() {
+  if (!pvOrderIsAirport()) return {};
+  const a = pvSelectedAirport() || {}, i = document.getElementById('loc-contact-abroad');
+  return { contactAbroad: (i ? i.value : '').replace(/[^\d+ ]/g, '').trim(), airportId: a.id || '', airportName: a.name || '', airportCode: a.code || '' };
+}
+function pvCheckoutPrep(pc) {
+  const wrap = document.getElementById('loc-abroad-wrap'), lab = document.getElementById('loc-contact-label'), inp = document.getElementById('loc-contact-abroad');
+  const on = pvOrderIsAirport();
+  if (wrap) wrap.style.display = on ? '' : 'none';
+  if (lab) lab.textContent = on ? 'Your Indian mobile number' : 'Contact number for this order';
+  if (!on) return;
+  const a = pvSelectedAirport() || {};
+  let saved = ''; try { saved = localStorage.getItem('nesh_pv_abroad_num') || ''; } catch (e) {}
+  if (inp) inp.value = (pc && pc.contactAbroad) || saved;
+  if (!locLandmarkInput.value.trim()) locLandmarkInput.value = (a.name || 'Airport') + (a.code ? ' (' + a.code + ')' : '');
+  if (!locPlaceInput.value.trim()) locPlaceInput.value = a.name || '';
+}
+(function () {
+  try { const st = document.createElement('style'); st.id = 'pv-airport-css'; st.textContent = '\n#pv-ap-ov,#nesh-where-ov{--pv-bg:#fff;--pv-ink:#2B2410;--pv-mut:#8a7f66;--pv-bd:#E6DAB0;--pv-sel:#FFF6DC;--pv-acc:#F2B705;}\nhtml[data-theme="dark"] #pv-ap-ov,html[data-theme="dark"] #nesh-where-ov{--pv-bg:#1d1b16;--pv-ink:#f4efe0;--pv-mut:#a89f86;--pv-bd:#3a3526;--pv-sel:#2d2813;}\n@keyframes pvFade{from{opacity:0}to{opacity:1}}\n@keyframes pvUp{from{transform:translateY(40px);opacity:.6}to{transform:none;opacity:1}}\n#pv-ap-ov{position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;animation:pvFade .18s ease;}\n.pv-ap-sheet{width:100%;max-width:420px;max-height:82vh;overflow:auto;background:var(--pv-bg);color:var(--pv-ink);border-radius:24px 24px 0 0;padding:10px 16px calc(22px + env(safe-area-inset-bottom,0px));box-sizing:border-box;animation:pvUp .25s ease;font-family:Inter,sans-serif;}\n.pv-ap-grab{width:42px;height:4px;border-radius:4px;background:var(--pv-bd);margin:0 auto 12px;}\n.pv-ap-head{display:flex;justify-content:space-between;align-items:center;gap:10px;}\n.pv-ap-title{font:800 18px Inter,sans-serif;}\n.pv-ap-x{border:0;background:var(--pv-sel);color:var(--pv-ink);border-radius:50%;width:30px;height:30px;font-size:13px;cursor:pointer;flex:none;}\n.pv-ap-sub{margin:4px 0 14px;font:500 12.5px/1.4 Inter,sans-serif;color:var(--pv-mut);}\n.pv-ap-row{display:flex;width:100%;align-items:center;gap:12px;text-align:left;border:1.5px solid var(--pv-bd);background:var(--pv-bg);color:var(--pv-ink);border-radius:16px;padding:11px 14px;margin:0 0 10px;font:600 14px Inter,sans-serif;cursor:pointer;transition:transform .12s,border-color .15s;}\n.pv-ap-row:active{transform:scale(.98);}\n.pv-ap-row.on{border-color:var(--pv-ink);background:var(--pv-sel);}\n.pv-ap-ic{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#FFE27A,#F2B705);display:flex;align-items:center;justify-content:center;font-size:20px;flex:none;}\n.pv-ap-txt{flex:1;min-width:0;}\n.pv-ap-txt b{display:block;font-weight:700;line-height:1.25;}\n.pv-ap-txt small{display:block;margin-top:2px;color:var(--pv-mut);font-weight:500;font-size:12px;}\n.pv-ap-tick{width:24px;height:24px;border-radius:50%;background:var(--pv-ink);color:var(--pv-bg);display:flex;align-items:center;justify-content:center;font-size:13px;flex:none;}\n.pv-ap-in{display:block;margin:8px auto 0;border:0;background:none;color:var(--pv-mut);font:600 12.5px Inter,sans-serif;text-decoration:underline;cursor:pointer;padding:6px 10px;}\nhtml.pv-airport-ui #screen-home[data-pravasi="1"] #home-loc-row{background:linear-gradient(135deg,#FFF6DC,#FFE9A8);border:1.5px solid #F2B705;box-shadow:0 4px 14px rgba(242,183,5,.28);}\nhtml.pv-airport-ui #screen-home[data-pravasi="1"] #home-location{font-weight:800;}\nhtml[data-theme="dark"].pv-airport-ui #screen-home[data-pravasi="1"] #home-loc-row{background:linear-gradient(135deg,#2d2813,#3a3210);border-color:#8a6d00;box-shadow:none;}\n#pv-ap-note{margin:10px 20px;padding:12px 14px;border-radius:14px;background:#FFF6DC;border:1px solid rgba(201,127,0,.35);color:#6b5a1c;font:600 13px/1.4 Inter,sans-serif;text-align:left;}\nhtml[data-theme="dark"] #pv-ap-note{background:#2d2813;color:#e8d79a;border-color:#5a4a10;}\n#loc-abroad-wrap{margin-top:4px;padding-top:2px;}\n#nesh-where-ov{position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px;animation:pvFade .18s ease;}\n.nw-box{width:100%;max-width:360px;background:var(--pv-bg);color:var(--pv-ink);border-radius:22px;padding:22px 20px 18px;box-sizing:border-box;text-align:center;font-family:Inter,sans-serif;animation:pvUp .25s ease;}\n.nw-ic{font-size:34px;line-height:1;margin-bottom:8px;}\n.nw-title{display:block;font:800 18px Inter,sans-serif;}\n.nw-sub{margin:6px 0 6px;font:500 13px Inter,sans-serif;color:var(--pv-mut);}\n.nw-btn{display:block;width:100%;border:1.5px solid var(--pv-bd);background:var(--pv-bg);color:var(--pv-ink);border-radius:14px;padding:13px;margin-top:10px;font:700 15px Inter,sans-serif;cursor:pointer;transition:transform .12s;}\n.nw-btn:active{transform:scale(.98);background:var(--pv-sel);}\nhtml.pv-airport-ui #home-loc-suggest{display:none !important;}\n'; document.head.appendChild(st); } catch (e) {}
+  const wire = () => {
+    const i = document.getElementById('loc-contact-abroad'); if (!i || i.dataset.w) return; i.dataset.w = '1';
+    i.addEventListener('input', () => {
+      i.value = i.value.replace(/[^\d+ ]/g, '').replace(/(?!^)\+/g, '').slice(0, 20);
+      try { localStorage.setItem('nesh_pv_abroad_num', i.value); } catch (e) {}
+      try { cpLive(false); } catch (e) {}
+    });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire); else wire();
+})();
+
 function openCategory(cat, opts) {
   if (cat === 'groceries') { openNeshStore(); return; }   // no per-shop groceries list
   if (isAreaUnavailable(state.customerPos)) { handleAreaUnavailable(() => openCategory(cat, opts)); return; }
@@ -7669,18 +7816,89 @@ document.getElementById('nb-trending').addEventListener('click', () => { showScr
 // directly on Pravasi Hampers; customers in India see every card exactly as before.
 // Operator switch: Firebase  pravasi/layout/abroadDirect = false  turns this off.
 // Testing in a browser: add ?abroad=1 (force on) or ?abroad=0 (force off) to the page address.
-function neshIsAbroad() {
-  try {
-    const q = new URLSearchParams(window.location.search).get('abroad');
-    if (q === '1') return true;
-    if (q === '0') return false;
-  } catch (e) {}
+// Abroad detection = IP country + phone time zone (+ the customer's own choice when the two disagree).
+//  - both say abroad / both say India -> that; they disagree (VPN, travelling, changed clock) -> India until the customer picks;
+//  - only one of them is known -> that one; neither -> India. A manual choice is remembered for 30 days.
+// Testing in a browser: add ?abroad=1 (force on) or ?abroad=0 (force off) to the page address.
+function neshQueryAbroad() { try { const q = new URLSearchParams(window.location.search).get('abroad'); return q === '1' ? true : q === '0' ? false : null; } catch (e) { return null; } }
+function neshTzAbroad() {
   try {
     const tz = String(Intl.DateTimeFormat().resolvedOptions().timeZone || '');
-    if (!tz || /^(UTC|GMT|Etc\/.*)$/i.test(tz)) return false;   // unknown -> treat as India, show every card
+    if (!tz || /^(UTC|GMT|Etc\/.*)$/i.test(tz)) return null;
     return !/^Asia\/(Kolkata|Calcutta)$/i.test(tz);
-  } catch (e) { return false; }
+  } catch (e) { return null; }
 }
+function neshIpAbroad() {
+  try { const c = JSON.parse(localStorage.getItem('nesh_ip_cc') || 'null'); if (c && c.cc && Date.now() - c.t < 12 * 3600e3) return c.cc !== 'IN'; } catch (e) {}
+  return null;
+}
+function neshWhereChoice() {
+  try { const w = JSON.parse(localStorage.getItem('nesh_where') || 'null'); if (w && (w.v === 'in' || w.v === 'abroad') && Date.now() - w.t < 30 * 864e5) return w.v; } catch (e) {}
+  return null;
+}
+function neshWhereConflict() {
+  if (neshQueryAbroad() !== null || neshWhereChoice()) return false;
+  const t = neshTzAbroad(), i = neshIpAbroad();
+  return t !== null && i !== null && t !== i;
+}
+function neshIsAbroad() {
+  const q = neshQueryAbroad(); if (q !== null) return q;
+  const w = neshWhereChoice(); if (w) return w === 'abroad';
+  const t = neshTzAbroad(), i = neshIpAbroad();
+  if (t !== null && i !== null) return t === i ? t : false;
+  if (i !== null) return i;
+  if (t !== null) return t;
+  return false;
+}
+function neshAfterWhereChange() {
+  try { neshAbroadSync(); } catch (e) {}
+  try { neshMaybeAskWhere(); } catch (e) {}
+  try { const sc = document.getElementById('screen-category'); if (sc && sc.classList.contains('active')) neshAbroadAutoOpen(); } catch (e) {}
+  try { pvSyncAirportHeader(); } catch (e) {}
+  try { renderRestaurantList(); } catch (e) {}
+}
+function neshSetWhere(v) {
+  try { localStorage.setItem('nesh_where', JSON.stringify({ v: v === 'abroad' ? 'abroad' : 'in', t: Date.now() })); } catch (e) {}
+  const ov = document.getElementById('nesh-where-ov'); if (ov) ov.remove();
+  neshAfterWhereChange();
+}
+function neshMaybeAskWhere() {
+  if (!neshWhereConflict() || document.getElementById('nesh-where-ov') || !document.body) return;
+  const ov = document.createElement('div');
+  ov.id = 'nesh-where-ov';
+  ov.innerHTML = '<div class="nw-box"><div class="nw-ic">🌍</div><b class="nw-title">Where are you right now?</b><p class="nw-sub">So we can show you the right options.</p>' +
+    '<button type="button" class="nw-btn" data-w="in">🇮🇳 I’m in India</button><button type="button" class="nw-btn" data-w="abroad">✈️ I’m abroad</button></div>';
+  ov.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-w]'); if (b) neshSetWhere(b.getAttribute('data-w')); });
+  document.body.appendChild(ov);
+}
+function neshFetchIpCountry() {
+  try { const c = JSON.parse(localStorage.getItem('nesh_ip_cc') || 'null'); if (c && c.cc && Date.now() - c.t < 12 * 3600e3) return; } catch (e) {}
+  const done = cc => {
+    cc = String(cc || '').trim().toUpperCase();
+    if (!/^[A-Z]{2}$/.test(cc)) return false;
+    try { localStorage.setItem('nesh_ip_cc', JSON.stringify({ cc, t: Date.now() })); } catch (e) {}
+    neshAfterWhereChange();
+    return true;
+  };
+  const tryUrl = (url, json) => {
+    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 4000);
+    return fetch(url, { signal: ctl.signal }).then(r => json ? r.json().then(j => j.country) : r.text())
+      .then(x => { clearTimeout(to); return done(x); }).catch(() => { clearTimeout(to); return false; });
+  };
+  tryUrl('https://api.country.is/', true).then(ok => { if (!ok) tryUrl('https://ipapi.co/country/', false); });
+}
+try { neshFetchIpCountry(); } catch (e) {}
+try { neshAbroadSync(); } catch (e) {}
+// Customers abroad never see the home cards screen: it stays invisible and Pravasi opens straight away (safety net re-tries it).
+try { const st2 = document.createElement('style'); st2.textContent = 'html.nesh-abroad #screen-category{visibility:hidden !important;}'; document.head.appendChild(st2); } catch (e) {}
+setInterval(function () {
+  try {
+    if (!neshAbroadActive() || !state.user) return;
+    try { if (pendingShopLinkId) return; } catch (e) {}
+    const sc = document.getElementById('screen-category');
+    if (sc && sc.classList.contains('active')) { _neshAbroadAt = 0; neshAbroadAutoOpen(); }
+  } catch (e) {}
+}, 1500);
 function neshAbroadActive() {
   const c = window.PRAVASI_CFG || {};
   if (c.enabled === false || c.enabled === 'false') return false;           // Pravasi card switched off by operator
@@ -7694,12 +7912,13 @@ function neshAbroadSync() {
 let _neshAbroadAt = 0;
 function neshAbroadAutoOpen() {
   neshAbroadSync();
+  try { neshMaybeAskWhere(); } catch (e) {}
   if (!neshAbroadActive() || !state.user) return;
   try { if (pendingShopLinkId) return; } catch (e) {}     // a shared shop link always wins
   const now = Date.now();
   if (now - _neshAbroadAt < 1500) return;
   _neshAbroadAt = now;
-  requireLocationThen(() => { openCategory('online_shop', { pravasi: true }); });
+  pvGate(() => { openCategory('online_shop', { pravasi: true }); });
 }
 function goToCategoryScreen() {
   const firstName = (state.user?.name || "friend").split(' ')[0];
@@ -8784,7 +9003,7 @@ document.addEventListener('click', function (ev) {
   listen();
   document.getElementById('cat-card-pravasi').addEventListener('click', (e) => {
     if (e.target && e.target.closest && e.target.closest(PV_ACTION_SEL)) return;
-    maybeDetectLocationOnCategoryTap(); requireLocationThen(() => { openCategory('online_shop', { pravasi: true }); offerWebNotificationOnce(); });
+    if (!pvAirportActive()) maybeDetectLocationOnCategoryTap(); pvGate(() => { openCategory('online_shop', { pravasi: true }); offerWebNotificationOnce(); });
   });
 })();
 
@@ -12691,6 +12910,7 @@ function neshAddrLabelSync(pos) {
 function updateHomeLocationLabel() {
   try { syncAreaUnavailScreen(); } catch (e) {}
   updateLocSuggestBanners();
+  if (pvAirportUiOn()) { try { pvSyncAirportHeader(); } catch (e) {} return; }
   homeLocation.textContent = state.customerPos
     ? "Delivering to selected location"
     : (state.locationDetectFailed ? "Tap to set your location" : "Select your location");
@@ -12958,6 +13178,7 @@ function handleAreaUnavailable(retryAction) {
 function shopZonesConfigured() { return (window.SHOP_ZONES || []).length > 0; }
 function zonesAtPoint(pt) { return (window.SHOP_ZONES || []).filter(z => isPointInZone(pt, z.bounds)); }
 function isAreaUnavailable(pt) {
+  try { if (pvAirportActive()) return false; } catch (e) {}
   return !!(pt && typeof pt.lat === 'number' && typeof pt.lng === 'number') && shopZonesConfigured() && zonesAtPoint(pt).length === 0;
 }
 function shopAllowedAtPoint(shopId, pt) {
@@ -13288,7 +13509,9 @@ function renderRestaurantList() {
     const sb = state.selectedRestaurant && state.selectedRestaurant.businessType;
     state.category = (sb === 'hotel' || sb === 'online_shop') ? sb : 'hotel';
   }
-  const categoryFiltered = visibleShops.filter(r => (r.businessType || 'hotel') === state.category && !(state.category === 'online_shop' && !!state.pravasi !== isPravasiShop(r)));
+  try { pvSyncAirportHeader(); } catch (e) {}
+  const _pvAp = pvAirportUiOn();
+  const categoryFiltered = visibleShops.filter(r => (r.businessType || 'hotel') === state.category && !(state.category === 'online_shop' && !!state.pravasi !== isPravasiShop(r))).filter(r => !_pvAp || pvShopInAirport(r));
   { const _hp = document.getElementById('screen-home'); if (_hp) { if (state.category === 'online_shop' && state.pravasi) _hp.dataset.pravasi = '1'; else delete _hp.dataset.pravasi; } }
   pvApplySlots();
   { const hs = document.getElementById('screen-home'); if (hs) { const _mf = martFoodLook(); hs.dataset.cat = _mf ? 'hotel' : (state.category || ''); if (_mf) hs.dataset.mart = '1'; else delete hs.dataset.mart; } } // lets CSS style NESH Mart (online_shop) / Food (hotel) separately
@@ -13323,7 +13546,7 @@ function renderRestaurantList() {
   // delivery zone covers that point. Restaurants that haven't drawn a zone
   // yet are still shown, so nothing disappears just because a restaurant
   // hasn't set one up yet.
-  let filtered = state.customerPos
+  let filtered = (state.customerPos && !_pvAp)
     ? searchFiltered.filter(r => shopAllowedAtPoint(r.id, state.customerPos) && (!r.zone || isPointInZone(state.customerPos, r.zone)))
     : searchFiltered;
   if (state.category === 'hotel' || martFoodLook()) filtered = neshApplyShopFilters(filtered);
@@ -13563,7 +13786,7 @@ function renderProductResults(q, categoryFiltered) {
 
   // Respect the same delivery-zone filter as the shop list, so a product
   // from a shop that doesn't deliver here doesn't show up as tappable.
-  const deliverable = (state.customerPos
+  const deliverable = ((state.customerPos && !pvAirportUiOn())
     ? categoryFiltered.filter(r => shopAllowedAtPoint(r.id, state.customerPos) && (!r.zone || isPointInZone(state.customerPos, r.zone)))
     : categoryFiltered
   ).filter(r => !getShopClosedInfo(r).closed); // closed / unavailable shops' products must not appear (or be orderable) from search
@@ -13591,14 +13814,14 @@ function renderProductResults(q, categoryFiltered) {
   if (products.length === 0) {
     if (pvItemsOnly) {
       productResultsWrap.style.display = 'block';
-      productResultsLabel.textContent = 'Hampers';
-      productListEl.innerHTML = '<p class="empty-text" style="grid-column:1/-1;">' + (q ? 'No hampers match "' + escapeHtml(searchInput.value) + '".' : 'Hampers udan varunnu 🎁') + '</p>';
+      productResultsLabel.textContent = 'Items';
+      productListEl.innerHTML = '<p class="empty-text" style="grid-column:1/-1;">' + (q ? 'No items match "' + escapeHtml(searchInput.value) + '".' : 'Items udan varunnu 🎁') + '</p>';
     } else { productResultsWrap.style.display = 'none'; productListEl.innerHTML = ''; }
     return;
   }
 
   productResultsWrap.style.display = 'block';
-  productResultsLabel.textContent = (pvItemsOnly ? "Hampers (" : "Products (") + products.length + ")";
+  productResultsLabel.textContent = (pvItemsOnly ? "Items (" : "Products (") + products.length + ")";
   productListEl.innerHTML = '';
   products.forEach(({ item: it, shop: r }) => {
     const card = document.createElement('div');
@@ -13623,7 +13846,9 @@ function renderProductResults(q, categoryFiltered) {
     }
     card.addEventListener('click', () => {
       openRestaurant(r.id);
-      openItemDetail(it.id);
+      // Pravasi hampers list: Back from the item returns to this list (same as the NESH Mart popular-products cards), not into the shop menu.
+      if (pvItemsOnly && !(state.selectedRestaurant && state.selectedRestaurant.id === r.id)) return;   // shop was blocked (area/delivery)
+      openItemDetail(it.id, pvItemsOnly);
     });
     productListEl.appendChild(card);
   });
@@ -17177,6 +17402,7 @@ function ensureLocMap(startLat, startLng) {
 }
 
 function openLocationConfirm(prefill) {
+  if (pvCheckoutGate(() => openLocationConfirm(prefill))) return;
   // If we're re-opening this step to edit details already saved from a
   // previous "Proceed" tap (state.pendingCheckout), start from those values.
   // Otherwise, default to the location the customer already picked in
@@ -17214,6 +17440,7 @@ function openLocationConfirm(prefill) {
   locPlaceInput.value = pc?.place || haPre?.place || "";
   locSearchInput.value = "";
   locContactInput.value = pc?.contact || haPre?.contact || digitsOnly(state.user?.number || "");
+  try { pvCheckoutPrep(pc); } catch (e) {}
   hideLandmarkSuggestions();
   hideLocSearchResults();
   locOverlay.classList.add('show');
@@ -17543,6 +17770,7 @@ let pendingLocationRequiredAction = null;
 // once they confirm a location in the picker.
 function requireLocationThen(next) {
   if (state.customerPos) { next(); return; }
+  try { if (pvAirportActive()) { next(); return; } } catch (e) {}
   pendingLocationRequiredAction = next;
   openBrowseLocationPicker();
 }
@@ -18180,7 +18408,7 @@ function cpLive(now) {
   if (typeof pendingLocation.lat === 'number' && typeof pendingLocation.lng === 'number') {
     state.pendingCheckout = {
       text: pendingLocation.text, lat: pendingLocation.lat, lng: pendingLocation.lng,
-      place: locPlaceInput.value.trim(), landmark: locLandmarkInput.value.trim(), contact: digitsOnly(locContactInput.value)
+      place: locPlaceInput.value.trim(), landmark: locLandmarkInput.value.trim(), contact: digitsOnly(locContactInput.value), ...pvCheckoutExtra()
     };
   }
   updateLocSummary();
@@ -18361,7 +18589,7 @@ function cpPrepDetails() {
   const prevLabel = el => { let p = el.previousElementSibling; return p && p.classList.contains('loc-field-label') ? p : null; };
   const lmLabel = document.getElementById('loc-landmark-label'), lmHint = document.getElementById('loc-landmark-hint');
   const lmField = locLandmarkInput.closest('.field'), ctField = locContactInput.closest('.field');
-  [prevLabel(placeField), placeField, lmLabel, lmHint, lmField, locLandmarkSuggestionsEl, prevLabel(ctField), ctField]
+  [prevLabel(placeField), placeField, lmLabel, lmHint, lmField, locLandmarkSuggestionsEl, prevLabel(ctField), ctField, document.getElementById('loc-abroad-wrap')]
     .forEach(n => { if (n) extra.appendChild(n); });
   body.style.display = 'none';                     // the card is now just a tappable summary row
 })();
@@ -18553,7 +18781,7 @@ locProceedBtn.addEventListener('click', () => {
       return;
     }
   }
-  if (r.zone && typeof pendingLocation.lat === 'number' && typeof pendingLocation.lng === 'number') {
+  if (r.zone && !pvOrderIsAirport() && typeof pendingLocation.lat === 'number' && typeof pendingLocation.lng === 'number') {
     const inZone = isPointInZone({ lat: pendingLocation.lat, lng: pendingLocation.lng }, r.zone);
     if (!inZone) {
       showInfoModal("Out of delivery area", (r.name || "This shop") + " doesn't deliver to this location. Please pick a location inside their delivery area.");
@@ -18566,6 +18794,15 @@ locProceedBtn.addEventListener('click', () => {
     locCurrentValue.textContent = pendingLocation.text; // keep location text as-is
     showInfoModal('Check your details', "Please enter a valid 10-digit contact number for this order.");
     return;
+  }
+  if (pvOrderIsAirport()) {
+    if (pvCheckoutGate()) return;
+    const ab = pvAbroadDigits();
+    if (ab.length < 7 || ab.length > 15) {
+      try { const f = document.getElementById('loc-contact-abroad'); if (f) f.focus(); } catch (e) {}
+      showInfoModal('Check your details', "Please enter your mobile number from the country you are in (with country code).");
+      return;
+    }
   }
   const landmark = locLandmarkInput.value.trim();
   if (!landmark) {
@@ -18589,7 +18826,8 @@ locProceedBtn.addEventListener('click', () => {
     lng: pendingLocation.lng,
     place: placeArea,
     landmark,
-    contact: contactNumber
+    contact: contactNumber,
+    ...pvCheckoutExtra()
   };
   // Persisted under the same "resume state" mechanism used for the menu
   // screen, so an app refresh or close-and-reopen lands the customer back
@@ -18760,6 +18998,7 @@ payConfirmBtn.addEventListener('click', async () => {
       createdAt: Date.now(),
       customerName: (window.__neshPayFor && window.__neshPayFor.name) || state.user?.name || "Guest",
       customerPhone: pc.contact,
+      ...(pc.contactAbroad ? { customerPhoneAbroad: pc.contactAbroad, airportId: pc.airportId || '', airportName: pc.airportName || '', airportCode: pc.airportCode || '' } : {}),
       // Logged-in account number: order-status pushes (confirmed / ready / delivered) look the
       // device token up by THIS, because customerPhone above is only the delivery contact typed in
       // the address form and can be a different number.
@@ -20250,6 +20489,8 @@ let locationDetectAttempted = false;
 // "Turn on location" popup appears.
 function detectLocationOnOpen() {
   locationDetectAttempted = true;
+  // Customers abroad: their GPS is useless for delivery (they pick an airport), so no location prompt / popup / "Locating" screen.
+  try { if (neshAbroadActive()) { try { neshAbroadSync(); } catch (e) {} try { window.neshSplash && window.neshSplash.done('loc'); } catch (e) {} return; } } catch (e) {}
   const isNative = !!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation);
   if (!isNative && navigator.permissions && navigator.permissions.query) {
     navigator.permissions.query({ name: 'geolocation' }).then(st => {
@@ -20263,6 +20504,7 @@ function detectLocationOnOpen() {
 function maybeDetectLocationOnCategoryTap() {
   if (state.customerPos || locationDetectAttempted) return;
   locationDetectAttempted = true;
+  try { if (neshAbroadActive()) return; } catch (e) {}
   // Web/PWA: check the browser's permission state first. "prompt" → show our
   // popup first (its button triggers the browser's native Allow dialog),
   // "denied" → show the popup with unblock steps, "granted" → just detect.
