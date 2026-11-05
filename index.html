@@ -4085,6 +4085,22 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap{background:#
 html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{background:#221E15 !important;border-color:#534B33 !important}
 </style>
 
+<style id="pvchat-css">
+.pvc-order{ align-self:flex-start; max-width:86%; background:#fff; border:1.5px solid #F2B705; border-radius:16px; padding:12px 14px; font:500 13px/1.4 Inter,sans-serif; color:#2B2410; }
+.pvc-order.mine{ align-self:flex-end; background:#FFF6DC; }
+.pvc-order b.t{ display:block; font:800 14px Poppins,Inter,sans-serif; margin-bottom:4px; }
+.pvc-order .it{ color:#6B5E3D; margin:2px 0 6px; }
+.pvc-order .tot{ font-weight:800; }
+.pvc-order button{ margin-top:10px; width:100%; border:0; border-radius:12px; padding:11px; font:800 13px Inter,sans-serif; background:#2B2410; color:#FFD54A; cursor:pointer; }
+.pvc-order .tm{ display:block; font-size:10px; opacity:.6; margin-top:6px; text-align:right; }
+#menu-pvchat-btn{ position:relative; }
+.pvc-vplay{ border:0; border-radius:999px; padding:8px 14px; background:#2B2410; color:#FFD54A; font:700 13px Inter,sans-serif; cursor:pointer; }
+.pvc-dot{ position:absolute; top:-3px; right:-3px; width:11px; height:11px; border-radius:50%; background:#F2560C; border:2px solid #fff; display:none; }
+.pvc-dot.on{ display:block; }
+html[data-theme="dark"] .pvc-order{ background:#221E15; color:#E7E0CD; }
+html[data-theme="dark"] .pvc-order.mine{ background:#2E281F; }
+html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
+</style>
 </head>
 <body>
 <div id="nesh-splash" class="show" aria-live="polite">
@@ -5029,6 +5045,7 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
         <p class="menu-rest-name" id="menu-rest-name"></p>
         <p class="menu-rest-meta" id="menu-rest-meta"></p>
       </div>
+      <button type="button" id="menu-pvchat-btn" style="display:none; margin-left:auto; padding:7px 13px; border-radius:999px; border:1.5px solid var(--marigold); background:#fff; color:#C97F00; font-size:12px; font-weight:700; cursor:pointer;">💬 Chat<span class="pvc-dot" id="menu-pvchat-dot"></span></button>
       <button type="button" id="menu-howto-btn" style="display:none; margin-left:auto; padding:6px 12px; border-radius:999px; border:1.5px solid var(--marigold); background:#fff; color:#C97F00; font-size:12px; font-weight:700; cursor:pointer;">How to use</button>
     </div>
     <div id="loyalty-card" style="display:none"></div>
@@ -5144,6 +5161,7 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
       </div>
       <div class="confirm-btn-wrap stack">
         <button class="btn-primary" id="confirm-track-btn" style="background:var(--leaf); color:var(--cloud);">🛵 Track your Order</button>
+        <button class="btn-primary" id="confirm-chat-btn" style="display:none; background:#2B2410; color:#FFD54A;">💬 Chat with shop</button>
         <button class="btn-primary" onclick="goHomeSafe();">Back to home</button>
       </div>
     </div>
@@ -5549,6 +5567,36 @@ html[data-theme="dark"] #screen-home[data-cat="hotel"] .search-wrap .field{backg
       <div class="chat-input-bar">
         <input type="text" id="taxi-chat-input" placeholder="Type a message…" maxlength="300" />
         <button class="chat-send-btn" id="taxi-chat-send-btn" type="button">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#2B2410"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRAVASI SHOP CHAT — customer <-> shop, stored at pvchat/{shopId}/{customerNumber} -->
+  <section class="screen" id="screen-pvchat">
+    <div class="track-header">
+      <button class="btn-back" id="pvchat-back-btn">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C97F00" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div>
+        <p class="eyebrow">CHAT WITH SHOP</p>
+        <h1 class="track-title" id="pvchat-shop-name">Shop</h1>
+      </div>
+    </div>
+    <div class="chat-body">
+      <div class="chat-messages" id="pvchat-messages"></div>
+      <div class="chat-input-bar" id="pvchat-bar">
+        <input type="text" id="pvchat-input" placeholder="Message the shop…" maxlength="500" />
+        <button class="chat-send-btn" id="pvchat-mic-btn" type="button" aria-label="Record voice message" style="background:#fff;border:1.5px solid #F2B705;font-size:18px;">🎤</button>
+        <button class="chat-send-btn" id="pvchat-send-btn" type="button">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#2B2410"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+        </button>
+      </div>
+      <div class="chat-input-bar" id="pvchat-rec" style="display:none;">
+        <span style="flex:1;font:700 14px Inter,sans-serif;color:#2B2410;">🔴 Recording <span id="pvchat-rec-t">0:00</span></span>
+        <button class="chat-send-btn" id="pvchat-rec-cancel" type="button" aria-label="Cancel" style="background:#E3DFD8;font-size:16px;">✕</button>
+        <button class="chat-send-btn" id="pvchat-rec-send" type="button" aria-label="Send voice message">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="#2B2410"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
         </button>
       </div>
@@ -7820,6 +7868,8 @@ document.getElementById('nb-trending').addEventListener('click', () => { showScr
 //  - both say abroad / both say India -> that; they disagree (VPN, travelling, changed clock) -> India until the customer picks;
 //  - only one of them is known -> that one; neither -> India. A manual choice is remembered for 30 days.
 // Testing in a browser: add ?abroad=1 (force on) or ?abroad=0 (force off) to the page address.
+// AUTO MODE: no "Where are you?" question. Location is re-checked every few minutes and whenever the app is reopened.
+const NESH_IP_TTL = 10 * 60e3;
 function neshQueryAbroad() { try { const q = new URLSearchParams(window.location.search).get('abroad'); return q === '1' ? true : q === '0' ? false : null; } catch (e) { return null; } }
 function neshTzAbroad() {
   try {
@@ -7829,29 +7879,32 @@ function neshTzAbroad() {
   } catch (e) { return null; }
 }
 function neshIpAbroad() {
-  try { const c = JSON.parse(localStorage.getItem('nesh_ip_cc') || 'null'); if (c && c.cc && Date.now() - c.t < 12 * 3600e3) return c.cc !== 'IN'; } catch (e) {}
+  try { const c = JSON.parse(localStorage.getItem('nesh_ip_cc') || 'null'); if (c && c.cc && Date.now() - c.t < NESH_IP_TTL) return c.cc !== 'IN'; } catch (e) {}
   return null;
 }
 function neshWhereChoice() {
-  try { const w = JSON.parse(localStorage.getItem('nesh_where') || 'null'); if (w && (w.v === 'in' || w.v === 'abroad') && Date.now() - w.t < 30 * 864e5) return w.v; } catch (e) {}
+  try { const w = JSON.parse(localStorage.getItem('nesh_where') || 'null'); if (w && (w.v === 'in' || w.v === 'abroad') && Date.now() - w.t < 6 * 3600e3) return w.v; } catch (e) {}
   return null;
 }
-function neshWhereConflict() {
-  if (neshQueryAbroad() !== null || neshWhereChoice()) return false;
-  const t = neshTzAbroad(), i = neshIpAbroad();
-  return t !== null && i !== null && t !== i;
-}
+function neshWhereConflict() { return false; }   // auto mode: never ask the customer
 function neshIsAbroad() {
   const q = neshQueryAbroad(); if (q !== null) return q;
   const w = neshWhereChoice(); if (w) return w === 'abroad';
   const t = neshTzAbroad(), i = neshIpAbroad();
-  if (t !== null && i !== null) return t === i ? t : false;
-  if (i !== null) return i;
+  if (t !== null && i !== null && t !== i) return false;   // time zone and IP disagree (e.g. someone in India changed the phone time) -> India
   if (t !== null) return t;
+  if (i !== null) return i;   // otherwise IP country
   return false;
 }
 function neshAfterWhereChange() {
   try { neshAbroadSync(); } catch (e) {}
+  try {   // opened as "abroad" (GPS skipped) but really in India -> detect the location now, once
+    if (!neshAbroadActive() && !state.customerPos && !window._neshGeoRetryDone) { window._neshGeoRetryDone = true; locationDetectAttempted = false; detectLocationOnOpen(); }
+  } catch (e) {}
+  try {   // back in India while still on the Pravasi screen -> normal home cards
+    const h = document.getElementById('screen-home');
+    if (!neshAbroadActive() && h && h.classList.contains('active') && h.getAttribute('data-pravasi') === '1' && state.user) goToCategoryScreen();
+  } catch (e) {}
   try { neshMaybeAskWhere(); } catch (e) {}
   try { const sc = document.getElementById('screen-category'); if (sc && sc.classList.contains('active')) neshAbroadAutoOpen(); } catch (e) {}
   try { pvSyncAirportHeader(); } catch (e) {}
@@ -7872,12 +7925,13 @@ function neshMaybeAskWhere() {
   document.body.appendChild(ov);
 }
 function neshFetchIpCountry() {
-  try { const c = JSON.parse(localStorage.getItem('nesh_ip_cc') || 'null'); if (c && c.cc && Date.now() - c.t < 12 * 3600e3) return; } catch (e) {}
+  try { const c = JSON.parse(localStorage.getItem('nesh_ip_cc') || 'null'); if (c && c.cc && Date.now() - c.t < NESH_IP_TTL) return; } catch (e) {}
   const done = cc => {
     cc = String(cc || '').trim().toUpperCase();
     if (!/^[A-Z]{2}$/.test(cc)) return false;
     try { localStorage.setItem('nesh_ip_cc', JSON.stringify({ cc, t: Date.now() })); } catch (e) {}
-    neshAfterWhereChange();
+    const now = neshIsAbroad();
+    if (window._neshLastAbroad !== now) { window._neshLastAbroad = now; neshAfterWhereChange(); }
     return true;
   };
   const tryUrl = (url, json) => {
@@ -7889,9 +7943,18 @@ function neshFetchIpCountry() {
 }
 try { neshFetchIpCountry(); } catch (e) {}
 try { neshAbroadSync(); } catch (e) {}
+document.addEventListener('visibilitychange', function () { if (!document.hidden) { try { neshFetchIpCountry(); neshAfterWhereChange(); } catch (e) {} } });
+window.addEventListener('online', function () { try { neshFetchIpCountry(); } catch (e) {} });
+setInterval(function () { try { neshFetchIpCountry(); } catch (e) {} }, 5 * 60e3);
 // Customers abroad never see the home cards screen: it stays invisible and Pravasi opens straight away (safety net re-tries it).
-try { const st2 = document.createElement('style'); st2.textContent = 'html.nesh-abroad #screen-category{visibility:hidden !important;}'; document.head.appendChild(st2); } catch (e) {}
+try { const st2 = document.createElement('style'); st2.textContent = 'html.nesh-abroad:not(.nesh-abroad-fail) #screen-category{visibility:hidden !important;}'; document.head.appendChild(st2); } catch (e) {}
+let _neshAbroadStuck = 0;
 setInterval(function () {
+  try {   // safety net: home cards still hidden after ~5s (Pravasi did not open) -> show them again instead of a blank screen
+    const sc0 = document.getElementById('screen-category');
+    if (neshAbroadActive() && sc0 && sc0.classList.contains('active')) { if (++_neshAbroadStuck >= 3) document.documentElement.classList.add('nesh-abroad-fail'); }
+    else { _neshAbroadStuck = 0; document.documentElement.classList.remove('nesh-abroad-fail'); }
+  } catch (e) {}
   try {
     if (!neshAbroadActive() || !state.user) return;
     try { if (pendingShopLinkId) return; } catch (e) {}
@@ -11427,6 +11490,196 @@ document.getElementById('taxi-chat-input').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') { e.preventDefault(); sendTaxiChatMessage(); }
 });
 
+// ---------- PRAVASI SHOP CHAT ----------
+// pvchatMeta/{shopId}/{customerNumber}      = { customerName, customerNumber, lastText, lastTime, lastFrom, unreadShop, unreadCustomer }
+// pvchat/{shopId}/{customerNumber}/messages = { pushId: { from:'customer'|'shop', text, time, type?:'order', orderKey, orderNumber, items, total } }
+// Only Pravasi Hampers shops get the chat. An order placed with such a shop is posted in the chat automatically,
+// with a "View / Track order" button that opens the live tracking screen.
+const PVC = { restId: null, restName: '', ret: 'home', unsub: null, metaUnsub: null, metaRest: null };
+function pvcUid() { return (state.user && state.user.number) ? String(state.user.number).replace(/[.#$\[\]\/]/g, '') : ''; }
+function pvcBase(rid) { return 'pvchat/' + rid + '/' + pvcUid(); }
+function pvcMeta(rid) { return 'pvchatMeta/' + rid + '/' + pvcUid(); }
+function pvcEsc(x) { const d = document.createElement('div'); d.textContent = String(x == null ? '' : x); return d.innerHTML; }
+function pvcTime(t) { try { return t ? new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''; } catch (e) { return ''; } }
+async function pvcPost(rid, msg) {
+  const { db, ref, push, set, update, runTransaction } = window.fb;
+  const base = pvcBase(rid), time = Date.now();
+  await set(push(ref(db, base + '/messages')), Object.assign({ from: 'customer', time }, msg));
+  await update(ref(db, pvcMeta(rid)), { customerName: (state.user && state.user.name) || 'Customer', customerNumber: pvcUid(),
+    lastText: msg.type === 'order' ? ('🧾 Order #' + msg.orderNumber) : msg.text, lastTime: time, lastFrom: 'customer' });
+  runTransaction(ref(db, pvcMeta(rid) + '/unreadShop'), v => (Number(v) || 0) + 1).catch(() => {});
+}
+function pvcAfterOrder(r, orderKey, orderNumber, items, total) {
+  const btn = document.getElementById('confirm-chat-btn');
+  const on = !!(r && isPravasiShop(r) && pvcUid());
+  if (btn) btn.style.display = on ? '' : 'none';
+  if (!on) return;
+  pvcPost(r.id, { type: 'order', text: '🧾 Order #' + orderNumber, orderKey, orderNumber, restId: r.id, restName: r.name || '', total: Number(total) || 0,
+    items: (items || []).slice(0, 20).map(it => ({ name: String(it.name || ''), qty: Number(it.qty) || 1 })) }).catch(() => {});
+}
+function pvcMenuSync(r) {
+  const btn = document.getElementById('menu-pvchat-btn'); if (!btn) return;
+  const on = !!(r && isPravasiShop(r) && pvcUid());
+  btn.style.display = on ? '' : 'none';
+  if (PVC.metaUnsub) { PVC.metaUnsub(); PVC.metaUnsub = null; PVC.metaRest = null; }
+  const dot = document.getElementById('menu-pvchat-dot'); if (dot) dot.classList.remove('on');
+  if (!on) return;
+  const { db, ref, onValue } = window.fb;
+  PVC.metaRest = r.id;
+  PVC.metaUnsub = onValue(ref(db, pvcMeta(r.id) + '/unreadCustomer'), snap => { if (dot) dot.classList.toggle('on', (Number(snap.val()) || 0) > 0); });
+}
+function openPvChat(restId, restName, ret) {
+  if (!pvcUid()) { showInfoModal('Login needed', 'Please log in to chat with the shop.'); return; }
+  PVC.restId = restId; PVC.restName = restName || 'Shop'; PVC.ret = ret || 'home';
+  document.getElementById('pvchat-shop-name').textContent = PVC.restName;
+  document.getElementById('pvchat-messages').innerHTML = '<p class="chat-empty">Loading…</p>';
+  showScreen('pvchat');
+  if (PVC.unsub) { PVC.unsub(); PVC.unsub = null; }
+  const { db, ref, onValue, update } = window.fb;
+  PVC.unsub = onValue(ref(db, pvcBase(restId) + '/messages'), snap => {
+    const list = []; snap.forEach(c => { list.push(Object.assign({ _id: c.key }, c.val())); });
+    list.sort((a, b) => (a.time || 0) - (b.time || 0));
+    pvcRender(list);
+    update(ref(db, pvcMeta(restId)), { unreadCustomer: 0 }).catch(() => {});
+  });
+  setTimeout(() => { try { document.getElementById('pvchat-input').focus(); } catch (e) {} }, 150);
+}
+function pvcRender(list) {
+  const box = document.getElementById('pvchat-messages');
+  if (!list.length) { box.innerHTML = '<p class="chat-empty">No messages yet. Say hello 👋</p>'; return; }
+  box.innerHTML = list.map(m => {
+    const mine = m.from === 'customer';
+    if (m.type === 'order') {
+      const its = (m.items || []).map(i => pvcEsc(i.qty + '× ' + i.name)).join(', ');
+      return '<div class="pvc-order ' + (mine ? 'mine' : '') + '"><b class="t">🧾 Order #' + pvcEsc(m.orderNumber) + ' placed</b>' +
+        (its ? '<div class="it">' + its + '</div>' : '') + (m.total ? '<div class="tot">Total ₹' + pvcEsc(m.total) + '</div>' : '') +
+        '<button type="button" data-track="' + pvcEsc(m.orderKey) + '" data-num="' + pvcEsc(m.orderNumber) + '" data-rid="' + pvcEsc(m.restId || PVC.restId) + '" data-rn="' + pvcEsc(m.restName || PVC.restName) + '">📍 View / Track order</button>' +
+        '<span class="tm">' + pvcTime(m.time) + '</span></div>';
+    }
+    if (m.type === 'voice') {
+      const gone = m.expired || (m.expiresAt && Date.now() > m.expiresAt), c = pvcVoiceCache[m._id];
+      return '<div class="chat-msg ' + (mine ? 'mine' : 'theirs') + '">' + (gone ? '<i style="opacity:.6">🎤 Voice message expired</i>'
+        : c ? '<audio controls src="' + pvcEsc(c) + '" style="width:210px;max-width:100%;height:36px"></audio>'
+        : '<button type="button" class="pvc-vplay" data-vid="' + pvcEsc(m._id) + '">▶ Play voice message</button>') +
+        '<span class="chat-msg-time">' + (m.dur ? Math.floor(m.dur / 60) + ':' + String(m.dur % 60).padStart(2, '0') + ' · ' : '') + pvcTime(m.time) + '</span></div>';
+    }
+    return '<div class="chat-msg ' + (mine ? 'mine' : 'theirs') + '">' + pvcEsc(m.text) + '<span class="chat-msg-time">' + pvcTime(m.time) + '</span></div>';
+  }).join('');
+  box.scrollTop = box.scrollHeight;
+  try { pvcCleanup(list); } catch (e) {}
+}
+async function pvcSend() {
+  const input = document.getElementById('pvchat-input'), text = input.value.trim();
+  if (!text || !PVC.restId) return;
+  input.value = '';
+  try { await pvcPost(PVC.restId, { text }); }
+  catch (e) { showInfoModal('Oops', "Couldn't send — check your connection and try again."); }
+  input.focus();
+}
+function pvcBack() {
+  try { if (PVR.rec && PVR.rec.state !== 'inactive') pvrStop(true); } catch (e) {}
+  if (PVC.unsub) { PVC.unsub(); PVC.unsub = null; }
+  if (PVC.ret === 'menu') showScreen('menu');
+  else if (PVC.ret === 'placed') showScreen('placed');
+  else goHomeSafe();
+}
+// ---- Voice messages (max 60 s): tap 🎤 to record, ➤ to send. Saved in the database, deleted after 7 days. ----
+// pvchatVoice/{shopId}/{customerNumber}/{messageId} = { data: 'data:audio/...;base64,...' }  (only fetched when someone taps Play)
+// The chat message itself only holds { type:'voice', dur, expiresAt }, so opening the chat never downloads audio.
+const pvVoiceIdb = {   // device cache: a voice is downloaded only ONCE, after that it plays from the phone
+  open() { return this._p || (this._p = new Promise((res, rej) => { try { const r = indexedDB.open('nesh_pv_voice', 1); r.onupgradeneeded = () => r.result.createObjectStore('v'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch (e) { rej(e); } })); },
+  async get(k) { try { const db = await this.open(); return await new Promise(res => { const q = db.transaction('v').objectStore('v').get(k); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); }); } catch (e) { return null; } },
+  async put(k, v) { try { const db = await this.open(); db.transaction('v', 'readwrite').objectStore('v').put(v, k); } catch (e) {} },
+  async del(k) { try { const db = await this.open(); db.transaction('v', 'readwrite').objectStore('v').delete(k); } catch (e) {} }
+};
+const PVC_MAX_SEC = 60, PVC_VOICE_DAYS = 7;
+const PVR = { rec: null, chunks: [], stream: null, t0: 0, timer: null, cancel: false, busy: false };
+const pvcVoiceCache = {}, pvcCleaned = {};
+function pvrMime() { const c = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus']; for (const m of c) { try { if (window.MediaRecorder && MediaRecorder.isTypeSupported(m)) return m; } catch (e) {} } return ''; }
+function pvrUi(on) {
+  document.getElementById('pvchat-bar').style.display = on ? 'none' : '';
+  document.getElementById('pvchat-rec').style.display = on ? 'flex' : 'none';
+  clearInterval(PVR.timer);
+  if (on) {
+    const t = document.getElementById('pvchat-rec-t'); t.textContent = '0:00 / 1:00';
+    PVR.timer = setInterval(() => {
+      const s = Math.floor((Date.now() - PVR.t0) / 1000);
+      t.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') + ' / 1:00';
+      if (s >= PVC_MAX_SEC) pvrStop(false);   // 60 s reached: stop and send
+    }, 300);
+  }
+}
+async function pvrStart() {
+  if (!PVC.restId || PVR.busy) return;
+  if (!navigator.mediaDevices || !window.MediaRecorder) { showInfoModal('Not supported', 'Voice recording is not supported on this device.'); return; }
+  try { PVR.stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch (e) { showInfoModal('Microphone needed', 'Please allow microphone access to send voice messages.'); return; }
+  const mime = pvrMime(); PVR.chunks = []; PVR.cancel = false;
+  PVR.rec = new MediaRecorder(PVR.stream, Object.assign(mime ? { mimeType: mime } : {}, { audioBitsPerSecond: 24000 }));
+  PVR.rec.ondataavailable = e => { if (e.data && e.data.size) PVR.chunks.push(e.data); };
+  PVR.rec.onstop = pvrDone;
+  PVR.rec.start(); PVR.t0 = Date.now(); pvrUi(true);
+}
+function pvrStop(cancel) { PVR.cancel = !!cancel; if (PVR.rec && PVR.rec.state !== 'inactive') PVR.rec.stop(); }
+async function pvrDone() {
+  const dur = Math.min(PVC_MAX_SEC, Math.round((Date.now() - PVR.t0) / 1000)), type = (PVR.rec && PVR.rec.mimeType) || 'audio/webm', rid = PVC.restId;
+  try { PVR.stream.getTracks().forEach(t => t.stop()); } catch (e) {}
+  pvrUi(false);
+  if (PVR.cancel || !PVR.chunks.length || dur < 1 || !rid) return;
+  PVR.busy = true;
+  try {
+    const data = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(new Blob(PVR.chunks, { type })); });
+    if (data.length > 600000) throw new Error('too big');
+    const { db, ref, push, set, update, runTransaction } = window.fb, time = Date.now(), uid = pvcUid();
+    const mref = push(ref(db, pvcBase(rid) + '/messages'));
+    await set(ref(db, 'pvchatVoice/' + rid + '/' + uid + '/' + mref.key), { data });          // audio first,
+    await set(mref, { from: 'customer', type: 'voice', text: '🎤 Voice message', dur, time, expiresAt: time + PVC_VOICE_DAYS * 864e5 });   // then the message
+    pvcVoiceCache[mref.key] = data; pvVoiceIdb.put(mref.key, data);   // sender never downloads their own voice
+    await update(ref(db, pvcMeta(rid)), { customerName: (state.user && state.user.name) || 'Customer', customerNumber: uid, lastText: '🎤 Voice message', lastTime: time, lastFrom: 'customer' });
+    runTransaction(ref(db, pvcMeta(rid) + '/unreadShop'), v => (Number(v) || 0) + 1).catch(() => {});
+  } catch (e) { showInfoModal('Oops', "Couldn't send the voice message — check your connection and try again."); }
+  PVR.busy = false;
+}
+async function pvcPlayVoice(btn) {
+  const vid = btn.dataset.vid; btn.disabled = true; btn.textContent = 'Loading…';
+  try {
+    let d = pvcVoiceCache[vid] || await pvVoiceIdb.get(vid);   // memory -> phone cache -> (only then) download
+    if (!d) { const { db, ref, get } = window.fb; const v = (await get(ref(db, 'pvchatVoice/' + PVC.restId + '/' + pvcUid() + '/' + vid))).val(); d = v && v.data; if (!d) throw new Error('gone'); pvVoiceIdb.put(vid, d); }
+    pvcVoiceCache[vid] = d;
+    const a = document.createElement('audio'); a.controls = true; a.src = d; a.style.cssText = 'width:210px;max-width:100%;height:36px';
+    btn.replaceWith(a); a.play().catch(() => {});
+  } catch (e) { btn.disabled = false; btn.textContent = '▶ Play voice message'; showInfoModal('Oops', "Couldn't load the voice message. It may have been deleted."); }
+}
+function pvcCleanup(list) {   // expired (7 days) or deleted by the operator: drop the phone copy; expired ones are also removed from the database
+  const { db, ref, update, remove } = window.fb;
+  list.forEach(m => {
+    if (m.type !== 'voice') return;
+    const past = m.expiresAt && Date.now() >= m.expiresAt;
+    if ((!m.expired && !past) || pvcCleaned[m._id]) return;
+    pvcCleaned[m._id] = 1;
+    delete pvcVoiceCache[m._id]; pvVoiceIdb.del(m._id);
+    if (!m.expired) {
+      remove(ref(db, 'pvchatVoice/' + PVC.restId + '/' + pvcUid() + '/' + m._id)).catch(() => {});
+      update(ref(db, pvcBase(PVC.restId) + '/messages/' + m._id), { expired: true }).catch(() => {});
+    }
+  });
+}
+document.getElementById('pvchat-mic-btn').addEventListener('click', pvrStart);
+document.getElementById('pvchat-rec-cancel').addEventListener('click', () => pvrStop(true));
+document.getElementById('pvchat-rec-send').addEventListener('click', () => pvrStop(false));
+document.getElementById('pvchat-messages').addEventListener('click', e => { const b = e.target.closest && e.target.closest('.pvc-vplay'); if (b) pvcPlayVoice(b); });
+
+document.getElementById('pvchat-back-btn').addEventListener('click', pvcBack);
+document.getElementById('pvchat-send-btn').addEventListener('click', pvcSend);
+document.getElementById('pvchat-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); pvcSend(); } });
+document.getElementById('pvchat-messages').addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-track]'); if (!b) return;
+  if (PVC.unsub) { PVC.unsub(); PVC.unsub = null; }
+  openTrackOrder({ restId: b.dataset.rid, orderKey: b.dataset.track, orderNumber: b.dataset.num, restName: b.dataset.rn, businessType: 'online_shop' }, 'pvchat');
+});
+document.getElementById('menu-pvchat-btn').addEventListener('click', () => { const r = state.selectedRestaurant; if (r) openPvChat(r.id, r.name, 'menu'); });
+document.getElementById('confirm-chat-btn').addEventListener('click', () => { const o = state.lastOrder; if (o) openPvChat(o.restId, o.restName, 'placed'); });
+
 // ---------- Hardware back button (Android APK / AAB via Capacitor) ----------
 // ONE function (neshHandleBack) decides what "back" means, so the phone's
 // back button/gesture behaves exactly like the arrow at the top of each
@@ -14307,6 +14560,7 @@ function renderMenu() {
   menuRestName.textContent = r.name;
   menuRestMeta.textContent = [r.cuisine, shopDeliveryLabel(r)].filter(Boolean).join(' · ');
   document.getElementById('menu-howto-btn').style.display = 'none'; // "How to use" button removed
+  try { pvcMenuSync(r); } catch (e) {}
   menuRestLogo.src = r.logo || r.image || '';
   if (menuMiniLogo) { menuMiniLogo.src = r.logo || r.image || ''; menuMiniLogo.style.display = (r.logo || r.image) ? 'block' : 'none'; menuMiniLogo.onerror = () => { menuMiniLogo.style.display = 'none'; }; }
   menuRestLogo.alt = r.name || '';
@@ -19126,6 +19380,7 @@ payConfirmBtn.addEventListener('click', async () => {
     try { (window.__neshOrderAmt = window.__neshOrderAmt || {})[orderRef.key] = Number(itemsTotal) || 0; } catch (e) {}   // loyalty: items total of this order
     state.lastOrder = { restId: r.id, orderKey: orderRef.key, orderNumber, restName: r.name, businessType: r.businessType };
     try { localStorage.setItem('asfood_last_order', JSON.stringify(state.lastOrder)); } catch (e) {}
+    try { pvcAfterOrder(r, orderRef.key, orderNumber, orderItems, total); } catch (e) {}
     updateHomeTrackBtn();
     try { neshClearSavedCart(r.id); } catch (e) {}
     state.cart = {};
@@ -19681,6 +19936,7 @@ function leaveTrackScreen() {
   if (trackMap) { trackMap.hide(); trackMapDriverId = null; }
   hideTrackRiderCard();
   if (trackReturnScreen === 'orders') { showScreen('orders'); persistScreen('orders'); }
+  else if (trackReturnScreen === 'pvchat' && trackCurrentRestId) openPvChat(trackCurrentRestId, trackRestName.textContent, 'home');
   else goHomeSafe();
 }
 
