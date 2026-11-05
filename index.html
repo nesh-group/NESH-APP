@@ -11877,6 +11877,8 @@ const otpChangeBtn = document.getElementById('login-otp-change');
 const otpSub = document.getElementById('login-otp-sub');
 let otpConfirmation = null, otpNumber = '', otpTimer = null, otpVerifier = null, otpSends = 0;
 const OTP_MAX_SENDS = 3, OTP_RESEND_SECS = 120;
+// Login OTP switch: false = no OTP, number alone logs in. Set to true to bring OTP back.
+const NESH_OTP_REQUIRED = false;
 function fmtSecs(n) { return Math.floor(n / 60) + ':' + String(n % 60).padStart(2, '0'); }
 
 function neshOtpReset() {
@@ -11977,6 +11979,7 @@ loginSubmitBtn.addEventListener('click', async () => {
   const number = loginNumberInput.value;
   if (number.length !== 10) return;
   loginSubmitBtn.disabled = true;
+  if (!NESH_OTP_REQUIRED) { try { await loginAfterVerified(number); } finally { loginSubmitBtn.disabled = false; } return; }   // OTP switched off
   try {
     if (!window.fbAuth && !nativeAuth()) throw new Error('auth-missing');
     await sendOtp(number);
