@@ -4390,6 +4390,7 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
       <div class="au-near" id="au-near"><i></i><span id="au-near-text"></span></div>
       <div class="au-actions">
         <button type="button" class="au-btn" id="au-change-btn">Choose another location</button>
+        <button type="button" class="au-btn" id="au-skip-btn" style="display:none;margin-top:10px;background:transparent;color:#2B2410;border:2px solid #2B2410;">Continue anyway</button>
       </div>
     </div>
   </div>
@@ -7649,6 +7650,7 @@ function syncAreaUnavailScreen() {
   let on = false;
   try { on = (id === 'screen-category' || id === 'screen-home') && isAreaUnavailable(state.customerPos); } catch (e) { on = false; }
   if (el.classList.contains('show') !== on) el.classList.toggle('show', on);
+  try { const sb = document.getElementById('au-skip-btn'); if (sb) sb.style.display = (on && neshAbroadActive()) ? '' : 'none'; } catch (e) {}
   if (document.documentElement.classList.contains('au-on') !== on) document.documentElement.classList.toggle('au-on', on);
   if (on) {
     try {
@@ -8041,10 +8043,38 @@ function neshWhereChoice() {
   try { const w = JSON.parse(localStorage.getItem('nesh_where') || 'null'); if (w && (w.v === 'in' || w.v === 'abroad') && Date.now() - w.t < 6 * 3600e3) return w.v; } catch (e) {}
   return null;
 }
+// Time zone and IP can both be faked (phone time changed + VPN). A real GPS fix inside India beats them.
+// Uses only an ALREADY-granted location permission and a cached fix (never shows a permission prompt).
+const NESH_GEO_TTL = 6 * 3600e3;
+function neshGeoIndia() {
+  try { const g = JSON.parse(localStorage.getItem('nesh_geo_in') || 'null'); if (g && Date.now() - g.t < NESH_GEO_TTL) return g.v === true ? true : (g.v === false ? false : null); } catch (e) {}
+  return null;
+}
+function neshCheckGeoIndia() {
+  try {
+    if (!navigator.geolocation || !navigator.permissions || !navigator.permissions.query) return;
+    if (window._neshGeoChecking) return;
+    try { const g = JSON.parse(localStorage.getItem('nesh_geo_in') || 'null'); if (g && Date.now() - g.t < 10 * 60e3) return; } catch (e) {}
+    window._neshGeoChecking = true;
+    navigator.permissions.query({ name: 'geolocation' }).then(st => {
+      if (st.state !== 'granted') { window._neshGeoChecking = false; return; }
+      navigator.geolocation.getCurrentPosition(pos => {
+        window._neshGeoChecking = false;
+        const la = pos.coords.latitude, lo = pos.coords.longitude;
+        const inIndia = la >= 6 && la <= 37.5 && lo >= 68 && lo <= 97.5;
+        const before = neshIsAbroad();
+        try { localStorage.setItem('nesh_geo_in', JSON.stringify({ v: inIndia, t: Date.now() })); } catch (e) {}
+        const now = neshIsAbroad();
+        if (before !== now) { window._neshLastAbroad = now; try { neshAfterWhereChange(); } catch (e) {} }
+      }, () => { window._neshGeoChecking = false; }, { enableHighAccuracy: false, maximumAge: 6 * 3600e3, timeout: 5000 });
+    }).catch(() => { window._neshGeoChecking = false; });
+  } catch (e) { window._neshGeoChecking = false; }
+}
 function neshWhereConflict() { return false; }   // auto mode: never ask the customer
 function neshIsAbroad() {
   const q = neshQueryAbroad(); if (q !== null) return q;
   const w = neshWhereChoice(); if (w) return w === 'abroad';
+  if (neshGeoIndia() === true) return false;   // phone really is in India (GPS) -> India, whatever the time zone / VPN say
   const t = neshTzAbroad(), i = neshIpAbroad();
   if (t !== null && i !== null && t !== i) return false;   // time zone and IP disagree (e.g. someone in India changed the phone time) -> India
   if (t !== null) return t;
@@ -8098,10 +8128,11 @@ function neshFetchIpCountry() {
   tryUrl('https://api.country.is/', true).then(ok => { if (!ok) tryUrl('https://ipapi.co/country/', false); });
 }
 try { neshFetchIpCountry(); } catch (e) {}
+try { neshCheckGeoIndia(); } catch (e) {}
 try { neshAbroadSync(); } catch (e) {}
-document.addEventListener('visibilitychange', function () { if (!document.hidden) { try { neshFetchIpCountry(); neshAfterWhereChange(); } catch (e) {} } });
+document.addEventListener('visibilitychange', function () { if (!document.hidden) { try { neshFetchIpCountry(); neshCheckGeoIndia(); neshAfterWhereChange(); } catch (e) {} } });
 window.addEventListener('online', function () { try { neshFetchIpCountry(); } catch (e) {} });
-setInterval(function () { try { neshFetchIpCountry(); } catch (e) {} }, 5 * 60e3);
+setInterval(function () { try { neshFetchIpCountry(); neshCheckGeoIndia(); } catch (e) {} }, 5 * 60e3);
 // Customers abroad never see the home cards screen: it stays invisible and Pravasi opens straight away (safety net re-tries it).
 try { const st2 = document.createElement('style'); st2.textContent = 'html.nesh-abroad-direct:not(.nesh-abroad-fail) #screen-category{visibility:hidden !important;}'; document.head.appendChild(st2); } catch (e) {}
 let _neshAbroadStuck = 0;
@@ -13674,11 +13705,13 @@ function handleAreaUnavailable(retryAction) {
 function shopZonesConfigured() { return (window.SHOP_ZONES || []).length > 0; }
 function zonesAtPoint(pt) { return (window.SHOP_ZONES || []).filter(z => isPointInZone(pt, z.bounds)); }
 function isAreaUnavailable(pt) {
+  try { if (window._neshAuSkip && neshAbroadActive()) return false; } catch (e) {}   // abroad customer tapped "Continue anyway"
+  try { if (neshAbroadActive() && state.pravasi && state.category === 'online_shop') return false; } catch (e) {}   // Pravasi (airport delivery) is never zone-checked
   try { if ((pvAirportActive() || neshZoneCheckSkipped()) && !neshAbZone()) return false; } catch (e) {}
   return !!(pt && typeof pt.lat === 'number' && typeof pt.lng === 'number') && shopZonesConfigured() && zonesAtPoint(pt).length === 0;
 }
 // Shop Zones are an India-only rule. Customers abroad (Pravasi / airport delivery) are never zone-checked.
-function neshZoneCheckSkipped() { try { return !!neshAbroadActive() && !neshAbZone(); } catch (e) { return false; } }
+function neshZoneCheckSkipped() { try { return !!neshAbroadActive() && (!neshAbZone() || !!window._neshAuSkip); } catch (e) { return false; } }
 function shopAllowedAtPoint(shopId, pt) {
   if (neshZoneCheckSkipped()) return true;
   if (!shopZonesConfigured() || !pt || typeof pt.lat !== 'number' || typeof pt.lng !== 'number') return true;
@@ -18442,6 +18475,12 @@ function setPendingBrowsePos(lat, lng) {
   const $ = id => document.getElementById(id);
   const openPicker = () => { try { pendingLocationRequiredAction = null; } catch (e) {} openBrowseLocationPicker(); };
   $('au-change-btn').addEventListener('click', openPicker);
+  $('au-skip-btn').addEventListener('click', () => {
+    window._neshAuSkip = true;   // abroad customers only (the button is hidden otherwise); lasts until the app is reopened
+    try { syncShopLoading(); } catch (e) {}
+    try { syncAreaUnavailScreen(); } catch (e) {}
+    try { renderRestaurantList(); } catch (e) {}
+  });
   $('au-loc-btn').addEventListener('click', openPicker);
   $('au-prof-btn').addEventListener('click', () => { try { openSettings(); } catch (e) {} });
   // safety net: re-check now and then so the screen can never get stuck on/off
