@@ -1538,6 +1538,15 @@ html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
   /* Trip chat — simple two-way message thread between customer & driver,
      scoped to a single ride (rides/{rideKey}/chat). */
   .chat-body{ display:flex; flex-direction:column; height:calc(100vh - 200px); }
+  /* Customer<->shop chat: stable like WhatsApp. The screen is pinned to the visible area (keyboard-aware via --pvc-top/--pvc-vh),
+     header stays on top, the message box sits right above the keyboard, and only the messages scroll. */
+  #screen-pvchat.active{ position:fixed; left:0; right:0; top:var(--pvc-top,0px); height:var(--pvc-vh,100dvh); max-width:760px; margin:0 auto; z-index:70;
+    display:flex; flex-direction:column; padding:0; overflow:hidden; background:var(--bg,#fff); overscroll-behavior:none; }
+  #screen-pvchat.active .track-header{ flex:0 0 auto; position:relative; top:auto; }
+  #screen-pvchat.active .chat-body{ flex:1 1 auto; min-height:0; height:auto; }
+  #screen-pvchat.active .chat-messages{ flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+  #screen-pvchat.active .chat-input-bar{ flex:0 0 auto; }
+  html.pvchat-open, html.pvchat-open body{ overflow:hidden !important; overscroll-behavior:none; }
   .chat-messages{ flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:10px; }
   .chat-empty{ color:var(--muted); font-size:13px; text-align:center; margin-top:40px; }
   .chat-msg{ max-width:78%; padding:10px 13px; border-radius:16px; font-size:14px; line-height:1.4; word-wrap:break-word; }
@@ -1545,7 +1554,7 @@ html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
   .chat-msg.mine{ align-self:flex-end; background:var(--marigold); color:var(--ink); border-bottom-right-radius:4px; }
   .chat-msg-time{ display:block; font-size:10px; opacity:.6; margin-top:3px; }
   .chat-input-bar{ display:flex; gap:10px; align-items:center; padding:12px 20px calc(12px + env(safe-area-inset-bottom)); border-top:1px solid var(--field-border); background:var(--bg); }
-  .chat-input-bar input{ flex:1; border:1.5px solid var(--field-border); background:var(--field-bg); border-radius:24px; padding:11px 16px; font-size:14px; outline:none; color:var(--ink); font-family:'Inter',sans-serif; }
+  .chat-input-bar input{ flex:1; min-width:0; border:1.5px solid var(--field-border); background:var(--field-bg); border-radius:24px; padding:11px 16px; font-size:14px; outline:none; color:var(--ink); font-family:'Inter',sans-serif; }
   .chat-send-btn{ width:42px; height:42px; border-radius:50%; border:none; background:var(--marigold); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
   .chat-send-btn:active{ transform:scale(0.94); }
   .chat-send-btn:disabled{ background:#E3DFD8; cursor:not-allowed; }
@@ -1989,8 +1998,106 @@ html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
   html.has-update .update-only{ display:flex; }
 
 /* Customers outside India: only the Pravasi card on the home screen, no back arrow on the Pravasi screen */
-html.nesh-abroad #screen-category .cat-wrap > .cat-card:not(#cat-card-pravasi){ display:none !important; }
-html.nesh-abroad #screen-home[data-pravasi="1"] .home-back-btn{ display:none !important; }
+/* Customers abroad (3-card home): Pravasi Hampers, then Food, then Groceries. Mart / Taxi / Bus stay hidden. */
+html.nesh-abroad-cat #screen-category .cat-wrap > .cat-card:not(#cat-card-pravasi):not(#cat-card-food):not(#cat-card-groceries){ display:none !important; }
+html.nesh-abroad-cat #screen-category .cat-wrap > #cat-card-pravasi{ order:1; }
+html.nesh-abroad-cat #screen-category .cat-wrap > #cat-card-food{ order:2; }
+html.nesh-abroad-cat #screen-category .cat-wrap > #cat-card-groceries{ order:3; }
+/* old behaviour (Firebase pravasi/layout/abroadCards = false): only the Pravasi card */
+html.nesh-abroad-direct #screen-category .cat-wrap > .cat-card:not(#cat-card-pravasi){ display:none !important; }
+/* ---- Abroad home (shown only to customers abroad) ---- */
+.ab-home{display:none;}
+html.nesh-abroad .ab-home{display:block;padding:0 20px 8px;}
+html.nesh-abroad #home-greeting{display:none;}
+html.nesh-abroad #screen-home .search-wrap{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--bg,#FFFBF2);padding-bottom:8px;}
+.ab-hi{font-size:26px;font-weight:800;color:#2B2410;margin:2px 0 14px;line-height:1.2;}
+.ab-sec{display:flex;justify-content:space-between;align-items:center;margin:16px 0 10px;font-size:19px;font-weight:800;color:#2B2410;}
+.ab-cats{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;}
+.ab-cats::-webkit-scrollbar{display:none;}
+.ab-cat{flex:0 0 78px;background:#FFF6DC;border-radius:16px;padding:10px 6px;text-align:center;box-shadow:0 2px 8px rgba(201,127,0,.12);cursor:pointer;}
+.ab-cat i{display:block;width:52px;height:52px;margin:0 auto 6px;border-radius:50%;background:#C97F00 center/cover no-repeat;}
+.ab-cat b{display:block;font-size:12px;font-weight:600;color:#2B2410;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ab-banner{margin-top:14px;border-radius:18px;padding:18px;min-height:112px;color:#fff;cursor:pointer;display:flex;flex-direction:column;justify-content:center;gap:4px;background:linear-gradient(90deg,rgba(60,38,0,.92),rgba(201,127,0,.55)),var(--bg,none) center/cover no-repeat,#C97F00;}
+.ab-banner h3{margin:0;font-size:22px;font-weight:800;color:#FFD66B;}
+.ab-banner span{align-self:flex-start;margin-top:8px;background:#FFF6DC;color:#7A4B00;font-weight:700;font-size:13px;padding:7px 14px;border-radius:10px;}
+#ab-nav{display:none;}
+html.nesh-abroad:has(#screen-home.active) #ab-nav,html.nesh-abroad:has(#screen-orders.active) #ab-nav{display:flex;position:fixed;left:50%;transform:translateX(-50%);width:100%;max-width:420px;box-sizing:border-box;bottom:0;z-index:60;justify-content:space-around;background:var(--bg,#FFFBF2);border-top:1px solid rgba(201,127,0,.25);padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px));box-shadow:0 -4px 14px rgba(201,127,0,.12);}
+#ab-nav button{background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:3px;color:#8A7E58;font-size:12px;font-weight:600;padding:2px 28px;cursor:pointer;}
+#ab-nav button.on{color:#C97F00;}
+html.nesh-abroad:has(#screen-orders.active) .order-progress-bar{bottom:var(--ab-nav-h,calc(66px + env(safe-area-inset-bottom,0px)));}
+html.nesh-abroad:has(#screen-orders.active) #screen-orders .orders-body{padding-bottom:calc(var(--ab-nav-h,72px) + 24px);}
+#ab-nav button{position:relative;}
+/* red dot on the Chat tab when a shop has sent a new message */
+#ab-nav button.has-dot::after{content:"";position:absolute;top:0;left:calc(50% + 7px);width:11px;height:11px;border-radius:50%;background:#E53935;border:2px solid var(--bg,#FFFBF2);box-sizing:content-box;}
+/* Chat button inside a shop's menu: solid + clearly visible on the shop banner (was faint/see-through) */
+#menu-pvchat-btn{background:#F2B705 !important;color:#2B2410 !important;border:2px solid #fff !important;opacity:1 !important;
+  padding:9px 18px !important;font-size:14px !important;font-weight:800 !important;box-shadow:0 4px 14px rgba(0,0,0,.35);position:relative;z-index:5;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}
+#menu-pvchat-btn:active{transform:scale(.96);}
+html.nesh-abroad:has(#screen-home.active) #screen-home{padding-bottom:96px;}
+/* WhatsApp-style full-screen chat list (opened from the bottom nav "Chat" tab) */
+#ab-chats-ov{position:fixed;left:50%;transform:translateX(-50%);width:100%;max-width:420px;top:0;bottom:var(--ab-nav-h,66px);z-index:55;background:var(--bg,#FFFBF2);display:flex;flex-direction:column;}
+#ab-chats-ov .abc-head{flex:0 0 auto;background:#F2B705;padding:calc(16px + env(safe-area-inset-top,0px)) 20px 14px;box-shadow:0 2px 8px rgba(0,0,0,.12);}
+#ab-chats-ov .abc-head h2{margin:0;font:800 24px/1.2 Inter,system-ui,sans-serif;color:#2B2410;}
+#ab-chats-ov .abc-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+#ab-chats-ov .abc-row{display:flex;align-items:center;gap:14px;width:100%;box-sizing:border-box;padding:12px 18px;background:none;border:0;border-bottom:1px solid rgba(201,127,0,.15);text-align:left;cursor:pointer;font-family:inherit;}
+#ab-chats-ov .abc-row:active{background:rgba(242,183,5,.18);}
+#ab-chats-ov .abc-av{flex:0 0 54px;height:54px;border-radius:50%;background:#FFF6DC center/cover no-repeat;border:1px solid rgba(201,127,0,.3);display:flex;align-items:center;justify-content:center;font:800 20px Inter,sans-serif;color:#C97F00;}
+#ab-chats-ov .abc-mid{flex:1;min-width:0;}
+#ab-chats-ov .abc-name{display:block;font:700 16.5px/1.3 Inter,system-ui,sans-serif;color:#2B2410;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#ab-chats-ov .abc-last{display:block;margin-top:2px;font:400 14px/1.3 Inter,system-ui,sans-serif;color:#7A6A3A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#ab-chats-ov .abc-row.unread .abc-last{color:#2B2410;font-weight:600;}
+#ab-chats-ov .abc-end{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:44px;}
+#ab-chats-ov .abc-time{font:500 12px Inter,sans-serif;color:#8A7E58;}
+#ab-chats-ov .abc-row.unread .abc-time{color:#1BA672;font-weight:700;}
+#ab-chats-ov .abc-badge{min-width:22px;height:22px;padding:0 6px;box-sizing:border-box;border-radius:11px;background:#25D366;color:#fff;font:700 12px/22px Inter,sans-serif;text-align:center;}
+#ab-chats-ov .abc-hint{padding:14px 20px;font:500 13px Inter,sans-serif;color:#8A7E58;}
+body.ab-chats-open .home-cart-stack, body.ab-chats-open .order-progress-bar{display:none !important;}
+#ab-chat-sheet{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;}
+#ab-chat-sheet div{width:100%;background:var(--bg,#FFFBF2);border-radius:20px 20px 0 0;padding:16px 20px calc(20px + env(safe-area-inset-bottom,0px));max-height:70vh;overflow:auto;}
+#ab-chat-sheet button i{flex:0 0 44px;height:44px;border-radius:50%;background:#C97F00 center/cover no-repeat;}
+#ab-chat-sheet button span{flex:1;}
+#ab-chat-sheet button em{font-style:normal;font-size:13px;font-weight:700;color:#fff;background:#C97F00;border-radius:999px;padding:5px 14px;}
+#ab-chat-sheet h4{margin:0 0 10px;font-size:17px;color:#2B2410;}
+#ab-chat-sheet button{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#FFF6DC;border:1px solid rgba(201,127,0,.3);border-radius:14px;padding:13px 14px;margin-bottom:8px;font-size:15px;font-weight:600;color:#2B2410;}
+html.ab-air-order #cp-loc-toggle,html.ab-air-order #cp-km,html.ab-air-order #cp-addr-card{display:none !important;}
+html.ab-air-order .cp-head::after{content:"Checkout";font:800 20px/1 Inter,system-ui,sans-serif;color:#2B2410;margin-left:6px;}
+#ab-details-ov{position:fixed;inset:0;z-index:90;background:var(--bg,#fff);overflow:auto;padding:calc(14px + env(safe-area-inset-top,0px)) 20px calc(24px + env(safe-area-inset-bottom,0px));}
+#ab-details-ov .abd-top{display:flex;align-items:center;gap:12px;margin-bottom:6px;}
+#ab-details-ov .abd-back{width:42px;height:42px;border-radius:50%;border:0;background:#F4EFE0;font-size:22px;color:#2B2410;}
+#ab-details-ov h2{margin:0;font-size:22px;font-weight:800;color:#2B2410;}
+#ab-details-ov .abd-sub{margin:4px 0 14px;font-size:13px;color:#8A7E58;}
+#ab-details-ov .abd-l{display:block;margin:14px 0 6px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6B5A2A;}
+#ab-details-ov .abd-l i{color:#C0392B;font-style:normal;}
+#ab-details-ov .abd-i{width:100%;box-sizing:border-box;padding:14px;border:1.5px solid #E4DFD2;border-radius:14px;background:#fff;font-size:16px;color:#2B2410;}
+#ab-details-ov .abd-i:focus{outline:none;border-color:#F2B705;}
+#ab-details-ov .abd-row{display:flex;gap:10px;}#ab-details-ov .abd-row>div{flex:1;}
+#ab-details-ov .abd-e{margin:12px 0 0;font-size:13px;font-weight:600;color:#C0392B;min-height:18px;}
+#ab-details-ov .abd-go{width:100%;margin-top:14px;padding:16px;border:0;border-radius:16px;background:#F5B301;color:#2B2410;font-size:17px;font-weight:800;}
+html.nesh-abroad #screen-home .account-dropdown.show{z-index:200 !important;}
+html.nesh-abroad #screen-home .account-backdrop{z-index:190 !important;}
+html.nesh-abroad:has(#screen-home.active) .order-progress-bar{bottom:64px;}
+.ab-count{margin:4px 0 12px;font-size:13px;color:#8A7E58;}
+/* FIX: saved-cart card was hidden behind the abroad bottom nav -> lift it above the nav */
+html.nesh-abroad:has(#screen-home.active) .home-cart-stack{bottom:calc(env(safe-area-inset-bottom,0px) + 78px);}
+/* FIX: order-progress bar sat 3px+safe-area under the nav's top edge */
+html.nesh-abroad:has(#screen-home.active) .order-progress-bar{bottom:var(--ab-nav-h,calc(66px + env(safe-area-inset-bottom,0px)));}
+/* FIX: last shop card was hidden behind cart card + nav -> enough scroll room */
+html.nesh-abroad:has(#screen-home.active) #screen-home{padding-bottom:calc(var(--ab-nav-h,72px) + 24px);}
+html.nesh-abroad:has(#screen-home.active) body.has-hcc #screen-home, html.nesh-abroad:has(#screen-home.active):has(body.has-hcc) #screen-home{padding-bottom:calc(var(--ab-nav-h,72px) + 110px);}
+.ab-shop{background:#FFF6DC;border:1px solid rgba(201,127,0,.3);border-radius:18px;padding:8px;margin-bottom:14px;box-shadow:0 4px 14px rgba(201,127,0,.14);cursor:pointer;}
+.ab-cover{height:130px;border-radius:12px;background:#C97F00 center/cover no-repeat;position:relative;}
+.ab-off,.ab-cl{position:absolute;top:8px;text-decoration:none;font-weight:800;font-size:13px;padding:5px 10px;border-radius:10px;}
+.ab-off{left:8px;background:rgba(60,38,0,.88);color:#FFD66B;}
+.ab-cl{right:8px;background:rgba(0,0,0,.65);color:#fff;}
+.ab-closed .ab-cover{filter:grayscale(.85);opacity:.7;}
+.ab-row{display:flex;justify-content:space-between;align-items:flex-end;gap:8px;padding:10px 6px 4px;}
+.ab-row b{display:block;font-size:18px;font-weight:800;color:#2B2410;}
+.ab-row small{display:block;margin-top:3px;font-size:13px;color:#7A6A3A;}
+.ab-r{text-align:right;font-size:14px;font-weight:600;color:#2B2410;}
+.ab-r i{display:inline-block;margin-top:6px;font-style:normal;font-size:12px;font-weight:600;color:#7A4B00;border:1px solid rgba(201,127,0,.45);border-radius:999px;padding:3px 10px;}
+html.nesh-abroad #abroad-home.ab-on ~ #rest-list{display:none !important;}
+
+html.nesh-abroad-direct #screen-home[data-pravasi="1"] .home-back-btn{ display:none !important; }
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
@@ -4931,6 +5038,7 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
       <button type="button" class="loc-suggest-btn" data-loc-suggest-btn>Turn on</button>
     </div>
     <h1 class="greeting" id="home-greeting">Hungry, friend?</h1>
+    <div id="abroad-hi" class="ab-home"></div>
 
     <div id="home-rate-card" style="display:none; margin:10px 20px 4px; padding:12px 14px; border-radius:16px; background:#FFF6DC; border:1px solid rgba(201,127,0,.35);">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
@@ -5004,6 +5112,7 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
       <p class="mart-sec-title mart-shops-title">🏪 Shops in NESH Mart</p>
       <p class="mart-shops-sub">Tap a shop to see all its products</p>
     </div>
+    <div id="abroad-home" class="ab-home"></div>
     <div class="rest-list" id="rest-list"></div>
     <div id="product-results-wrap" style="display:none;">
       <p class="item-list-label" id="product-results-label">Products</p>
@@ -5588,8 +5697,10 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
       <div class="chat-messages" id="pvchat-messages"></div>
       <div class="chat-input-bar" id="pvchat-bar">
         <input type="text" id="pvchat-input" placeholder="Message the shop…" maxlength="500" />
-        <button class="chat-send-btn" id="pvchat-mic-btn" type="button" aria-label="Record voice message" style="background:#fff;border:1.5px solid #F2B705;font-size:18px;">🎤</button>
-        <button class="chat-send-btn" id="pvchat-send-btn" type="button">
+        <button class="chat-send-btn" id="pvchat-mic-btn" type="button" aria-label="Record voice message">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#2B2410" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+        </button>
+        <button class="chat-send-btn" id="pvchat-send-btn" type="button" aria-label="Send message" style="display:none;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="#2B2410"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
         </button>
       </div>
@@ -5832,11 +5943,21 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
         <input id="loc-contact" type="tel" maxlength="10" inputmode="numeric" placeholder="10-digit mobile number" style="color:var(--ink);" />
       </div>
       <div id="loc-abroad-wrap" style="display:none;">
-        <p class="loc-field-label">Your number in the other country <span style="color:var(--chili);">* Required</span></p>
-        <p style="margin:-2px 0 6px; font-size:12px; color:var(--muted-2);">The mobile number you use abroad, with country code (e.g. +971 50 123 4567).</p>
+        <p class="loc-field-label">Your WhatsApp number abroad <span style="color:var(--chili);">* Required</span></p>
+        <p style="margin:-2px 0 6px; font-size:12px; color:var(--muted-2);">The WhatsApp number you use abroad, with country code (e.g. +971 50 123 4567).</p>
         <div class="field" style="background:#fff; border:1px solid #E4DFD2;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A66600" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>
           <input id="loc-contact-abroad" type="tel" maxlength="20" inputmode="tel" placeholder="+971 50 123 4567" style="color:var(--ink);" />
+        </div>
+        <p class="loc-field-label">Ticket number / PNR <span style="color:var(--chili);">* Required</span></p>
+        <p style="margin:-2px 0 6px; font-size:12px; color:var(--muted-2);">The booking code (PNR) or ticket number printed on your flight ticket.</p>
+        <div class="field" style="background:#fff; border:1px solid #E4DFD2;">
+          <input id="loc-flight-no" type="text" maxlength="13" autocapitalize="characters" placeholder="e.g. AB12CD or 1762345678901" style="color:var(--ink); text-transform:uppercase;" />
+        </div>
+        <p class="loc-field-label">Arrival date &amp; time at the airport <span style="color:var(--chili);">* Required</span></p>
+        <div style="display:flex; gap:8px;">
+          <div class="field" style="background:#fff; border:1px solid #E4DFD2; flex:1;"><input id="loc-flight-date" type="date" style="color:var(--ink); width:100%;" /></div>
+          <div class="field" style="background:#fff; border:1px solid #E4DFD2; flex:1;"><input id="loc-flight-time" type="time" style="color:var(--ink); width:100%;" /></div>
         </div>
       </div>
 
@@ -7031,11 +7152,23 @@ function syncShopLoading() {
   const zones = window.SHOP_ZONES;
   if (!Array.isArray(zones)) return;                          // zones haven't arrived yet
   let mode = 'all', ids = [];
-  if (zones.length > 0) {
+  // Abroad (airport delivery): shops are not tied to Shop Zones, so load every Pravasi shop (not just the zone at the airport's pin).
+  let _abroadIds = null;
+  try {
+    if (zones.length > 0 && neshZoneCheckSkipped()) {
+      const c = window.PRAVASI_CFG || {}, set = new Set();
+      Object.keys(c.shops || {}).forEach(id => set.add(id));
+      Object.keys(c.airports || {}).forEach(k => Object.keys((c.airports[k] && c.airports[k].shopIds) || {}).forEach(id => set.add(id)));
+      _abroadIds = set;   // empty = nothing configured -> fall back to loading all shops below
+    }
+  } catch (e) {}
+  if (_abroadIds && _abroadIds.size === 0) { mode = 'all'; ids = []; }
+  else if (zones.length > 0) {
     mode = 'ids';
     const set = new Set();
     const pt = state.customerPos;
-    if (pt && typeof pt.lat === 'number' && typeof pt.lng === 'number') {
+    if (_abroadIds) _abroadIds.forEach(id => set.add(id));
+    else if (pt && typeof pt.lat === 'number' && typeof pt.lng === 'number') {
       zonesAtPoint(pt).forEach(z => z.shopIds.forEach(id => set.add(id)));
     }
     if (pendingShopLinkId) set.add(pendingShopLinkId);
@@ -7310,7 +7443,7 @@ function tryResumeScreen(saved) {
     return true;
   } else if (saved.id === 'home') {
     state.category = saved.category || state.category;
-    if (!state.category || state.category === 'groceries') goToCategoryScreen();
+    if (!state.category || state.category === 'groceries' || (state.category === 'hotel' && neshAbroadCardsOn())) goToCategoryScreen();
     else openCategory(state.category);
     resumed = true;
     return true;
@@ -7525,6 +7658,7 @@ function syncAreaUnavailScreen() {
   }
 }
 function showScreen(id) {
+  try { if (id === 'category' && window._neshAbZone) neshAbSetZone(false); } catch (e) {}
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + id).classList.add('active');
   window.scrollTo(0, 0);
@@ -7606,10 +7740,22 @@ function pvAirportId() {
 function pvSelectedAirport() { const id = pvAirportId(); return id ? (pvAirports().find(a => a.id === id) || null) : null; }
 function pvShopInAirport(r) { const a = pvSelectedAirport(); if (!a) return true; return !!(a.shopIds && r && a.shopIds[r.id]); }
 function pvAirportUiOn() { try { return pvAirportActive() && state.category === 'online_shop' && !!state.pravasi; } catch (e) { return false; } }
+// Delivery points of an airport (Operator Panel > Pravasi Airports > Delivery points): where the delivery boy meets the customer.
+function pvAirportPoints(a) {
+  const p = (a && a.points) || {};
+  return Object.keys(p).map(id => Object.assign({ id }, p[id])).filter(x => x && x.name && typeof x.lat === 'number' && typeof x.lng === 'number')
+    .sort((x, y) => String(x.name).localeCompare(String(y.name)));
+}
+function pvSelectedPoint(a) {
+  if (!a) return null; const pts = pvAirportPoints(a); if (!pts.length) return null;
+  let id = ''; try { id = localStorage.getItem('nesh_pv_point_' + a.id) || ''; } catch (e) {}
+  return pts.find(x => x.id === id) || null;
+}
 function pvApplyAirportPos(a) {
-  if (a && typeof a.lat === 'number' && typeof a.lng === 'number') {
+  const t = pvSelectedPoint(a) || a;   // the customer's chosen meeting point, else the airport spot
+  if (t && typeof t.lat === 'number' && typeof t.lng === 'number') {
     const c = state.customerPos;
-    if (!c || c.lat !== a.lat || c.lng !== a.lng) state.customerPos = { lat: a.lat, lng: a.lng };
+    if (!c || c.lat !== t.lat || c.lng !== t.lng) state.customerPos = { lat: t.lat, lng: t.lng };
   }
 }
 function pvSyncAirportHeader() {
@@ -7687,7 +7833,9 @@ function pvAbroadDigits() { const i = document.getElementById('loc-contact-abroa
 function pvCheckoutExtra() {
   if (!pvOrderIsAirport()) return {};
   const a = pvSelectedAirport() || {}, i = document.getElementById('loc-contact-abroad');
-  return { contactAbroad: (i ? i.value : '').replace(/[^\d+ ]/g, '').trim(), airportId: a.id || '', airportName: a.name || '', airportCode: a.code || '' };
+  return { contactAbroad: (i ? i.value : '').replace(/[^\d+ ]/g, '').trim(), airportId: a.id || '', airportName: a.name || '', airportCode: a.code || '',
+    flightNo: ((document.getElementById('loc-flight-no') || {}).value || '').replace(/[^A-Za-z0-9 ]/g, '').trim().toUpperCase(),
+    flightDate: (document.getElementById('loc-flight-date') || {}).value || '', flightTime: (document.getElementById('loc-flight-time') || {}).value || '' };
 }
 function pvCheckoutPrep(pc) {
   const wrap = document.getElementById('loc-abroad-wrap'), lab = document.getElementById('loc-contact-label'), inp = document.getElementById('loc-contact-abroad');
@@ -7698,6 +7846,12 @@ function pvCheckoutPrep(pc) {
   const a = pvSelectedAirport() || {};
   let saved = ''; try { saved = localStorage.getItem('nesh_pv_abroad_num') || ''; } catch (e) {}
   if (inp) inp.value = (pc && pc.contactAbroad) || saved;
+  try {
+    const fn = document.getElementById('loc-flight-no'), fd = document.getElementById('loc-flight-date'), ft = document.getElementById('loc-flight-time');
+    const d0 = new Date(), today = d0.getFullYear() + '-' + String(d0.getMonth() + 1).padStart(2, '0') + '-' + String(d0.getDate()).padStart(2, '0');
+    if (fd) fd.min = today;
+    if (fn) fn.value = (pc && pc.flightNo) || ''; if (fd) fd.value = (pc && pc.flightDate) || ''; if (ft) ft.value = (pc && pc.flightTime) || '';
+  } catch (e) {}
   if (!locLandmarkInput.value.trim()) locLandmarkInput.value = (a.name || 'Airport') + (a.code ? ' (' + a.code + ')' : '');
   if (!locPlaceInput.value.trim()) locPlaceInput.value = a.name || '';
 }
@@ -7716,6 +7870,7 @@ function pvCheckoutPrep(pc) {
 
 function openCategory(cat, opts) {
   if (cat === 'groceries') { openNeshStore(); return; }   // no per-shop groceries list
+  try { if (neshAbroadActive()) neshAbSetZone(cat === 'hotel' && !(opts && opts.pravasi)); } catch (e) {}
   if (isAreaUnavailable(state.customerPos)) { handleAreaUnavailable(() => openCategory(cat, opts)); return; }
   state.pravasi = !!(opts && opts.pravasi) && cat === 'online_shop';
   martState.cat = 'All';
@@ -7832,7 +7987,7 @@ function neshSyncBottomNav() {
   const has = neshHasOffers();
   // Trending screen with no offers left (e.g. the last offer ended) -> back to the main screen
   if (id === 'screen-trending' && !has) { goToCategoryScreen(); return; }
-  const show = has && (id === 'screen-category' || id === 'screen-trending');
+  const show = has && (id === 'screen-category' || id === 'screen-trending') && !neshAbroadActive();
   nav.classList.toggle('on', show);
   nav.classList.remove('nb-hide');
   document.body.classList.toggle('has-bnav', show);
@@ -7898,6 +8053,7 @@ function neshIsAbroad() {
 }
 function neshAfterWhereChange() {
   try { neshAbroadSync(); } catch (e) {}
+  try { syncShopLoading(); } catch (e) {}
   try {   // opened as "abroad" (GPS skipped) but really in India -> detect the location now, once
     if (!neshAbroadActive() && !state.customerPos && !window._neshGeoRetryDone) { window._neshGeoRetryDone = true; locationDetectAttempted = false; detectLocationOnOpen(); }
   } catch (e) {}
@@ -7947,7 +8103,7 @@ document.addEventListener('visibilitychange', function () { if (!document.hidden
 window.addEventListener('online', function () { try { neshFetchIpCountry(); } catch (e) {} });
 setInterval(function () { try { neshFetchIpCountry(); } catch (e) {} }, 5 * 60e3);
 // Customers abroad never see the home cards screen: it stays invisible and Pravasi opens straight away (safety net re-tries it).
-try { const st2 = document.createElement('style'); st2.textContent = 'html.nesh-abroad:not(.nesh-abroad-fail) #screen-category{visibility:hidden !important;}'; document.head.appendChild(st2); } catch (e) {}
+try { const st2 = document.createElement('style'); st2.textContent = 'html.nesh-abroad-direct:not(.nesh-abroad-fail) #screen-category{visibility:hidden !important;}'; document.head.appendChild(st2); } catch (e) {}
 let _neshAbroadStuck = 0;
 setInterval(function () {
   try {   // safety net: home cards still hidden after ~5s (Pravasi did not open) -> show them again instead of a blank screen
@@ -7969,14 +8125,53 @@ function neshAbroadActive() {
   if (l.abroadDirect === false || l.abroadDirect === 'false') return false;  // operator turned the option off
   return neshIsAbroad();
 }
+// 3-card home for customers abroad: Pravasi Hampers, Food, Groceries. Operator switch: Firebase pravasi/layout/abroadCards = false
+// brings back the old behaviour (Pravasi opens straight away, no Food / Groceries).
+function neshAbroadCards() {
+  try { const l = (window.PRAVASI_CFG || {}).layout || {}; return !(l.abroadCards === false || l.abroadCards === 'false'); } catch (e) { return true; }
+}
+function neshAbroadCardsOn() { try { return neshAbroadActive() && neshAbroadCards(); } catch (e) { return false; } }
+// Food / Groceries are delivered inside India, so while a customer abroad browses them the normal location + Shop Zone rules apply
+// (Pravasi keeps its airport flow). window._neshAbZone = "currently in the Food / Groceries flow".
+function neshAbZone() { try { return !!window._neshAbZone && neshAbroadCardsOn(); } catch (e) { return false; } }
+function neshAbSetZone(on) {
+  on = !!on && neshAbroadCardsOn();
+  if (!!window._neshAbZone === on) return;
+  window._neshAbZone = on;
+  try { neshAbroadSync(); } catch (e) {}
+}
+// A usable India delivery location = picked, not the airport pin of the Pravasi screen, and inside a Shop Zone.
+function neshAbLocOk() {
+  const pt = state.customerPos;
+  if (!pt || typeof pt.lat !== 'number' || typeof pt.lng !== 'number') return false;
+  try { const a = pvSelectedAirport(), t = a && (pvSelectedPoint(a) || a); if (t && t.lat === pt.lat && t.lng === pt.lng) return false; } catch (e) {}
+  try { return !isAreaUnavailable(pt); } catch (e) { return true; }
+}
+// Food / Groceries card tap abroad: ask for the delivery location first; once it is inside a zone, open the shop list.
+function neshAbFoodGate(next) {
+  let ok = false;
+  window._neshAbZone = true;                       // judge the location with Shop Zones switched on
+  try { ok = neshAbLocOk(); } catch (e) {}
+  window._neshAbZone = false;
+  if (ok) { neshAbSetZone(true); next(); return; }
+  pendingLocationRequiredAction = () => { neshAbSetZone(true); next(); };
+  openBrowseLocationPicker();
+}
 function neshAbroadSync() {
-  try { document.documentElement.classList.toggle('nesh-abroad', neshAbroadActive()); } catch (e) {}
+  try {
+    const ab = neshAbroadActive(), cards = ab && neshAbroadCards(), zone = cards && !!window._neshAbZone, cl = document.documentElement.classList;
+    cl.toggle('nesh-abroad', ab && !zone);          // Pravasi storefront look (off while browsing Food / Groceries)
+    cl.toggle('nesh-abroad-cat', !!cards);          // 3-card home
+    cl.toggle('nesh-abroad-direct', ab && !cards);  // old: Pravasi only
+  } catch (e) {}
+  try { syncShopLoading(); } catch (e) {}
 }
 let _neshAbroadAt = 0;
 function neshAbroadAutoOpen() {
   neshAbroadSync();
   try { neshMaybeAskWhere(); } catch (e) {}
   if (!neshAbroadActive() || !state.user) return;
+  if (neshAbroadCards()) return;   // 3-card home: the customer picks Pravasi / Food / Groceries
   try { if (pendingShopLinkId) return; } catch (e) {}     // a shared shop link always wins
   const now = Date.now();
   if (now - _neshAbroadAt < 1500) return;
@@ -8887,8 +9082,8 @@ document.getElementById('ep-save-btn').addEventListener('click', async () => {
 });
 
 neshApplyLang(); // apply the saved language (English = no changes)
-document.getElementById('cat-card-food').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); requireLocationThen(() => { openCategory('hotel'); offerWebNotificationOnce(); }); });
-document.getElementById('cat-card-groceries').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); requireLocationThen(() => { openNeshStore(); offerWebNotificationOnce(); }); });
+document.getElementById('cat-card-food').addEventListener('click', () => { if (neshAbroadCardsOn()) { neshAbFoodGate(() => { openCategory('hotel'); offerWebNotificationOnce(); }); return; } maybeDetectLocationOnCategoryTap(); requireLocationThen(() => { openCategory('hotel'); offerWebNotificationOnce(); }); });
+document.getElementById('cat-card-groceries').addEventListener('click', () => { if (neshAbroadCardsOn()) { neshAbFoodGate(() => { openNeshStore(); offerWebNotificationOnce(); }); return; } maybeDetectLocationOnCategoryTap(); requireLocationThen(() => { openNeshStore(); offerWebNotificationOnce(); }); });
 document.getElementById('cat-card-online-shop').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); requireLocationThen(() => { openCategory('online_shop'); offerWebNotificationOnce(); }); });
 document.getElementById('home-cat-back-btn').addEventListener('click', goToCategoryScreen);
 document.getElementById('cat-card-taxi').addEventListener('click', () => { maybeDetectLocationOnCategoryTap(); goToTaxiBooking(); offerWebNotificationOnce(); });
@@ -9059,6 +9254,8 @@ document.addEventListener('click', function (ev) {
     onValue(ref(db, 'pravasi'), snap => {
       window.PRAVASI_CFG = snap.val() || null;
       try { localStorage.setItem(KEY, JSON.stringify(window.PRAVASI_CFG)); } catch (e) {}
+      try { syncShopLoading(); } catch (e) {}
+      try { neshAbroadSync(); } catch (e) {}
       applyCard();
       try { const hs = document.getElementById('screen-home'); if (state.pravasi && hs && hs.classList.contains('active')) renderRestaurantList(); } catch (e) {}
     }, () => {});
@@ -9066,6 +9263,7 @@ document.addEventListener('click', function (ev) {
   listen();
   document.getElementById('cat-card-pravasi').addEventListener('click', (e) => {
     if (e.target && e.target.closest && e.target.closest(PV_ACTION_SEL)) return;
+    try { neshAbSetZone(false); } catch (e) {}
     if (!pvAirportActive()) maybeDetectLocationOnCategoryTap(); pvGate(() => { openCategory('online_shop', { pravasi: true }); offerWebNotificationOnce(); });
   });
 })();
@@ -11542,7 +11740,6 @@ function openPvChat(restId, restName, ret) {
     pvcRender(list);
     update(ref(db, pvcMeta(restId)), { unreadCustomer: 0 }).catch(() => {});
   });
-  setTimeout(() => { try { document.getElementById('pvchat-input').focus(); } catch (e) {} }, 150);
 }
 function pvcRender(list) {
   const box = document.getElementById('pvchat-messages');
@@ -11581,6 +11778,7 @@ function pvcBack() {
   if (PVC.unsub) { PVC.unsub(); PVC.unsub = null; }
   if (PVC.ret === 'menu') showScreen('menu');
   else if (PVC.ret === 'placed') showScreen('placed');
+  else if (PVC.ret === 'chats') { goHomeSafe(); try { abOpenChats(); } catch (e) {} }
   else goHomeSafe();
 }
 // ---- Voice messages (max 60 s): tap 🎤 to record, ➤ to send. Saved in the database, deleted after 7 days. ----
@@ -11665,6 +11863,44 @@ function pvcCleanup(list) {   // expired (7 days) or deleted by the operator: dr
   });
 }
 document.getElementById('pvchat-mic-btn').addEventListener('click', pvrStart);
+(function pvcStable() {   // keep the chat screen exactly on the visible area, even while the keyboard opens/closes
+  const vv = window.visualViewport;
+  const isOpen = () => document.documentElement.classList.contains('pvchat-open');
+  function fit() {
+    if (!isOpen()) return;
+    const root = document.documentElement.style;
+    if (vv) { root.setProperty('--pvc-top', Math.max(0, vv.offsetTop) + 'px'); root.setProperty('--pvc-vh', Math.round(vv.height) + 'px'); }
+    try { window.scrollTo(0, 0); } catch (e) {}
+    const box = document.getElementById('pvchat-messages'); if (box) box.scrollTop = box.scrollHeight;   // keep the latest message visible
+  }
+  if (vv) { vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit); }
+  window.addEventListener('scroll', () => { if (isOpen() && (window.scrollY || document.documentElement.scrollTop)) { try { window.scrollTo(0, 0); } catch (e) {} } }, { passive: true });
+  const inp = document.getElementById('pvchat-input');
+  inp.addEventListener('focus', () => { fit(); setTimeout(fit, 120); setTimeout(fit, 350); });
+  inp.addEventListener('blur', () => setTimeout(fit, 120));
+  // tapping Send must not steal focus, otherwise the keyboard closes after every message
+  ['pointerdown', 'mousedown', 'touchstart'].forEach(ev => document.getElementById('pvchat-send-btn').addEventListener(ev, e => e.preventDefault(), { passive: false }));
+  const _s = showScreen;
+  showScreen = function (id) {
+    const on = id === 'pvchat';
+    document.documentElement.classList.toggle('pvchat-open', on);
+    if (!on) { const r = document.documentElement.style; r.removeProperty('--pvc-top'); r.removeProperty('--pvc-vh'); }
+    const out = _s.apply(this, arguments);
+    if (on) { fit(); setTimeout(fit, 60); }
+    return out;
+  };
+})();
+function pvcSyncBtns() {   // WhatsApp style: empty box -> mic, typed text -> send arrow
+  try {
+    const i = document.getElementById('pvchat-input'), m = document.getElementById('pvchat-mic-btn'), sd = document.getElementById('pvchat-send-btn');
+    const has = !!(i && i.value.trim());
+    if (m) m.style.display = has ? 'none' : 'flex';
+    if (sd) sd.style.display = has ? 'flex' : 'none';
+  } catch (e) {}
+}
+document.getElementById('pvchat-input').addEventListener('input', pvcSyncBtns);
+document.getElementById('pvchat-send-btn').addEventListener('click', () => setTimeout(pvcSyncBtns, 60));
+setInterval(pvcSyncBtns, 500);   // also catches the box being cleared/reset by the app
 document.getElementById('pvchat-rec-cancel').addEventListener('click', () => pvrStop(true));
 document.getElementById('pvchat-rec-send').addEventListener('click', () => pvrStop(false));
 document.getElementById('pvchat-messages').addEventListener('click', e => { const b = e.target.closest && e.target.closest('.pvc-vplay'); if (b) pvcPlayVoice(b); });
@@ -11745,7 +11981,7 @@ function neshHandleBack() {
   const rideActive = !!currentRideKey && !['completed', 'cancelled'].includes(taxiTrackLastStatus);
   if (rideActive && id === 'taxi-track') return 'stay';
 
-  if (id === 'category' || (id === 'home' && state.pravasi && neshAbroadActive())) {
+  if (id === 'category' || (id === 'home' && state.pravasi && neshAbroadActive() && !neshAbroadCards())) {
     // --- 3) Root screen: double-back to exit (same on website and native app) ---
     if (neshExitArmed) { neshExitArmed = false; return 'exit'; }
     neshExitArmed = true;
@@ -13284,6 +13520,10 @@ function martHeaderLayout(isMart) {
 }
 
 function renderHome() {
+  try { if (neshAbroadActive()) { if (state.category === 'hotel') neshAbSetZone(true); else if (state.category === 'online_shop') neshAbSetZone(false); } } catch (e) {}
+  // FIX: customers abroad can land here without Pravasi mode (app reopened, Back from a shop, cart bar, trending...)
+  // -> they saw the normal NESH Mart screen with an Indian "Deliver to" location. Keep them on the airport (Pravasi) home.
+  try { if (neshAbroadActive() && pvAirports().length && state.category === 'online_shop' && !state.pravasi) state.pravasi = true; } catch (e) {}
   updateHomeLocationLabel();
   const firstName = (state.user?.name || "friend").split(' ')[0];
   const isGroceries = state.category === 'groceries';
@@ -13434,10 +13674,13 @@ function handleAreaUnavailable(retryAction) {
 function shopZonesConfigured() { return (window.SHOP_ZONES || []).length > 0; }
 function zonesAtPoint(pt) { return (window.SHOP_ZONES || []).filter(z => isPointInZone(pt, z.bounds)); }
 function isAreaUnavailable(pt) {
-  try { if (pvAirportActive()) return false; } catch (e) {}
+  try { if ((pvAirportActive() || neshZoneCheckSkipped()) && !neshAbZone()) return false; } catch (e) {}
   return !!(pt && typeof pt.lat === 'number' && typeof pt.lng === 'number') && shopZonesConfigured() && zonesAtPoint(pt).length === 0;
 }
+// Shop Zones are an India-only rule. Customers abroad (Pravasi / airport delivery) are never zone-checked.
+function neshZoneCheckSkipped() { try { return !!neshAbroadActive() && !neshAbZone(); } catch (e) { return false; } }
 function shopAllowedAtPoint(shopId, pt) {
+  if (neshZoneCheckSkipped()) return true;
   if (!shopZonesConfigured() || !pt || typeof pt.lat !== 'number' || typeof pt.lng !== 'number') return true;
   return zonesAtPoint(pt).some(z => z.shopIds.includes(shopId));
 }
@@ -13748,6 +13991,126 @@ setTimeout(() => { try { if (!restaurantsLoadedOnce) renderRestaurantList(); } c
 
 // NESH Mart on a computer screen (>=1000px) uses the Food home look/layout; on phones Mart keeps its own layout.
 function martFoodLook() { return state.category === 'online_shop' && ((!!window.matchMedia && window.matchMedia('(min-width:1000px)').matches) || (!!state.pravasi && typeof pvLayout === 'function' && pvLayout().look === 'food')); } // 2nd case: Pravasi screen set to "Food look" in Operator Panel
+
+// Abroad home: NESH-yellow storefront (shop chips, banner, popular products) for customers abroad only.
+function renderAbroadHome() {
+  const el = document.getElementById('abroad-home'), hiEl = document.getElementById('abroad-hi'); if (!el) return;
+  let on = false; try { on = neshAbroadActive(); } catch (e) {}
+  if (!on) { el.innerHTML = ''; if (hiEl) hiEl.innerHTML = ''; return; }
+  const esc = x => escapeHtml(String(x == null ? '' : x)), img = u => u ? "background-image:url('" + String(u).replace(/['"()\\]/g, '') + "')" : '';
+  const shops = (RESTAURANTS || []).filter(r => { try { return isPravasiShop(r) && pvShopInAirport(r); } catch (e) { return false; } });
+  const h = new Date().getHours(), hi = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  const nm = String((state.user && state.user.name) || '').trim().split(/\s+/)[0];
+  const q = String((document.getElementById('search-input') || {}).value || '').trim().toLowerCase();
+  let list = shops.map(r => { let c = {}; try { c = getShopClosedInfo(r) || {}; } catch (e) {} return { r, closed: !!c.closed }; });
+  if (q) list = list.filter(x => ((x.r.name || '') + ' ' + (x.r.cuisine || '') + ' ' + (x.r.opCategory || '')).toLowerCase().includes(q));
+  try { if (martState.openOnly) list = list.filter(x => !x.closed); } catch (e) {}
+  list.sort((x, y) => x.closed - y.closed);
+  el.classList.toggle('ab-on', shops.length > 0);
+  if (!shops.length) { el.innerHTML = ''; return; }
+  if (!list.length) { el.innerHTML = '<p class="empty-text">No shops found.</p>'; return; }
+  const op = list.filter(x => !x.closed).length;
+  el.innerHTML = '<p class="ab-count">' + op + ' shop' + (op === 1 ? '' : 's') + ' open now</p>' + list.map(x => {
+    const r = x.r;
+    const rt = Number(r.rating) > 0 ? '\u2605 ' + Number(r.rating).toFixed(1) + (r.ratingCount ? ' \u00B7 ' + esc(r.ratingCount) + ' reviews' : '') : '';
+    const tag = r.cuisine || r.opCategory || '';
+    return '<div role="button" tabindex="0" class="ab-shop' + (x.closed ? ' ab-closed' : '') + '" data-shop="' + esc(r.id) + '"><div class="ab-cover" style="' + img(r.image || r.logo) + '">'
+      + (x.closed ? '<s class="ab-cl">Closed</s>' : '') + '</div>'
+      + '<div class="ab-row"><div><b>' + esc(r.name) + '</b>' + (rt ? '<small>' + rt + '</small>' : '') + '</div>'
+      + '<div class="ab-r">' + (tag ? '<i>' + esc(tag) + '</i>' : '') + '</div></div></div>';
+  }).join('');
+}
+document.addEventListener('click', function (e) {
+  const t = e.target && e.target.closest && e.target.closest('#abroad-home [data-shop]'); if (!t) return;
+  const sid = t.getAttribute('data-shop'), iid = t.getAttribute('data-item');
+  try { iid ? openRestaurantAtItem(sid, iid) : openRestaurant(sid); } catch (err) {}
+});
+
+// Abroad bottom bar: Home (scroll to top) and Chat (chat with a shop).
+// Abroad bottom bar: Home (scroll to top) and Chat (full-screen chat list like WhatsApp).
+let _abChatUnsubs = [];
+function abNavSet(w) { try { document.querySelectorAll('#ab-nav [data-nav]').forEach(x => x.classList.toggle('on', x.getAttribute('data-nav') === w)); } catch (e) {} }
+function abCloseChats() {
+  _abChatUnsubs.forEach(u => { try { u(); } catch (e) {} }); _abChatUnsubs = [];
+  const o = document.getElementById('ab-chats-ov'); if (o) o.remove();
+  try { document.body.classList.remove('ab-chats-open'); } catch (e) {}
+  abNavSet('home');
+}
+function abOpenChats() {
+  let shops = []; try { shops = (RESTAURANTS || []).filter(r => isPravasiShop(r) && pvShopInAirport(r)); } catch (x) {}
+  if (!shops.length) { try { showInfoModal('Chat', 'Shops are not available yet.'); } catch (x) {} return; }
+  if (!pvcUid()) { try { showInfoModal('Login needed', 'Please log in to chat with the shop.'); } catch (x) {} return; }
+  _abChatUnsubs.forEach(u => { try { u(); } catch (e) {} }); _abChatUnsubs = [];
+  const old = document.getElementById('ab-chats-ov'); if (old) old.remove();
+  const ov = document.createElement('div'); ov.id = 'ab-chats-ov';
+  ov.innerHTML = '<div class="abc-head"><h2>Chats</h2></div><div class="abc-list" id="abc-list"></div>';
+  document.body.appendChild(ov); document.body.classList.add('ab-chats-open'); abNavSet('chat');
+  const meta = {}, esc = x => escapeHtml(String(x == null ? '' : x));
+  const fmt = t => { if (!t) return ''; const d = new Date(t), n = new Date(); try { return d.toDateString() === n.toDateString() ? pvcTime(t) : d.toLocaleDateString([], { day: 'numeric', month: 'short' }); } catch (e) { return ''; } };
+  const render = () => {
+    const box = document.getElementById('abc-list'); if (!box) return;
+    const rows = shops.map(r => ({ r, m: meta[r.id] || {} })).sort((x, y) => (y.m.lastTime || 0) - (x.m.lastTime || 0) || String(x.r.name).localeCompare(String(y.r.name)));
+    box.innerHTML = rows.map(({ r, m }) => {
+      const u = String(r.logo || r.image || '').replace(/['"()\\]/g, ''), un = Number(m.unreadCustomer) || 0;
+      const last = m.lastText ? ((m.lastFrom === 'customer' ? 'You: ' : '') + m.lastText) : 'Tap to start a chat';
+      return '<button type="button" class="abc-row' + (un ? ' unread' : '') + '" data-chat="' + esc(r.id) + '"><span class="abc-av" style="' + (u ? "background-image:url('" + u + "')" : '') + '">' + (u ? '' : esc(String(r.name || 'S').charAt(0).toUpperCase())) + '</span>'
+        + '<span class="abc-mid"><span class="abc-name">' + esc(r.name || 'Shop') + '</span><span class="abc-last">' + esc(last) + '</span></span>'
+        + '<span class="abc-end"><span class="abc-time">' + esc(fmt(m.lastTime)) + '</span>' + (un ? '<span class="abc-badge">' + (un > 99 ? '99+' : un) + '</span>' : '') + '</span></button>';
+    }).join('');
+  };
+  render();
+  try {
+    const { db, ref, onValue } = window.fb;
+    shops.forEach(r => { _abChatUnsubs.push(onValue(ref(db, pvcMeta(r.id)), snap => { meta[r.id] = snap.val() || {}; render(); })); });
+  } catch (e) {}
+  ov.addEventListener('click', ev => {
+    const c = ev.target.closest && ev.target.closest('[data-chat]'); if (!c) return;
+    const r = shops.find(z => String(z.id) === c.getAttribute('data-chat'));
+    if (r) { abCloseChats(); openPvChat(r.id, r.name, 'chats'); }
+  });
+}
+// Red dot on the bottom-nav Chat tab: any Pravasi shop of the chosen airport has an unread message for this customer.
+const _abDot = { subs: {}, counts: {}, uid: '' };
+function abDotUpdate() {
+  try { const n = Object.keys(_abDot.counts).reduce((a, k) => a + (Number(_abDot.counts[k]) || 0), 0), b = document.querySelector('#ab-nav [data-nav="chat"]'); if (b) b.classList.toggle('has-dot', n > 0); } catch (e) {}
+}
+function abDotSync() {
+  try {
+    if (!window.fb || !neshAbroadActive()) return;
+    const uid = pvcUid();
+    if (uid !== _abDot.uid) { Object.keys(_abDot.subs).forEach(k => { try { _abDot.subs[k](); } catch (e) {} }); _abDot.subs = {}; _abDot.counts = {}; _abDot.uid = uid; }
+    if (!uid) { abDotUpdate(); return; }
+    let shops = []; try { shops = (RESTAURANTS || []).filter(r => isPravasiShop(r) && pvShopInAirport(r)); } catch (e) {}
+    const ids = new Set(shops.map(r => r.id));
+    Object.keys(_abDot.subs).forEach(id => { if (!ids.has(id)) { try { _abDot.subs[id](); } catch (e) {} delete _abDot.subs[id]; delete _abDot.counts[id]; } });
+    const { db, ref, onValue } = window.fb;
+    ids.forEach(id => { if (_abDot.subs[id]) return; _abDot.subs[id] = onValue(ref(db, pvcMeta(id) + '/unreadCustomer'), snap => { _abDot.counts[id] = Number(snap.val()) || 0; abDotUpdate(); }); });
+    abDotUpdate();
+  } catch (e) {}
+}
+setTimeout(abDotSync, 1500); setInterval(abDotSync, 3000);
+document.addEventListener('click', function (e) {
+  const b = e.target && e.target.closest && e.target.closest('#ab-nav [data-nav]'); if (!b) return;
+  const w = b.getAttribute('data-nav');
+  if (w === 'home') {
+    abCloseChats();
+    const so = document.getElementById('screen-orders');
+    if (so && so.classList.contains('active')) { leaveOrdersScreen(); return; }
+    try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (x) { window.scrollTo(0, 0); } return;
+  }
+  if (w === 'orders') {
+    if (!(state.user && state.user.number)) { try { showInfoModal('Login needed', 'Please log in to see your orders.'); } catch (x) {} return; }
+    abCloseChats(); openOrdersScreen(); abNavSet('orders'); return;
+  }
+  const so2 = document.getElementById('screen-orders');
+  if (so2 && so2.classList.contains('active')) { try { if (ordersUnsub) { ordersUnsub(); ordersUnsub = null; } } catch (x) {} goHomeSafe(); }
+  abOpenChats();
+});
+(function () { const _s = showScreen; showScreen = function () { if (arguments[0] !== 'home') { try { if (document.getElementById('ab-chats-ov')) abCloseChats(); } catch (e) {} } return _s.apply(this, arguments); }; })();
+(function () { const _s = showScreen; showScreen = function (id) { const r = _s.apply(this, arguments); try { if (id === 'orders') abNavSet('orders'); else if (id === 'home' && !document.getElementById('ab-chats-ov')) abNavSet('home'); } catch (e) {} return r; }; })();
+
+(function () { const _rl = renderRestaurantList; renderRestaurantList = function () { try { return _rl.apply(this, arguments); } finally { try { renderAbroadHome(); } catch (e) {} } }; })();
+
 function renderRestaurantList() {
   const q = searchInput.value.toLowerCase();
   // No category picked and the shop list isn't on screen (e.g. the category picker is showing while shop data
@@ -13802,8 +14165,8 @@ function renderRestaurantList() {
   // delivery zone covers that point. Restaurants that haven't drawn a zone
   // yet are still shown, so nothing disappears just because a restaurant
   // hasn't set one up yet.
-  let filtered = (state.customerPos && !_pvAp)
-    ? searchFiltered.filter(r => shopAllowedAtPoint(r.id, state.customerPos) && (!r.zone || isPointInZone(state.customerPos, r.zone)))
+  let filtered = (state.customerPos && !_pvAp && !neshZoneCheckSkipped())
+    ? searchFiltered.filter(r => shopAllowedAtPoint(r.id, state.customerPos) && (!r.zone || neshZoneCheckSkipped() || isPointInZone(state.customerPos, r.zone)))
     : searchFiltered;
   if (state.category === 'hotel' || martFoodLook()) filtered = neshApplyShopFilters(filtered);
 
@@ -14043,7 +14406,7 @@ function renderProductResults(q, categoryFiltered) {
   // Respect the same delivery-zone filter as the shop list, so a product
   // from a shop that doesn't deliver here doesn't show up as tappable.
   const deliverable = ((state.customerPos && !pvAirportUiOn())
-    ? categoryFiltered.filter(r => shopAllowedAtPoint(r.id, state.customerPos) && (!r.zone || isPointInZone(state.customerPos, r.zone)))
+    ? categoryFiltered.filter(r => shopAllowedAtPoint(r.id, state.customerPos) && (!r.zone || neshZoneCheckSkipped() || isPointInZone(state.customerPos, r.zone)))
     : categoryFiltered
   ).filter(r => !getShopClosedInfo(r).closed); // closed / unavailable shops' products must not appear (or be orderable) from search
 
@@ -14245,6 +14608,7 @@ document.getElementById('howto-ok-btn').addEventListener('click', () => {
 document.getElementById('menu-howto-btn').addEventListener('click', openGroceriesHowTo);
 
 function openNeshStore() {
+  try { if (neshAbroadActive()) neshAbSetZone(true); } catch (e) {}
   if (isAreaUnavailable(state.customerPos)) { handleAreaUnavailable(() => openNeshStore()); return; }
   const store = resolveRestaurantById('NESH_STORE');
   if (!store) { showInfoModal('Loading stores…', 'Stores are still loading. Please try again in a moment.'); return; } // RESTAURANTS hasn't loaded yet
@@ -14559,6 +14923,7 @@ function neshSyncMenuPrice(r) {
 }
 function renderMenu() {
   const r = state.selectedRestaurant;
+  try { if (r && neshAbroadActive()) neshAbSetZone(r.id === 'NESH_STORE' || !isPravasiShop(r)); } catch (e) {}
   try { document.getElementById('screen-menu').dataset.store = (r && r.id === 'NESH_STORE') ? '1' : '0'; } catch (e) {}
   menuRestName.textContent = r.name;
   menuRestMeta.textContent = [r.cuisine, shopDeliveryLabel(r)].filter(Boolean).join(' · ');
@@ -17414,8 +17779,9 @@ function renderLandmarkSuggestions(places, lat, lng) {
 // no per-search API call. Falls back to the live Overpass API only if the
 // pin is outside this file's coverage area.
 let LOCAL_LANDMARKS = null;
+let LOCAL_LOCALITIES = [];
 let localLandmarksLoadPromise = null;
-const LOCAL_LANDMARKS_BOUNDS = { minLat: 11.2067833, maxLat: 11.2646564, minLng: 75.8857505, maxLng: 75.9473206 };
+const LOCAL_LANDMARKS_BOUNDS = { minLat: 11.1961, maxLat: 11.2647, minLng: 75.8857, maxLng: 75.9688 };   // recomputed from the file once it loads
 
 function landmarkLabelFromProps(p) {
   if (p.name) return p.name;
@@ -17430,37 +17796,69 @@ function landmarkTypeFromProps(p) {
     (p.building && p.building !== 'yes' ? p.building : 'building')).replace(/_/g, ' ');
 }
 
+const LANDMARKS_URL = 'https://nesh-group.github.io/NESH-APP/export.geojson';
+const LANDMARKS_CACHE_KEY = 'nesh_landmarks_geo_v1';
+function neshBuildLandmarks(geo) {
+  const LM = [], LOC = [];
+  let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+  (geo.features || []).forEach(f => {
+    const p = f.properties || {};
+    const coords = f.geometry?.coordinates;
+    if (!coords) return;
+    minLat = Math.min(minLat, coords[1]); maxLat = Math.max(maxLat, coords[1]);
+    minLng = Math.min(minLng, coords[0]); maxLng = Math.max(maxLng, coords[0]);
+    const isLandmarkWorthy = p.name || p.amenity || p.shop || p.office || p.tourism || p.leisure || p.healthcare || p.man_made || p.building;
+    if (isLandmarkWorthy) {
+      LM.push({ n: landmarkLabelFromProps(p), t: landmarkTypeFromProps(p), lat: coords[1], lng: coords[0], named: !!p.name });
+    } else if (p.place_name) {
+      // Manually added place markers (e.g. Kodiyamal) must be searchable too, not only used as locality anchors.
+      LM.push({ n: String(p.place_name).trim(), t: 'place', lat: coords[1], lng: coords[0], named: true });
+    }
+    if (p['addr:city']) {
+      LOC.push({ name: String(p['addr:city']).trim().replace(/\b\w/g, c => c.toUpperCase()), lat: coords[1], lng: coords[0] });
+    }
+    if (p.place_name) LOC.push({ name: String(p.place_name).trim(), lat: coords[1], lng: coords[0] });
+    // Manually added place markers that only carry "name" (e.g. OORKADAV, ATHIKODAMKUYI, Chennayil) are place names too, so the
+    // locating / "Deliver to" label can use them. Facility-like names (hospital, house, road...) stay landmarks only.
+    if (!p.place_name && p.name && String(p['@id'] || f.id || '').indexOf('manual') !== -1 && !/hospital|clinic|house|road|near|junction|shop|store|mosque|school/i.test(p.name)) {
+      LOC.push({ name: String(p.name).split(',')[0].trim().replace(/\b\w/g, c => c.toUpperCase()), lat: coords[1], lng: coords[0] });
+    }
+  });
+  LOCAL_LANDMARKS = LM;
+  LOCAL_LOCALITIES = LOC;
+  if (LM.length) {   // coverage = where the file really has data (small margin), so no landmark area falls outside it
+    const m = 0.01;
+    LOCAL_LANDMARKS_BOUNDS.minLat = minLat - m; LOCAL_LANDMARKS_BOUNDS.maxLat = maxLat + m;
+    LOCAL_LANDMARKS_BOUNDS.minLng = minLng - m; LOCAL_LANDMARKS_BOUNDS.maxLng = maxLng + m;
+  }
+  return LM;
+}
 function loadLocalLandmarks() {
   if (localLandmarksLoadPromise) return localLandmarksLoadPromise;
-  // Fetched from GitHub Pages (not bundled into the app) so that updating
-  // this file and pushing it is enough to update landmarks everywhere —
-  // no app rebuild/republish needed, unlike a file bundled into the AAB/APK.
-  localLandmarksLoadPromise = fetch('https://nesh-group.github.io/NESH-APP/export.geojson')
-    .then(res => res.json())
+  // Landmarks must never disappear: 1) the last good copy is kept on the phone and used at once if there is one,
+  // 2) a fresh copy is fetched from GitHub Pages (with retries) and replaces it, 3) a failed fetch is never remembered,
+  // so the next search simply tries again instead of leaving the landmark list empty until the app restarts.
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem(LANDMARKS_CACHE_KEY) || 'null'); } catch (e) {}
+  if (cached && cached.features) { try { neshBuildLandmarks(cached); } catch (e) {} }
+  const fetchFresh = (tries) => fetch(LANDMARKS_URL, { cache: 'no-cache' })
+    .then(res => { if (!res.ok) throw new Error('http ' + res.status); return res.json(); })
     .then(geo => {
-      LOCAL_LANDMARKS = [];
-      LOCAL_LOCALITIES = [];
-      (geo.features || []).forEach(f => {
-        const p = f.properties || {};
-        const coords = f.geometry?.coordinates;
-        if (!coords) return;
-        // Skip pure place-name markers (no building/amenity/name) from the
-        // landmark-suggestion list — they're locality anchors only.
-        const isLandmarkWorthy = p.name || p.amenity || p.shop || p.office || p.tourism || p.leisure || p.healthcare || p.man_made || p.building;
-        if (isLandmarkWorthy) {
-          LOCAL_LANDMARKS.push({ n: landmarkLabelFromProps(p), t: landmarkTypeFromProps(p), lat: coords[1], lng: coords[0], named: !!p.name });
-        }
-        if (p['addr:city']) {
-          const cityName = String(p['addr:city']).trim().replace(/\b\w/g, c => c.toUpperCase());
-          LOCAL_LOCALITIES.push({ name: cityName, lat: coords[1], lng: coords[0] });
-        }
-        if (p.place_name) {
-          LOCAL_LOCALITIES.push({ name: String(p.place_name).trim(), lat: coords[1], lng: coords[0] });
-        }
-      });
+      if (!geo || !Array.isArray(geo.features) || !geo.features.length) throw new Error('empty');
+      neshBuildLandmarks(geo);
+      try {
+        const slim = { type: 'FeatureCollection', features: geo.features.map(f => ({ type: 'Feature', geometry: f.geometry, properties: f.properties })) };
+        localStorage.setItem(LANDMARKS_CACHE_KEY, JSON.stringify(slim));
+      } catch (e) {}
       return LOCAL_LANDMARKS;
     })
-    .catch(() => { LOCAL_LANDMARKS = []; LOCAL_LOCALITIES = []; return []; });
+    .catch(err => {
+      if (tries > 1) return new Promise(r => setTimeout(r, 1500)).then(() => fetchFresh(tries - 1));
+      throw err;
+    });
+  localLandmarksLoadPromise = (cached && cached.features ? Promise.resolve(LOCAL_LANDMARKS) : fetchFresh(3))
+    .catch(() => { localLandmarksLoadPromise = null; if (!LOCAL_LANDMARKS) { LOCAL_LANDMARKS = []; LOCAL_LOCALITIES = []; } return LOCAL_LANDMARKS; });
+  if (cached && cached.features) fetchFresh(3).catch(() => {});   // background refresh; the cached copy is already in use
   return localLandmarksLoadPromise;
 }
 loadLocalLandmarks();
@@ -17482,7 +17880,6 @@ function findLocalNearbyLandmarks(lat, lng, radius) {
 // Uses addr:city tags already present in export.geojson as local anchors
 // (instant, offline). If the pin is too far from any of those, falls back
 // to a live Nominatim reverse-geocode call for the village/town name.
-let LOCAL_LOCALITIES = [];
 let placeAreaDebounce = null;
 let placeAreaAbort = null;
 
@@ -18027,7 +18424,7 @@ let pendingLocationRequiredAction = null;
 // once they confirm a location in the picker.
 function requireLocationThen(next) {
   if (state.customerPos) { next(); return; }
-  try { if (pvAirportActive()) { next(); return; } } catch (e) {}
+  try { if (pvAirportActive() && !neshAbZone()) { next(); return; } } catch (e) {}
   pendingLocationRequiredAction = next;
   openBrowseLocationPicker();
 }
@@ -18061,6 +18458,9 @@ function openBrowseLocationPicker() {
     : "No location selected — tap the map or use GPS below";
   browseLocGpsBtn.disabled = false;
   browseLocGpsBtn.textContent = "📍 Use my current location";
+  // Customers abroad: GPS would only return their foreign location, which is useless for Food / Groceries (India delivery)
+  // -> hide "Use my current location" for them; they search / pick the delivery spot instead.
+  try { browseLocGpsBtn.style.display = neshAbroadActive() ? 'none' : ''; } catch (e) { browseLocGpsBtn.style.display = ''; }
   browseLocSearchInput.value = "";
   hideBrowseSearchResults();
   try { neshRenderRecentLocs(); } catch (e) {}
@@ -18502,7 +18902,72 @@ function renderDrinkSuggestions(r) {
   wrap.style.display = 'block';
 }
 
+
+// Airport orders: ask travel details FIRST (no location), then show the checkout page.
+function abDetailsGate() {
+  try {
+    const air = !!pvOrderIsAirport();
+    document.documentElement.classList.toggle('ab-air-order', air);
+    if (!air) return false;
+    if (pvCheckoutGate(() => openOrderSummary())) return true;
+    if (window.__abPass) { window.__abPass = false; return false; }
+    if (orderSummaryOverlay.classList.contains('show')) return false;
+    abShowDetails(); return true;
+  } catch (e) { return false; }
+}
+function abShowDetails() {
+  const old = document.getElementById('ab-details-ov'); if (old) old.remove();
+  const a = pvSelectedAirport() || {}, pc = (state.pendingCheckout && state.pendingCheckout.airportId === a.id) ? state.pendingCheckout : {};
+  let saved = ''; try { saved = localStorage.getItem('nesh_pv_abroad_num') || ''; } catch (e) {}
+  let savedAirline = ''; try { savedAirline = localStorage.getItem('nesh_pv_airline') || ''; } catch (e) {}
+  const d0 = new Date(), today = d0.getFullYear() + '-' + String(d0.getMonth() + 1).padStart(2, '0') + '-' + String(d0.getDate()).padStart(2, '0');
+  const v = x => escapeHtml(String(x || ''));
+  const pts = pvAirportPoints(a);
+  const selPt = pc.deliveryPointId || (pvSelectedPoint(a) || {}).id || (pts.length === 1 ? pts[0].id : '');
+  const ptHtml = pts.length ? '<label class="abd-l">Delivery meeting point <i>*</i></label><select id="abd-pt" class="abd-i"><option value="">Select where we meet you</option>'
+    + pts.map(x => '<option value="' + v(x.id) + '"' + (x.id === selPt ? ' selected' : '') + '>' + v(x.name) + '</option>').join('') + '</select>' : '';
+  const ov = document.createElement('div'); ov.id = 'ab-details-ov';
+  ov.innerHTML = '<div class="abd-top"><button type="button" class="abd-back" id="abd-back" aria-label="Back">\u2039</button><h2>Your travel details</h2></div>'
+    + '<p class="abd-sub">So our delivery team can meet you at ' + v(a.name || 'the airport') + '.</p>'
+    + '<label class="abd-l">Indian mobile number <i>*</i></label><input id="abd-in" class="abd-i" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit mobile number" value="' + v(pc.contact || digitsOnly(state.user?.number || '')) + '">'
+    + '<label class="abd-l">WhatsApp number abroad <i>*</i></label><input id="abd-ab" class="abd-i" type="tel" inputmode="tel" maxlength="20" placeholder="+971 50 123 4567" value="' + v(pc.contactAbroad || saved) + '">'
+    + '<label class="abd-l">Airline <i>*</i></label><input id="abd-al" class="abd-i" type="text" list="abd-al-list" maxlength="40" autocomplete="off" placeholder="Type or pick your airline" value="' + v(pc.airline || savedAirline) + '">'
+    + '<datalist id="abd-al-list">' + ['Air India Express', 'IndiGo', 'Air India', 'SpiceJet', 'Akasa Air', 'Emirates', 'Etihad Airways', 'Qatar Airways', 'Saudia', 'flynas', 'flydubai', 'Air Arabia', 'Oman Air', 'SalamAir', 'Gulf Air', 'Kuwait Airways', 'Jazeera Airways', 'Riyadh Air', 'Malaysia Airlines', 'Singapore Airlines', 'Other'].map(x => '<option value="' + x + '">').join('') + '</datalist>'
+    + '<label class="abd-l">Ticket number / PNR <i>*</i></label><input id="abd-tk" class="abd-i" type="text" maxlength="13" autocapitalize="characters" placeholder="PNR (AB12CD) or ticket number" style="text-transform:uppercase" value="' + v(pc.flightNo) + '">'
+    + '<div class="abd-row"><div><label class="abd-l">Arrival date <i>*</i></label><input id="abd-dt" class="abd-i" type="date" min="' + today + '" value="' + v(pc.flightDate) + '"></div>'
+    + '<div><label class="abd-l">Arrival time <i>*</i></label><input id="abd-tm" class="abd-i" type="time" value="' + v(pc.flightTime) + '"></div></div>'
+    + ptHtml
+    + '<p class="abd-e" id="abd-err"></p><button type="button" class="abd-go" id="abd-go">Continue</button>';
+  document.body.appendChild(ov);
+  const $ = id => document.getElementById(id), err = m => { $('abd-err').textContent = m; };
+  $('abd-in').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10); });
+  $('abd-ab').addEventListener('input', e => { e.target.value = e.target.value.replace(/[^\d+ ]/g, '').replace(/(?!^)\+/g, '').slice(0, 20); });
+  $('abd-back').onclick = () => ov.remove();
+  $('abd-go').onclick = () => {
+    const ind = $('abd-in').value.trim(), ab = $('abd-ab').value.replace(/[^\d+ ]/g, '').trim(), abD = ab.replace(/\D/g, ''),
+      tk = $('abd-tk').value.replace(/[^A-Za-z0-9]/g, '').toUpperCase(), dt = $('abd-dt').value, tm = $('abd-tm').value,
+      al = $('abd-al').value.replace(/[<>"]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40);
+    if (ind.length !== 10) { err('Please enter a valid 10-digit Indian mobile number.'); return; }
+    if (abD.length < 7 || abD.length > 15) { err('Please enter your WhatsApp number abroad, with country code.'); return; }
+    if (al.length < 2) { err('Please enter your airline.'); return; }
+    if (!/^[A-Z0-9]{6,13}$/.test(tk)) { err('Please enter the PNR (6 letters/numbers) or ticket number (13 digits).'); return; }
+    if (!dt || dt < today) { err('Please enter your arrival date (today or later).'); return; }
+    if (!tm) { err('Please enter your arrival time.'); return; }
+    const ptEl = $('abd-pt'); if (ptEl && !ptEl.value) { err('Please choose where our delivery team should meet you.'); return; }
+    const pt = ptEl ? (pts.find(x => x.id === ptEl.value) || null) : null;
+    try { localStorage.setItem('nesh_pv_abroad_num', ab); localStorage.setItem('nesh_pv_airline', al); } catch (e) {}
+    try { if (pt) localStorage.setItem('nesh_pv_point_' + a.id, pt.id); else localStorage.removeItem('nesh_pv_point_' + a.id); } catch (e) {}
+    pvApplyAirportPos(a);
+    const c = state.customerPos || {}, lat = typeof c.lat === 'number' ? c.lat : null, lng = typeof c.lng === 'number' ? c.lng : null;
+    const lm = (pt ? pt.name + ' · ' : '') + (a.name || 'Airport') + (a.code ? ' (' + a.code + ')' : '');
+    state.pendingCheckout = { text: lat != null ? lat.toFixed(5) + ', ' + lng.toFixed(5) : lm, lat, lng, place: a.name || '', landmark: lm, contact: ind,
+      contactAbroad: ab, airportId: a.id || '', airportName: a.name || '', airportCode: a.code || '', flightNo: tk, airline: al, flightDate: dt, flightTime: tm,
+      deliveryPointId: pt ? pt.id : '', deliveryPointName: pt ? pt.name : '' };
+    ov.remove(); window.__abPass = true; openOrderSummary();
+  };
+}
 function openOrderSummary() {
+  if (abDetailsGate()) return;
   const r = state.selectedRestaurant;
   if (!r) return;
   const cpWasOpen = orderSummaryOverlay.classList.contains('show');
@@ -19038,7 +19503,7 @@ locProceedBtn.addEventListener('click', () => {
       return;
     }
   }
-  if (r.zone && !pvOrderIsAirport() && typeof pendingLocation.lat === 'number' && typeof pendingLocation.lng === 'number') {
+  if (r.zone && !pvOrderIsAirport() && !neshZoneCheckSkipped() && typeof pendingLocation.lat === 'number' && typeof pendingLocation.lng === 'number') {
     const inZone = isPointInZone({ lat: pendingLocation.lat, lng: pendingLocation.lng }, r.zone);
     if (!inZone) {
       showInfoModal("Out of delivery area", (r.name || "This shop") + " doesn't deliver to this location. Please pick a location inside their delivery area.");
@@ -19057,9 +19522,14 @@ locProceedBtn.addEventListener('click', () => {
     const ab = pvAbroadDigits();
     if (ab.length < 7 || ab.length > 15) {
       try { const f = document.getElementById('loc-contact-abroad'); if (f) f.focus(); } catch (e) {}
-      showInfoModal('Check your details', "Please enter your mobile number from the country you are in (with country code).");
+      showInfoModal('Check your details', "Please enter your WhatsApp number from the country you are in (with country code).");
       return;
     }
+    const fx = pvCheckoutExtra(), fld = id => document.getElementById(id);
+    const d0 = new Date(), today = d0.getFullYear() + '-' + String(d0.getMonth() + 1).padStart(2, '0') + '-' + String(d0.getDate()).padStart(2, '0');
+    if (!/^[A-Z0-9]{6,13}$/.test(fx.flightNo.replace(/\s/g, ''))) { try { fld('loc-flight-no').focus(); } catch (e) {} showInfoModal('Ticket number needed', 'Please enter the PNR (6 letters/numbers) or the ticket number (13 digits) from your flight ticket.'); return; }
+    if (!fx.flightDate || fx.flightDate < today) { try { fld('loc-flight-date').focus(); } catch (e) {} showInfoModal('Arrival date needed', 'Please enter the date your flight arrives (today or a later date).'); return; }
+    if (!fx.flightTime) { try { fld('loc-flight-time').focus(); } catch (e) {} showInfoModal('Arrival time needed', 'Please enter the time your flight arrives at the airport.'); return; }
   }
   const landmark = locLandmarkInput.value.trim();
   if (!landmark) {
@@ -19255,7 +19725,7 @@ payConfirmBtn.addEventListener('click', async () => {
       createdAt: Date.now(),
       customerName: (window.__neshPayFor && window.__neshPayFor.name) || state.user?.name || "Guest",
       customerPhone: pc.contact,
-      ...(pc.contactAbroad ? { customerPhoneAbroad: pc.contactAbroad, airportId: pc.airportId || '', airportName: pc.airportName || '', airportCode: pc.airportCode || '' } : {}),
+      ...(pc.contactAbroad ? { customerPhoneAbroad: pc.contactAbroad, airportId: pc.airportId || '', airportName: pc.airportName || '', airportCode: pc.airportCode || '', ticketNumber: pc.flightNo || '', airline: pc.airline || '', flightDate: pc.flightDate || '', flightTime: pc.flightTime || '', deliveryPointId: pc.deliveryPointId || '', deliveryPointName: pc.deliveryPointName || '' } : {}),
       // Logged-in account number: order-status pushes (confirmed / ready / delivered) look the
       // device token up by THIS, because customerPhone above is only the delivery contact typed in
       // the address form and can be a different number.
@@ -20488,6 +20958,7 @@ function neshShowOpenChoice() {
   if (!ov) return false;
   if (ov.style.display === 'flex') return true;
   const lastBtn = document.getElementById('oc-last-btn');
+  try { const cb = document.getElementById('oc-current-btn'); if (cb) cb.style.display = neshAbroadActive() ? 'none' : ''; } catch (e) {}   // abroad: no "Use my current location"
   lastBtn.style.display = last ? '' : 'none';   // first-time customer: no last location to continue with
   lastBtn.textContent = '📍 Continue with last location';
   if (last) Promise.race([neshPlaceNameFor(last.lat, last.lng), new Promise(r => setTimeout(() => r(null), 3000))]).then(name => {
@@ -21546,7 +22017,12 @@ if ('serviceWorker' in navigator) {
     if (bn && bn.classList.contains('on') && !bn.classList.contains('nb-hide')) off += 66;   // nav slid away on scroll -> card drops down
     var ob = document.getElementById('order-progress-bar');
     if (ob && ob.classList.contains('show')) off += 84;
-    el.style.bottom = 'calc(env(safe-area-inset-bottom) + ' + off + 'px)';
+    var an = document.getElementById('ab-nav');
+    var anH = (an && an.offsetHeight) ? an.offsetHeight : 0;
+    try { var _sh = document.getElementById('screen-home'); if (!anH && an && document.documentElement.classList.contains('nesh-abroad') && _sh && _sh.classList.contains('active')) anH = 70; } catch (e) {}   // nav not laid out yet   // Abroad bottom nav (Home/Chat) is visible -> sit above it (its height already includes the safe-area)
+    try { if (anH) document.documentElement.style.setProperty('--ab-nav-h', anH + 'px'); else document.documentElement.style.removeProperty('--ab-nav-h'); } catch (e) {}
+    if (anH) el.style.bottom = (off + anH) + 'px';
+    else el.style.bottom = 'calc(env(safe-area-inset-bottom) + ' + off + 'px)';
   }
   try {   // the bottom nav hides/shows while scrolling -> move the card down/up with it
     var _bn = document.getElementById('nesh-bnav');
@@ -23241,5 +23717,10 @@ html[data-theme="dark"] #nd-top .nd-loc{ background:#2b2619; border-color:#534B3
 }
 html[data-theme="dark"] .order-summary-overlay{ background:#1D1910; }
 </style>
+<nav id="ab-nav" aria-label="Main">
+  <button type="button" data-nav="home" class="on"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span>Home</span></button>
+  <button type="button" data-nav="orders"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12l2 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7z"/><path d="M4 7h16"/><path d="M9 11h6"/></svg><span>Orders</span></button>
+  <button type="button" data-nav="chat"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg><span>Chat</span></button>
+</nav>
 </body>
 </html>
