@@ -63,7 +63,9 @@ self.addEventListener('notificationclick', (event) => {
    ---- existing cache strategy below (network-first, offline fallback) ----
    ========================================================================= */
 
-const CACHE_NAME = "nesh-v1";
+const CACHE_NAME = "nesh-v2";
+const IMG_CACHE = "nesh-img-v1";      // Cloudinary photos: URL changes when the photo changes, so cache-first is safe
+const IMG_MAX = 200;                  // keep at most this many photos
 const APP_SHELL = ["./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -76,11 +78,18 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+      Promise.all(keys.filter((k) => k !== CACHE_NAME && k !== IMG_CACHE).map((k) => caches.delete(k)))
     )
   );
   self.clients.claim();
 });
+
+function trimImgCache() {
+  return caches.open(IMG_CACHE).then((c) => c.keys().then((keys) => {
+    if (keys.length <= IMG_MAX) return;
+    return Promise.all(keys.slice(0, keys.length - IMG_MAX).map((k) => c.delete(k))); // oldest first
+  }));
+}
 
 // Network-first for navigation (so live data/menus stay fresh),
 // falling back to the cached shell when offline.
@@ -92,6 +101,26 @@ self.addEventListener("fetch", (event) => {
     );
     return;
   }
+  if (req.method !== "GET") return;
+
+  // Cloudinary photos: served from the phone after the first download. New upload = new URL = fresh download.
+  if (req.destination === "image" && req.url.indexOf("res.cloudinary.com") > -1) {
+    event.respondWith(
+      caches.open(IMG_CACHE).then((cache) =>
+        cache.match(req.url).then((hit) => {
+          if (hit) return hit;
+          return fetch(req.url, { mode: "cors" }).then((res) => {
+            if (res && res.ok) {
+              cache.put(req.url, res.clone()).then(trimImgCache).catch(() => {});
+            }
+            return res;
+          }).catch(() => fetch(req)); // CORS problem -> plain load, no cache
+        })
+      )
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(req).then((cached) => cached || fetch(req))
   );
