@@ -446,6 +446,10 @@ html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
   .tr-empty b{ display:block; font-size:34px; margin-bottom:6px; }
   .au-top{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 18px 0; position:relative; z-index:2; }
   .au-loc{ display:flex; align-items:center; gap:8px; min-width:0; background:#fff; border:0; border-radius:999px; padding:9px 12px 9px 10px; cursor:pointer; font:600 13.5px/1 Inter,sans-serif; color:var(--ink); box-shadow:0 2px 0 rgba(43,36,16,.18); }
+  .au-left{ display:flex; align-items:center; gap:10px; min-width:0; }
+  .au-back{ display:none; width:40px; height:40px; border-radius:50%; border:0; background:#fff; align-items:center; justify-content:center; cursor:pointer; flex:none; padding:0; box-shadow:0 2px 0 rgba(43,36,16,.18); }
+  .au-back.on{ display:flex; }
+  .au-back:active{ transform:scale(.94); }
   .au-loc span{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .au-prof{ width:40px; height:40px; border-radius:50%; border:0; background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; flex:none; padding:0; box-shadow:0 2px 0 rgba(43,36,16,.18); }
   .au-hero{ line-height:0; margin-top:0; margin-bottom:0; padding:0 0 22px; text-align:center; background:#FFFFFF; }
@@ -2061,6 +2065,26 @@ body.ab-chats-open .home-cart-stack, body.ab-chats-open .order-progress-bar{disp
 #ab-chat-sheet button{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#FFF6DC;border:1px solid rgba(201,127,0,.3);border-radius:14px;padding:13px 14px;margin-bottom:8px;font-size:15px;font-weight:600;color:#2B2410;}
 html.ab-air-order #cp-loc-toggle,html.ab-air-order #cp-km,html.ab-air-order #cp-addr-card{display:none !important;}
 html.ab-air-order .cp-head::after{content:"Checkout";font:800 20px/1 Inter,system-ui,sans-serif;color:#2B2410;margin-left:6px;}
+body:has(#ab-cart-ov) .cart-bar,body:has(#ab-cart-ov) .home-cart-stack,body:has(#ab-cart-ov) .order-progress-bar,body:has(#ab-cart-ov) #nesh-bnav,body:has(#ab-cart-ov) #ab-nav,body:has(#ab-details-ov) .cart-bar,body:has(#ab-details-ov) .home-cart-stack{display:none !important;}
+#ab-cart-ov,#ab-details-ov{z-index:9000 !important;}
+#ab-cart-ov{position:fixed;inset:0;z-index:90;background:var(--bg,#FFFBF2);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);}
+#ab-cart-ov .abc-top{display:flex;align-items:center;gap:12px;padding:14px 20px 10px;}
+#ab-cart-ov .abc-back{width:42px;height:42px;border-radius:50%;border:0;background:#F4EFE0;font-size:22px;color:#2B2410;flex:none;}
+#ab-cart-ov h2{margin:0;font-size:22px;font-weight:800;color:#2B2410;}
+#ab-cart-ov .abc-shop{margin:2px 0 0;font-size:13px;color:#8A7E58;}
+#ab-cart-ov .abc-scroll{flex:1;overflow:auto;padding:6px 20px 16px;-webkit-overflow-scrolling:touch;}
+#ab-cart-ov .abc-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #EFE7CC;}
+#ab-cart-ov .abc-img{width:64px;height:64px;border-radius:14px;object-fit:cover;background:#F3EFE2;flex:none;}
+#ab-cart-ov .abc-mid{flex:1;min-width:0;}
+#ab-cart-ov .abc-name{margin:0;font-size:15px;font-weight:700;color:#2B2410;}
+#ab-cart-ov .abc-sub{margin:3px 0 0;font-size:12.5px;color:#8A7E58;}
+#ab-cart-ov .abc-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:none;}
+#ab-cart-ov .abc-tot{font-size:14px;font-weight:800;color:#2B2410;}
+#ab-cart-ov .abc-more{width:100%;margin-top:14px;padding:12px;border:1.5px dashed #E6B422;border-radius:14px;background:transparent;color:#6B5A2A;font-size:14px;}
+#ab-cart-ov .abc-foot{padding:12px 20px calc(14px + env(safe-area-inset-bottom,0px));border-top:1px solid #EFE7CC;background:var(--bg,#FFFBF2);}
+#ab-cart-ov .abc-sum{display:flex;justify-content:space-between;font-size:15px;color:#2B2410;margin-bottom:10px;}
+#ab-cart-ov .abc-go{width:100%;padding:16px;border:0;border-radius:16px;background:#F5B301;color:#2B2410;font-size:17px;font-weight:800;}
+html[data-theme="dark"] #ab-cart-ov .abc-name,html[data-theme="dark"] #ab-cart-ov h2,html[data-theme="dark"] #ab-cart-ov .abc-tot,html[data-theme="dark"] #ab-cart-ov .abc-sum{color:#F3EBD2;}
 #ab-details-ov{position:fixed;inset:0;z-index:90;background:var(--bg,#fff);overflow:auto;padding:calc(14px + env(safe-area-inset-top,0px)) 20px calc(24px + env(safe-area-inset-bottom,0px));}
 #ab-details-ov .abd-top{display:flex;align-items:center;gap:12px;margin-bottom:6px;}
 #ab-details-ov .abd-back{width:42px;height:42px;border-radius:50%;border:0;background:#F4EFE0;font-size:22px;color:#2B2410;}
@@ -3629,6 +3653,8 @@ html[data-theme="dark"] .tr-stepper button{color:#E7E0CD}
 html[data-theme="dark"] .tr-empty{color:#BCAE8A}
 html[data-theme="dark"] .au-loc{background:#221E15}
 html[data-theme="dark"] .au-prof{background:#221E15}
+html[data-theme="dark"] .au-back{background:#221E15}
+html[data-theme="dark"] .au-back svg{stroke:#F2EBD8}
 html[data-theme="dark"] .au-hero{background:#221E15}
 html[data-theme="dark"] .au-sheet{background:#221E15}
 html[data-theme="dark"] .au-sub{color:#BCAE8A}
@@ -4372,11 +4398,16 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
   <!-- AREA UNAVAILABLE: shown on app open / category / home when the picked location is outside every shop zone -->
   <div id="area-unavail" aria-live="polite">
     <div class="au-top">
+      <div class="au-left">
+      <button type="button" class="au-back" id="au-back-btn" aria-label="Back to Home">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B2410" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
       <button type="button" class="au-loc" id="au-loc-btn" aria-label="Change location">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2B2410" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
         <span>Selected location</span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2B2410" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
+      </div>
       <button type="button" class="au-prof" id="au-prof-btn" aria-label="Account">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="#2B2410"><circle cx="12" cy="8" r="4.5"/><path d="M3.5 21c0-4.4 3.8-7 8.5-7s8.5 2.6 8.5 7z"/></svg>
       </button>
@@ -5950,10 +5981,10 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A66600" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>
           <input id="loc-contact-abroad" type="tel" maxlength="20" inputmode="tel" placeholder="+971 50 123 4567" style="color:var(--ink);" />
         </div>
-        <p class="loc-field-label">Ticket number / PNR <span style="color:var(--chili);">* Required</span></p>
-        <p style="margin:-2px 0 6px; font-size:12px; color:var(--muted-2);">The booking code (PNR) or ticket number printed on your flight ticket.</p>
+        <p class="loc-field-label">Flight number <span style="color:var(--chili);">* Required</span></p>
+        <p style="margin:-2px 0 6px; font-size:12px; color:var(--muted-2);">The flight number printed on your ticket (e.g. EK 532, IX 344).</p>
         <div class="field" style="background:#fff; border:1px solid #E4DFD2;">
-          <input id="loc-flight-no" type="text" maxlength="13" autocapitalize="characters" placeholder="e.g. AB12CD or 1762345678901" style="color:var(--ink); text-transform:uppercase;" />
+          <input id="loc-flight-no" type="text" maxlength="8" autocapitalize="characters" placeholder="e.g. EK532 or IX 344" style="color:var(--ink); text-transform:uppercase;" />
         </div>
         <p class="loc-field-label">Arrival date &amp; time at the airport <span style="color:var(--chili);">* Required</span></p>
         <div style="display:flex; gap:8px;">
@@ -6497,6 +6528,8 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
       restLoadedSplash();
     }, 30);
   }
+  // True while shops of a newly picked location are still downloading (so the list shows "loading" instead of "No restaurants match").
+  window.neshShopsPending = function () { return !!(shopInitPending && shopInitPending.size) && (Date.now() - (window._neshShopLoadAt || 0)) < 20000; };
   window.setShopLoading = function (mode, ids) {
     if (mode === 'all') {
       Object.keys(shopUnsubs).forEach(id => { try { shopUnsubs[id](); } catch (e) {} delete shopUnsubs[id]; delete shopSnaps[id]; });
@@ -6515,11 +6548,11 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
     const want = new Set(ids || []);
     let removed = false;
     Object.keys(shopUnsubs).forEach(id => {
-      if (!want.has(id)) { try { shopUnsubs[id](); } catch (e) {} delete shopUnsubs[id]; delete shopSnaps[id]; removed = true; }
+      if (!want.has(id)) { try { shopUnsubs[id](); } catch (e) {} delete shopUnsubs[id]; delete shopSnaps[id]; if (shopInitPending) shopInitPending.delete(id); removed = true; }
     });
     const added = [];
     want.forEach(id => { if (!shopUnsubs[id]) added.push(id); });
-    if (added.length) { shopInitPending = shopInitPending || new Set(); added.forEach(id => shopInitPending.add(id)); }
+    if (added.length) { shopInitPending = shopInitPending || new Set(); added.forEach(id => shopInitPending.add(id)); window._neshShopLoadAt = Date.now(); }
     // Speed: a shop's record also holds its whole `orders` history (plus chats, settlements...), which grows
     // forever and was downloaded in full by every customer on every app open — only to be thrown away.
     // So we listen only to the fields the customer app actually uses, never to `orders`.
@@ -6719,8 +6752,9 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
     });
     list.sort((a, b) => (a.order - b.order) || a.name.localeCompare(b.name));
     window.NESH_CATEGORIES = list;
+    try { window.neshCfg.save('neshCats', list); } catch (e) {}   // last known categories: shown instantly next open / on a slow network
     if (window.onNeshCategoriesUpdated) window.onNeshCategoriesUpdated();
-  });
+  }, () => {});   // listener error: keep whatever categories we already have (cached or earlier live)
 
   // Live-listens to operator-pinned NESH Store CUSTOMER PRICES (Operator Panel
   // → Groceries Catalog → Set customer price): { encodedItemKey: price }.
@@ -7156,10 +7190,14 @@ function syncShopLoading() {
   // Abroad (airport delivery): shops are not tied to Shop Zones, so load every Pravasi shop (not just the zone at the airport's pin).
   let _abroadIds = null;
   try {
-    if (zones.length > 0 && neshZoneCheckSkipped()) {
+    if (zones.length > 0 && neshAbroadActive()) {
       const c = window.PRAVASI_CFG || {}, set = new Set();
       Object.keys(c.shops || {}).forEach(id => set.add(id));
       Object.keys(c.airports || {}).forEach(k => Object.keys((c.airports[k] && c.airports[k].shopIds) || {}).forEach(id => set.add(id)));
+      if (neshAbroadCards()) {   // Food / Groceries are also open for this customer: keep the India zone shops loaded too (no reload when switching cards)
+        let sv = null; try { sv = window._neshAbSaved || JSON.parse(localStorage.getItem('nesh_ab_saved_pos') || 'null'); } catch (e) {}
+        [state.customerPos, sv].forEach(pt => { if (pt && typeof pt.lat === 'number' && typeof pt.lng === 'number') zonesAtPoint(pt).forEach(z => z.shopIds.forEach(id => set.add(id))); });
+      }
       _abroadIds = set;   // empty = nothing configured -> fall back to loading all shops below
     }
   } catch (e) {}
@@ -7650,7 +7688,8 @@ function syncAreaUnavailScreen() {
   let on = false;
   try { on = (id === 'screen-category' || id === 'screen-home') && isAreaUnavailable(state.customerPos); } catch (e) { on = false; }
   if (el.classList.contains('show') !== on) el.classList.toggle('show', on);
-  try { const sb = document.getElementById('au-skip-btn'); if (sb) sb.style.display = (on && neshAbroadActive()) ? '' : 'none'; } catch (e) {}
+  try { const sb = document.getElementById('au-skip-btn'); if (sb) sb.style.display = (on && neshAbroadActive() && !neshAbZone()) ? '' : 'none'; } catch (e) {}
+  try { const bb = document.getElementById('au-back-btn'); if (bb) bb.classList.toggle('on', !!(on && neshAbZone())); } catch (e) {}   // abroad customer who opened Food / Groceries: back goes to Home
   if (document.documentElement.classList.contains('au-on') !== on) document.documentElement.classList.toggle('au-on', on);
   if (on) {
     try {
@@ -7661,6 +7700,7 @@ function syncAreaUnavailScreen() {
 }
 function showScreen(id) {
   try { if (id === 'category' && window._neshAbZone) neshAbSetZone(false); } catch (e) {}
+  try { if (id === 'category' && neshAbroadActive()) neshAbRestorePos(); } catch (e) {}
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + id).classList.add('active');
   window.scrollTo(0, 0);
@@ -7722,7 +7762,7 @@ async function offerNativeNotificationOnCard() {
 
 function pravasiEntry(r) { const sh = (window.PRAVASI_CFG && window.PRAVASI_CFG.shops) || null; return (sh && r && sh[r.id]) || null; }
 function isPravasiShop(r) {
-  if (!r || r.businessType !== 'online_shop') return false;
+  if (!r || r.id === 'NESH_STORE' || r.businessType === 'groceries') return false;
   const e = pravasiEntry(r);
   if (e) return e.active !== false && e.active !== 'false';
   return String(r.opCategory || '').trim().toLowerCase() === 'pravasi hampers';
@@ -7741,7 +7781,7 @@ function pvAirportId() {
 }
 function pvSelectedAirport() { const id = pvAirportId(); return id ? (pvAirports().find(a => a.id === id) || null) : null; }
 function pvShopInAirport(r) { const a = pvSelectedAirport(); if (!a) return true; return !!(a.shopIds && r && a.shopIds[r.id]); }
-function pvAirportUiOn() { try { return pvAirportActive() && state.category === 'online_shop' && !!state.pravasi; } catch (e) { return false; } }
+function pvAirportUiOn() { try { return pvAirportActive() && !neshAbZone() && state.category === 'online_shop' && !!state.pravasi; } catch (e) { return false; } }
 // Delivery points of an airport (Operator Panel > Pravasi Airports > Delivery points): where the delivery boy meets the customer.
 function pvAirportPoints(a) {
   const p = (a && a.points) || {};
@@ -7754,11 +7794,36 @@ function pvSelectedPoint(a) {
   return pts.find(x => x.id === id) || null;
 }
 function pvApplyAirportPos(a) {
+  try { if (neshAbZone()) return; } catch (e) {}   // Food / Groceries abroad: keep the delivery location the customer picked
+  try { const sc = document.getElementById('screen-category'); if (sc && sc.classList.contains('active')) return; } catch (e) {}   // category picker: never swap the picked location for the airport pin
   const t = pvSelectedPoint(a) || a;   // the customer's chosen meeting point, else the airport spot
   if (t && typeof t.lat === 'number' && typeof t.lng === 'number') {
     const c = state.customerPos;
-    if (!c || c.lat !== t.lat || c.lng !== t.lng) state.customerPos = { lat: t.lat, lng: t.lng };
+    if (!c || c.lat !== t.lat || c.lng !== t.lng) {
+      // remember the location the customer really picked (India delivery spot) before the airport pin replaces it
+      try {
+        const last = window._neshPvPin;
+        if (c && typeof c.lat === 'number' && !(last && last.lat === c.lat && last.lng === c.lng)) {
+          window._neshAbSaved = { lat: c.lat, lng: c.lng };
+          try { localStorage.setItem('nesh_ab_saved_pos', JSON.stringify(window._neshAbSaved)); } catch (e) {}
+        }
+      } catch (e) {}
+      window._neshPvPin = { lat: t.lat, lng: t.lng };
+      state.customerPos = { lat: t.lat, lng: t.lng };
+    }
   }
+}
+// Back from Pravasi (airport pin) to the Food / Groceries side: bring back the location the customer picked, with its landmark / name.
+function neshAbRestorePos() {
+  try {
+    const pin = window._neshPvPin, c = state.customerPos;
+    if (!pin || !c || c.lat !== pin.lat || c.lng !== pin.lng) return;
+    let sv = window._neshAbSaved;
+    if (!sv) { try { sv = JSON.parse(localStorage.getItem('nesh_ab_saved_pos') || 'null'); } catch (e) {} }
+    if (!sv || typeof sv.lat !== 'number' || typeof sv.lng !== 'number') return;
+    state.customerPos = { lat: sv.lat, lng: sv.lng };
+    try { updateHomeLocationLabel(); } catch (e) {}
+  } catch (e) {}
 }
 function pvSyncAirportHeader() {
   const on = pvAirportUiOn();
@@ -7773,7 +7838,7 @@ function pvSyncAirportHeader() {
     el.dataset.pvAp = '1';
     const cnt = a ? (window.RESTAURANTS || []).filter(r => isPravasiShop(r) && pvShopInAirport(r)).length : 1;
     if (!note) { note = document.createElement('p'); note.id = 'pv-ap-note'; note.className = 'empty-text'; if (restListEl && restListEl.parentNode) restListEl.parentNode.insertBefore(note, restListEl); }
-    if (note) { note.style.display = cnt ? 'none' : ''; note.textContent = a ? ('No shops deliver to ' + a.name + ' yet. Tap “Deliver to” to choose another airport.') : ''; }
+    if (note) { let _ld = false; try { _ld = shopsStillLoading(); } catch (e) {} note.style.display = (cnt || _ld) ? 'none' : ''; note.textContent = a ? ('No shops deliver to ' + a.name + ' yet. Tap “Deliver to” to choose another airport.') : ''; }
   } else {
     if (note) note.style.display = 'none';
     if (el.dataset.pvAp === '1') { delete el.dataset.pvAp; try { updateHomeLocationLabel(); } catch (e) {} }
@@ -7854,8 +7919,9 @@ function pvCheckoutPrep(pc) {
     if (fd) fd.min = today;
     if (fn) fn.value = (pc && pc.flightNo) || ''; if (fd) fd.value = (pc && pc.flightDate) || ''; if (ft) ft.value = (pc && pc.flightTime) || '';
   } catch (e) {}
-  if (!locLandmarkInput.value.trim()) locLandmarkInput.value = (a.name || 'Airport') + (a.code ? ' (' + a.code + ')' : '');
-  if (!locPlaceInput.value.trim()) locPlaceInput.value = a.name || '';
+  const _own = !!(pc && pc.airportId && pc.airportId === a.id);   // details already saved for THIS airport order -> keep them
+  if (!_own || !locLandmarkInput.value.trim()) locLandmarkInput.value = (a.name || 'Airport') + (a.code ? ' (' + a.code + ')' : '');
+  if (!_own || !locPlaceInput.value.trim()) locPlaceInput.value = a.name || '';
 }
 (function () {
   try { const st = document.createElement('style'); st.id = 'pv-airport-css'; st.textContent = '\n#pv-ap-ov,#nesh-where-ov{--pv-bg:#fff;--pv-ink:#2B2410;--pv-mut:#8a7f66;--pv-bd:#E6DAB0;--pv-sel:#FFF6DC;--pv-acc:#F2B705;}\nhtml[data-theme="dark"] #pv-ap-ov,html[data-theme="dark"] #nesh-where-ov{--pv-bg:#1d1b16;--pv-ink:#f4efe0;--pv-mut:#a89f86;--pv-bd:#3a3526;--pv-sel:#2d2813;}\n@keyframes pvFade{from{opacity:0}to{opacity:1}}\n@keyframes pvUp{from{transform:translateY(40px);opacity:.6}to{transform:none;opacity:1}}\n#pv-ap-ov{position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;animation:pvFade .18s ease;}\n.pv-ap-sheet{width:100%;max-width:420px;max-height:82vh;overflow:auto;background:var(--pv-bg);color:var(--pv-ink);border-radius:24px 24px 0 0;padding:10px 16px calc(22px + env(safe-area-inset-bottom,0px));box-sizing:border-box;animation:pvUp .25s ease;font-family:Inter,sans-serif;}\n.pv-ap-grab{width:42px;height:4px;border-radius:4px;background:var(--pv-bd);margin:0 auto 12px;}\n.pv-ap-head{display:flex;justify-content:space-between;align-items:center;gap:10px;}\n.pv-ap-title{font:800 18px Inter,sans-serif;}\n.pv-ap-x{border:0;background:var(--pv-sel);color:var(--pv-ink);border-radius:50%;width:30px;height:30px;font-size:13px;cursor:pointer;flex:none;}\n.pv-ap-sub{margin:4px 0 14px;font:500 12.5px/1.4 Inter,sans-serif;color:var(--pv-mut);}\n.pv-ap-row{display:flex;width:100%;align-items:center;gap:12px;text-align:left;border:1.5px solid var(--pv-bd);background:var(--pv-bg);color:var(--pv-ink);border-radius:16px;padding:11px 14px;margin:0 0 10px;font:600 14px Inter,sans-serif;cursor:pointer;transition:transform .12s,border-color .15s;}\n.pv-ap-row:active{transform:scale(.98);}\n.pv-ap-row.on{border-color:var(--pv-ink);background:var(--pv-sel);}\n.pv-ap-ic{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#FFE27A,#F2B705);display:flex;align-items:center;justify-content:center;font-size:20px;flex:none;}\n.pv-ap-txt{flex:1;min-width:0;}\n.pv-ap-txt b{display:block;font-weight:700;line-height:1.25;}\n.pv-ap-txt small{display:block;margin-top:2px;color:var(--pv-mut);font-weight:500;font-size:12px;}\n.pv-ap-tick{width:24px;height:24px;border-radius:50%;background:var(--pv-ink);color:var(--pv-bg);display:flex;align-items:center;justify-content:center;font-size:13px;flex:none;}\n.pv-ap-in{display:block;margin:8px auto 0;border:0;background:none;color:var(--pv-mut);font:600 12.5px Inter,sans-serif;text-decoration:underline;cursor:pointer;padding:6px 10px;}\nhtml.pv-airport-ui #screen-home[data-pravasi="1"] #home-loc-row{background:linear-gradient(135deg,#FFF6DC,#FFE9A8);border:1.5px solid #F2B705;box-shadow:0 4px 14px rgba(242,183,5,.28);}\nhtml.pv-airport-ui #screen-home[data-pravasi="1"] #home-location{font-weight:800;}\nhtml[data-theme="dark"].pv-airport-ui #screen-home[data-pravasi="1"] #home-loc-row{background:linear-gradient(135deg,#2d2813,#3a3210);border-color:#8a6d00;box-shadow:none;}\n#pv-ap-note{margin:10px 20px;padding:12px 14px;border-radius:14px;background:#FFF6DC;border:1px solid rgba(201,127,0,.35);color:#6b5a1c;font:600 13px/1.4 Inter,sans-serif;text-align:left;}\nhtml[data-theme="dark"] #pv-ap-note{background:#2d2813;color:#e8d79a;border-color:#5a4a10;}\n#loc-abroad-wrap{margin-top:4px;padding-top:2px;}\n#nesh-where-ov{position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px;animation:pvFade .18s ease;}\n.nw-box{width:100%;max-width:360px;background:var(--pv-bg);color:var(--pv-ink);border-radius:22px;padding:22px 20px 18px;box-sizing:border-box;text-align:center;font-family:Inter,sans-serif;animation:pvUp .25s ease;}\n.nw-ic{font-size:34px;line-height:1;margin-bottom:8px;}\n.nw-title{display:block;font:800 18px Inter,sans-serif;}\n.nw-sub{margin:6px 0 6px;font:500 13px Inter,sans-serif;color:var(--pv-mut);}\n.nw-btn{display:block;width:100%;border:1.5px solid var(--pv-bd);background:var(--pv-bg);color:var(--pv-ink);border-radius:14px;padding:13px;margin-top:10px;font:700 15px Inter,sans-serif;cursor:pointer;transition:transform .12s;}\n.nw-btn:active{transform:scale(.98);background:var(--pv-sel);}\nhtml.pv-airport-ui #home-loc-suggest{display:none !important;}\n'; document.head.appendChild(st); } catch (e) {}
@@ -7880,6 +7946,9 @@ function openCategory(cat, opts) {
   renderHome();
   showScreen('home');
   persistScreen('home', { category: cat });
+  // Pravasi from the category cards: renderHome() ran while the category screen was still active, so the airport pin /
+  // header were skipped (pvApplyAirportPos ignores that screen). Re-apply them now that the Pravasi screen is showing.
+  try { if (state.pravasi && typeof pvSyncAirportHeader === 'function') { pvSyncAirportHeader(); renderRestaurantList(); } } catch (e) {}
 }
 
 // ---------- TRENDING (offer products) + bottom nav ----------
@@ -8179,13 +8248,16 @@ function neshAbLocOk() {
   try { return !isAreaUnavailable(pt); } catch (e) { return true; }
 }
 // Food / Groceries card tap abroad: ask for the delivery location first; once it is inside a zone, open the shop list.
+function neshAbFoodPre() { try { if (pendingLocationRequiredAction && pendingLocationRequiredAction._abFood) { state.pravasi = false; neshAbSetZone(true); } } catch (e) {} }
 function neshAbFoodGate(next) {
+  neshAbRestorePos();
   let ok = false;
   window._neshAbZone = true;                       // judge the location with Shop Zones switched on
   try { ok = neshAbLocOk(); } catch (e) {}
   window._neshAbZone = false;
   if (ok) { neshAbSetZone(true); next(); return; }
   pendingLocationRequiredAction = () => { neshAbSetZone(true); next(); };
+  pendingLocationRequiredAction._abFood = true;
   openBrowseLocationPicker();
 }
 function neshAbroadSync() {
@@ -9295,7 +9367,12 @@ document.addEventListener('click', function (ev) {
   document.getElementById('cat-card-pravasi').addEventListener('click', (e) => {
     if (e.target && e.target.closest && e.target.closest(PV_ACTION_SEL)) return;
     try { neshAbSetZone(false); } catch (e) {}
-    if (!pvAirportActive()) maybeDetectLocationOnCategoryTap(); pvGate(() => { openCategory('online_shop', { pravasi: true }); offerWebNotificationOnce(); });
+    try { if (pendingLocationRequiredAction && pendingLocationRequiredAction._abFood) pendingLocationRequiredAction = null; } catch (e) {}   // stale Food/Groceries action must not flip this to Food mode
+    if (!pvAirportActive()) maybeDetectLocationOnCategoryTap(); pvGate(() => {
+      openCategory('online_shop', { pravasi: true }); offerWebNotificationOnce();
+      // customer abroad with no airport chosen yet: ask for the airport straight away (instead of an India location / empty list)
+      try { if (pvAirportActive()) setTimeout(() => { try { if (pvAirportUiOn() && !pvSelectedAirport() && !document.getElementById('pv-ap-ov')) pvOpenAirportPicker(); } catch (e) {} }, 300); } catch (e) {}
+    });
   });
 })();
 
@@ -10507,7 +10584,7 @@ function ensureTaxiMap() {
   if (taxiMap) return;
   const c = state.customerPos || DEFAULT_MAP_CENTER;
   taxiMap = L.map('taxi-map', { zoomControl: false, attributionControl: false }).setView([c.lat, c.lng], 14);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(taxiMap);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { subdomains: 'abc', maxZoom: 19 }).addTo(taxiMap);
   taxiMap.on('click', (e) => {
     placeTaxiPin(taxiActivePin, e.latlng.lat, e.latlng.lng);
     if (taxiActivePin === 'pickup' && !taxiDrop) taxiActivePin = 'drop';
@@ -12004,6 +12081,12 @@ function neshHandleBack() {
   if (neshIsShown('browse-loc-overlay')) { document.getElementById('browse-loc-cancel-btn').click(); return 'stay'; }
   if (neshIsShown('loc-overlay')) { document.getElementById('loc-cancel-btn').click(); return 'stay'; }
 
+  // Out-of-zone screen opened from Food / Groceries (abroad customers): back = Home
+  if (neshIsShown('area-unavail')) {
+    const ab = document.getElementById('au-back-btn');
+    if (ab && ab.classList.contains('on')) { ab.click(); return 'stay'; }
+  }
+
   // --- 2) Current screen ---
   const active = document.querySelector('.screen.active');
   const id = active ? active.id.replace('screen-', '') : 'category';
@@ -13443,6 +13526,7 @@ function updateHomeLocationLabel() {
     neshLabelFor(pos).then(name => {
       if (!name || !state.customerPos || state.customerPos.lat !== pos.lat || state.customerPos.lng !== pos.lng) return;
       const full = neshAddrLabelSync(pos) || name;
+      if (pvAirportUiOn()) { try { pvSyncAirportHeader(); } catch (e) {} } else
       homeLocation.textContent = full;
       const el = document.getElementById('cat-loc-card-value'); if (el) el.textContent = full;
     });
@@ -13705,17 +13789,28 @@ function handleAreaUnavailable(retryAction) {
 function shopZonesConfigured() { return (window.SHOP_ZONES || []).length > 0; }
 function zonesAtPoint(pt) { return (window.SHOP_ZONES || []).filter(z => isPointInZone(pt, z.bounds)); }
 function isAreaUnavailable(pt) {
-  try { if (window._neshAuSkip && neshAbroadActive()) return false; } catch (e) {}   // abroad customer tapped "Continue anyway"
+  try { if (window._neshAuSkip && neshAbroadActive() && !neshAbZone()) return false; } catch (e) {}   // abroad customer tapped "Continue anyway"
   try { if (neshAbroadActive() && state.pravasi && state.category === 'online_shop') return false; } catch (e) {}   // Pravasi (airport delivery) is never zone-checked
   try { if ((pvAirportActive() || neshZoneCheckSkipped()) && !neshAbZone()) return false; } catch (e) {}
   return !!(pt && typeof pt.lat === 'number' && typeof pt.lng === 'number') && shopZonesConfigured() && zonesAtPoint(pt).length === 0;
 }
 // Shop Zones are an India-only rule. Customers abroad (Pravasi / airport delivery) are never zone-checked.
-function neshZoneCheckSkipped() { try { return !!neshAbroadActive() && (!neshAbZone() || !!window._neshAuSkip); } catch (e) { return false; } }
+function neshZoneCheckSkipped() { try { return !!neshAbroadActive() && !neshAbZone(); } catch (e) { return false; } }   // Food / Groceries abroad: zones always apply, even after "Continue anyway" (that only skips the Pravasi flow)
 function shopAllowedAtPoint(shopId, pt) {
   if (neshZoneCheckSkipped()) return true;
   if (!shopZonesConfigured() || !pt || typeof pt.lat !== 'number' || typeof pt.lng !== 'number') return true;
   return zonesAtPoint(pt).some(z => z.shopIds.includes(shopId));
+}
+// Does this shop deliver to this point? Once the operator has drawn Shop Zones, the operator's zone assignment is the ONLY authority:
+// every shop added to the customer's zone is listed and orderable, whatever area the shop drew for itself in its own app.
+// With no operator zones at all, the old rule stays: the shop's own drawn delivery area (if it has one) decides.
+function shopDeliversTo(r, pt) {
+  try {
+    if (neshZoneCheckSkipped()) return true;
+    if (!shopAllowedAtPoint(r.id, pt)) return false;
+    if (shopZonesConfigured()) return true;
+    return !r.zone || !pt || typeof pt.lat !== 'number' || typeof pt.lng !== 'number' || isPointInZone(pt, r.zone);
+  } catch (e) { return true; }
 }
 window.onShopZonesUpdated = () => {
   try { neshSyncZoneTopicsSoon(); } catch (e) {}
@@ -13996,6 +14091,7 @@ function renderMart(filtered, categoryFiltered, q, searchFiltered) {
 // ---- Slow network: show "Loading shops..." (skeleton cards) instead of "No shops" until the first shop data arrives ----
 const shopsLoadT0 = Date.now();
 function shopsStillLoading() {
+  try { if (window.neshShopsPending && window.neshShopsPending()) return true; } catch (e) {}
   if (restaurantsLoadedOnce && Array.isArray(window.SHOP_ZONES)) return false;
   return (Date.now() - shopsLoadT0) < SHOPS_GIVEUP_MS;   // very slow network: keep showing the loading state; after that, offer "Try again"
 }
@@ -14163,7 +14259,12 @@ function renderRestaurantList() {
   }
   try { pvSyncAirportHeader(); } catch (e) {}
   const _pvAp = pvAirportUiOn();
-  const categoryFiltered = visibleShops.filter(r => (r.businessType || 'hotel') === state.category && !(state.category === 'online_shop' && !!state.pravasi !== isPravasiShop(r))).filter(r => !_pvAp || pvShopInAirport(r));
+  const categoryFiltered = visibleShops.filter(r => {
+    const _pv = isPravasiShop(r);
+    if (state.category === 'online_shop' && state.pravasi) return _pv;   // Pravasi screen: only Pravasi shops
+    if (_pv) return false;                                               // Food / Mart: never a Pravasi shop
+    return (r.businessType || 'hotel') === state.category;
+  }).filter(r => !_pvAp || pvShopInAirport(r));
   { const _hp = document.getElementById('screen-home'); if (_hp) { if (state.category === 'online_shop' && state.pravasi) _hp.dataset.pravasi = '1'; else delete _hp.dataset.pravasi; } }
   pvApplySlots();
   { const hs = document.getElementById('screen-home'); if (hs) { const _mf = martFoodLook(); hs.dataset.cat = _mf ? 'hotel' : (state.category || ''); if (_mf) hs.dataset.mart = '1'; else delete hs.dataset.mart; } } // lets CSS style NESH Mart (online_shop) / Food (hotel) separately
@@ -14199,7 +14300,7 @@ function renderRestaurantList() {
   // yet are still shown, so nothing disappears just because a restaurant
   // hasn't set one up yet.
   let filtered = (state.customerPos && !_pvAp && !neshZoneCheckSkipped())
-    ? searchFiltered.filter(r => shopAllowedAtPoint(r.id, state.customerPos) && (!r.zone || neshZoneCheckSkipped() || isPointInZone(state.customerPos, r.zone)))
+    ? searchFiltered.filter(r => shopDeliversTo(r, state.customerPos))
     : searchFiltered;
   if (state.category === 'hotel' || martFoodLook()) filtered = neshApplyShopFilters(filtered);
 
@@ -14439,7 +14540,7 @@ function renderProductResults(q, categoryFiltered) {
   // Respect the same delivery-zone filter as the shop list, so a product
   // from a shop that doesn't deliver here doesn't show up as tappable.
   const deliverable = ((state.customerPos && !pvAirportUiOn())
-    ? categoryFiltered.filter(r => shopAllowedAtPoint(r.id, state.customerPos) && (!r.zone || neshZoneCheckSkipped() || isPointInZone(state.customerPos, r.zone)))
+    ? categoryFiltered.filter(r => shopDeliversTo(r, state.customerPos))
     : categoryFiltered
   ).filter(r => !getShopClosedInfo(r).closed); // closed / unavailable shops' products must not appear (or be orderable) from search
 
@@ -14846,13 +14947,41 @@ function neshPriceKey(it) {
 // now are shown — an empty tab would just be a dead end. Each returned
 // category carries a `has(it)` check so renderMenu doesn't need to know
 // which kind of key it's matching against.
+// Tolerant form of an item key (case / extra spaces / unicode form can differ between the operator panel and a shop's own entry).
+function neshKeyNorm(k) {
+  let t = String(k == null ? '' : k);
+  try { t = t.normalize('NFC'); } catch (e) {}
+  const i = t.lastIndexOf('|');
+  const name = (i < 0 ? t : t.slice(0, i)).toLowerCase().replace(/\s+/g, ' ').trim();
+  const unit = (i < 0 ? '' : t.slice(i + 1)).toLowerCase().trim();
+  return name + '|' + unit;
+}
 function neshVisibleCategories(r) {
   if (!r) return [];
   if (r.id === 'NESH_STORE') {
-    const present = new Set((r.items || []).map(neshItemKey));
-    return (window.NESH_CATEGORIES || [])
-      .filter(c => c.items.some(k => present.has(k)))
-      .map(c => ({ id: c.id, name: c.name, image: c.image || '', has: (it) => c.items.includes(neshItemKey(it)) }));
+    const items = r.items || [];
+    if (!items.length) return [];
+    // catalog item key (as neshItemKey) by tolerant key, and by name only
+    const byNorm = new Map(), byName = new Map();
+    items.forEach(it => {
+      const raw = neshItemKey(it), nk = neshKeyNorm(raw), nm = nk.slice(0, nk.lastIndexOf('|'));
+      if (!byNorm.has(nk)) byNorm.set(nk, new Set()); byNorm.get(nk).add(raw);
+      if (!byName.has(nm)) byName.set(nm, new Set()); byName.get(nm).add(raw);
+    });
+    const out = [];
+    (window.NESH_CATEGORIES || []).forEach(c => {
+      if (!c || !Array.isArray(c.items)) return;
+      const matched = new Set();
+      c.items.forEach(k => {
+        const nk = neshKeyNorm(k);
+        if (byNorm.has(nk)) { byNorm.get(nk).forEach(x => matched.add(x)); return; }
+        // no exact match (e.g. same product listed with another unit in this zone): fall back to the same product name
+        const nm = nk.slice(0, nk.lastIndexOf('|'));
+        if (byName.has(nm)) byName.get(nm).forEach(x => matched.add(x));
+      });
+      if (matched.size) out.push({ id: c.id, name: c.name, image: c.image || '', has: (it) => matched.has(neshItemKey(it)) });
+    });
+    return out;
   }
   const cats = r.itemCategories || [];
   if (!cats.length) return [];
@@ -15362,6 +15491,7 @@ function changeQty(itemId, delta, size) {
       { const o = window.neshCkOrigin; if (o && o.scr === 'trending') { window.neshCkOrigin = null; neshReturnToOrigin(o); } }
     } else openOrderSummary();
   }
+  try { if (document.getElementById('ab-cart-ov')) abRenderCart(); } catch (e) {}
   persistCart();
 }
 
@@ -17493,9 +17623,9 @@ function createDriverTrackMap(wrapId, mapId) {
   function ensureMap() {
     if (map) return;
     map = L.map(mapId, { zoomControl: false, attributionControl: false }).setView([DEFAULT_MAP_CENTER.lat, DEFAULT_MAP_CENTER.lng], 13);
-    tileOsm = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 20 });
-    tileNav = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      subdomains: 'abcd', maxZoom: 20, attribution: '© OpenStreetMap contributors © CARTO'
+    tileOsm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { subdomains: 'abc', maxZoom: 19 });
+    tileNav = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      subdomains: 'abc', maxZoom: 19, attribution: '© OpenStreetMap contributors'
     });
     attribCtl = L.control.attribution({ prefix: false, position: 'bottomright' });
     applyStyle();
@@ -18076,7 +18206,7 @@ function scheduleNearbyLandmarks(lat, lng) {
 function ensureLocMap(startLat, startLng) {
   if (locMap) return;
   locMap = L.map('loc-map', { zoomControl: false, attributionControl: false }).setView([startLat, startLng], 16);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(locMap);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { subdomains: 'abc', maxZoom: 19 }).addTo(locMap);
   locMarker = L.marker([startLat, startLng], { draggable: true }).addTo(locMap);
   locMarker.on('dragend', () => {
     const pos = locMarker.getLatLng();
@@ -18475,6 +18605,13 @@ function setPendingBrowsePos(lat, lng) {
   const $ = id => document.getElementById(id);
   const openPicker = () => { try { pendingLocationRequiredAction = null; } catch (e) {} openBrowseLocationPicker(); };
   $('au-change-btn').addEventListener('click', openPicker);
+  $('au-back-btn').addEventListener('click', () => {
+    try { pendingLocationRequiredAction = null; } catch (e) {}
+    try { neshAbSetZone(false); } catch (e) {}      // leave the Food / Groceries flow -> zone check off, Pravasi home look back
+    try { neshAbRestorePos(); } catch (e) {}
+    try { goToCategoryScreen(); } catch (e) { try { showScreen('category'); } catch (e2) {} }
+    try { syncAreaUnavailScreen(); } catch (e) {}
+  });
   $('au-skip-btn').addEventListener('click', () => {
     window._neshAuSkip = true;   // abroad customers only (the button is hidden otherwise); lasts until the app is reopened
     try { syncShopLoading(); } catch (e) {}
@@ -18509,7 +18646,7 @@ function openBrowseLocationPicker() {
   setTimeout(() => {
     if (!browseLocMap) {
       browseLocMap = L.map('browse-loc-map', { zoomControl: false, attributionControl: false }).setView([startLat, startLng], 14);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(browseLocMap);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { subdomains: 'abc', maxZoom: 19 }).addTo(browseLocMap);
       browseLocMarker = L.marker([startLat, startLng], { draggable: true }).addTo(browseLocMap);
       browseLocMarker.on('dragend', () => {
         const pos = browseLocMarker.getLatLng();
@@ -18871,6 +19008,7 @@ browseLocConfirmBtn.addEventListener('click', () => {
     }
     try { localStorage.setItem('nesh_home_addr', JSON.stringify({ lat: pendingBrowsePos.lat, lng: pendingBrowsePos.lng, place: locPlaceInput.value.trim(), landmark: locLandmarkInput.value.trim(), contact: ct })); } catch (e) {}
   }
+  try { if (pendingLocationRequiredAction && pendingLocationRequiredAction._abFood) { state.pravasi = false; neshAbSetZone(true); } } catch (e) {}   // abroad Food / Groceries: zone mode on first, so the airport pin never replaces this location
   state.customerPos = pendingBrowsePos;
   try { localStorage.setItem('asfood_customer_pos', JSON.stringify(state.customerPos)); } catch (e) {}
   try { localStorage.setItem('nesh_last_gps', JSON.stringify({ lat: state.customerPos.lat, lng: state.customerPos.lng, t: Date.now() })); } catch (e) {}   // remembered as "last location"
@@ -18951,12 +19089,62 @@ function abDetailsGate() {
     if (pvCheckoutGate(() => openOrderSummary())) return true;
     if (window.__abPass) { window.__abPass = false; return false; }
     if (orderSummaryOverlay.classList.contains('show')) return false;
-    abShowDetails(); return true;
+    abShowCart(); return true;
   } catch (e) { return false; }
+}
+
+// Airport (Pravasi) orders: full-screen cart FIRST (items + Proceed), then travel details, then the checkout page.
+function abCartRows(r) {
+  const rows = []; let total = 0;
+  (r.items || []).forEach(it0 => {
+    ((hasSizes(it0) && !isWeightUnit(it0.unit)) ? neshPortions(it0) : [[null, state.cart[it0.id] || 0]]).forEach(([pSize, qty]) => {
+      if (!qty) return;
+      const it = pSize ? Object.assign({}, it0, { sizes: [pSize] }) : it0;
+      const up = getUnitPrice(it);
+      total = Math.round((total + qty * up) * 100) / 100;
+      rows.push({ it, pSize, qty, up });
+    });
+  });
+  return { rows, total };
+}
+function abRenderCart() {
+  const ov = document.getElementById('ab-cart-ov'); if (!ov) return;
+  const r = state.selectedRestaurant;
+  const { rows, total } = r ? abCartRows(r) : { rows: [], total: 0 };
+  if (!rows.length) { ov.remove(); return; }
+  const list = ov.querySelector('#abc-list'); list.innerHTML = '';
+  rows.forEach(({ it, pSize, qty, up }) => {
+    const row = document.createElement('div'); row.className = 'abc-row';
+    const sizeLine = hasSizes(it) ? '<p class="abc-sub">' + (it.sizePrices ? 'Portion' : 'Size') + ': ' + escapeHtml(String(getSelectedSize(it))) + '</p>' : '';
+    const priceLine = isWeightUnit(it.unit) ? '\u20B9' + up + ' (' + weightLabel(it) + ') \u00D7 ' + qty : '\u20B9' + up + ' \u00D7 ' + qty;
+    row.innerHTML = '<img class="abc-img" src="' + escapeHtml(it.image || '') + '" alt="" onerror="this.onerror=null;this.src=\'icon-192.png\';">'
+      + '<div class="abc-mid"><p class="abc-name">' + escapeHtml(it.name || '') + '</p><p class="abc-sub">' + priceLine + '</p>' + sizeLine + '</div>'
+      + '<div class="abc-right"><div class="qty-slot"></div><span class="abc-tot">\u20B9' + (Math.round(qty * up * 100) / 100) + '</span></div>';
+    renderQtyControl(row.querySelector('.qty-slot'), it.id, qty, pSize || undefined);
+    list.appendChild(row);
+  });
+  ov.querySelector('#abc-total').textContent = '\u20B9' + total;
+  const rn = ov.querySelector('#abc-rest'); if (rn) rn.textContent = (r && r.name) || '';
+}
+function abShowCart() {
+  const old = document.getElementById('ab-cart-ov'); if (old) old.remove();
+  const r = state.selectedRestaurant; if (!r) return;
+  if (!abCartRows(r).rows.length) return;
+  const ov = document.createElement('div'); ov.id = 'ab-cart-ov';
+  ov.innerHTML = '<div class="abc-top"><button type="button" class="abc-back" id="abc-back" aria-label="Back">\u2039</button><div><h2>Your cart</h2><p class="abc-shop" id="abc-rest"></p></div></div>'
+    + '<div class="abc-scroll"><div id="abc-list"></div>'
+    + '<button type="button" class="abc-more" id="abc-more">Forgot something? <b>Add More Items</b></button></div>'
+    + '<div class="abc-foot"><div class="abc-sum"><span>Item total</span><b id="abc-total"></b></div><button type="button" class="abc-go" id="abc-go">Proceed</button></div>';
+  document.body.appendChild(ov);
+  abRenderCart();
+  const close = () => { const o = document.getElementById('ab-cart-ov'); if (o) o.remove(); };
+  ov.querySelector('#abc-back').onclick = close;
+  ov.querySelector('#abc-more').onclick = close;
+  ov.querySelector('#abc-go').onclick = () => { close(); abShowDetails(); };
 }
 function abShowDetails() {
   const old = document.getElementById('ab-details-ov'); if (old) old.remove();
-  const a = pvSelectedAirport() || {}, pc = (state.pendingCheckout && state.pendingCheckout.airportId === a.id) ? state.pendingCheckout : {};
+  const a = pvSelectedAirport() || {}, pc = (state.pendingCheckout && state.pendingCheckout.airportId === a.id) ? state.pendingCheckout : ((window.__abLast && window.__abLast.airportId === a.id) ? window.__abLast : {});
   let saved = ''; try { saved = localStorage.getItem('nesh_pv_abroad_num') || ''; } catch (e) {}
   let savedAirline = ''; try { savedAirline = localStorage.getItem('nesh_pv_airline') || ''; } catch (e) {}
   const d0 = new Date(), today = d0.getFullYear() + '-' + String(d0.getMonth() + 1).padStart(2, '0') + '-' + String(d0.getDate()).padStart(2, '0');
@@ -18972,7 +19160,7 @@ function abShowDetails() {
     + '<label class="abd-l">WhatsApp number abroad <i>*</i></label><input id="abd-ab" class="abd-i" type="tel" inputmode="tel" maxlength="20" placeholder="+971 50 123 4567" value="' + v(pc.contactAbroad || saved) + '">'
     + '<label class="abd-l">Airline <i>*</i></label><input id="abd-al" class="abd-i" type="text" list="abd-al-list" maxlength="40" autocomplete="off" placeholder="Type or pick your airline" value="' + v(pc.airline || savedAirline) + '">'
     + '<datalist id="abd-al-list">' + ['Air India Express', 'IndiGo', 'Air India', 'SpiceJet', 'Akasa Air', 'Emirates', 'Etihad Airways', 'Qatar Airways', 'Saudia', 'flynas', 'flydubai', 'Air Arabia', 'Oman Air', 'SalamAir', 'Gulf Air', 'Kuwait Airways', 'Jazeera Airways', 'Riyadh Air', 'Malaysia Airlines', 'Singapore Airlines', 'Other'].map(x => '<option value="' + x + '">').join('') + '</datalist>'
-    + '<label class="abd-l">Ticket number / PNR <i>*</i></label><input id="abd-tk" class="abd-i" type="text" maxlength="13" autocapitalize="characters" placeholder="PNR (AB12CD) or ticket number" style="text-transform:uppercase" value="' + v(pc.flightNo) + '">'
+    + '<label class="abd-l">Flight number <i>*</i></label><input id="abd-tk" class="abd-i" type="text" maxlength="8" autocapitalize="characters" placeholder="Flight number (e.g. EK532)" style="text-transform:uppercase" value="' + v(pc.flightNo) + '">'
     + '<div class="abd-row"><div><label class="abd-l">Arrival date <i>*</i></label><input id="abd-dt" class="abd-i" type="date" min="' + today + '" value="' + v(pc.flightDate) + '"></div>'
     + '<div><label class="abd-l">Arrival time <i>*</i></label><input id="abd-tm" class="abd-i" type="time" value="' + v(pc.flightTime) + '"></div></div>'
     + ptHtml
@@ -18981,7 +19169,7 @@ function abShowDetails() {
   const $ = id => document.getElementById(id), err = m => { $('abd-err').textContent = m; };
   $('abd-in').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10); });
   $('abd-ab').addEventListener('input', e => { e.target.value = e.target.value.replace(/[^\d+ ]/g, '').replace(/(?!^)\+/g, '').slice(0, 20); });
-  $('abd-back').onclick = () => ov.remove();
+  $('abd-back').onclick = () => { ov.remove(); try { abShowCart(); } catch (e) {} };
   $('abd-go').onclick = () => {
     const ind = $('abd-in').value.trim(), ab = $('abd-ab').value.replace(/[^\d+ ]/g, '').trim(), abD = ab.replace(/\D/g, ''),
       tk = $('abd-tk').value.replace(/[^A-Za-z0-9]/g, '').toUpperCase(), dt = $('abd-dt').value, tm = $('abd-tm').value,
@@ -18989,7 +19177,7 @@ function abShowDetails() {
     if (ind.length !== 10) { err('Please enter a valid 10-digit Indian mobile number.'); return; }
     if (abD.length < 7 || abD.length > 15) { err('Please enter your WhatsApp number abroad, with country code.'); return; }
     if (al.length < 2) { err('Please enter your airline.'); return; }
-    if (!/^[A-Z0-9]{6,13}$/.test(tk)) { err('Please enter the PNR (6 letters/numbers) or ticket number (13 digits).'); return; }
+    if (!/^(?=.*[0-9])[A-Z0-9]{3,7}$/.test(tk.replace(/\s/g, ''))) { err('Please enter a valid flight number (e.g. EK532).'); return; }
     if (!dt || dt < today) { err('Please enter your arrival date (today or later).'); return; }
     if (!tm) { err('Please enter your arrival time.'); return; }
     const ptEl = $('abd-pt'); if (ptEl && !ptEl.value) { err('Please choose where our delivery team should meet you.'); return; }
@@ -19002,6 +19190,7 @@ function abShowDetails() {
     state.pendingCheckout = { text: lat != null ? lat.toFixed(5) + ', ' + lng.toFixed(5) : lm, lat, lng, place: a.name || '', landmark: lm, contact: ind,
       contactAbroad: ab, airportId: a.id || '', airportName: a.name || '', airportCode: a.code || '', flightNo: tk, airline: al, flightDate: dt, flightTime: tm,
       deliveryPointId: pt ? pt.id : '', deliveryPointName: pt ? pt.name : '' };
+    window.__abLast = state.pendingCheckout;
     ov.remove(); window.__abPass = true; openOrderSummary();
   };
 }
@@ -19143,6 +19332,7 @@ function closeOrderSummary() {
   paymentOverlay.classList.remove('show');
   if (was) {
     closeLocationConfirm();
+    try { if (state.pendingCheckout && state.pendingCheckout.airportId) window.__abLast = state.pendingCheckout; window.__abPass = false; } catch (e) {}   // airport order: coming back to checkout asks the travel details again (previous answers pre-filled)
     state.pendingCheckout = null;
     if (state.selectedRestaurant) persistScreen('menu', { restaurantId: state.selectedRestaurant.id, cart: state.cart });
   }
@@ -19542,7 +19732,7 @@ locProceedBtn.addEventListener('click', () => {
       return;
     }
   }
-  if (r.zone && !pvOrderIsAirport() && !neshZoneCheckSkipped() && typeof pendingLocation.lat === 'number' && typeof pendingLocation.lng === 'number') {
+  if (r.zone && !shopZonesConfigured() && !pvOrderIsAirport() && !neshZoneCheckSkipped() && typeof pendingLocation.lat === 'number' && typeof pendingLocation.lng === 'number') {
     const inZone = isPointInZone({ lat: pendingLocation.lat, lng: pendingLocation.lng }, r.zone);
     if (!inZone) {
       showInfoModal("Out of delivery area", (r.name || "This shop") + " doesn't deliver to this location. Please pick a location inside their delivery area.");
@@ -19566,7 +19756,7 @@ locProceedBtn.addEventListener('click', () => {
     }
     const fx = pvCheckoutExtra(), fld = id => document.getElementById(id);
     const d0 = new Date(), today = d0.getFullYear() + '-' + String(d0.getMonth() + 1).padStart(2, '0') + '-' + String(d0.getDate()).padStart(2, '0');
-    if (!/^[A-Z0-9]{6,13}$/.test(fx.flightNo.replace(/\s/g, ''))) { try { fld('loc-flight-no').focus(); } catch (e) {} showInfoModal('Ticket number needed', 'Please enter the PNR (6 letters/numbers) or the ticket number (13 digits) from your flight ticket.'); return; }
+    if (!/^(?=.*[0-9])[A-Z0-9]{3,7}$/.test(fx.flightNo.replace(/\s/g, ''))) { try { fld('loc-flight-no').focus(); } catch (e) {} showInfoModal('Flight number needed', 'Please enter your flight number (e.g. EK532) from your flight ticket.'); return; }
     if (!fx.flightDate || fx.flightDate < today) { try { fld('loc-flight-date').focus(); } catch (e) {} showInfoModal('Arrival date needed', 'Please enter the date your flight arrives (today or a later date).'); return; }
     if (!fx.flightTime) { try { fld('loc-flight-time').focus(); } catch (e) {} showInfoModal('Arrival time needed', 'Please enter the time your flight arrives at the airport.'); return; }
   }
@@ -21099,6 +21289,7 @@ function neshRefreshLastLocBtn() {
 if (locOffLastBtn) locOffLastBtn.addEventListener('click', () => {
   const lat = parseFloat(locOffLastBtn.dataset.lat), lng = parseFloat(locOffLastBtn.dataset.lng);
   if (!isFinite(lat) || !isFinite(lng)) return;
+  neshAbFoodPre();
   state.customerPos = { lat, lng };
   state.locationDetectFailed = false;
   hideLocationOffPopup();
@@ -21128,6 +21319,7 @@ function onLocationGranted(pos) {
   }
   try { neshRevealPlaceThenDone(pos.coords.latitude, pos.coords.longitude); } catch (e) { try { window.neshSplash && window.neshSplash.done('loc'); } catch (e2) {} }
   try { localStorage.setItem('nesh_last_gps', JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude, t: Date.now() })); } catch (e) {}
+  neshAbFoodPre();
   state.customerPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
   try { neshAddRecentLoc(pos.coords.latitude, pos.coords.longitude); } catch (e) {}
   state.locationDetectFailed = false;
@@ -21307,6 +21499,7 @@ try {
       if (sp) sp.done('bus');
     }
     if ('shopOrder' in cfg && !live.shopOrder) { SHOP_ORDER = cfg.shopOrder || {}; window.SHOP_ORDER = SHOP_ORDER; if (sp) sp.done('shop'); }
+    if (Array.isArray(cfg.neshCats) && !live.neshCats && !window.NESH_CATEGORIES) window.NESH_CATEGORIES = cfg.neshCats.filter(c => c && c.name && Array.isArray(c.items));
     if (Array.isArray(cfg.zones) && !live.zones) { window.SHOP_ZONES = cfg.zones; if (sp) sp.done('zones'); try { syncShopLoading(); } catch (e) {} }
     if (cfg.goSeries && cfg.goSeries.d && !live.goSeries) {      // last known Go Series delivery charge / platform fee: ready instantly
       window.GO_SERIES_DELIVERY = cfg.goSeries.d;
@@ -21991,7 +22184,7 @@ if ('serviceWorker' in navigator) {
         count += q; total += neshLineTotal(it);
       });
       m[r.id] = {
-        restId: r.id, restName: r.name, count: count, total: Math.round(total * 100) / 100,
+        restId: r.id, restName: r.name, pv: (function () { try { return !!isPravasiShop(r); } catch (e) { return false; } })(), count: count, total: Math.round(total * 100) / 100,
         cart: state.cart, grams: state.cartGrams || {}, sizes: state.cartSizes || {}, t: Date.now()
       };
       put(m);
@@ -22005,6 +22198,16 @@ if ('serviceWorker' in navigator) {
     var a = document.querySelector('.screen.active');
     var id = a ? a.id : '';
     var list = Object.keys(all()).map(function (k) { return all()[k]; }).sort(function (x, y) { return (y.t || 0) - (x.t || 0); });
+    // Customers abroad: Pravasi carts show only inside Pravasi, Food / Groceries carts only inside Food / Groceries, and nothing on the 3-card home.
+    try {
+      var _abr = neshAbroadActive() || document.documentElement.classList.contains('nesh-abroad');   // the Pravasi look being on = abroad, even if the IP / time-zone check flips (VPN)
+      if (_abr) {
+        var pvOf = function (d) { if (d.pv !== undefined) return !!d.pv; var rr = (window.RESTAURANTS || []).find(function (r) { return r.id === d.restId; }); return !!(rr && isPravasiShop(rr)); };
+        if (id === 'screen-category') list = [];
+        else if (id === 'screen-home') { var wp = !!state.pravasi || document.documentElement.classList.contains('nesh-abroad'); list = list.filter(function (d) { return pvOf(d) === wp; }); }
+        else if (id === 'screen-menu') { var cr = state.selectedRestaurant, wp2 = !!(cr && isPravasiShop(cr)); list = list.filter(function (d) { return pvOf(d) === wp2; }); }
+      }
+    } catch (e) {}
     var curId = state.selectedRestaurant && state.selectedRestaurant.id;
     // inside a shop's menu: show the cart card when 2+ carts exist, or when the only cart belongs to ANOTHER shop
     var onMenuMulti = id === 'screen-menu' && (list.length > 1 || (list.length === 1 && list[0].restId !== curId));
@@ -22066,6 +22269,12 @@ if ('serviceWorker' in navigator) {
   try {   // the bottom nav hides/shows while scrolling -> move the card down/up with it
     var _bn = document.getElementById('nesh-bnav');
     if (_bn && window.MutationObserver) new MutationObserver(function () { try { sync(); } catch (e) {} }).observe(_bn, { attributes: true, attributeFilter: ['class'] });
+  } catch (e) {}
+  try {   // abroad: the Pravasi look (html.nesh-abroad) and the bottom nav appear after this card was last placed -> place it again
+    if (window.MutationObserver) new MutationObserver(function () { try { sync(); } catch (e) {} }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    var _an = document.getElementById('ab-nav');
+    if (_an && window.ResizeObserver) new ResizeObserver(function () { try { sync(); } catch (e) {} }).observe(_an);
+    window.addEventListener('resize', function () { try { sync(); } catch (e) {} }, { passive: true });
   } catch (e) {}
   window.neshSavedCarts = all;
   window.neshPutSavedCarts = put;
