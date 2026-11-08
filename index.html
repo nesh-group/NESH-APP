@@ -4235,6 +4235,15 @@ html[data-theme="dark"] .pvc-order{ background:#221E15; color:#E7E0CD; }
 html[data-theme="dark"] .pvc-order.mine{ background:#2E281F; }
 html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
 </style>
+<style id="nsec-orphan-fix">
+/* last card of a section that would sit alone in a row -> fills the row (horizontal card) */
+.item-grid .item-card2.nsec-wide{ display:grid; grid-template-columns:minmax(0,40%) minmax(0,1fr); column-gap:12px; align-content:start; height:auto; }
+.item-grid .item-card2.nsec-wide > .item-img-wrap{ grid-column:1; grid-row:1 / span 8; height:auto; min-height:120px; }
+.item-grid .item-card2.nsec-wide > .item-img-wrap > .item-img{ position:absolute; inset:0; width:100%; height:100%; }
+.item-grid .item-card2.nsec-wide > :not(.item-img-wrap){ grid-column:2; min-width:0; }
+.item-grid .item-card2.nsec-wide > .item-name2{ margin-top:2px; }
+.item-grid .item-card2.nsec-wide > .item-row2{ align-self:end; }
+</style>
 </head>
 <body>
 <div id="nesh-splash" class="show" aria-live="polite">
@@ -6180,17 +6189,42 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
   onValue(ref(db, '.info/connected'), snap => {
     isConnected = snap.val() === true;
   });
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) goOnline(db);
-  });
+  // ---- Reconnect after the app was in the background ----
+  // goOnline() alone does nothing while the SDK still believes it is connected, but a socket that slept in the background
+  // is often dead (no new data until the page is refreshed). So after a longer absence we open a FRESH socket, and keep
+  // checking until `.info/connected` is true again. Cycles run only while the app is visible, so it can never stay offline.
+  let awayAt = 0, recheckT = null, wentOffline = false;
+  const nshMarkAway = () => { if (!awayAt) awayAt = Date.now(); };
+  const nshReconnect = () => {
+    const away = awayAt ? Date.now() - awayAt : 0; awayAt = 0;
+    const hard = away > 20000 && !wentOffline; wentOffline = false;   // wentOffline: goOffline() already ran on pause, so goOnline() below is already a fresh socket
+    try { goOnline(db); } catch (e) {}
+    if (hard) {
+      try { goOffline(db); } catch (e) {}
+      setTimeout(() => { try { goOnline(db); } catch (e) {} }, 250);
+    }
+    clearInterval(recheckT);
+    let tries = 0;
+    recheckT = setInterval(() => {
+      if (document.hidden || isConnected || ++tries > 15) { clearInterval(recheckT); return; }
+      try { goOffline(db); goOnline(db); } catch (e) {}
+    }, 4000);
+  };
+  document.addEventListener('visibilitychange', () => { if (document.hidden) nshMarkAway(); else nshReconnect(); });
+  window.addEventListener('online', () => { try { goOnline(db); } catch (e) {} });
+  window.addEventListener('pageshow', e => { if (e.persisted) nshReconnect(); });
+  try {
+    const CapApp0 = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+    if (CapApp0 && CapApp0.addListener) CapApp0.addListener('appStateChange', st => { if (st && st.isActive) nshReconnect(); else nshMarkAway(); });
+  } catch (e) {}
   setInterval(() => {
     if (!document.hidden && !isConnected) goOnline(db);
-  }, 15000);
+  }, 5000);
   (function () {
     if (!window.Capacitor || !window.Capacitor.Plugins || !window.Capacitor.Plugins.App) return;
     const CapApp = window.Capacitor.Plugins.App;
-    CapApp.addListener('pause', () => { try { goOffline(db); } catch (e) {} });
-    CapApp.addListener('resume', () => { try { goOnline(db); } catch (e) {} });
+    CapApp.addListener('pause', () => { try { nshMarkAway(); goOffline(db); wentOffline = true; } catch (e) {} });
+    CapApp.addListener('resume', () => { try { nshReconnect(); } catch (e) {} });
   })();
   // manifest.json's theme_color only affects the browser/PWA-install case.
   // This app also ships as a native Capacitor app, where the status bar
@@ -6539,7 +6573,40 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
   }
   // True while shops of a newly picked location are still downloading (so the list shows "loading" instead of "No restaurants match").
   window.neshShopsPending = function () { return !!(shopInitPending && shopInitPending.size) && (Date.now() - (window._neshShopLoadAt || 0)) < 20000; };
+  // ---- Shop catalog cache (bandwidth saver) ----
+  // Each shop's public fields are kept on the phone together with the server's `catalogVer` number.
+  // While that number is unchanged the cached copy is used (no download); when a partner/operator edits
+  // anything public they bump `catalogVer`, and this app drops the cache and goes back to live listeners.
+  // Does nothing unless app_config/catalogCacheOn === true AND catalogVer exists (kill switch).
+  let catOn = false, catVer = null, catKnown = false, catT0 = 0, shopVer = {}, lastShopArgs = null;
+  const catGot = { on: false, ver: false, sv: false }, CAT_MAX_AGE = 6 * 3600e3;
+  // Cache token of ONE shop = its own stamp catalogVerShop/{id} (written by the partner/operator app when that shop is edited).
+  // Until a shop has its own stamp, the old global catalogVer is used for it (prefixed 'g').
+  const catTok = id => (typeof shopVer[id] === 'number') ? shopVer[id] : ((typeof catVer === 'number') ? 'g' + catVer : null);
+  const catRead = id => { try { const t = catTok(id); if (t === null) return null; const c = JSON.parse(localStorage.getItem('nesh_cat_' + id) || 'null'); return (c && c.v === t && Date.now() - c.t < CAT_MAX_AGE) ? c : null; } catch (e) { return null; } };
+  const catWrite = (id, v, f) => { try { localStorage.setItem('nesh_cat_' + id, JSON.stringify({ v: v, t: Date.now(), f: f })); } catch (e) {} };
+  const catCheckKnown = () => { if (catGot.on && catGot.ver && catGot.sv) catKnown = true; };
+  // Shops served from cache have NO live listener. When one changed, drop its cache hit and attach live listeners again
+  // (calls setShopLoading directly: syncShopLoading() would do nothing because the shop list itself is unchanged).
+  const catReload = test => {
+    let any = false;
+    Object.keys(shopUnsubs).forEach(id => { if (shopUnsubs[id] && shopUnsubs[id]._cached && test(id)) { delete shopUnsubs[id]; any = true; } });
+    if (any && lastShopArgs) { try { window.setShopLoading(lastShopArgs[0], lastShopArgs[1]); } catch (e) {} }
+  };
+  onValue(ref(db, 'app_config/catalogCacheOn'), s0 => { catOn = s0.val() === true; catGot.on = true; catCheckKnown(); }, () => { catGot.on = true; catCheckKnown(); });
+  onValue(ref(db, 'catalogVer'), s0 => {
+    const nv = s0.val(), changed = catGot.ver && nv !== catVer;
+    catVer = (typeof nv === 'number') ? nv : null; catGot.ver = true; catCheckKnown();
+    if (changed) catReload(id => typeof shopVer[id] !== 'number');   // only shops that have no stamp of their own yet
+  }, () => { catGot.ver = true; catCheckKnown(); });
+  // Per-shop stamps: when shop X is edited only X's cache is dropped and re-downloaded, every other shop stays cached.
+  onValue(ref(db, 'catalogVerShop'), s0 => {
+    const old = shopVer, first = !catGot.sv;
+    shopVer = s0.val() || {}; catGot.sv = true; catCheckKnown();
+    if (!first) catReload(id => shopVer[id] !== old[id]);
+  }, () => { catGot.sv = true; catCheckKnown(); });
   window.setShopLoading = function (mode, ids) {
+    lastShopArgs = [mode, ids];
     if (mode === 'all') {
       Object.keys(shopUnsubs).forEach(id => { try { shopUnsubs[id](); } catch (e) {} delete shopUnsubs[id]; delete shopSnaps[id]; });
       shopInitPending = null;
@@ -6554,6 +6621,12 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
       return;
     }
     if (fullListUnsub) { try { fullListUnsub(); } catch (e) {} fullListUnsub = null; lastRestaurantsSnapshot = null; }
+    // wait (max 1.5 s) until we know whether the catalog cache is on, so the first load can use it
+    if (!catKnown && Date.now() - (catT0 || (catT0 = Date.now())) < 1500) {
+      clearTimeout(window._neshCatRetry);
+      window._neshCatRetry = setTimeout(() => { try { window.setShopLoading(mode, ids); } catch (e) {} }, 120);
+      return;
+    }
     const want = new Set(ids || []);
     let removed = false;
     Object.keys(shopUnsubs).forEach(id => {
@@ -6571,7 +6644,12 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
       'restaurantName', 'shopUnavailable', 'shopUnavailableMessage', 'status', 'deliveryTimeMins', 'opDeliveryTimeMins',
       'martRanges', 'priceMarkup'];   // operator-set price ranges / markup: without these the customer would see the shop's own price
     added.forEach(id => {
-      const first = () => { if (shopInitPending) shopInitPending.delete(id); };
+      const verAtAttach = catOn ? catTok(id) : null;
+      let saveT = null;
+      const first = () => {
+        if (shopInitPending) shopInitPending.delete(id);
+        if (verAtAttach !== null) { clearTimeout(saveT); saveT = setTimeout(() => { const f = {}; SHOP_FIELDS.forEach(k => { const sn = fieldSnaps[k]; if (sn && sn.exists()) f[k] = sn.val(); }); catWrite(id, verAtAttach, f); }, 1500); }
+      };
       const fieldSnaps = {};
       const unsubs = [];
       let waiting = SHOP_FIELDS.length;
@@ -6585,6 +6663,15 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
           }
         };
       };
+      const hit = catOn ? catRead(id) : null;
+      if (hit) {   // cached copy is current: no download for this shop
+        SHOP_FIELDS.forEach(k => { if (hit.f && k in hit.f) { const val = hit.f[k]; fieldSnaps[k] = { exists: () => true, val: () => val }; } });
+        publish();
+        if (shopInitPending) shopInitPending.delete(id);
+        const noop = () => {}; noop._cached = true; shopUnsubs[id] = noop;
+        scheduleShopRebuild();
+        return;
+      }
       SHOP_FIELDS.forEach(f => {
         let got = false;
         const done = () => { if (!got) { got = true; waiting--; } if (waiting <= 0) first(); };
@@ -12267,7 +12354,7 @@ const otpSub = document.getElementById('login-otp-sub');
 let otpConfirmation = null, otpNumber = '', otpTimer = null, otpVerifier = null, otpSends = 0;
 const OTP_MAX_SENDS = 3, OTP_RESEND_SECS = 120;
 // Login OTP switch: false = no OTP, number alone logs in. Set to true to bring OTP back.
-const NESH_OTP_REQUIRED = false;
+const NESH_OTP_REQUIRED = true;
 function fmtSecs(n) { return Math.floor(n / 60) + ':' + String(n % 60).padStart(2, '0'); }
 
 function neshOtpReset() {
@@ -14843,10 +14930,23 @@ function menuBackClicked() {
   renderHome();
   showScreen('home');
   persistScreen('home', { category: state.category });
+  // Put the shop list back where the customer left it.
+  try {
+    const sv = window._neshHomeScroll; window._neshHomeScroll = null;
+    if (sv && sv.y > 0 && sv.cat === state.category) {
+      const go = () => window.scrollTo(0, sv.y);
+      go(); requestAnimationFrame(go); setTimeout(go, 120); setTimeout(go, 400);
+    }
+  } catch (e) {}
 }
 function openRestaurant(id) {
   if (isAreaUnavailable(state.customerPos)) { handleAreaUnavailable(() => openRestaurant(id)); return; }
   if (!shopAllowedAtPoint(id, state.customerPos)) { showInfoModal('Out of delivery area', "This shop doesn't deliver to your selected location."); return; }
+  // Remember where the shop list was scrolled, so Back returns to the same spot (not the top).
+  try {
+    const _a = document.querySelector('.screen.active');
+    window._neshHomeScroll = (_a && _a.id === 'screen-home') ? { y: window.scrollY || document.documentElement.scrollTop || 0, cat: state.category } : null;
+  } catch (e) { window._neshHomeScroll = null; }
   state.selectedRestaurant = RESTAURANTS.find(r => r.id === id);
   state.pravasi = isPravasiShop(state.selectedRestaurant);
   try { neshPrefetchDelivery(state.selectedRestaurant, state.customerPos); } catch (e) {}   // delivery distance starts calculating the moment the shop opens
@@ -15084,6 +15184,7 @@ function renderNeshCategoryBar(r) {
 document.getElementById('nesh-cat-rail').addEventListener('click', e => {
   const btn = e.target.closest('[data-cat]');
   if (!btn) return;
+  if (window.__neshSecActive) { neshScrollToSection(btn.dataset.cat || ''); return; }   // Swiggy-style: jump to that category's section
   state.neshCategory = btn.dataset.cat || null;
   renderMenu();
 });
@@ -15123,6 +15224,132 @@ function neshSyncMenuPrice(r) {
   document.getElementById('mp-summary').textContent = on ? '\u20B9' + neshMP.min + ' \u2013 \u20B9' + neshMP.max : '';
   document.getElementById('mp-clear').style.display = on ? 'inline-block' : 'none';
 }
+// ---------- Swiggy-style menu: all items in category sections; rail follows the scroll, tap = jump ----------
+(function () {
+  const st = document.createElement('style');
+  st.textContent = '.nsec-head{grid-column:1/-1;display:flex;align-items:baseline;gap:6px;margin:4px 2px 0;padding-top:2px;font:800 14px/1.25 Inter,sans-serif;color:var(--ink)}' +
+    '.nsec-head small{font:600 11.5px/1 Inter,sans-serif;color:var(--muted-2,#8A7A4A)}' +
+    '.nsec-head:not(:first-child){margin-top:14px}';
+  document.head.appendChild(st);
+})();
+function neshSecOffset() {
+  const rail = document.getElementById('nesh-cat-rail');
+  let top = 0;
+  try { top = parseFloat(getComputedStyle(rail).top) || 0; } catch (e) {}
+  return top + 6;
+}
+function neshSetRailActive(catId) {
+  const rail = document.getElementById('nesh-cat-rail');
+  if (!rail) return;
+  let hit = null;
+  rail.querySelectorAll('.nrail-item').forEach(b => {
+    const on = (b.dataset.cat || '') === (catId || '');
+    b.classList.toggle('active', on);
+    if (on) hit = b;
+  });
+  if (hit) {   // keep the highlighted category visible inside the rail
+    const rt = rail.scrollTop, rh = rail.clientHeight;
+    if (hit.offsetTop < rt + 8) rail.scrollTop = Math.max(0, hit.offsetTop - 8);
+    else if (hit.offsetTop + hit.offsetHeight > rt + rh - 8) rail.scrollTop = hit.offsetTop + hit.offsetHeight - rh + 8;
+  }
+}
+function neshScrollToSection(catId) {
+  try { if (window.__neshMenuFlush) window.__neshMenuFlush(); } catch (e) {}   // make sure every card is built so heights are real
+  window.__neshSpyLock = Date.now() + 250;
+  neshSetRailActive(catId);
+  if (!catId) { window.scrollTo(0, 0); return; }
+  const head = itemListEl.querySelector('.nsec-head[data-cat="' + (window.CSS && CSS.escape ? CSS.escape(catId) : catId) + '"]');
+  if (!head) return;
+  window.scrollTo(0, Math.max(0, head.getBoundingClientRect().top + (window.scrollY || document.documentElement.scrollTop || 0) - neshSecOffset()));
+}
+function neshSecSpy() {
+  if (!window.__neshSecActive) return;
+  if (Date.now() < (window.__neshSpyLock || 0)) return;
+  const scr = document.getElementById('screen-menu');
+  if (!scr || !scr.classList.contains('active')) return;
+  const heads = itemListEl.querySelectorAll('.nsec-head');
+  if (!heads.length) return;
+  const line = neshSecOffset() + 12;
+  let cur = '';   // above the first section = "All"
+  for (let i = 0; i < heads.length; i++) {
+    if (heads[i].getBoundingClientRect().top <= line) cur = heads[i].dataset.cat; else break;
+  }
+  if (cur === '__more') cur = heads.length > 1 ? heads[heads.length - 2].dataset.cat : '';
+  if (cur !== window.__neshSpyCur) { window.__neshSpyCur = cur; neshSetRailActive(cur); }
+}
+(function () {
+  let ticking = false;
+  window.addEventListener('scroll', () => {
+    if (!window.__neshSecActive || ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => { ticking = false; try { neshSecSpy(); } catch (e) {} });
+  }, { passive: true });
+})();
+
+function neshFillOrphans(complete) {
+  try {
+    const grid = itemListEl;
+    const kids = Array.from(grid.children);
+    kids.forEach(k => { if (k.classList && k.classList.contains('item-card2')) { k.classList.remove('nsec-wide'); k.style.gridColumn = ''; } });
+    if (!grid.offsetWidth) return;   // hidden / not laid out yet: leave the normal grid alone
+    if (!kids.some(k => k.classList.contains('nsec-head'))) return;
+    // column count only from real laid-out pixel tracks (never from an unresolved repeat()/auto-fill string)
+    const tracks = (getComputedStyle(grid).gridTemplateColumns || '').trim().split(/\s+/);
+    if (!tracks.length || !tracks.every(t => /^[\d.]+px$/.test(t))) return;
+    const cols = tracks.length;
+    if (cols < 2) return;
+    const sections = [[]];
+    kids.forEach(k => {
+      if (k.classList.contains('nsec-head')) sections.push([]);
+      else if (k.classList.contains('item-card2')) sections[sections.length - 1].push(k);
+    });
+    sections.forEach((cards, i) => {
+      if (!cards.length) return;
+      if (i === sections.length - 1 && !complete) return;   // section still being built
+      if (cards.length % cols !== 1) return;   // only a lone card in the last row (the ugly hole)
+      const last = cards[cards.length - 1];
+      last.classList.add('nsec-wide');
+      last.style.gridColumn = '1 / -1';   // whole row: always valid, can never create an extra column even if the layout changes later
+    });
+  } catch (e) { console.warn('orphan fill skipped', e); }
+}
+(function () {
+  let t;
+  const again = () => { clearTimeout(t); t = setTimeout(() => { try { neshFillOrphans(true); } catch (e) {} }, 120); };
+  window.addEventListener('resize', again);
+  try { if (window.ResizeObserver) new ResizeObserver(again).observe(itemListEl); } catch (e) {}
+})();
+
+// Self-heal: if a render ended with section headings but NO cards at all (every card build failed, e.g. right after the app is
+// reopened / resumed), render again a few times instead of leaving an empty menu.
+let _neshMenuRetry = 0, _neshMenuRetryShop = null;
+function neshMenuVerify(gen, expected) {
+  try {
+    if (window.__neshMenuGen !== gen || !expected) { if (!expected) _neshMenuRetry = 0; return; }
+    const rid = state.selectedRestaurant && state.selectedRestaurant.id;
+    if (_neshMenuRetryShop !== rid) { _neshMenuRetryShop = rid; _neshMenuRetry = 0; }
+    if (itemListEl.querySelector('.item-card2')) { _neshMenuRetry = 0; return; }
+    if (_neshMenuRetry >= 3) return;
+    const n = ++_neshMenuRetry;
+    setTimeout(() => {
+      try {
+        const m = document.getElementById('screen-menu');
+        if (window.__neshMenuGen === gen && m && m.classList.contains('active') && !itemListEl.querySelector('.item-card2')) renderMenu();
+      } catch (e) {}
+    }, 500 * n);
+  } catch (e) {}
+}
+(function () {
+  const heal = () => setTimeout(() => {
+    try {
+      const m = document.getElementById('screen-menu');
+      if (m && m.classList.contains('active') && state.selectedRestaurant && itemListEl.children.length && !itemListEl.querySelector('.item-card2')) { _neshMenuRetry = 0; renderMenu(); }
+    } catch (e) {}
+  }, 300);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) heal(); });
+  window.addEventListener('pageshow', heal);
+})();
+
 function renderMenu() {
   const r = state.selectedRestaurant;
   try { if (r && neshAbroadActive()) neshAbSetZone(r.id === 'NESH_STORE' || !isPravasiShop(r)); } catch (e) {}
@@ -15177,6 +15404,28 @@ function renderMenu() {
   const items = itemsRaw.map((it, i) => ({ it, i }))
     .sort((a, b) => (neshIsOffer(b.it) - neshIsOffer(a.it)) || (a.i - b.i))
     .map(x => x.it);
+  // Swiggy-style sections: only when nothing narrows the list (no search / price filter / chosen category)
+  const secCats = neshVisibleCategories(r);
+  const secMode = secCats.length > 0 && !activeCat && !query && !mpOn && items.length > 0;
+  let entries;
+  if (secMode) {
+    entries = [];
+    const used = new Set();   // an item shows once, under the first category that has it
+    secCats.forEach(c => {
+      const g = items.filter(it => !used.has(it) && c.has(it));
+      if (!g.length) return;
+      g.forEach(it => used.add(it));
+      entries.push({ head: { id: c.id, name: c.name, n: g.length } });
+      g.forEach(it => entries.push({ it }));
+    });
+    const rest = items.filter(it => !used.has(it));
+    if (rest.length) {
+      entries.push({ head: { id: '__more', name: 'More items', n: rest.length } });
+      rest.forEach(it => entries.push({ it }));
+    }
+  } else entries = items.map(it => ({ it }));
+  window.__neshSecActive = secMode;
+  window.__neshSpyCur = undefined;
   itemListLabel.textContent = (query || mpOn)
     ? "Search results (" + items.length + ")"
     : activeCat
@@ -15248,26 +15497,41 @@ function renderMenu() {
       } else card.querySelector('.item-img-wrap').addEventListener('click', () => openItemDetail(it.id));
       return card;
     } catch (e) {
-      console.error('Skipped one broken menu item while rendering:', it && it.id, e);
+      window.__neshMenuLastErr = String((e && e.message) || e); console.error('Skipped one broken menu item while rendering:', it && it.id, e);
     }
     return null;
   };
   const addBatch = (from, to) => {
     const frag = document.createDocumentFragment();
-    for (let i = from; i < to && i < items.length; i++) { const c = buildCard(items[i]); if (c) frag.appendChild(c); }
+    for (let i = from; i < to && i < entries.length; i++) {
+      const e = entries[i];
+      if (e.head) {
+        const h = document.createElement('div');
+        h.className = 'nsec-head'; h.dataset.cat = e.head.id;
+        h.innerHTML = escapeHtml(e.head.name) + ' <small>(' + e.head.n + ')</small>';
+        frag.appendChild(h);
+      } else { const c = buildCard(e.it); if (c) frag.appendChild(c); }
+    }
     itemListEl.appendChild(frag);
+    neshFillOrphans(to >= entries.length);
   };
   const FIRST_N = 14, BATCH_N = 20;
+  let pos = Math.min(FIRST_N, entries.length);
   addBatch(0, FIRST_N);
-  if (items.length > FIRST_N) {
-    let pos = FIRST_N;
+  if (entries.length <= FIRST_N) neshMenuVerify(menuGen, entries.filter(x => x.it).length);
+  window.__neshMenuFlush = () => {   // build everything left right now (used before jumping to a section)
+    if (window.__neshMenuGen !== menuGen) return;
+    if (pos < entries.length) { addBatch(pos, entries.length); pos = entries.length; }
+  };
+  if (entries.length > FIRST_N) {
     const step = () => {
       if (window.__neshMenuGen !== menuGen) return;   // a newer render started (search / category tap): stop this one
       addBatch(pos, pos + BATCH_N); pos += BATCH_N;
-      if (pos < items.length) requestAnimationFrame(step);
+      if (pos < entries.length) requestAnimationFrame(step); else { try { neshSecSpy(); } catch (e) {} neshMenuVerify(menuGen, entries.filter(x => x.it).length); }
     };
     requestAnimationFrame(step);
   }
+  try { neshSecSpy(); } catch (e) {}
   updateCartBar();
 }
 let _menuMPT = null;
@@ -15557,9 +15821,18 @@ itemDetailWeightInput.addEventListener('input', () => {
 });
 document.getElementById('item-detail-back-btn').addEventListener('click', () => {
   renderMenu(); // pick up any weight/price change made on this screen
-  if (state.itemFromHome) { state.itemFromHome = false; renderHome(); showScreen('home'); persistScreen('home', { category: state.category }); return; } // opened from NESH Mart popular products -> back to the Mart list
+  const _is = window._neshItemScroll; window._neshItemScroll = null;
+  if (state.itemFromHome) {
+    state.itemFromHome = false; renderHome(); showScreen('home'); persistScreen('home', { category: state.category });
+    // back to the list at the same spot: from the home list directly, or from a home tile that opened shop+item
+    const _hs = window._neshHomeScroll; window._neshHomeScroll = null;
+    if (_is && _is.scr === 'screen-home' && _is.y > 0) neshRestoreScrollY(_is.y);
+    else if (_hs && _hs.y > 0 && _hs.cat === state.category) neshRestoreScrollY(_hs.y);
+    return;
+  } // opened from NESH Mart popular products -> back to the Mart list
   showScreen('menu');
   persistScreen('menu', { restaurantId: state.selectedRestaurant.id, cart: state.cart });
+  if (_is && _is.scr === 'screen-menu' && _is.y > 0) neshRestoreScrollY(_is.y);
 });
 
 // Share the product currently open: opens the phone's share sheet with a link that
@@ -15584,8 +15857,19 @@ document.getElementById('item-detail-share-btn').addEventListener('click', async
   catch (e) { showInfoModal('Share link', url); }
 });
 
+// Put the page back at a saved scroll position (the list is re-rendered first, so retry briefly while it lays out).
+function neshRestoreScrollY(y) {
+  if (!(y > 0)) return;
+  try { const go = () => window.scrollTo(0, y); go(); requestAnimationFrame(go); setTimeout(go, 120); setTimeout(go, 400); } catch (e) {}
+}
 function openItemDetail(itemId, fromHome) {
   if (state.selectedRestaurant && getShopClosedInfo(state.selectedRestaurant).closed) { renderMenu(); showScreen('menu'); return; }
+  // Remember the list's scroll position so Back returns to the same spot, not the top.
+  try {
+    const _a = document.querySelector('.screen.active');
+    window._neshItemScroll = (_a && (_a.id === 'screen-menu' || _a.id === 'screen-home'))
+      ? { y: window.scrollY || document.documentElement.scrollTop || 0, scr: _a.id } : null;
+  } catch (e) { window._neshItemScroll = null; }
   state.itemFromHome = !!fromHome;
   state.selectedItem = itemId;
   renderItemDetail();
@@ -21644,6 +21928,17 @@ if ('serviceWorker' in navigator) {
 <script id="nesh-posters-js">
 (function () {
   var LS = 'nesh_posters_cache';
+  // Poster images: ask Cloudinary for auto format (WebP/AVIF) + auto quality + a max width, so phones download far less.
+  // A new upload always has a new URL (version/id), so a changed poster still shows at once. Other hosts / videos are left as they are.
+  // Poster videos: same lighter 720p copy the video ads already use. If that copy ever fails to play, the original is tried once.
+  function pvid(u) {
+    return (typeof u === 'string' && u.indexOf('res.cloudinary.com') > -1 && u.indexOf('/video/upload/q_auto') < 0 && /\/video\/upload\/v\d+\//.test(u))
+      ? u.replace(/(\/video\/upload\/)(v\d+\/)/, '$1q_auto:eco,w_720,c_limit/$2') : u;
+  }
+  function pimg(u) {
+    return (typeof u === 'string' && u.indexOf('res.cloudinary.com') > -1 && u.indexOf('/image/upload/f_auto') < 0 && /\/image\/upload\/v\d+\//.test(u))
+      ? u.replace('/image/upload/', '/image/upload/f_auto,q_auto,c_limit,w_1000/') : u;
+  }
   var $ = function (id) { return document.getElementById(id); };
 
   // ---- Preload: download + decode every poster image while the "Locating..." splash
@@ -21687,7 +21982,7 @@ if ('serviceWorker' in navigator) {
           vd.addEventListener('ended', function () {                       // video finished -> next poster
             if (posters[idx] === b) { if (posters.length > 1) go(idx + 1); else { try { vd.currentTime = 0; vd.play(); } catch (e) {} } }
           });
-          vd.addEventListener('error', function () { if (posters[idx] === b && posters.length > 1) setTimeout(function () { if (posters[idx] === b) go(idx + 1); }, 1000); });
+          vd.addEventListener('error', function () { if (b.videoRaw && b.videoRaw !== b.video && !vd._fb) { vd._fb = 1; vd.src = b.videoRaw; try { vd.load(); } catch (e) {} return; } if (posters[idx] === b && posters.length > 1) setTimeout(function () { if (posters[idx] === b) go(idx + 1); }, 1000); });
           d.appendChild(vd);
           // No sound button on the home poster video: it always plays muted (vd.muted = true above).
         } else {
@@ -21888,14 +22183,14 @@ if ('serviceWorker' in navigator) {
   })();
 
   // ---- load (cached first for instant paint, then live from Firebase)
-  try { var c = JSON.parse(localStorage.getItem(LS) || '[]'); if (c.length) { renderAll(c); preload(c); } } catch (e) {}
+  try { var c = JSON.parse(localStorage.getItem(LS) || '[]'); if (c.length) { c.forEach(function (b) { if (b) { b.img = pimg(b.img); if (b.video) { if (!b.videoRaw) b.videoRaw = b.video; b.video = pvid(b.videoRaw); } } }); renderAll(c); preload(c); } } catch (e) {}
   var seq = 0;
   function whenFb(cb) { if (window.fb) return cb(); setTimeout(function () { whenFb(cb); }, 300); }
   function toList(v) {
     var a = []; Object.keys(v || {}).forEach(function (k) {
       var o = v[k]; if (!o || !o.img || o.del) return;
       var t = o.targets;
-      a.push({ id: k, img: o.img, video: o.video || '', link: o.link || '', shopId: o.shopId || '', cardId: o.cardId || '', zoneShopId: o.zoneShopId || '', ts: o.ts || 0,
+      a.push({ id: k, img: pimg(o.img), video: pvid(o.video || ''), videoRaw: o.video || '', link: o.link || '', shopId: o.shopId || '', cardId: o.cardId || '', zoneShopId: o.zoneShopId || '', ts: o.ts || 0,
         home: t ? !!t.home : true, mart: t ? !!t.mart : false, food: t ? !!t.food : false, groceries: t ? !!t.groceries : false, trending: t ? !!t.trending : false, popup: t ? !!t.popup : false, exp: +o.expiresAt || 0,
         zones: Object.keys(o.zones || {}).filter(function (z) { return o.zones[z]; }) });
     });
