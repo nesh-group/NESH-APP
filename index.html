@@ -396,6 +396,21 @@ html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
   html.au-on, html.au-on body{ overflow:hidden !important; height:100%; }
   html.au-on .screen{ display:none !important; }
 
+  /* ---- Food screen: "Offers on food" strip (discounted items / portions, built from the shops already loaded) ---- */
+  #screen-home:not([data-cat="hotel"]) #food-offers-wrap{ display:none !important; }
+  #food-offers-wrap{ margin:0 0 4px; }
+  #food-offers .fo-card{ flex:none; width:148px; background:#fff; border-radius:16px; overflow:hidden; cursor:pointer; -webkit-tap-highlight-color:transparent;
+    box-shadow:0 2px 0 rgba(43,36,16,.10), 0 8px 16px -10px rgba(43,36,16,.35); }
+  #food-offers .fo-card:active{ transform:scale(.98); }
+  #food-offers .fo-img{ position:relative; height:98px; background:#F4EDD6; }
+  #food-offers .fo-img img{ width:100%; height:100%; object-fit:cover; display:block; }
+  #food-offers .fo-badge{ position:absolute; left:6px; top:6px; background:#E23744; color:#fff; font:800 10.5px/1 Inter,sans-serif; padding:4px 7px; border-radius:999px; }
+  #food-offers .fo-info{ padding:8px 9px 10px; }
+  #food-offers .fo-name{ margin:0; min-height:31px; font:700 12.5px/1.25 Inter,sans-serif; color:var(--ink); overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+  #food-offers .fo-por{ display:inline-block; padding:1px 6px; border-radius:999px; background:#FFF1B8; color:#6B5410; font:800 10px/1.4 Inter,sans-serif; vertical-align:1px; }
+  #food-offers .fo-price{ margin:4px 0 0; font:800 14px/1.2 Poppins,Inter,sans-serif; color:#0E8A5C; }
+  #food-offers .fo-price s{ margin-left:6px; font:500 11.5px/1 Inter,sans-serif; color:#9A8F72; }
+  #food-offers .fo-shop{ margin:3px 0 0; font:500 11px/1.2 Inter,sans-serif; color:#8A7E5A; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   /* ---- Trending tab (offer products) + bottom nav on the main screen ---- */
   #nesh-bnav{ position:fixed; left:50%; transform:translate(-50%,0); bottom:0; width:100%; max-width:420px; z-index:900; display:none; gap:10px; box-sizing:border-box; padding:8px 24px calc(10px + env(safe-area-inset-bottom)); background:#fff; border-top:1px solid rgba(43,36,16,.06); box-shadow:0 -6px 16px rgba(43,36,16,.07); transition:transform .28s ease; will-change:transform; }
   #nesh-bnav.on{ display:flex; }
@@ -3645,6 +3660,10 @@ html[data-theme="dark"] #nb-trending.active svg{color:#E48558}
 html[data-theme="dark"] #screen-trending{background:linear-gradient(180deg,#3E3413 0,#32290F 230px,rgba(34,30,21,0.00) 470px)}
 html[data-theme="dark"] #screen-trending .tr-sub{color:#BCAE8A}
 html[data-theme="dark"] .tr-card{background:#221E15}
+html[data-theme="dark"] #food-offers .fo-card{background:#221E15}
+html[data-theme="dark"] #food-offers .fo-shop{color:#BCAE8A}
+html[data-theme="dark"] #food-offers .fo-price{color:#4FD1A0}
+html[data-theme="dark"] #food-offers .fo-por{background:#3C3412;color:#FFE48A}
 html[data-theme="dark"] .tr-img{background:radial-gradient(circle at 50% 38%,#221E15 0,#392F12 100%)}
 html[data-theme="dark"] .tr-shopchip{background:rgba(34,30,21,0.94);color:#CCBD99}
 html[data-theme="dark"] .tr-save{background:#12301F;color:#5DDFAE}
@@ -5146,6 +5165,11 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
       <span class="posters-count" id="posters-food-count"></span>
       <div class="posters-dots" id="posters-food-dots"></div>
     </div>
+    <div id="food-offers-wrap" style="display:none;">
+      <p class="mart-sec-title">🔥 Offers on food</p>
+      <div class="mart-hscroll" id="food-offers"></div>
+    </div>
+    <div id="ref-home-card" style="display:none;"></div>
     <div class="mart-only" id="mart-deals-wrap" style="display:none;">
       <p class="mart-sec-title">⚡ Today's deals</p>
       <div class="mart-hscroll" id="mart-deals"></div>
@@ -6355,26 +6379,41 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
           try {
             const sp = m.sizePrices, nm = Array.isArray(m.sizes) ? m.sizes.filter(Boolean) : [];
             if (sp && typeof sp === 'object' && nm.length > 1 && businessType === 'hotel') {
-              const prices = {}, rates = {};
+              const prices = {}, rates = {}, mrps = {};
               nm.forEach(sz => {
                 const raw = Number(sp[sz]) || 0; if (raw <= 0) return;
                 const mm = Object.assign({}, m, { price: raw, customerPrice: 0 });
                 // Operator-set customer price for THIS portion (Operator Panel -> partner -> item): customers pay exactly it, the shop is paid its own portion price.
                 const opSz = (m.customerSizePrices && typeof m.customerSizePrices === 'object') ? Number(m.customerSizePrices[sz]) : 0;
-                if (opSz > 0) { prices[sz] = opSz; rates[sz] = raw; return; }
-                prices[sz] = raw + (v.goSeries ? (Number(window.GO_SERIES_ITEM_MARKUP) || 0) : 0) + priceBump(mm) + markupFor(mm);
-                rates[sz] = (priceBump(mm) > 0 || markupFor(mm) > 0 || commissionFor(mm) > 0) ? raw - commissionFor(mm) : undefined;
+                let pr, rt;
+                if (opSz > 0) { pr = opSz; rt = raw; }
+                else {
+                  pr = raw + (v.goSeries ? (Number(window.GO_SERIES_ITEM_MARKUP) || 0) : 0) + priceBump(mm) + markupFor(mm);
+                  rt = (priceBump(mm) > 0 || markupFor(mm) > 0 || commissionFor(mm) > 0) ? raw - commissionFor(mm) : undefined;
+                }
+                // Operator offer for THIS portion (Operator Panel -> Trending Offers): customers pay the same amount less
+                // (offerMrp-style strike-through kept in sizeMrp) and the shop is paid the offer price. Ignored unless below the portion's own price.
+                const offSz = (m.offerSizePrices && typeof m.offerSizePrices === 'object') ? Number(m.offerSizePrices[sz]) : 0;
+                if (offSz > 0 && offSz < raw) {
+                  mrps[sz] = pr;
+                  pr = Math.max(1, pr - (raw - offSz));
+                  if (rt !== undefined) rt = Math.max(0, offSz - (opSz > 0 ? 0 : commissionFor(mm)));
+                }
+                prices[sz] = pr; rates[sz] = rt;
               });
               const names = nm.filter(sz => prices[sz] > 0);
               if (names.length > 1) {
                 obj.sizes = names; obj.sizePrices = prices; obj.price = prices[names[0]];
                 obj.shopRate = rates[names[0]];
                 obj.sizeShopRates = {}; names.forEach(sz => { if (rates[sz] !== undefined) obj.sizeShopRates[sz] = rates[sz]; });
+                const sm = {}; names.forEach(sz => { if (mrps[sz] > prices[sz]) sm[sz] = mrps[sz]; });
+                if (Object.keys(sm).length) obj.sizeMrp = sm;   // portions currently on offer -> their normal customer price (for strike-through + the Food Offers strip)
               }
             }
           } catch (e) {}
           const base = Number(m.price) || 0, op = Number(m.offerPrice) || 0;
-          if ((businessType === 'groceries' || businessType === 'online_shop') && op > 0 && op < base) {
+          // Food shops: a one-price item can have an offer too (items sold in portions use offerSizePrices above instead).
+          if ((businessType === 'groceries' || businessType === 'online_shop' || (businessType === 'hotel' && !obj.sizePrices)) && op > 0 && op < base) {
             obj.offerMrp = obj.price;
             obj.price = Math.max(1, obj.price - (base - op));
             if (obj.shopRate !== undefined) obj.shopRate = op - ((typeof commissionFor === 'function') ? commissionFor(m) : 0);
@@ -8074,6 +8113,67 @@ function openCategory(cat, opts) {
   // Pravasi from the category cards: renderHome() ran while the category screen was still active, so the airport pin /
   // header were skipped (pvApplyAirportPos ignores that screen). Re-apply them now that the Pravasi screen is showing.
   try { if (state.pravasi && typeof pvSyncAirportHeader === 'function') { pvSyncAirportHeader(); renderRestaurantList(); } } catch (e) {}
+}
+
+// ---------- FOOD OFFERS STRIP ----------
+// Food-screen strip: discounted Food items. A discounted portion (Quarter / Half / Full) is shown as its own item.
+// Built only from the shops already in memory (RESTAURANTS) -> no extra database reads; at most 12 small lazy-loaded photos.
+function neshFoodOffers(shops) {
+  const out = [];
+  (shops || []).forEach(r => {
+    if (!r || (r.businessType && r.businessType !== 'hotel')) return;
+    try { if (r.shopUnavailable || getShopClosedInfo(r).closed) return; } catch (e) {}
+    (r.items || []).forEach(it => {
+      if (!it || it.soldOut || it.outOfStock || it.available === false) return;
+      if (it.sizeMrp && hasSizes(it) && it.sizePrices) {
+        it.sizes.forEach(sz => {
+          const mrp = Number(it.sizeMrp[sz]), pr = Number(it.sizePrices[sz]);
+          if (mrp > pr && pr > 0) out.push({ r, it, sz, price: pr, mrp });
+        });
+      } else if (!hasSizes(it) && Number(it.offerMrp) > Number(it.price) && Number(it.price) > 0) {
+        out.push({ r, it, sz: '', price: Number(it.price), mrp: Number(it.offerMrp) });
+      }
+    });
+  });
+  out.sort((a, b) => (1 - b.price / b.mrp) - (1 - a.price / a.mrp));
+  return out.slice(0, 12);
+}
+// shops = the Food shops currently listed (null / empty = hide the strip)
+function neshRenderFoodOffers(shops) {
+  const wrap = document.getElementById('food-offers-wrap'), el = document.getElementById('food-offers');
+  if (!wrap || !el) return;
+  const offers = shops ? neshFoodOffers(shops) : [];
+  const sig = offers.map(o => [o.r.id, o.it.id, o.sz, o.price, o.mrp, o.it.name, (o.it.image || '').length].join('~')).join('|');
+  wrap.style.display = offers.length ? 'block' : 'none';
+  if (el.dataset.sig === sig) return;   // nothing changed: keep the cards (and their photos) exactly as they are
+  el.dataset.sig = sig;
+  el.innerHTML = '';
+  const money = n => String(Math.round(n * 100) / 100);
+  offers.forEach(o => {
+    const off = Math.max(1, Math.round((1 - o.price / o.mrp) * 100));
+    // smaller photo for the small card (Cloudinary only; other photo links stay as they are)
+    const img = o.it.image ? String(o.it.image).replace('/w_640/', '/w_300/') : 'icon-192.png';
+    const c = document.createElement('div');
+    c.className = 'fo-card';
+    c.innerHTML = `
+      <div class="fo-img"><img src="${escapeHtml(img)}" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='icon-192.png';" /><span class="fo-badge">${off}% OFF</span></div>
+      <div class="fo-info">
+        <p class="fo-name">${escapeHtml(o.it.name)}${o.sz ? ' <span class="fo-por">' + escapeHtml(o.sz) + '</span>' : ''}</p>
+        <p class="fo-price">₹${money(o.price)}<s>₹${money(o.mrp)}</s></p>
+        <p class="fo-shop">${escapeHtml(o.r.name)}</p>
+      </div>`;
+    c.addEventListener('click', () => {
+      const go = () => {
+        state.category = 'hotel'; openRestaurant(o.r.id);
+        if (state.selectedRestaurant && state.selectedRestaurant.id === o.r.id) {
+          if (o.sz) setSelectedSize(o.it.id, o.sz);   // open the item with the discounted portion already chosen
+          openItemDetail(o.it.id, false);
+        }
+      };
+      if (typeof requireLocationThen === 'function') requireLocationThen(go); else go();
+    });
+    el.appendChild(c);
+  });
 }
 
 // ---------- TRENDING (offer products) + bottom nav ----------
@@ -12451,11 +12551,29 @@ function showOtpStep(number) {
 // TEMPORARY: in that case login continues without OTP (quota resets daily).
 function isQuotaError(e) { return !!e && e.code === 'auth/quota-exceeded'; }
 
+// Operator Panel -> Login OTP switch (app_config/otpOff === true means OTP is OFF).
+// Checked with ONE tiny read only at the moment someone taps Login (never for customers who are
+// already logged in, no live listener). If it can't be read after 2 tries the OTP stays required.
+async function neshOtpSwitchedOff() {
+  // Two tries (4s each) so a slow/flaky network doesn't wrongly bring the OTP back while the operator has it OFF.
+  for (let i = 0; i < 2; i++) {
+    try {
+      const { db, ref, get } = window.fb;
+      const snap = await Promise.race([
+        get(ref(db, 'app_config/otpOff')),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000))
+      ]);
+      return snap.val() === true;
+    } catch (e) { /* try once more, then keep OTP required */ }
+  }
+  return false;
+}
+
 loginSubmitBtn.addEventListener('click', async () => {
   const number = loginNumberInput.value;
   if (number.length !== 10) return;
   loginSubmitBtn.disabled = true;
-  if (!NESH_OTP_REQUIRED) { try { await loginAfterVerified(number); } finally { loginSubmitBtn.disabled = false; } return; }   // OTP switched off
+  if (!NESH_OTP_REQUIRED || (typeof neshIsAbroad === 'function' && neshIsAbroad()) || await neshOtpSwitchedOff()) { try { await loginAfterVerified(number); } finally { loginSubmitBtn.disabled = false; } return; }   // OTP switched off (code constant, abroad, or Operator Panel switch)
   try {
     if (!window.fbAuth && !nativeAuth()) throw new Error('auth-missing');
     await sendOtp(number);
@@ -13102,32 +13220,59 @@ function neshForMyOrders(restSnap, phone, cb) {
 // If it can't be set up (e.g. Firebase rules don't allow it yet) it resolves
 // false and the app keeps using the old full scan, so nothing breaks.
 var _orderIndexState = {};
+var _orderIndexDraft = {};   // phone -> { t, u }: index entries already built, so a retry after a failed write doesn't re-download every shop
 var _shopMetaCache = {};
+// Sleep for ms, or until the phone comes back online — whichever happens first.
+function _oiWait(ms) {
+  return new Promise(function (res) {
+    var done = false, t = null;
+    function fin() { if (done) return; done = true; clearTimeout(t); window.removeEventListener('online', fin); res(); }
+    t = setTimeout(fin, ms);
+    window.addEventListener('online', fin);
+  });
+}
+function _oiPermissionError(e) {
+  try { return /permission|denied/i.test(String((e && (e.code || e.message)) || e)); } catch (x) { return false; }
+}
 function ensureOrderIndex(number) {
   if (_orderIndexState[number]) return _orderIndexState[number];
   const p = (async () => {
-    try {
-      const { db, ref, get, update } = window.fb;
-      const flag = await get(ref(db, 'customers/' + number + '/orderIndexReady'));
-      if (flag.val() === true) return true;
-      const updates = {};
-      const all = await get(ref(db, 'restaurants'));
-      all.forEach(rs => {
-        neshForMyOrders(rs, number, (orderKey, o) => {
-          updates['orderIndex/' + orderKey] = { restId: rs.key, createdAt: (o && o.createdAt) || 0 };
-        });
-      });
-      const queue = await get(ref(db, 'groceryOrderQueue'));
-      queue.forEach(c => {
-        const q = c.val() || {};
-        if (q.customerPhone === number && q.status !== 'assigned') updates['orderIndex/' + c.key] = { restId: 'NESH_STORE', createdAt: q.createdAt || 0 };
-      });
-      updates.orderIndexReady = true;
-      await update(ref(db, 'customers/' + number), updates);
-      return true;
-    } catch (e) {
-      delete _orderIndexState[number];   // try again next time
-      return false;
+    // A network hiccup used to resolve false straight away, which switched the app to the
+    // LEGACY full scan (download + live-listen to EVERY shop and order). Now a network failure
+    // is simply retried with a back-off; the legacy scan is used only when Firebase rules refuse
+    // the index (as before) or when retries keep failing while the phone is online.
+    const delays = [2000, 5000, 10000, 20000, 40000];
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const { db, ref, get, update } = window.fb;
+        const flag = await get(ref(db, 'customers/' + number + '/orderIndexReady'));
+        if (flag.val() === true) return true;
+        let d = _orderIndexDraft[number];
+        if (!d || Date.now() - d.t > 120000) {
+          const updates = {};
+          const all = await get(ref(db, 'restaurants'));
+          all.forEach(rs => {
+            neshForMyOrders(rs, number, (orderKey, o) => {
+              updates['orderIndex/' + orderKey] = { restId: rs.key, createdAt: (o && o.createdAt) || 0 };
+            });
+          });
+          const queue = await get(ref(db, 'groceryOrderQueue'));
+          queue.forEach(c => {
+            const q = c.val() || {};
+            if (q.customerPhone === number && q.status !== 'assigned') updates['orderIndex/' + c.key] = { restId: 'NESH_STORE', createdAt: q.createdAt || 0 };
+          });
+          updates.orderIndexReady = true;
+          d = _orderIndexDraft[number] = { t: Date.now(), u: updates };
+        }
+        await update(ref(db, 'customers/' + number), d.u);
+        delete _orderIndexDraft[number];
+        return true;
+      } catch (e) {
+        if (_oiPermissionError(e)) { delete _orderIndexState[number]; return false; }   // rules don't allow it: old full scan, as before
+        const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+        if (attempt >= delays.length && !offline) { delete _orderIndexState[number]; return false; }
+        await _oiWait(delays[Math.min(attempt, delays.length - 1)]);
+      }
     }
   })();
   _orderIndexState[number] = p;
@@ -13151,6 +13296,7 @@ window.neshLoyHook = function (key, o) {
     if (!key) return;
     window.neshLoyaltyDelivered && window.neshLoyaltyDelivered(key, o);
     window.neshLoyaltySDelivered && window.neshLoyaltySDelivered(key, o);
+    window.neshReferralDelivered && window.neshReferralDelivered(key, o);
   } catch (e) {}
 };
 // Same logic as the original watcher callback, fed from the indexed orders.
@@ -13163,7 +13309,7 @@ function processWatchedOrders(entries, queueLiveKeys) {
   entries.forEach(({ restId, orderKey, o, restName, businessType }) => {
     if (!o) return;
     const status = normalizeStatus(o.status);
-    if (status === 'delivered') { try { window.neshLoyaltyDelivered && window.neshLoyaltyDelivered(orderKey, o); window.neshLoyaltySDelivered && window.neshLoyaltySDelivered(orderKey, o); } catch (e) {} }
+    if (status === 'delivered') { try { window.neshLoyaltyDelivered && window.neshLoyaltyDelivered(orderKey, o); window.neshLoyaltySDelivered && window.neshLoyaltySDelivered(orderKey, o); window.neshReferralDelivered && window.neshReferralDelivered(orderKey, o); } catch (e) {} }
     const shownName = o.fromNeshStoreQueue ? 'NESH Store' : (restName || 'Restaurant');
     if ((status === 'preparing' || status === 'ready') && !seen[orderKey]) {
       seen[orderKey] = true;
@@ -14429,6 +14575,8 @@ function renderRestaurantList() {
     ? searchFiltered.filter(r => shopDeliversTo(r, state.customerPos))
     : searchFiltered;
   if (state.category === 'hotel' || martFoodLook()) filtered = neshApplyShopFilters(filtered);
+  try { neshRenderFoodOffers((state.category === 'hotel' && !martFoodLook() && !q && !_pvAp) ? filtered : null); } catch (e) {}   // 🔥 Offers strip (Food only, not while searching)
+  try { neshRenderReferralCard(); } catch (e) {}   // 🎁 Refer & Earn card (Food only)
 
   if (pvRenderShops(filtered, categoryFiltered, q)) return;
   if (state.category === 'online_shop' && !martFoodLook()) {
@@ -15400,7 +15548,7 @@ function renderMenu() {
   const mpOn = neshMPActive();
   const itemsRaw = mpOn ? itemsQ.filter(it => { const p = neshItemPrice(it); return p >= neshMP.min && p <= neshMP.max; }) : itemsQ;
   // Trending (offer) products go to the top of the shop's menu; everything else keeps its order.
-  const neshIsOffer = it => Number(it.offerMrp) > Number(it.price) && Number(it.price) > 0;
+  const neshIsOffer = it => (Number(it.offerMrp) > Number(it.price) && Number(it.price) > 0) || !!it.sizeMrp;
   const items = itemsRaw.map((it, i) => ({ it, i }))
     .sort((a, b) => (neshIsOffer(b.it) - neshIsOffer(a.it)) || (a.i - b.i))
     .map(x => x.it);
@@ -15691,7 +15839,7 @@ function neshOpenSizeSheet(it) {
       <div class="nsz-head"><img src="${neshEsc(it.image || 'icon-192.png')}" alt="" onerror="this.onerror=null;this.src='icon-192.png'"><b>${neshEsc(it.name)}</b><button type="button" class="nsz-x" aria-label="Close">✕</button></div>
       <div class="nsz-body">
         <p class="nsz-sec">${hasP ? 'Select portion' : 'Select size'}</p><p class="nsz-sub">You can add more than one</p>
-        <div class="nsz-list">${it.sizes.map(sz => { const n = draft[sz] || 0; return `<div class="nsz-row${n ? ' on' : ''}"><span class="n">${neshEsc(sz)}</span>${hasP ? `<span class="p">₹${neshSizePrice(it, sz)}</span>` : ''}${n ? `<div class="nsz-mini"><button type="button" data-sz="${neshEsc(sz)}" data-d="-1">−</button><span>${n}</span><button type="button" data-sz="${neshEsc(sz)}" data-d="1">+</button></div>` : `<button type="button" class="nsz-add" data-sz="${neshEsc(sz)}" data-d="1">ADD</button>`}</div>`; }).join('')}</div>
+        <div class="nsz-list">${it.sizes.map(sz => { const n = draft[sz] || 0; return `<div class="nsz-row${n ? ' on' : ''}"><span class="n">${neshEsc(sz)}</span>${hasP ? `<span class="p">₹${neshSizePrice(it, sz)}${(it.sizeMrp && Number(it.sizeMrp[sz]) > neshSizePrice(it, sz)) ? `<s style="margin-left:6px;font-weight:500;font-size:12px;opacity:.55;">₹${neshEsc(it.sizeMrp[sz])}</s>` : ''}</span>` : ''}${n ? `<div class="nsz-mini"><button type="button" data-sz="${neshEsc(sz)}" data-d="-1">−</button><span>${n}</span><button type="button" data-sz="${neshEsc(sz)}" data-d="1">+</button></div>` : `<button type="button" class="nsz-add" data-sz="${neshEsc(sz)}" data-d="1">ADD</button>`}</div>`; }).join('')}</div>
       </div>
       <div class="nsz-foot"><button type="button" class="nsz-go"${count === 0 ? ' disabled' : ''}>${label}</button></div>`;
     sheet.querySelector('.nsz-x').onclick = close;
@@ -15718,7 +15866,7 @@ function renderSizeChips(container, it, onChange) {
       border:1.5px solid ${sz === selected ? 'var(--marigold-dark,#C97F00)' : '#ddd'};
       background:${sz === selected ? 'var(--marigold-dark,#C97F00)' : '#fff'};
       color:${sz === selected ? '#fff' : '#444'};
-    ">${sz}${(it.sizePrices && it.sizePrices[sz] > 0) ? ' · ₹' + it.sizePrices[sz] : ''}</button>
+    ">${sz}${(it.sizePrices && it.sizePrices[sz] > 0) ? ' · ₹' + it.sizePrices[sz] : ''}${(it.sizeMrp && it.sizePrices && Number(it.sizeMrp[sz]) > Number(it.sizePrices[sz])) ? ' <s style="opacity:.65;font-weight:500;">₹' + it.sizeMrp[sz] + '</s>' : ''}</button>
   `).join('');
   container.querySelectorAll('.size-chip-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -16209,6 +16357,7 @@ function couponPhoneKey() { try { return String((state.user && state.user.number
 function couponLocalUsed(id) { try { return (JSON.parse(localStorage.getItem('nesh_coupon_used') || '{}') || {})[id] || 0; } catch (e) { return 0; } }
 function couponUsed(id) { return Math.max(window.neshCouponUses[id] || 0, couponLocalUsed(id)); }
 function couponMarkUsed(id) {
+  if (id === 'REFERRAL') { try { referralMarkUsed(); } catch (e) {} return; }   // Refer & Earn reward used
   if (id === 'LOYALTY_S') {   // Groceries reward claimed
     window.NESH_LOYALTYS_PROG.claimed = (window.NESH_LOYALTYS_PROG.claimed || 0) + 1;
     const ph1 = couponPhoneKey();
@@ -16279,6 +16428,21 @@ function neshAutoApplyLoyalty() {
     }
   } catch (e) {}
 }
+// Refer & Earn WALLET: the referral balance (rewards x amount) goes on a Food order by itself at checkout; one reward is used per order.
+// If the customer removes it (Coupons & offers -> Remove) it is not re-applied for that shop until the order is placed.
+window.__walletAutoOff = null;
+function neshAutoApplyWallet() {
+  try {
+    if (!referralOn() || referralAvail() <= 0) return;
+    const r = state.selectedRestaurant;
+    if (!r || window.neshCoupon || window.__walletAutoOff === r.id) return;
+    if (!(couponItemsTotal(r.id) > 0)) return;
+    const c = (window.neshCoupons || []).find(x => x.id === 'REFERRAL');
+    if (!c || !couponsForShop(r.id).some(x => x.id === c.id)) return;
+    if (couponCheck(c, r.id, couponItemsTotal(r.id, c))) return;   // min order not met / not a Food order
+    window.neshCoupon = { id: 'REFERRAL', restId: r.id, restName: r.name, wallet: true };
+  } catch (e) {}
+}
 // Coupons the operator marked "Auto-apply": the best qualifying one goes on the order by itself at checkout (no code typed).
 // If the customer removes it, it is not re-applied for that shop until the order is placed.
 window.__cpnAutoOff = null;
@@ -16294,7 +16458,7 @@ function neshAutoApplyCoupons() {
       if (!why) return;                                        // still valid -> keep it
       // No longer qualifies (e.g. the cart total fell below the minimum order): remove it automatically and tell the customer.
       window.neshCoupon = null;
-      try { if (window.neshCouponSay && items > 0) window.neshCouponSay('Coupon ' + (cd ? cd.code : '') + ' removed. ' + why, false); } catch (e) {}
+      try { if (window.neshCouponSay && items > 0) window.neshCouponSay((cd && cd.referral ? 'Wallet' : 'Coupon ' + (cd ? cd.code : '')) + ' removed. ' + why, false); } catch (e) {}
       if (!cur.auto) return;                                   // customer's own / loyalty coupon: just removed
       // an auto coupon: fall through and look for another one that qualifies
     }
@@ -16372,6 +16536,13 @@ function neshCouponRetarget(r) {
 }
 function couponsForShop(restId) { return window.neshCoupons.filter(c => !c.off && (!c.exp || c.exp > Date.now()) && couponShopOk(c, restId) && couponScopeOk(c, restId)); }
 function couponCheck(c, restId, items) {   // '' = fine, otherwise the reason it can't be used
+  if (c.referral) {   // Refer & Earn reward: unlocked by a delivered first order (friend's or own), not by couponUses
+    if (!referralOn()) return 'This reward is not available right now.';
+    if (!couponCardOk(c, restId)) return 'This reward works only on Food orders.';
+    if (referralAvail() <= 0) return 'Refer a friend (or join with a friend\u2019s code) to earn this reward.';
+    if (c.minOrder > 0 && items < c.minOrder) return 'Add items worth \u20B9' + c.minOrder + ' or more to use this reward.';
+    return '';
+  }
   if (c.loyaltyS) {
     if (restId !== 'NESH_STORE') return 'This reward is only for Groceries.';
     if (loyaltySAvail() <= 0) return 'Complete ' + loyaltySN() + ' Groceries orders to unlock this reward.';
@@ -16448,7 +16619,7 @@ function refreshCouponUI() {
     const r = state.selectedRestaurant; if (!r) return;
     window.__cpnPending = null;   // customer's own choice: never re-apply an earlier auto-removed coupon
     code = String(code || '').trim().toUpperCase();
-    if (!code) { if (window.neshCoupon) { if (/^LOYALTY/.test(String(window.neshCoupon.id))) window.__loyAutoOff = window.neshCoupon.restId; else window.__cpnAutoOff = window.neshCoupon.restId; window.neshCoupon = null; say('Coupon removed.', true); updateLocSummary(); try { renderLoyaltyCard(); renderLoyaltySCard(); } catch (e) {} if (typeof selectedPaymentMethod !== 'undefined' && selectedPaymentMethod === 'gpay') setPaymentMethod('gpay'); } return; }
+    if (!code) { if (window.neshCoupon) { if (/^LOYALTY/.test(String(window.neshCoupon.id))) window.__loyAutoOff = window.neshCoupon.restId; else if (String(window.neshCoupon.id) === 'REFERRAL') window.__walletAutoOff = window.neshCoupon.restId; else window.__cpnAutoOff = window.neshCoupon.restId; window.neshCoupon = null; say('Coupon removed.', true); updateLocSummary(); try { renderLoyaltyCard(); renderLoyaltySCard(); } catch (e) {} if (typeof selectedPaymentMethod !== 'undefined' && selectedPaymentMethod === 'gpay') setPaymentMethod('gpay'); } return; }
     const c = couponsForShop(r.id).find(x => x.code === code);
     if (!c) { say('This code is not valid for this shop.', false); return; }
     const why = couponCheck(c, r.id, couponItemsTotal(r.id, c));
@@ -16485,9 +16656,9 @@ function renderCouponCards() {
   if (rmBtn) rmBtn.style.display = (window.neshCoupon && window.neshCoupon.restId === r.id) ? 'block' : 'none';
   const list = couponsForShop(r.id).filter(c => {
     if (!c.secret) return true;
-    if (!(c.loyalty || c.loyaltyS)) return false;   // other secret coupons only work by typing the code
+    if (!(c.loyalty || c.loyaltyS || c.referral)) return false;   // other secret coupons only work by typing the code
     const isOn = !!(window.neshCoupon && window.neshCoupon.id === c.id && window.neshCoupon.restId === r.id);
-    let avail = 0; try { avail = c.loyaltyS ? loyaltySAvail() : loyaltyAvail(); } catch (e) {}
+    let avail = 0; try { avail = c.referral ? referralAvail() : (c.loyaltyS ? loyaltySAvail() : loyaltyAvail()); } catch (e) {}
     return isOn || avail > 0;   // show an unlocked (or currently applied) loyalty reward
   });
   list.forEach(c => {
@@ -16539,12 +16710,362 @@ function renderCouponCards() {
         minOrder: +v[k].minOrder || 0, maxOrder: +v[k].maxOrder || 0, maxDiscount: +v[k].maxDiscount || 0, exp: +v[k].expiresAt || 0, off: !!v[k].off,
         desc: String(v[k].desc || '').slice(0, 40), allShops: !!v[k].allShops, secret: !!v[k].secret, auto: !!v[k].auto, shops: v[k].shops || {}, zones: v[k].zones || {}, cards: v[k].cards || {}, perCustomer: Math.max(1, +v[k].perCustomer || 1), maxUses: Math.max(0, +v[k].maxUses || 0)
       }));
-      try { window.neshLoyaltyRebuild && window.neshLoyaltyRebuild(); window.neshLoyaltySRebuild && window.neshLoyaltySRebuild(); } catch (e) {}
+      try { window.neshLoyaltyRebuild && window.neshLoyaltyRebuild(); window.neshLoyaltySRebuild && window.neshLoyaltySRebuild(); window.neshReferralRebuild && window.neshReferralRebuild(); } catch (e) {}
       refreshCouponUI();
       try { if (typeof orderSummaryOverlay !== 'undefined' && orderSummaryOverlay.classList.contains('show')) updateLocSummary(); } catch (e) {}   // checkout already open: apply auto coupons now
     }, () => {});
   } catch (e) {}
 })();
+// ---------- Refer & Earn (Operator Panel -> Refer & Earn) ----------
+// app_config/referral = { on, value, minOrder, minFirst, maxRewards, link }
+// referral/{phone} = { code, by, byAt, done, claimed }     referralCodes/{CODE} = phone
+// referralFriends/{referrerPhone}/{friendPhone} = { j: joined at, d: first order delivered at }
+// The reward is a built-in coupon with id 'REFERRAL' (flat \u20B9 off, Food orders only), applied through the normal coupon engine.
+// earned = (my own first order delivered after I joined with a friend's code ? 1 : 0) + friends whose first order was delivered (max = maxRewards); available = earned - claimed.
+window.NESH_REF = null;
+window.NESH_REF_PROG = { claimed: 0, loaded: false };
+window.NESH_REF_FRIENDS = {};
+window.NESH_REF_INST = {};   // referralInstalls/{myCode}/{deviceKey} = { t } : friends who installed via my link but have not signed up yet
+try { const m = /[?&]ref=([A-Za-z0-9]{4,12})/.exec(location.search || ''); if (m) localStorage.setItem('nesh_ref_pending', m[1].toUpperCase()); } catch (e) {}
+// Native app: a friend who installed from the Play Store link (...&referrer=ref%3DCODE) gets the code via the Play Install Referrer (NeshReferrer plugin). Read once per install.
+try {
+  const NR = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.NeshReferrer;
+  if (NR && !localStorage.getItem('nesh_ref_checked')) {
+    NR.getReferrer().then(r => {
+      try {
+        localStorage.setItem('nesh_ref_checked', '1');
+        const m = /(?:^|[?&])ref=([A-Za-z0-9]{4,12})/.exec(String((r && r.referrer) || ''));
+        if (m) { localStorage.setItem('nesh_ref_pending', m[1].toUpperCase()); referralReportInstall(m[1].toUpperCase()); }
+      } catch (e) {}
+    }).catch(() => {});
+  }
+} catch (e) {}
+// One tiny write per install (before login): the referrer sees "installed, waiting to sign up". Removed again when the friend applies the code.
+function referralReportInstall(code) {
+  try {
+    if (!code || localStorage.getItem('nesh_ref_inst')) return;
+    (function w(n) {
+      if (!window.fb) { if (n < 60) setTimeout(() => w(n + 1), 500); return; }
+      const key = neshSanitizeFbKey(NESH_DEVICE_ID);
+      window.fb.set(window.fb.ref(window.fb.db, 'referralInstalls/' + code + '/' + key), { t: Date.now() })
+        .then(() => { try { localStorage.setItem('nesh_ref_inst', code + '|' + key); } catch (e) {} }).catch(() => {});
+    })(0);
+  } catch (e) {}
+}
+function referralOn() { const c = window.NESH_REF; return !!(c && c.on !== false && Number(c.value) > 0); }
+function referralValue() { return Math.round((Number(window.NESH_REF && window.NESH_REF.value) || 0) * 100) / 100; }
+function referralFriendsDone() {
+  const cap = Math.max(1, Math.floor(Number(window.NESH_REF && window.NESH_REF.maxRewards) || 20));
+  const f = window.NESH_REF_FRIENDS || {};
+  let n = 0; Object.keys(f).forEach(k => { if (f[k] && Number(f[k].d) > 0) n++; });
+  return Math.min(n, cap);
+}
+function referralEarned() { return (Number(window.NESH_REF_PROG.done) > 0 ? 1 : 0) + referralFriendsDone(); }
+function referralAvail() { return referralOn() ? Math.max(0, referralEarned() - (Number(window.NESH_REF_PROG.claimed) || 0)) : 0; }
+// Wallet: every earned reward keeps the amount it had WHEN IT WAS EARNED (referralFriends/{referrer}/{friend}/a and referral/{me}/doneAmt),
+// so changing the amount in the Operator Panel only affects rewards earned afterwards. Rewards earned before this existed fall back to the current amount.
+// Rewards are used oldest first (claimed = how many were used).
+function referralRewardList() {
+  const cur = referralValue(), P = window.NESH_REF_PROG || {}, L = [];
+  if (Number(P.done) > 0) L.push({ t: Number(P.done), a: Number(P.doneAmt) > 0 ? Number(P.doneAmt) : cur });
+  const f = window.NESH_REF_FRIENDS || {}, fl = [];
+  Object.keys(f).forEach(k => { if (f[k] && Number(f[k].d) > 0) fl.push({ t: Number(f[k].d), a: Number(f[k].a) > 0 ? Number(f[k].a) : cur }); });
+  fl.sort((x, y) => x.t - y.t);
+  const cap = Math.max(1, Math.floor(Number(window.NESH_REF && window.NESH_REF.maxRewards) || 20));
+  return L.concat(fl.slice(0, cap)).sort((x, y) => x.t - y.t);
+}
+function referralUnused() { return referralOn() ? referralRewardList().slice(Number((window.NESH_REF_PROG || {}).claimed) || 0) : []; }
+function referralBalance() { return Math.round(referralUnused().reduce((t, x) => t + x.a, 0) * 100) / 100; }
+function referralNextAmount() { const u = referralUnused(); return u.length ? u[0].a : referralValue(); }
+function referralMarkUsed() {
+  window.NESH_REF_PROG.claimed = (Number(window.NESH_REF_PROG.claimed) || 0) + 1;
+  const ph = couponPhoneKey();
+  if (ph && window.fb) { try { window.fb.runTransaction(window.fb.ref(window.fb.db, 'referral/' + ph + '/claimed'), n => (n || 0) + 1); } catch (e) {} }
+  try { neshReferralRebuildAll(); } catch (e) {}
+}
+window.neshReferralRebuild = function () {
+  window.neshCoupons = (window.neshCoupons || []).filter(x => x.id !== 'REFERRAL');
+  if (referralOn()) {
+    const c = window.NESH_REF;
+    window.neshCoupons.push({
+      id: 'REFERRAL', code: 'REFERRAL', referral: true, gift: false, type: 'flat', value: referralNextAmount() || Number(c.value) || 0,
+      minOrder: Number(c.minOrder) || 0, maxOrder: 0, maxDiscount: 0, exp: 0, off: false,
+      desc: 'Refer & Earn reward', allShops: true, secret: true, shops: {}, zones: {}, cards: { food: true }, perCustomer: 1, maxUses: 0
+    });
+  }
+  try { refreshCouponUI(); } catch (e) {}
+};
+// Code came from a referral link / Play install: apply it automatically once the customer is logged in, the Refer & Earn config and
+// the customer's own progress are loaded (only before the first order; bad codes are dropped).
+function referralAutoApplyPending() {
+  try {
+    const P = window.NESH_REF_PROG;
+    if (!P || !P.loaded || P.by || !referralOn() || !couponPhoneKey() || window.__refAuto) return;
+    const pend = localStorage.getItem('nesh_ref_pending') || ''; if (!pend) return;
+    window.__refAuto = 1;
+    referralApplyCode(pend).then(r => {
+      window.__refAuto = 0;
+      if (r.ok) neshReferralRebuildAll();
+      else if (/not valid|own code|before your first|already used/i.test(r.msg)) { try { localStorage.removeItem('nesh_ref_pending'); } catch (e) {} }
+    }).catch(() => { window.__refAuto = 0; });
+  } catch (e) {}
+}
+function neshReferralRebuildAll() {
+  try { referralAutoApplyPending(); } catch (e) {}
+  try { window.neshReferralRebuild(); } catch (e) {}
+  try { neshRenderReferralCard(); } catch (e) {}
+  try { neshReferralSheetRefresh(); } catch (e) {}
+}
+// ---- config + progress listeners (3 tiny nodes) ----
+(function w() {
+  if (!window.fb) return setTimeout(w, 300);
+  try {
+    window.fb.onValue(window.fb.ref(window.fb.db, 'app_config/referral'), snap => { window.NESH_REF = snap.val() || null; neshReferralRebuildAll(); }, () => {});
+  } catch (e) {}
+})();
+(function () {
+  let subPhone = '', un1 = null, un2 = null, un3 = null, instCode = '', loadedP = false, loadedF = false;
+  function baseline() {   // celebrate when a reward is earned while the app is open (first load only sets the baseline)
+    if (!(loadedP && loadedF)) return;
+    const e = referralEarned(), prev = window.__refEarned;
+    window.__refEarned = e;
+    if (prev != null && e > prev && referralOn()) { try { neshRewardCelebrate('\u20B9' + referralValue() + ' OFF', 'Refer & Earn amount added to your wallet! It is applied automatically on your next Food order.'); } catch (x) {} }
+  }
+  setInterval(() => {
+    const ph = couponPhoneKey();
+    if (!window.fb || ph === subPhone) return;
+    subPhone = ph; [un1, un2, un3].forEach(u => { if (u) { try { u(); } catch (e) {} } }); un1 = un2 = un3 = null; instCode = ''; window.NESH_REF_INST = {};
+    window.NESH_REF_PROG = { claimed: 0, loaded: false }; window.NESH_REF_FRIENDS = {}; loadedP = loadedF = false; window.__refEarned = null;
+    neshReferralRebuildAll();
+    if (!ph) return;
+    try {
+      un1 = window.fb.onValue(window.fb.ref(window.fb.db, 'referral/' + ph), snap => {
+        const v = snap.val() || {};
+        window.NESH_REF_PROG = { code: v.code || '', by: v.by || '', byAt: Number(v.byAt) || 0, done: Number(v.done) || 0, doneAmt: Number(v.doneAmt) || 0, claimed: Number(v.claimed) || 0, loaded: true };
+        loadedP = true; baseline(); neshReferralRebuildAll();
+        if (v.code && instCode !== v.code) {   // watch installs made through MY code (one small node)
+          instCode = v.code; if (un3) { try { un3(); } catch (e) {} }
+          try { un3 = window.fb.onValue(window.fb.ref(window.fb.db, 'referralInstalls/' + v.code), sn => { window.NESH_REF_INST = sn.val() || {}; neshReferralSheetRefresh(); }, () => {}); } catch (e) {}
+        }
+        referralAutoApplyPending();
+      }, () => {});
+      un2 = window.fb.onValue(window.fb.ref(window.fb.db, 'referralFriends/' + ph), snap => {
+        window.NESH_REF_FRIENDS = snap.val() || {};
+        loadedF = true; baseline(); neshReferralRebuildAll();
+      }, () => {});
+    } catch (e) {}
+  }, 2000);
+})();
+// ---- the friend's first order is DELIVERED -> mark it done (the friend and the referrer both get a reward) ----
+// Called from every place that sees a delivered order (same hooks as the Hero offer); safe to call repeatedly.
+(function () {
+  const checked = {};
+  window.neshReferralDelivered = function (orderKey, ord) {
+    try {
+      const ph = couponPhoneKey(), P = window.NESH_REF_PROG;
+      if (!orderKey || !ph || !window.fb || checked[orderKey] || !referralOn() || !P.loaded || !P.by || Number(P.done) > 0) return;
+      const created = Number(ord && ord.createdAt) || 0;
+      if (created && P.byAt && created < Number(P.byAt) - 60000) { checked[orderKey] = true; return; }   // placed before joining with the code: not the friend's first order
+      const min = Number((window.NESH_REF || {}).minFirst) || 0;
+      if (min > 0) {
+        if (!(ord && Array.isArray(ord.items))) return;   // amount unknown yet: decided the next time this order is seen
+        const amt = ord.items.reduce((t, it) => t + (Number(it.price) || 0) * (Number(it.qty) || 0), 0);
+        if (amt < min) { checked[orderKey] = true; return; }   // below the minimum: a later order can still qualify
+      }
+      checked[orderKey] = true;
+      const { db, ref, set, runTransaction } = window.fb, now = Date.now();
+      const amtNow = referralValue();
+      Promise.resolve(set(ref(db, 'referralFriends/' + P.by + '/' + ph + '/a'), amtNow)).catch(() => {})
+        .then(() => Promise.resolve(runTransaction(ref(db, 'referral/' + ph + '/doneAmt'), n => n || amtNow)).catch(() => {}))
+        .then(() => set(ref(db, 'referralFriends/' + P.by + '/' + ph + '/d'), now))
+        .then(() => runTransaction(ref(db, 'referral/' + ph + '/done'), n => n || now))
+        .catch(() => { delete checked[orderKey]; });
+    } catch (e) {}
+  };
+})();
+// ---- own code (created once, 6 characters) + using a friend's code ----
+let _refCodeP = null;
+function referralEnsureCode() {
+  const ph = couponPhoneKey(), P = window.NESH_REF_PROG;
+  if (P.code) return Promise.resolve(P.code);
+  if (!ph || !window.fb) return Promise.resolve('');
+  if (_refCodeP) return _refCodeP;
+  const { db, ref, set, runTransaction } = window.fb;
+  const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const mk = () => { let s = ''; for (let i = 0; i < 6; i++) s += A[Math.floor(Math.random() * A.length)]; return s; };
+  const attempt = n => {
+    if (n >= 6) return Promise.resolve('');
+    const code = mk();
+    return runTransaction(ref(db, 'referralCodes/' + code), cur => (cur === null || cur === undefined) ? ph : undefined)
+      .then(res => res.committed ? set(ref(db, 'referral/' + ph + '/code'), code).then(() => { window.NESH_REF_PROG.code = code; return code; }) : attempt(n + 1));
+  };
+  _refCodeP = attempt(0).catch(() => '').then(c => { _refCodeP = null; return c; });
+  return _refCodeP;
+}
+function referralApplyCode(raw) {
+  const ph = couponPhoneKey(), P = window.NESH_REF_PROG;
+  const code = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const bad = msg => Promise.resolve({ ok: false, msg });
+  if (!window.fb || !ph) return bad('Please log in first.');
+  if (!referralOn()) return bad('Refer & Earn is not available right now.');
+  if (P.by) return bad('You have already used a friend\u2019s code.');
+  if (code.length < 4) return bad('Enter your friend\u2019s code.');
+  const { db, ref, get, set, update } = window.fb;
+  return get(ref(db, 'referralCodes/' + code)).then(s => {
+    const friend = s.exists() ? String(s.val()) : '';
+    if (!friend) return { ok: false, msg: 'This code is not valid.' };
+    if (friend === ph) return { ok: false, msg: 'You cannot use your own code.' };
+    return get(ref(db, 'customers/' + ph + '/orderIndex')).then(os => {
+      if (os.exists()) return { ok: false, msg: 'A friend\u2019s code works only before your first order.' };
+      const now = Date.now();
+      return update(ref(db, 'referral/' + ph), { by: friend, byAt: now })
+        .then(() => set(ref(db, 'referralFriends/' + friend + '/' + ph + '/j'), now))
+        .then(() => { try { const x = (localStorage.getItem('nesh_ref_inst') || '').split('|'); if (x.length === 2 && window.fb.remove) window.fb.remove(ref(db, 'referralInstalls/' + x[0] + '/' + x[1])).catch(() => {}); localStorage.removeItem('nesh_ref_inst'); } catch (e) {} })
+        .then(() => { try { localStorage.removeItem('nesh_ref_pending'); } catch (e) {} return { ok: true, msg: '\u2705 Code applied! Your \u20B9' + referralValue() + ' reward unlocks when your first order is delivered.' }; });
+    });
+  }).catch(() => ({ ok: false, msg: 'Could not check the code. Check your internet and try again.' }));
+}
+// ---- UI: Food home card + sheet ----
+function referralCss() {
+  if (document.getElementById('nesh-ref-css')) return;
+  const st = document.createElement('style'); st.id = 'nesh-ref-css';
+  st.textContent = [
+    '#screen-home:not([data-cat="hotel"]) #ref-home-card{display:none !important}',
+    '#ref-home-card{padding:4px 24px 10px}',
+    '.rf-card{width:100%;display:flex;align-items:center;gap:12px;text-align:left;border:0;cursor:pointer;padding:12px 14px;border-radius:18px;background:linear-gradient(135deg,#FFF1B8,#FFD84D);box-shadow:0 8px 18px -10px rgba(242,169,0,.8);-webkit-tap-highlight-color:transparent}',
+    '.rf-card:active{transform:scale(.99)}',
+    '.rf-card .rf-ic{font-size:28px;line-height:1}',
+    '.rf-card b{display:block;font:800 14.5px/1.2 Poppins,Inter,sans-serif;color:#3A2A00}',
+    '.rf-card .rf-sub{display:block;margin-top:3px;font:600 12px/1.3 Inter,sans-serif;color:#5C4700}',
+    '.rf-card .rf-go{margin-left:auto;font:800 22px/1 Inter,sans-serif;color:#3A2A00}',
+    '#rf-ov{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center;opacity:0;transition:opacity .2s}',
+    '#rf-ov.show{display:flex}#rf-ov.in{opacity:1}',
+    '#rf-sheet{width:100%;max-width:520px;background:#F4F2EA;border-radius:22px 22px 0 0;max-height:90vh;overflow-y:auto;transform:translateY(100%);transition:transform .25s ease;font-family:Inter,sans-serif;color:#2B2410;padding:16px 16px calc(18px + env(safe-area-inset-bottom,0px))}',
+    '#rf-ov.in #rf-sheet{transform:none}',
+    '.rf-head{display:flex;align-items:center;gap:8px}.rf-head b{flex:1;font:800 18px/1.2 Poppins,Inter,sans-serif}',
+    '.rf-x{border:0;background:rgba(0,0,0,.08);width:32px;height:32px;border-radius:50%;font-size:15px;cursor:pointer;color:inherit}',
+    '.rf-lead{margin:8px 0 12px;font:500 13.5px/1.45 Inter,sans-serif}',
+    '.rf-box{background:#fff;border-radius:16px;padding:12px 14px;margin:0 0 12px;box-shadow:0 2px 0 rgba(43,36,16,.08)}',
+    '.rf-lab{margin:0 0 6px;font:700 11.5px/1 Inter,sans-serif;letter-spacing:.6px;text-transform:uppercase;opacity:.65}',
+    '.rf-code{display:flex;align-items:center;gap:10px}',
+    '.rf-code span{flex:1;font:800 26px/1 Poppins,Inter,sans-serif;letter-spacing:3px;border:2px dashed #D6A300;border-radius:12px;padding:10px 12px;text-align:center}',
+    '.rf-btn{border:0;border-radius:12px;padding:11px 14px;font:800 13.5px/1 Inter,sans-serif;cursor:pointer;background:#2B2410;color:#fff}',
+    '.rf-btn.alt{background:#FFD84D;color:#3A2A00}.rf-btn.wa{background:#1FAF55;color:#fff}.rf-btn:disabled{opacity:.5}',
+    '.rf-row{display:flex;gap:8px;margin-top:10px}.rf-row .rf-btn{flex:1}',
+    '.rf-good{background:#E6F8EF;color:#0E6B47;border-radius:14px;padding:11px 14px;margin:0 0 12px;font:700 13px/1.4 Inter,sans-serif}',
+    '.rf-stats{display:flex;gap:8px}.rf-stats div{flex:1;text-align:center;background:#fff;border-radius:14px;padding:10px 4px}',
+    '.rf-stats b{display:block;font:800 20px/1.1 Poppins,Inter,sans-serif}.rf-stats small{font:600 11px/1.2 Inter,sans-serif;opacity:.7}',
+    '.rf-in{display:flex;gap:8px}.rf-in input{flex:1;min-width:0;border:1.5px solid #E4D9A8;border-radius:12px;padding:11px 12px;font:700 15px/1 Inter,sans-serif;letter-spacing:2px;text-transform:uppercase;background:#fff;color:inherit}',
+    '.rf-msg{margin:8px 0 0;font:600 12.5px/1.4 Inter,sans-serif}.rf-msg.ok{color:#0E6B47}.rf-msg.no{color:#C62828}',
+    '.rf-fr{display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid rgba(0,0,0,.07);font:600 13px/1.3 Inter,sans-serif}.rf-fr:first-of-type{border-top:0}',
+    'html[data-theme="dark"] #rf-sheet{background:#17140D;color:#E7E0CD}',
+    'html[data-theme="dark"] .rf-box,html[data-theme="dark"] .rf-stats div{background:#221E15}',
+    'html[data-theme="dark"] .rf-in input{background:#221E15;border-color:#4A4020}',
+    'html[data-theme="dark"] .rf-x{background:rgba(255,255,255,.12)}',
+    'html[data-theme="dark"] .rf-good{background:#12382B;color:#7FE3BC}'
+  ].join('\n');
+  document.head.appendChild(st);
+}
+function neshRenderReferralCard() {
+  const el = document.getElementById('ref-home-card'); if (!el) return;
+  let show = false;
+  try { show = referralOn() && state.category === 'hotel' && !martFoodLook() && !(searchInput && searchInput.value); } catch (e) {}
+  if (!show) { el.style.display = 'none'; return; }
+  referralCss();
+  const v = referralValue(), av = referralAvail();
+  const html = av > 0
+    ? '<span class="rf-ic">\uD83D\uDCB0</span><div><b>Wallet \u20B9' + referralBalance() + '</b><span class="rf-sub">Applied automatically on your next Food order \u00B7 tap to see</span></div><span class="rf-go">\u203A</span>'
+    : '<span class="rf-ic">\uD83C\uDF81</span><div><b>Refer &amp; Earn \u20B9' + v + '</b><span class="rf-sub">Invite a friend \u2014 you both get \u20B9' + v + ' off when their first order is delivered</span></div><span class="rf-go">\u203A</span>';
+  if (el.dataset.h !== html) {
+    el.dataset.h = html;
+    el.innerHTML = '<button type="button" class="rf-card">' + html + '</button>';
+    el.querySelector('.rf-card').addEventListener('click', neshOpenReferralSheet);
+  }
+  el.style.display = 'block';
+}
+function neshReferralSheetRefresh() { const ov = document.getElementById('rf-ov'); if (ov && ov.classList.contains('show')) neshReferralSheetDraw(); }
+function neshCloseReferralSheet() { const ov = document.getElementById('rf-ov'); if (!ov) return; ov.classList.remove('in'); setTimeout(() => ov.classList.remove('show'), 220); }
+function neshOpenReferralSheet() {
+  if (!couponPhoneKey()) { try { showInfoModal('Login needed', 'Please log in to use Refer & Earn.'); } catch (e) {} return; }
+  referralCss();
+  let ov = document.getElementById('rf-ov');
+  if (!ov) {
+    ov = document.createElement('div'); ov.id = 'rf-ov';
+    ov.innerHTML = '<div id="rf-sheet" role="dialog" aria-modal="true"></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', e => { if (e.target === ov) neshCloseReferralSheet(); });
+  }
+  window.__rfMsg = null;
+  neshReferralSheetDraw();
+  ov.classList.add('show');
+  requestAnimationFrame(() => requestAnimationFrame(() => ov.classList.add('in')));
+  referralEnsureCode().then(() => neshReferralSheetRefresh());
+}
+function neshReferralSheetDraw() {
+  const sheet = document.getElementById('rf-sheet'); if (!sheet) return;
+  const inp0 = sheet.querySelector('#rf-in'), keepVal = inp0 ? inp0.value : null, hadFocus = !!inp0 && document.activeElement === inp0;
+  const c = window.NESH_REF || {}, P = window.NESH_REF_PROG, v = referralValue(), av = referralAvail();
+  const min = Number(c.minOrder) || 0, minF = Number(c.minFirst) || 0;
+  const fr = window.NESH_REF_FRIENDS || {}, keys = Object.keys(fr).filter(k => fr[k]);
+  const instRaw = window.NESH_REF_INST || {}, instCut = Date.now() - 30 * 86400000, instKeys = Object.keys(instRaw).filter(k => instRaw[k] && Number(instRaw[k].t) > instCut);
+  const done = keys.filter(k => Number(fr[k].d) > 0).length;
+  const code = P.code || '';
+  const msg = window.__rfMsg;
+  if (!referralOn()) {
+    sheet.innerHTML = '<div class="rf-head"><b>\uD83C\uDF81 Refer &amp; Earn</b><button type="button" class="rf-x" aria-label="Close">\u2715</button></div><p class="rf-lead">Refer &amp; Earn is not running right now. Check back soon!</p>';
+    sheet.querySelector('.rf-x').onclick = neshCloseReferralSheet; return;
+  }
+  const mask = k => k.length > 5 ? k.slice(0, 2) + '\u2022\u2022\u2022\u2022\u2022' + k.slice(-3) : k;
+  let friendBox = '';
+  if (P.by) {
+    friendBox = '<div class="rf-box"><p class="rf-lab">Your friend\u2019s code</p><p style="margin:0;font:700 13.5px/1.4 Inter,sans-serif;">' + (Number(P.done) > 0
+      ? '\u2705 Your welcome reward is unlocked \u2014 use it on your next Food order.'
+      : '\u2705 You joined with a friend\u2019s code. Your \u20B9' + v + ' reward unlocks when your first order is delivered' + (minF > 0 ? ' (items worth \u20B9' + minF + ' or more)' : '') + '.') + '</p></div>';
+  } else {
+    let pre = ''; try { pre = localStorage.getItem('nesh_ref_pending') || ''; } catch (e) {}
+    friendBox = '<div class="rf-box"><p class="rf-lab">Have a friend\u2019s code?</p><div class="rf-in"><input id="rf-in" type="text" maxlength="12" autocomplete="off" autocapitalize="characters" placeholder="Enter code" value="' + escapeHtml(pre) + '"><button type="button" class="rf-btn" id="rf-apply">Apply</button></div><p style="margin:8px 0 0;font:500 12px/1.4 Inter,sans-serif;opacity:.75;">Works only before your first order. You both get \u20B9' + v + ' off after your first order is delivered.</p></div>';
+  }
+  sheet.innerHTML =
+    '<div class="rf-head"><b>\uD83C\uDF81 Refer &amp; Earn</b><button type="button" class="rf-x" aria-label="Close">\u2715</button></div>' +
+    '<p class="rf-lead">Share your code. When your friend\u2019s <b>first order is delivered</b>, you <b>both</b> get <b>\u20B9' + v + ' off</b> your next Food order' + (min > 0 ? ' (min order \u20B9' + min + ')' : '') + '.</p>' +
+    (av > 0 ? '<div class="rf-good">\uD83D\uDCB0 <b>Wallet balance \u20B9' + referralBalance() + '</b> (\u20B9' + referralNextAmount() + ' used on your next Food order). It is applied automatically at checkout' + (min > 0 ? ' on orders of \u20B9' + min + '+' : '') + '. You can remove it in <b>Coupons &amp; offers</b>.</div>' : '') +
+    '<div class="rf-box"><p class="rf-lab">Your code</p><div class="rf-code"><span>' + (code ? escapeHtml(code) : '\u2026') + '</span></div>' +
+      '<div class="rf-row"><button type="button" class="rf-btn alt" id="rf-copy"' + (code ? '' : ' disabled') + '>Copy code</button><button type="button" class="rf-btn wa" id="rf-share"' + (code ? '' : ' disabled') + '>Share</button></div></div>' +
+    '<div class="rf-stats"><div><b>' + (keys.length + instKeys.length) + '</b><small>Friends joined</small></div><div><b>' + done + '</b><small>First orders delivered</small></div><div><b>\u20B9' + referralBalance() + '</b><small>Wallet balance</small></div></div>' +
+    '<div style="height:12px"></div>' + friendBox +
+    ((keys.length || instKeys.length) ? '<div class="rf-box"><p class="rf-lab">Your friends</p>' + keys.slice(0, 15).map(k => '<div class="rf-fr"><span>' + escapeHtml(mask(k)) + '</span><span>' + (Number(fr[k].d) > 0 ? '\u2705 Delivered' : '\u23F3 Waiting for first order') + '</span></div>').join('') + instKeys.slice(0, Math.max(0, 15 - keys.length)).map((k, i) => '<div class="rf-fr"><span>\uD83D\uDCF2 New friend ' + (i + 1) + '</span><span>\u23F3 Installed \u00B7 waiting to sign up</span></div>').join('') + '</div>' : '') +
+    '<p class="rf-msg' + (msg ? (msg.ok ? ' ok' : ' no') : '') + '" id="rf-msg">' + (msg ? escapeHtml(msg.t) : '') + '</p>';
+  sheet.querySelector('.rf-x').onclick = neshCloseReferralSheet;
+  const say = (t, ok) => { window.__rfMsg = { t, ok }; const m = sheet.querySelector('#rf-msg'); if (m) { m.textContent = t; m.className = 'rf-msg ' + (ok ? 'ok' : 'no'); } };
+  const cp = sheet.querySelector('#rf-copy');
+  if (cp) cp.onclick = () => {
+    const done2 = () => say('Code copied \u2705', true);
+    try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(code).then(done2, () => say('Could not copy. Long-press the code to copy.', false)); return; } } catch (e) {}
+    try { const t = document.createElement('textarea'); t.value = code; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); done2(); } catch (e) { say('Could not copy. Long-press the code to copy.', false); }
+  };
+  const sh = sheet.querySelector('#rf-share');
+  if (sh) sh.onclick = () => {
+    const PLAY = 'https://play.google.com/store/apps/details?id=com.neshgroup.nesh';
+    let link = String(c.link || PLAY);
+    // Play Store link carries the code as install referrer (the app reads it on first open); web links carry ?ref=CODE
+    if (code) {
+      if (/play\.google\.com/i.test(link)) { if (!/[?&]referrer=/i.test(link)) link += (link.indexOf('?') > -1 ? '&' : '?') + 'referrer=' + encodeURIComponent('ref=' + code); }
+      else if (!/[?&]ref=/i.test(link)) link += (link.indexOf('?') > -1 ? '&' : '?') + 'ref=' + encodeURIComponent(code);
+    }
+    const web = (code && /play\.google\.com/i.test(link)) ? '\nWeb: https://neshapp.in/?ref=' + encodeURIComponent(code) : '';
+    const text = 'Join NESH and get \u20B9' + v + ' off! \uD83C\uDF81 Use my code ' + code + ' in Refer & Earn after you sign up.\n' + link + web;
+    try { if (navigator.share) { navigator.share({ text }).catch(() => {}); return; } } catch (e) {}
+    try { window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank'); } catch (e) {}
+  };
+  const ap = sheet.querySelector('#rf-apply'), inp = sheet.querySelector('#rf-in');
+  if (inp && keepVal !== null && keepVal !== '') inp.value = keepVal;
+  if (inp && hadFocus) { try { inp.focus(); } catch (e) {} }
+  if (ap && inp) ap.onclick = () => {
+    ap.disabled = true; say('Checking\u2026', true);
+    referralApplyCode(inp.value).then(r => { say(r.msg, r.ok); ap.disabled = false; if (r.ok) neshReferralRebuildAll(); });
+  };
+}
+
 // ---------- Loyalty reward (Operator Panel -> Loyalty Reward): "order N times, get a coupon / free product" ----------
 // app_config/loyalty = { on, ordersNeeded, title, rewardType:'discount'|'product', type:'flat'|'percent', value, maxDiscount, minOrder, productName, allShops, shops:{id:true} }
 // Per-customer progress lives at loyalty/{phone} = { count, claimed, g:{orderKey:groupId}, counted:{groupId:ts} }. A group (multi-shop) checkout counts as ONE order.
@@ -17677,6 +18198,7 @@ function setTip(v) {
 })();
 function updateLocSummary() {
   neshAutoApplyLoyalty();   // unlocked loyalty reward goes on the order automatically (removable in Coupons & offers)
+  neshAutoApplyWallet();    // Refer & Earn wallet balance goes on Food orders automatically (removable in Coupons & offers)
   neshAutoApplyCoupons();   // operator's "Auto-apply" coupons
   const itemsTotal = currentCartItemsTotal();
   const fee = currentPlatformFee();
@@ -17759,7 +18281,7 @@ function updateLocSummary() {
     cpnRow.style.display = cpn > 0 ? 'flex' : 'none';
     const cd = document.getElementById('loc-summary-coupon'); if (cd) cd.textContent = '-₹' + cpn;
     const cl = document.getElementById('loc-summary-coupon-label'), cdef = window.neshCoupon && window.neshCoupons.find(x => x.id === window.neshCoupon.id);
-    if (cl) cl.textContent = cdef ? 'Coupon ' + cdef.code : 'Coupon';
+    if (cl) cl.textContent = cdef ? (cdef.referral ? 'Wallet (Refer & Earn)' : 'Coupon ' + cdef.code) : 'Coupon';
   }
   const tipAmt = currentTipAmount();
   const tipRowEl = document.getElementById('loc-summary-tip-row');
@@ -18284,9 +18806,11 @@ function landmarkTypeFromProps(p) {
     (p.building && p.building !== 'yes' ? p.building : 'building')).replace(/_/g, ' ');
 }
 
-const LANDMARKS_URL = 'https://neshapp.in/export.geojson';
-const LANDMARKS_CACHE_KEY = 'nesh_landmarks_geo_v2';
-try { localStorage.removeItem('nesh_landmarks_geo_v1'); } catch (e) {}   // old cached copy is no longer needed
+// Bump LANDMARKS_VER whenever export.geojson is updated: customers then fetch the new file once and keep it.
+const LANDMARKS_VER = '1';
+const LANDMARKS_URL = 'https://neshapp.in/export.geojson?v=' + LANDMARKS_VER;
+const LANDMARKS_CACHE_KEY = 'nesh_landmarks_geo_v3_' + LANDMARKS_VER;
+try { ['nesh_landmarks_geo_v1','nesh_landmarks_geo_v2'].forEach(k => localStorage.removeItem(k)); for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k && k.indexOf('nesh_landmarks_geo_v3_') === 0 && k !== LANDMARKS_CACHE_KEY) localStorage.removeItem(k); } } catch (e) {}   // old cached copy is no longer needed
 function neshBuildLandmarks(geo) {
   const LM = [], LOC = [];
   let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
@@ -18330,7 +18854,7 @@ function loadLocalLandmarks() {
   let cached = null;
   try { cached = JSON.parse(localStorage.getItem(LANDMARKS_CACHE_KEY) || 'null'); } catch (e) {}
   if (cached && cached.features) { try { neshBuildLandmarks(cached); } catch (e) {} }
-  const fetchFresh = (tries) => fetch(LANDMARKS_URL, { cache: 'no-cache' })
+  const fetchFresh = (tries) => fetch(LANDMARKS_URL)
     .then(res => { if (!res.ok) throw new Error('http ' + res.status); return res.json(); })
     .then(geo => {
       if (!geo || !Array.isArray(geo.features) || !geo.features.length) throw new Error('empty');
@@ -18347,7 +18871,7 @@ function loadLocalLandmarks() {
     });
   localLandmarksLoadPromise = (cached && cached.features ? Promise.resolve(LOCAL_LANDMARKS) : fetchFresh(3))
     .catch(() => { localLandmarksLoadPromise = null; if (!LOCAL_LANDMARKS) { LOCAL_LANDMARKS = []; LOCAL_LOCALITIES = []; } return LOCAL_LANDMARKS; });
-  if (cached && cached.features) fetchFresh(3).catch(() => {});   // background refresh; the cached copy is already in use
+  // cached copy for this version is already in use: no network call (a new LANDMARKS_VER fetches the new file once)
   return localLandmarksLoadPromise;
 }
 loadLocalLandmarks();
@@ -19795,7 +20319,7 @@ function cpSyncHeader() {
   card.style.display = has ? '' : 'none';
   const txt = document.getElementById('cp-coupon-text');
   const ap = (window.neshCoupon && window.neshCoupon.restId === r.id) ? (window.neshCoupons || []).find(x => x.id === window.neshCoupon.id) : null;
-  if (ap) { let sv = 0; try { sv = currentCouponDiscount(); if (!sv) { const _pl = (typeof window.neshMultiCouponPlan === 'function') ? window.neshMultiCouponPlan() : null; if (_pl && _pl.id === ap.id) sv = Number(_pl.amount) || 0; } } catch (e) {} txt.textContent = 'Coupon ' + ap.code + ' applied' + (sv > 0 ? ' · saved ₹' + sv : ''); txt.classList.add('on'); }
+  if (ap) { let sv = 0; try { sv = currentCouponDiscount(); if (!sv) { const _pl = (typeof window.neshMultiCouponPlan === 'function') ? window.neshMultiCouponPlan() : null; if (_pl && _pl.id === ap.id) sv = Number(_pl.amount) || 0; } } catch (e) {} txt.textContent = (ap.referral ? 'Wallet' : 'Coupon ' + ap.code) + ' applied' + (sv > 0 ? ' · saved ₹' + sv : ''); txt.classList.add('on'); }
   else { txt.textContent = 'View coupons'; txt.classList.remove('on'); }
   const apId = ap ? ap.id : null;
   if (apId && apId !== cpLastCoupon) document.getElementById('cp-coupon-sheet').classList.remove('show');
@@ -20416,7 +20940,7 @@ payConfirmBtn.addEventListener('click', async () => {
   state.cartSizes = {};
     state.pendingCheckout = null;
     window.__cpSavedPopLast = null;   // order placed: next order may show the saved pop-up again
-    if (window.__couponPending) { couponMarkUsed(window.__couponPending); window.__couponPending = null; } window.neshCoupon = null; window.__loyAutoOff = null; window.__cpnAutoOff = null;
+    if (window.__couponPending) { couponMarkUsed(window.__couponPending); window.__couponPending = null; } window.neshCoupon = null; window.__loyAutoOff = null; window.__cpnAutoOff = null; window.__walletAutoOff = null;
     state.discountReveal = null;
     closePaymentConfirm();
     showScreen('placed');
