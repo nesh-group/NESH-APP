@@ -6254,7 +6254,7 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getDatabase, ref, onValue, push, set, get, update, remove, runTransaction, goOffline, goOnline } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  import { getDatabase, ref, onValue as rawOnValue, push, set, get, update, remove, runTransaction, goOffline, goOnline } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCrM5wKwsnGtIc7HSTk_5R1d3dXEcYyd7o",
@@ -6268,6 +6268,96 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
 
   const fbApp = initializeApp(firebaseConfig);
   const db = getDatabase(fbApp);
+
+  // ---------------------------------------------------------------------------------------------
+  // app_config bandwidth saver. Every app open used to re-download all the big app_config nodes
+  // (prices, categories, zones...) through live listeners. Now, when the operator switches it on
+  // (appConfigVer/_on = true), those nodes are cached in localStorage and re-downloaded ONLY when
+  // their stamp appConfigVer/{node} changes (the partner/operator app stamps it on every write).
+  // Updates stay live: the tiny appConfigVer listener fires, the node is fetched again, and the
+  // same callback runs as before. Anything unknown / switched off / failing falls back to the
+  // original plain onValue listener, so nothing can break.
+  // ---------------------------------------------------------------------------------------------
+  const CFG_NODES = { neshStorePrices: 1, neshStoreCategories: 1, neshStoreItemOrder: 1, neshStoreSuggest: 1, neshStoreSections: 1,
+    shopZones: 1, locationZones: 1, zoneDelivery: 1, shopOrder: 1, categoryOrder: 1, homePopup: 1, videoAds: 1, coupons: 1, freeItemOffers: 1 };
+  const CFG_MAX_AGE = 12 * 3600e3, CFG_KEY = 'nesh_cfg_', cfgEntries = [];
+  let cfgCtl = { ready: false, on: false, vers: {} }, cfgCtlStarted = false;
+  const cfgHint = () => { try { return localStorage.getItem(CFG_KEY + '_on'); } catch (e) { return null; } };
+  function cfgNodeOf(r) {
+    try {
+      const m = /^\/app_config\/([^\/?#]+)$/.exec(decodeURIComponent(String(r).replace(/^https?:\/\/[^\/]+/, '')));
+      return (m && CFG_NODES[m[1]]) ? m[1] : null;
+    } catch (e) { return null; }
+  }
+  function cfgPick(v, p) { String(p).split('/').forEach(k => { v = (v && typeof v === 'object') ? v[k] : undefined; }); return v; }
+  function cfgSnap(key, js) {
+    const d = () => (js === undefined || js === null || js === 'null') ? null : JSON.parse(js);
+    const enc = v => JSON.stringify(v === undefined ? null : v);
+    return {
+      key: key, val: d, exportVal: d, toJSON: d,
+      exists: () => !(js === undefined || js === null || js === 'null'),
+      hasChildren: () => { const v = d(); return !!v && typeof v === 'object' && Object.keys(v).length > 0; },
+      numChildren: () => { const v = d(); return (v && typeof v === 'object') ? Object.keys(v).length : 0; },
+      hasChild: p => cfgPick(d(), p) != null,
+      child: p => cfgSnap(String(p).split('/').pop(), enc(cfgPick(d(), p))),
+      forEach: fn => {
+        const v = d();
+        if (v && typeof v === 'object') { for (const k of Object.keys(v)) { if (fn(cfgSnap(k, enc(v[k]))) === true) return true; } }
+        return false;
+      }
+    };
+  }
+  function cfgRead(node) { try { return JSON.parse(localStorage.getItem(CFG_KEY + node) || 'null'); } catch (e) { return null; } }
+  function cfgWrite(node, s, js) { try { localStorage.setItem(CFG_KEY + node, JSON.stringify({ s: s, t: Date.now(), js: js })); } catch (e) {} }
+  function cfgDeliver(e, js) {
+    e.delivered = true;
+    try { e.cb(cfgSnap(e.node, js)); } catch (err) { try { console.error('app_config listener error:', err); } catch (e2) {} }
+  }
+  function cfgDetachRaw(e) { if (e.rawUnsub) { try { e.rawUnsub(); } catch (x) {} e.rawUnsub = null; } }
+  function cfgRaw(e) {
+    if (e.rawUnsub || e.dead) return;
+    e.delivered = false; e.tok = undefined;
+    e.rawUnsub = rawOnValue(e.ref, e.cb, e.errCb);
+  }
+  function cfgSync(e) {
+    if (e.dead || !cfgCtl.ready) return;
+    if (!cfgCtl.on || e.failed) { cfgRaw(e); return; }
+    cfgDetachRaw(e);
+    const stamp = cfgCtl.vers[e.node], tok = (typeof stamp === 'number') ? stamp : 'z';
+    if (e.delivered && e.tok === tok) return;   // this node has not changed
+    e.tok = tok;
+    const c = cfgRead(e.node);
+    if (c && c.s === tok && typeof c.js === 'string' && Date.now() - c.t < CFG_MAX_AGE) { cfgDeliver(e, c.js); return; }
+    const seq = ++e.seq;
+    get(e.ref).then(snap => {
+      if (e.dead || seq !== e.seq) return;
+      const v = snap.val(), js = JSON.stringify(v === undefined ? null : v);
+      cfgWrite(e.node, tok, js);
+      cfgDeliver(e, js);
+    }).catch(() => { if (e.dead || seq !== e.seq) return; e.failed = true; cfgSync(e); });   // any problem -> plain live listener
+  }
+  function cfgStartCtl() {
+    if (cfgCtlStarted) return; cfgCtlStarted = true;
+    const apply = () => cfgEntries.slice().forEach(cfgSync);
+    rawOnValue(ref(db, 'appConfigVer'), s => {
+      const v = s.val(); const o = (v && typeof v === 'object') ? v : {};
+      cfgCtl = { ready: true, on: o._on === true, vers: o };
+      try { localStorage.setItem(CFG_KEY + '_on', cfgCtl.on ? '1' : '0'); } catch (e) {}
+      apply();
+    }, () => { cfgCtl = { ready: true, on: false, vers: {} }; apply(); });
+    setTimeout(() => { if (!cfgCtl.ready) { cfgCtl = { ready: true, on: false, vers: {} }; apply(); } }, 4000);
+  }
+  function onValue(r, cb, errCb) {
+    const node = cfgNodeOf(r);
+    if (!node || typeof cb !== 'function') return rawOnValue.apply(null, arguments);
+    const e = { node: node, ref: r, cb: cb, errCb: errCb, dead: false, seq: 0, rawUnsub: null, delivered: false, tok: undefined, failed: false };
+    cfgEntries.push(e);
+    cfgStartCtl();
+    if (cfgCtl.ready) cfgSync(e);
+    else if (cfgHint() !== '1') cfgRaw(e);   // switch is off (or unknown): start the normal listener right away, no extra wait
+    return function () { e.dead = true; cfgDetachRaw(e); const i = cfgEntries.indexOf(e); if (i >= 0) cfgEntries.splice(i, 1); };
+  }
+
   // Web OTP (browser / website). The Android app uses the native Firebase plugin instead.
   // Loaded lazily and fully guarded so a problem here can never stop the shops from loading.
   try {
@@ -6405,6 +6495,7 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
     "https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=400&q=80",
     "https://images.unsplash.com/photo-1445205170230-053b83016050?w=400&q=80",
   ];
+
 
   // Exposed so the plain <script> below can push a new order straight into
   // the restaurant's node in Firebase. The restaurant partner app listens on
