@@ -320,7 +320,10 @@ jobs:
         run: |
           sed -i -E 's/minSdkVersion = [0-9]+/minSdkVersion = 24/; s/compileSdkVersion = [0-9]+/compileSdkVersion = 36/; s/targetSdkVersion = [0-9]+/targetSdkVersion = 36/' android/variables.gradle
           sed -i -E "s#(com.android.tools.build:gradle:)[0-9.]+#\18.9.1#" android/build.gradle
-          sed -i -E 's#gradle-[0-9.]+-(all|bin).zip#gradle-8.11.1-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
+          sed -i -E 's#gradle-[0-9.]+-(all|bin).zip#gradle-8.11.1-bin.zip#' android/gradle/wrapper/gradle-wrapper.properties
+          # default download timeout is only 10 s -> raise it to 2 min
+          sed -i -E '/^networkTimeout=/d' android/gradle/wrapper/gradle-wrapper.properties
+          echo 'networkTimeout=120000' >> android/gradle/wrapper/gradle-wrapper.properties
           cat android/variables.gradle
           grep "com.android.tools.build:gradle" android/build.gradle
           cat android/gradle/wrapper/gradle-wrapper.properties
@@ -877,6 +880,19 @@ jobs:
               f.write(content)
           PYEOF
           cat android/app/build.gradle
+
+      # Downloads Gradle itself first, retrying up to 4 times. A one-off network
+      # hiccup here no longer fails the whole build.
+      - name: Download Gradle (with retries)
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          for i in 1 2 3 4; do
+            ./gradlew --version && exit 0
+            echo "Gradle download failed (try $i), retrying in 20s..."
+            sleep 20
+          done
+          exit 1
 
       # AAB is what Play Store requires for the actual store listing.
       # APK is built too so you (or testers) can sideload-install it
