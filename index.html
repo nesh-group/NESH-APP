@@ -411,6 +411,81 @@ html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
   #food-offers .fo-price{ margin:4px 0 0; font:800 14px/1.2 Poppins,Inter,sans-serif; color:#0E8A5C; }
   #food-offers .fo-price s{ margin-left:6px; font:500 11.5px/1 Inter,sans-serif; color:#9A8F72; }
   #food-offers .fo-shop{ margin:3px 0 0; font:500 11px/1.2 Inter,sans-serif; color:#8A7E5A; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* ---- Refer & Earn: full screen page + friends status ---- */
+  #rf-ov #rf-sheet{ max-width:420px; height:100%; max-height:100%; border-radius:0; padding-top:calc(env(safe-area-inset-top,0px) + 0px); box-sizing:border-box; }
+  #rf-ov #rf-sheet .rf-head{ position:sticky; top:0; z-index:3; background:#F4F2EA; padding:calc(env(safe-area-inset-top,0px) + 14px) 0 10px; }
+  .rf-tabs{ display:flex; gap:8px; margin:2px 0 14px; }
+  .rf-tabs button{ flex:1; border:0; border-radius:999px; padding:10px 8px; font:700 13px/1 Inter,sans-serif; background:#E9E4D3; color:#6B5F3E; cursor:pointer; }
+  .rf-tabs button.on{ background:#F2B705; color:#2B2410; }
+  .rf-fc{ background:#fff; border-radius:16px; padding:12px 14px; margin-bottom:10px; box-shadow:0 4px 12px -8px rgba(43,36,16,.35); }
+  .rf-fc-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font:700 14px/1.2 Inter,sans-serif; color:#2B2410; }
+  .rf-pill{ font:800 11px/1 Inter,sans-serif; padding:5px 9px; border-radius:999px; }
+  .rf-pill.ok{ background:#DDF5E6; color:#1C7A3B; } .rf-pill.wt{ background:#FFF1B8; color:#6B5410; }
+  .rf-step{ font:500 12.5px/1.45 Inter,sans-serif; color:#5C4F2E; padding:2px 0; }
+  .rf-empty{ text-align:center; padding:36px 10px; font:600 14px/1.5 Inter,sans-serif; color:#8A7E5A; }
+  html[data-theme="dark"] #rf-ov #rf-sheet .rf-head{ background:#17140D; }
+  html[data-theme="dark"] .rf-tabs button{ background:#2A2519; color:#CFC6A8; } html[data-theme="dark"] .rf-tabs button.on{ background:#F2B705; color:#2B2410; }
+  html[data-theme="dark"] .rf-fc{ background:#221E15; } html[data-theme="dark"] .rf-fc-top{ color:#E7E0CD; } html[data-theme="dark"] .rf-step{ color:#CFC6A8; }
+  .rf-hero{ display:flex; gap:14px; align-items:center; padding:18px 16px; margin-bottom:12px; border-radius:22px; background:linear-gradient(135deg,#FFE27A 0%,#F2B705 60%,#E8860C 100%); color:#2B2410; box-shadow:0 14px 26px -14px rgba(232,134,12,.9); position:relative; overflow:hidden; }
+  .rf-hero::after{ content:''; position:absolute; right:-30px; top:-30px; width:110px; height:110px; border-radius:50%; background:rgba(255,255,255,.25); }
+  .rf-hero-ic{ flex:none; width:56px; height:56px; border-radius:18px; background:rgba(255,255,255,.55); display:flex; align-items:center; justify-content:center; font-size:30px; position:relative; z-index:1; }
+  .rf-hero b{ display:block; font:800 22px/1.15 Poppins,Inter,sans-serif; position:relative; z-index:1; }
+  .rf-hero span{ display:block; margin-top:4px; font:600 12.5px/1.4 Inter,sans-serif; opacity:.85; position:relative; z-index:1; }
+  .rf-wallet{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 16px; margin-bottom:12px; border-radius:18px; background:linear-gradient(135deg,#0E8A5C,#17B27A); color:#fff; box-shadow:0 12px 22px -14px rgba(14,138,92,.9); }
+  .rf-wallet small{ display:block; font:700 12px/1.2 Inter,sans-serif; opacity:.9; }
+  .rf-wallet b{ display:block; font:800 28px/1.1 Poppins,Inter,sans-serif; margin-top:2px; }
+  .rf-wallet span{ max-width:46%; text-align:right; font:600 11.5px/1.4 Inter,sans-serif; opacity:.92; }
+  #rf-invite.rf-hasw .rf-good{ display:none; }
+  .rf-fc-top{ gap:10px; }
+  .rf-ava{ flex:none; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; color:#fff; }
+  .rf-fc-n{ flex:1; min-width:0; } .rf-fc-n b{ display:block; font:700 14px/1.2 Inter,sans-serif; } .rf-fc-n small{ display:block; margin-top:2px; font:500 11.5px/1.2 Inter,sans-serif; color:#8A7E5A; }
+  .rf-prog{ display:flex; align-items:center; margin:12px 6px 6px; }
+  .rf-prog .d{ flex:none; width:14px; height:14px; border-radius:50%; background:#E3DCC6; border:3px solid #fff; box-shadow:0 0 0 1.5px #E3DCC6; }
+  .rf-prog .l{ flex:1; height:4px; background:#E3DCC6; border-radius:2px; }
+  .rf-prog .on.d{ background:#1C9B5E; box-shadow:0 0 0 1.5px #1C9B5E; } .rf-prog .on.l{ background:#1C9B5E; }
+  .rf-prog-l{ display:flex; justify-content:space-between; font:600 10.5px/1.2 Inter,sans-serif; color:#8A7E5A; }
+  .rf-prog-l em{ font-style:normal; }
+  .rf-confetti{ position:fixed; inset:0; z-index:100002; pointer-events:none; overflow:hidden; }
+  .rf-confetti i{ position:absolute; top:-14px; width:9px; height:14px; border-radius:2px; animation:rfFall 2s ease-in forwards; }
+  @keyframes rfFall{ to{ top:105%; margin-left:var(--dx); opacity:.9; } }
+  html[data-theme="dark"] .rf-fc-n small, html[data-theme="dark"] .rf-prog-l{ color:#BDB38F; }
+  html[data-theme="dark"] .rf-prog .d{ border-color:#221E15; }
+  .rf-plat{ display:flex; align-items:center; gap:6px; margin:10px 0 8px; flex-wrap:wrap; }
+  .rf-plat small{ width:100%; font:700 11.5px/1.2 Inter,sans-serif; color:#8A7E5A; }
+  .rf-plat button{ flex:1; border:1.5px solid #E3DCC6; border-radius:999px; padding:9px 6px; background:#fff; color:#5C4F2E; font:700 12.5px/1 Inter,sans-serif; cursor:pointer; white-space:nowrap; }
+  .rf-plat button.on{ background:#FFF1B8; border-color:#F2B705; color:#2B2410; }
+  html[data-theme="dark"] .rf-plat button{ background:#221E15; border-color:#3A3322; color:#CFC6A8; } html[data-theme="dark"] .rf-plat button.on{ background:#3A3010; border-color:#F2B705; color:#FFE27A; }
+  /* ---- Food screen bottom bar: Home / Offers / Refer (offers strip + referral card moved here) ---- */
+  #food-offers-wrap, #ref-home-card{ display:none !important; }
+  #nesh-fnav{ position:fixed; left:50%; transform:translate(-50%,0); bottom:0; width:100%; max-width:420px; z-index:900; display:none; gap:10px; box-sizing:border-box; padding:8px 24px calc(10px + env(safe-area-inset-bottom)); background:#fff; border-top:1px solid rgba(43,36,16,.06); box-shadow:0 -6px 16px rgba(43,36,16,.07); }
+  #nesh-fnav.on{ display:flex; }
+  html.au-on #nesh-fnav{ display:none !important; }
+  #nesh-fnav .nb-btn{ position:relative; }
+  #nesh-fnav .nb-dot{ position:absolute; top:2px; left:calc(50% + 8px); width:9px; height:9px; border-radius:50%; background:#E23744; border:2px solid #fff; box-sizing:content-box; display:none; }
+  #nesh-fnav .nb-dot.on{ display:block; }
+  body.has-fnav #screen-home{ padding-bottom:84px; }
+  body.has-fnav.has-hcc #screen-home{ padding-bottom:170px; }
+  body.has-fnav .home-cart-stack{ bottom:calc(72px + env(safe-area-inset-bottom)); }
+  #fo-ov{ position:fixed; left:50%; transform:translateX(-50%); width:100%; max-width:420px; top:0; bottom:calc(64px + env(safe-area-inset-bottom)); z-index:890; background:var(--bg,#FAF8F3); overflow-y:auto; display:none; padding:calc(env(safe-area-inset-top,0px) + 18px) 16px 24px; box-sizing:border-box; }
+  #fo-ov.show{ display:block; }
+  #fo-ov .fo-ov-title{ margin:0 0 4px; font:800 20px/1.2 Poppins,Inter,sans-serif; color:var(--ink,#2B2410); }
+  #fo-ov .fo-ov-sub{ margin:0 0 14px; font:500 13px/1.3 Inter,sans-serif; color:#8A7E5A; }
+  #fo-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  #fo-ov #fo-grid .fo-card{ width:auto; }
+  .fo-ov-empty{ grid-column:1/-1; text-align:center; padding:40px 10px; color:#8A7E5A; font:600 14px/1.5 Inter,sans-serif; }
+  html[data-theme="dark"] #nesh-fnav{ background:#221E15; }
+  html[data-theme="dark"] #nesh-fnav .nb-dot{ border-color:#221E15; }
+  #fo-grid .fo-card{ flex:none; width:148px; background:#fff; border-radius:16px; overflow:hidden; cursor:pointer; -webkit-tap-highlight-color:transparent;
+  #fo-grid .fo-card:active{ transform:scale(.98); }
+  #fo-grid .fo-img{ position:relative; height:98px; background:#F4EDD6; }
+  #fo-grid .fo-img img{ width:100%; height:100%; object-fit:cover; display:block; }
+  #fo-grid .fo-badge{ position:absolute; left:6px; top:6px; background:#E23744; color:#fff; font:800 10.5px/1 Inter,sans-serif; padding:4px 7px; border-radius:999px; }
+  #fo-grid .fo-info{ padding:8px 9px 10px; }
+  #fo-grid .fo-name{ margin:0; min-height:31px; font:700 12.5px/1.25 Inter,sans-serif; color:var(--ink); overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+  #fo-grid .fo-por{ display:inline-block; padding:1px 6px; border-radius:999px; background:#FFF1B8; color:#6B5410; font:800 10px/1.4 Inter,sans-serif; vertical-align:1px; }
+  #fo-grid .fo-price{ margin:4px 0 0; font:800 14px/1.2 Poppins,Inter,sans-serif; color:#0E8A5C; }
+  #fo-grid .fo-price s{ margin-left:6px; font:500 11.5px/1 Inter,sans-serif; color:#9A8F72; }
+  #fo-grid .fo-shop{ margin:3px 0 0; font:500 11px/1.2 Inter,sans-serif; color:#8A7E5A; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   /* ---- Trending tab (offer products) + bottom nav on the main screen ---- */
   #nesh-bnav{ position:fixed; left:50%; transform:translate(-50%,0); bottom:0; width:100%; max-width:420px; z-index:900; display:none; gap:10px; box-sizing:border-box; padding:8px 24px calc(10px + env(safe-area-inset-bottom)); background:#fff; border-top:1px solid rgba(43,36,16,.06); box-shadow:0 -6px 16px rgba(43,36,16,.07); transition:transform .28s ease; will-change:transform; }
   #nesh-bnav.on{ display:flex; }
@@ -2081,7 +2156,7 @@ body.ab-chats-open .home-cart-stack, body.ab-chats-open .order-progress-bar{disp
 #ab-chat-sheet button{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#FFF6DC;border:1px solid rgba(201,127,0,.3);border-radius:14px;padding:13px 14px;margin-bottom:8px;font-size:15px;font-weight:600;color:#2B2410;}
 html.ab-air-order #cp-loc-toggle,html.ab-air-order #cp-km,html.ab-air-order #cp-addr-card{display:none !important;}
 html.ab-air-order .cp-head::after{content:"Checkout";font:800 20px/1 Inter,system-ui,sans-serif;color:#2B2410;margin-left:6px;}
-body:has(#ab-cart-ov) .cart-bar,body:has(#ab-cart-ov) .home-cart-stack,body:has(#ab-cart-ov) .order-progress-bar,body:has(#ab-cart-ov) #nesh-bnav,body:has(#ab-cart-ov) #ab-nav,body:has(#ab-details-ov) .cart-bar,body:has(#ab-details-ov) .home-cart-stack{display:none !important;}
+body:has(#ab-cart-ov) .cart-bar,body:has(#ab-cart-ov) .home-cart-stack,body:has(#ab-cart-ov) .order-progress-bar,body:has(#ab-cart-ov) #nesh-bnav,body:has(#ab-cart-ov) #nesh-fnav,body:has(#ab-cart-ov) #ab-nav,body:has(#ab-details-ov) .cart-bar,body:has(#ab-details-ov) .home-cart-stack{display:none !important;}
 #ab-cart-ov,#ab-details-ov{z-index:9000 !important;}
 #ab-cart-ov{position:fixed;inset:0;z-index:90;background:var(--bg,#FFFBF2);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);}
 #ab-cart-ov .abc-top{display:flex;align-items:center;gap:12px;padding:14px 20px 10px;}
@@ -5881,6 +5956,16 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.6 2.2c.3 2.6-.9 4.2-2.2 5.7-1.4 1.6-2.9 3.2-2.9 5.8 0 1.5.6 2.7 1.5 3.5-.2-1.7.5-2.9 1.5-4 .7-.8 1.4-1.7 1.6-3 2.2 1.6 3.6 4 3.6 6.3 0 3.4-2.6 5.5-5.3 5.5-3.2 0-5.9-2.4-5.9-6.2 0-3.4 1.8-5.8 3.6-7.7 1.6-1.7 3.4-3.1 4.5-5.9z"/></svg><span>Trending</span>
     </button>
   </nav>
+  <nav id="nesh-fnav" aria-label="Food">
+    <button type="button" class="nb-btn active" id="fn-home" aria-label="Home"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.8 2.9 10.6c-.5.4-.2 1.2.4 1.2H5v8.2c0 .6.4 1 1 1h4v-5.5h4V21h4c.6 0 1-.4 1-1v-8.2h1.7c.6 0 .9-.8.4-1.2L12 2.8z"/></svg><span>Home</span></button>
+    <button type="button" class="nb-btn" id="fn-offers" aria-label="Offers"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.6 2.2c.3 2.6-.9 4.2-2.2 5.7-1.4 1.6-2.9 3.2-2.9 5.8 0 1.5.6 2.7 1.5 3.5-.2-1.7.5-2.9 1.5-4 .7-.8 1.4-1.7 1.6-3 2.2 1.6 3.6 4 3.6 6.3 0 3.4-2.6 5.5-5.3 5.5-3.2 0-5.9-2.4-5.9-6.2 0-3.4 1.8-5.8 3.6-7.7 1.6-1.7 3.4-3.1 4.5-5.9z"/></svg><span>Offers</span><i class="nb-dot" id="fn-offers-dot"></i></button>
+    <button type="button" class="nb-btn" id="fn-refer" aria-label="Refer" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg><span>Refer</span></button>
+  </nav>
+  <div id="fo-ov" role="region" aria-label="Offers on food">
+    <p class="fo-ov-title">🔥 Offers on food</p>
+    <p class="fo-ov-sub">Discounted dishes from open restaurants</p>
+    <div id="fo-grid"></div>
+  </div>
   <div class="home-cart-stack" id="home-cart-stack"></div>
   <div class="cart-bar" id="cart-bar">
     <div class="cart-info" id="cart-info">
@@ -7876,6 +7961,7 @@ function showScreen(id) {
   updateOrderProgressBarVisibility();
   try { syncAreaUnavailScreen(); } catch (e) {}
   try { neshSyncBottomNav(); } catch (e) {}
+  try { neshSyncFoodNav(); } catch (e) {}
 }
 
 // (Back-button handling lives in the "Hardware back button" block further down.)
@@ -8145,7 +8231,8 @@ function neshRenderFoodOffers(shops) {
   const offers = shops ? neshFoodOffers(shops) : [];
   const sig = offers.map(o => [o.r.id, o.it.id, o.sz, o.price, o.mrp, o.it.name, (o.it.image || '').length].join('~')).join('|');
   wrap.style.display = offers.length ? 'block' : 'none';
-  if (el.dataset.sig === sig) return;   // nothing changed: keep the cards (and their photos) exactly as they are
+  window.__foCount = offers.length;
+  if (el.dataset.sig === sig) { try { neshSyncFoodNav(); } catch (e) {} return; }   // nothing changed: keep the cards (and their photos) exactly as they are
   el.dataset.sig = sig;
   el.innerHTML = '';
   const money = n => String(Math.round(n * 100) / 100);
@@ -8174,6 +8261,7 @@ function neshRenderFoodOffers(shops) {
     });
     el.appendChild(c);
   });
+  try { neshSyncFoodNav(); } catch (e) {}
 }
 
 // ---------- TRENDING (offer products) + bottom nav ----------
@@ -8308,6 +8396,55 @@ function neshSyncBottomNav() {
 })();
 document.getElementById('nb-home').addEventListener('click', () => { goToCategoryScreen(); });
 document.getElementById('nb-trending').addEventListener('click', () => { showScreen('trending'); persistScreen('category'); });
+
+// ---------- Food screen bottom bar (Home / Offers / Refer) ----------
+function neshFoodNavWanted() {
+  const act = document.querySelector('.screen.active');
+  let ok = !!act && act.id === 'screen-home' && state.category === 'hotel';
+  try { if (ok && martFoodLook()) ok = false; } catch (e) {}
+  try { if (ok && neshAbroadActive()) ok = false; } catch (e) {}
+  return ok;
+}
+function neshCloseFoodOffers() {
+  const ov = document.getElementById('fo-ov'); if (ov) ov.classList.remove('show');
+  const h = document.getElementById('fn-home'), o = document.getElementById('fn-offers');
+  if (h) h.classList.add('active'); if (o) o.classList.remove('active');
+}
+function neshSyncFoodNav() {
+  const nav = document.getElementById('nesh-fnav'); if (!nav) return;
+  const show = neshFoodNavWanted();
+  nav.classList.toggle('on', show);
+  document.body.classList.toggle('has-fnav', show);
+  if (!show) { neshCloseFoodOffers(); return; }
+  let refOn = false; try { refOn = referralOn(); } catch (e) {}
+  document.getElementById('fn-refer').style.display = refOn ? '' : 'none';
+  const n = (window.__foCount || 0);
+  document.getElementById('fn-offers-dot').classList.toggle('on', n > 0);
+  const ov = document.getElementById('fo-ov');
+  if (ov && ov.classList.contains('show')) neshFillFoodOffers();
+}
+function neshFillFoodOffers() {
+  const grid = document.getElementById('fo-grid'), src = document.getElementById('food-offers');
+  if (!grid || !src) return;
+  grid.innerHTML = '';
+  const cards = Array.from(src.children);
+  window.__foCount = cards.length;
+  if (!cards.length) { grid.innerHTML = '<p class="fo-ov-empty">🍽️<br>No food offers right now.<br>Check back soon!</p>'; return; }
+  cards.forEach(orig => {
+    const c = orig.cloneNode(true);
+    c.addEventListener('click', () => { neshCloseFoodOffers(); orig.click(); });
+    grid.appendChild(c);
+  });
+}
+document.getElementById('fn-home').addEventListener('click', () => { neshCloseFoodOffers(); window.scrollTo(0, 0); });
+document.getElementById('fn-offers').addEventListener('click', () => {
+  neshFillFoodOffers();
+  document.getElementById('fo-ov').classList.add('show');
+  document.getElementById('fn-home').classList.remove('active');
+  document.getElementById('fn-offers').classList.add('active');
+});
+document.getElementById('fn-refer').addEventListener('click', () => { neshOpenReferralSheet(); });
+
 
 // ---------- Customers outside India: open Pravasi Hampers straight away ----------
 // Country = the phone's time zone (no permission prompt needed). Anything other than India's
@@ -14577,6 +14714,7 @@ function renderRestaurantList() {
   if (state.category === 'hotel' || martFoodLook()) filtered = neshApplyShopFilters(filtered);
   try { neshRenderFoodOffers((state.category === 'hotel' && !martFoodLook() && !q && !_pvAp) ? filtered : null); } catch (e) {}   // 🔥 Offers strip (Food only, not while searching)
   try { neshRenderReferralCard(); } catch (e) {}   // 🎁 Refer & Earn card (Food only)
+  try { neshSyncFoodNav(); } catch (e) {}
 
   if (pvRenderShops(filtered, categoryFiltered, q)) return;
   if (state.category === 'online_shop' && !martFoodLook()) {
@@ -16539,7 +16677,7 @@ function couponCheck(c, restId, items) {   // '' = fine, otherwise the reason it
   if (c.referral) {   // Refer & Earn reward: unlocked by a delivered first order (friend's or own), not by couponUses
     if (!referralOn()) return 'This reward is not available right now.';
     if (!couponCardOk(c, restId)) return 'This reward works only on Food orders.';
-    if (referralAvail() <= 0) return 'Refer a friend (or join with a friend\u2019s code) to earn this reward.';
+    if (referralAvail() <= 0) return 'Refer a friend to earn this reward.';
     if (c.minOrder > 0 && items < c.minOrder) return 'Add items worth \u20B9' + c.minOrder + ' or more to use this reward.';
     return '';
   }
@@ -16721,7 +16859,10 @@ function renderCouponCards() {
 // referral/{phone} = { code, by, byAt, done, claimed }     referralCodes/{CODE} = phone
 // referralFriends/{referrerPhone}/{friendPhone} = { j: joined at, d: first order delivered at }
 // The reward is a built-in coupon with id 'REFERRAL' (flat \u20B9 off, Food orders only), applied through the normal coupon engine.
-// earned = (my own first order delivered after I joined with a friend's code ? 1 : 0) + friends whose first order was delivered (max = maxRewards); available = earned - claimed.
+// earned = friends whose first order was delivered (max = maxRewards); available = earned - claimed.
+// ONLY THE REFERRER earns. The friend who joins with a code gets no reward (their 'done' is just a marker that their first order was delivered).
+// A welcome reward that a friend had already earned before this change (done < NESH_REF_WELCOME_UNTIL) is still honoured.
+const NESH_REF_WELCOME_UNTIL = 1794200010481;
 window.NESH_REF = null;
 window.NESH_REF_PROG = { claimed: 0, loaded: false };
 window.NESH_REF_FRIENDS = {};
@@ -16760,14 +16901,15 @@ function referralFriendsDone() {
   let n = 0; Object.keys(f).forEach(k => { if (f[k] && Number(f[k].d) > 0) n++; });
   return Math.min(n, cap);
 }
-function referralEarned() { return (Number(window.NESH_REF_PROG.done) > 0 ? 1 : 0) + referralFriendsDone(); }
+function referralWelcomeCounts() { const d = Number((window.NESH_REF_PROG || {}).done) || 0; return d > 0 && d < NESH_REF_WELCOME_UNTIL; }   // old welcome reward only
+function referralEarned() { return (referralWelcomeCounts() ? 1 : 0) + referralFriendsDone(); }
 function referralAvail() { return referralOn() ? Math.max(0, referralEarned() - (Number(window.NESH_REF_PROG.claimed) || 0)) : 0; }
 // Wallet: every earned reward keeps the amount it had WHEN IT WAS EARNED (referralFriends/{referrer}/{friend}/a and referral/{me}/doneAmt),
 // so changing the amount in the Operator Panel only affects rewards earned afterwards. Rewards earned before this existed fall back to the current amount.
 // Rewards are used oldest first (claimed = how many were used).
 function referralRewardList() {
   const cur = referralValue(), P = window.NESH_REF_PROG || {}, L = [];
-  if (Number(P.done) > 0) L.push({ t: Number(P.done), a: Number(P.doneAmt) > 0 ? Number(P.doneAmt) : cur });
+  if (referralWelcomeCounts()) L.push({ t: Number(P.done), a: Number(P.doneAmt) > 0 ? Number(P.doneAmt) : cur });
   const f = window.NESH_REF_FRIENDS || {}, fl = [];
   Object.keys(f).forEach(k => { if (f[k] && Number(f[k].d) > 0) fl.push({ t: Number(f[k].d), a: Number(f[k].a) > 0 ? Number(f[k].a) : cur }); });
   fl.sort((x, y) => x.t - y.t);
@@ -16856,7 +16998,7 @@ function neshReferralRebuildAll() {
     } catch (e) {}
   }, 2000);
 })();
-// ---- the friend's first order is DELIVERED -> mark it done (the friend and the referrer both get a reward) ----
+// ---- the friend's first order is DELIVERED -> mark it done (only the referrer gets the reward) ----
 // Called from every place that sees a delivered order (same hooks as the Hero offer); safe to call repeatedly.
 (function () {
   const checked = {};
@@ -16876,7 +17018,6 @@ function neshReferralRebuildAll() {
       const { db, ref, set, runTransaction } = window.fb, now = Date.now();
       const amtNow = referralValue();
       Promise.resolve(set(ref(db, 'referralFriends/' + P.by + '/' + ph + '/a'), amtNow)).catch(() => {})
-        .then(() => Promise.resolve(runTransaction(ref(db, 'referral/' + ph + '/doneAmt'), n => n || amtNow)).catch(() => {}))
         .then(() => set(ref(db, 'referralFriends/' + P.by + '/' + ph + '/d'), now))
         .then(() => runTransaction(ref(db, 'referral/' + ph + '/done'), n => n || now))
         .catch(() => { delete checked[orderKey]; });
@@ -16921,7 +17062,7 @@ function referralApplyCode(raw) {
       return update(ref(db, 'referral/' + ph), { by: friend, byAt: now })
         .then(() => set(ref(db, 'referralFriends/' + friend + '/' + ph + '/j'), now))
         .then(() => { try { const x = (localStorage.getItem('nesh_ref_inst') || '').split('|'); if (x.length === 2 && window.fb.remove) window.fb.remove(ref(db, 'referralInstalls/' + x[0] + '/' + x[1])).catch(() => {}); localStorage.removeItem('nesh_ref_inst'); } catch (e) {} })
-        .then(() => { try { localStorage.removeItem('nesh_ref_pending'); } catch (e) {} return { ok: true, msg: '\u2705 Code applied! Your \u20B9' + referralValue() + ' reward unlocks when your first order is delivered.' }; });
+        .then(() => { try { localStorage.removeItem('nesh_ref_pending'); } catch (e) {} return { ok: true, msg: '\u2705 Code applied! Your friend will get their reward once your first order is delivered.' }; });
     });
   }).catch(() => ({ ok: false, msg: 'Could not check the code. Check your internet and try again.' }));
 }
@@ -16975,13 +17116,32 @@ function neshRenderReferralCard() {
   const v = referralValue(), av = referralAvail();
   const html = av > 0
     ? '<span class="rf-ic">\uD83D\uDCB0</span><div><b>Wallet \u20B9' + referralBalance() + '</b><span class="rf-sub">Applied automatically on your next Food order \u00B7 tap to see</span></div><span class="rf-go">\u203A</span>'
-    : '<span class="rf-ic">\uD83C\uDF81</span><div><b>Refer &amp; Earn \u20B9' + v + '</b><span class="rf-sub">Invite a friend \u2014 you both get \u20B9' + v + ' off when their first order is delivered</span></div><span class="rf-go">\u203A</span>';
+    : '<span class="rf-ic">\uD83C\uDF81</span><div><b>Refer &amp; Earn \u20B9' + v + '</b><span class="rf-sub">Invite a friend \u2014 you get \u20B9' + v + ' off when their first order is delivered</span></div><span class="rf-go">\u203A</span>';
   if (el.dataset.h !== html) {
     el.dataset.h = html;
     el.innerHTML = '<button type="button" class="rf-card">' + html + '</button>';
     el.querySelector('.rf-card').addEventListener('click', neshOpenReferralSheet);
   }
   el.style.display = 'block';
+}
+function neshRfConfetti() {
+  try {
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const box = document.createElement('div'); box.className = 'rf-confetti';
+    const cols = ['#F2B705', '#E8860C', '#0E8A5C', '#E23744', '#6B5BD6', '#FFD84D'];
+    for (let i = 0; i < 46; i++) {
+      const c = document.createElement('i');
+      c.style.left = (Math.random() * 100) + '%';
+      c.style.background = cols[i % cols.length];
+      c.style.animationDelay = (Math.random() * .5) + 's';
+      c.style.animationDuration = (1.6 + Math.random() * 1.2) + 's';
+      c.style.setProperty('--dx', (Math.random() * 120 - 60) + 'px');
+      c.style.transform = 'rotate(' + Math.floor(Math.random() * 360) + 'deg)';
+      box.appendChild(c);
+    }
+    document.body.appendChild(box);
+    setTimeout(() => box.remove(), 3200);
+  } catch (e) {}
 }
 function neshReferralSheetRefresh() { const ov = document.getElementById('rf-ov'); if (ov && ov.classList.contains('show')) neshReferralSheetDraw(); }
 function neshCloseReferralSheet() { const ov = document.getElementById('rf-ov'); if (!ov) return; ov.classList.remove('in'); setTimeout(() => ov.classList.remove('show'), 220); }
@@ -16995,7 +17155,7 @@ function neshOpenReferralSheet() {
     document.body.appendChild(ov);
     ov.addEventListener('click', e => { if (e.target === ov) neshCloseReferralSheet(); });
   }
-  window.__rfMsg = null;
+  window.__rfMsg = null; window.__rfTab = 'invite';
   neshReferralSheetDraw();
   ov.classList.add('show');
   requestAnimationFrame(() => requestAnimationFrame(() => ov.classList.add('in')));
@@ -17018,16 +17178,17 @@ function neshReferralSheetDraw() {
   const mask = k => k.length > 5 ? k.slice(0, 2) + '\u2022\u2022\u2022\u2022\u2022' + k.slice(-3) : k;
   let friendBox = '';
   if (P.by) {
-    friendBox = '<div class="rf-box"><p class="rf-lab">Your friend\u2019s code</p><p style="margin:0;font:700 13.5px/1.4 Inter,sans-serif;">' + (Number(P.done) > 0
+    friendBox = '<div class="rf-box"><p class="rf-lab">Your friend\u2019s code</p><p style="margin:0;font:700 13.5px/1.4 Inter,sans-serif;">' + (referralWelcomeCounts()
       ? '\u2705 Your welcome reward is unlocked \u2014 use it on your next Food order.'
-      : '\u2705 You joined with a friend\u2019s code. Your \u20B9' + v + ' reward unlocks when your first order is delivered' + (minF > 0 ? ' (items worth \u20B9' + minF + ' or more)' : '') + '.') + '</p></div>';
+      : Number(P.done) > 0 ? '\u2705 You joined with a friend\u2019s code. Your friend has received their reward.'
+      : '\u2705 You joined with a friend\u2019s code. Your friend gets their reward when your first order is delivered' + (minF > 0 ? ' (items worth \u20B9' + minF + ' or more)' : '') + '.') + '</p></div>';
   } else {
     let pre = ''; try { pre = localStorage.getItem('nesh_ref_pending') || ''; } catch (e) {}
-    friendBox = '<div class="rf-box"><p class="rf-lab">Have a friend\u2019s code?</p><div class="rf-in"><input id="rf-in" type="text" maxlength="12" autocomplete="off" autocapitalize="characters" placeholder="Enter code" value="' + escapeHtml(pre) + '"><button type="button" class="rf-btn" id="rf-apply">Apply</button></div><p style="margin:8px 0 0;font:500 12px/1.4 Inter,sans-serif;opacity:.75;">Works only before your first order. You both get \u20B9' + v + ' off after your first order is delivered.</p></div>';
+    friendBox = '<div class="rf-box"><p class="rf-lab">Have a friend\u2019s code?</p><div class="rf-in"><input id="rf-in" type="text" maxlength="12" autocomplete="off" autocapitalize="characters" placeholder="Enter code" value="' + escapeHtml(pre) + '"><button type="button" class="rf-btn" id="rf-apply">Apply</button></div><p style="margin:8px 0 0;font:500 12px/1.4 Inter,sans-serif;opacity:.75;">Works only before your first order. Your friend gets \u20B9' + v + ' off after your first order is delivered.</p></div>';
   }
   sheet.innerHTML =
     '<div class="rf-head"><b>\uD83C\uDF81 Refer &amp; Earn</b><button type="button" class="rf-x" aria-label="Close">\u2715</button></div>' +
-    '<p class="rf-lead">Share your code. When your friend\u2019s <b>first order is delivered</b>, you <b>both</b> get <b>\u20B9' + v + ' off</b> your next Food order' + (min > 0 ? ' (min order \u20B9' + min + ')' : '') + '.</p>' +
+    '<p class="rf-lead">Share your code. When your friend\u2019s <b>first order is delivered</b>, you get <b>\u20B9' + v + ' off</b> your next Food order' + (min > 0 ? ' (min order \u20B9' + min + ')' : '') + '.</p>' +
     (av > 0 ? '<div class="rf-good">\uD83D\uDCB0 <b>Wallet balance \u20B9' + referralBalance() + '</b> (\u20B9' + referralNextAmount() + ' used on your next Food order). It is applied automatically at checkout' + (min > 0 ? ' on orders of \u20B9' + min + '+' : '') + '. You can remove it in <b>Coupons &amp; offers</b>.</div>' : '') +
     '<div class="rf-box"><p class="rf-lab">Your code</p><div class="rf-code"><span>' + (code ? escapeHtml(code) : '\u2026') + '</span></div>' +
       '<div class="rf-row"><button type="button" class="rf-btn alt" id="rf-copy"' + (code ? '' : ' disabled') + '>Copy code</button><button type="button" class="rf-btn wa" id="rf-share"' + (code ? '' : ' disabled') + '>Share</button></div></div>' +
@@ -17036,6 +17197,52 @@ function neshReferralSheetDraw() {
     ((keys.length || instKeys.length) ? '<div class="rf-box"><p class="rf-lab">Your friends</p>' + keys.slice(0, 15).map(k => '<div class="rf-fr"><span>' + escapeHtml(mask(k)) + '</span><span>' + (Number(fr[k].d) > 0 ? '\u2705 Delivered' : '\u23F3 Waiting for first order') + '</span></div>').join('') + instKeys.slice(0, Math.max(0, 15 - keys.length)).map((k, i) => '<div class="rf-fr"><span>\uD83D\uDCF2 New friend ' + (i + 1) + '</span><span>\u23F3 Installed \u00B7 waiting to sign up</span></div>').join('') + '</div>' : '') +
     '<p class="rf-msg' + (msg ? (msg.ok ? ' ok' : ' no') : '') + '" id="rf-msg">' + (msg ? escapeHtml(msg.t) : '') + '</p>';
   sheet.querySelector('.rf-x').onclick = neshCloseReferralSheet;
+  try {
+    const head = sheet.querySelector('.rf-head'), tab = window.__rfTab === 'friends' ? 'friends' : 'invite';
+    const inv = document.createElement('div'); inv.id = 'rf-invite';
+    while (head.nextSibling) inv.appendChild(head.nextSibling);
+    const total = keys.length + instKeys.length, waiting = keys.length - done + instKeys.length;
+    const tabs = document.createElement('div'); tabs.className = 'rf-tabs';
+    tabs.innerHTML = '<button type="button" data-t="invite" class="' + (tab === 'invite' ? 'on' : '') + '">Invite</button><button type="button" data-t="friends" class="' + (tab === 'friends' ? 'on' : '') + '">Friends status (' + total + ')</button>';
+    tabs.querySelectorAll('button').forEach(b => b.onclick = () => { window.__rfTab = b.dataset.t; neshReferralSheetDraw(); });
+    const fp = document.createElement('div'); fp.id = 'rf-friendsp';
+    const dt = t => { try { return new Date(Number(t)).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }); } catch (e) { return ''; } };
+    const rows = keys.sort((a, b) => (Number(fr[b].j) || 0) - (Number(fr[a].j) || 0)).map(k => {
+      const f = fr[k], ok = Number(f.d) > 0, amt = Number(f.a) > 0 ? Number(f.a) : v;
+      const col = ['#F2B705', '#E8860C', '#0E8A5C', '#E23744', '#6B5BD6'][(parseInt(String(k).slice(-2), 10) || 0) % 5];
+      return '<div class="rf-fc"><div class="rf-fc-top"><span class="rf-ava" style="background:' + col + '">\uD83D\uDC64</span><div class="rf-fc-n"><b>' + escapeHtml(mask(k)) + '</b><small>' + (Number(f.j) > 0 ? 'Joined ' + dt(f.j) : 'Joined') + '</small></div><span class="rf-pill ' + (ok ? 'ok' : 'wt') + '">' + (ok ? 'Delivered' : 'Waiting') + '</span></div>' +
+        '<div class="rf-prog"><i class="d on"></i><i class="l' + (ok ? ' on' : '') + '"></i><i class="d' + (ok ? ' on' : '') + '"></i><i class="l' + (ok ? ' on' : '') + '"></i><i class="d' + (ok ? ' on' : '') + '"></i></div>' +
+        '<div class="rf-prog-l"><em>Joined</em><em>' + (ok ? 'Delivered \u00B7 ' + dt(f.d) : 'First order') + '</em><em>' + (ok ? '\u20B9' + amt + ' earned' : 'Reward') + '</em></div></div>';
+    }).join('') + instKeys.map((k, i) => '<div class="rf-fc"><div class="rf-fc-top"><span class="rf-ava" style="background:#B9B09A">\uD83D\uDCF2</span><div class="rf-fc-n"><b>New friend ' + (i + 1) + '</b><small>Installed the app</small></div><span class="rf-pill wt">Installed</span></div><div class="rf-prog"><i class="d"></i><i class="l"></i><i class="d"></i><i class="l"></i><i class="d"></i></div><div class="rf-prog-l"><em>Sign up</em><em>First order</em><em>Reward</em></div></div>').join('');
+    fp.innerHTML = '<div class="rf-stats" style="margin-bottom:12px"><div><b>' + total + '</b><small>Joined</small></div><div><b>' + done + '</b><small>Delivered</small></div><div><b>' + waiting + '</b><small>Waiting</small></div></div>' +
+      (rows || '<p class="rf-empty">\uD83D\uDC65<br>No friends yet.<br>Share your code and they will show up here.</p>');
+    inv.style.display = tab === 'invite' ? '' : 'none'; fp.style.display = tab === 'friends' ? '' : 'none';
+    const hero = document.createElement('div'); hero.className = 'rf-hero';
+    hero.innerHTML = '<div class="rf-hero-ic">\uD83C\uDF81</div><div><b>Refer &amp; Earn \u20B9' + v + '</b><span>Invite a friend \u2014 you get \u20B9' + v + ' off when their first order is delivered</span></div>';
+    inv.insertBefore(hero, inv.firstChild);
+    const bal = referralBalance();
+    if (bal > 0) {
+      const w = document.createElement('div'); w.className = 'rf-wallet';
+      w.innerHTML = '<div><small>\uD83D\uDCB0 Wallet balance</small><b>\u20B9' + bal + '</b></div><span>Applied automatically on your next Food order' + (min > 0 ? ' (min \u20B9' + min + ')' : '') + '</span>';
+      hero.after(w); inv.classList.add('rf-hasw');
+    }
+    const rowEl = inv.querySelector('.rf-row');
+    if (rowEl) {
+      const pl = window.__rfPlat || 'both', pc = document.createElement('div'); pc.className = 'rf-plat';
+      pc.innerHTML = '<small>Friend uses</small>' + [['both', '\uD83D\uDC65 Both'], ['android', '\uD83E\uDD16 Android'], ['iphone', '\uD83D\uDCF1 iPhone']].map(x => '<button type="button" data-p="' + x[0] + '" class="' + (pl === x[0] ? 'on' : '') + '">' + x[1] + '</button>').join('');
+      pc.querySelectorAll('button').forEach(b => b.onclick = () => { window.__rfPlat = b.dataset.p; neshReferralSheetDraw(); });
+      rowEl.parentNode.insertBefore(pc, rowEl);
+    }
+    head.after(tabs); sheet.appendChild(inv); sheet.appendChild(fp);
+    // celebrate when a new friend joins / a first order gets delivered (counts only ever go up)
+    try {
+      const sk = 'nesh_rf_seen_' + (code || 'x'), seen = JSON.parse(localStorage.getItem(sk) || 'null');
+      if (code && (total > 0 || done > 0)) {
+        if (seen && (total > seen.t || done > seen.d)) neshRfConfetti();
+        localStorage.setItem(sk, JSON.stringify({ t: Math.max(total, seen ? seen.t : 0), d: Math.max(done, seen ? seen.d : 0) }));
+      }
+    } catch (e) {}
+  } catch (e) {}
   const say = (t, ok) => { window.__rfMsg = { t, ok }; const m = sheet.querySelector('#rf-msg'); if (m) { m.textContent = t; m.className = 'rf-msg ' + (ok ? 'ok' : 'no'); } };
   const cp = sheet.querySelector('#rf-copy');
   if (cp) cp.onclick = () => {
@@ -17046,14 +17253,17 @@ function neshReferralSheetDraw() {
   const sh = sheet.querySelector('#rf-share');
   if (sh) sh.onclick = () => {
     const PLAY = 'https://play.google.com/store/apps/details?id=com.neshgroup.nesh';
-    let link = String(c.link || PLAY);
-    // Play Store link carries the code as install referrer (the app reads it on first open); web links carry ?ref=CODE
-    if (code) {
-      if (/play\.google\.com/i.test(link)) { if (!/[?&]referrer=/i.test(link)) link += (link.indexOf('?') > -1 ? '&' : '?') + 'referrer=' + encodeURIComponent('ref=' + code); }
-      else if (!/[?&]ref=/i.test(link)) link += (link.indexOf('?') > -1 ? '&' : '?') + 'ref=' + encodeURIComponent(code);
-    }
-    const web = (code && /play\.google\.com/i.test(link)) ? '\nWeb: https://neshapp.in/?ref=' + encodeURIComponent(code) : '';
-    const text = 'Join NESH and get \u20B9' + v + ' off! \uD83C\uDF81 Use my code ' + code + ' in Refer & Earn after you sign up.\n' + link + web;
+    const enc = encodeURIComponent(code || '');
+    // Android: Play Store link carries the code as install referrer (the app reads it on first open)
+    const androidLink = PLAY + '&referrer=' + encodeURIComponent('ref=' + code);
+    // iPhone: no store app, so the web link (?ref=CODE) opens NESH in Safari and remembers the code
+    let iphoneLink = String(c.link || '');
+    if (!iphoneLink || /play\.google\.com/i.test(iphoneLink)) iphoneLink = 'https://neshapp.in/?ref=' + enc;
+    else if (!/[?&]ref=/i.test(iphoneLink)) iphoneLink += (iphoneLink.indexOf('?') > -1 ? '&' : '?') + 'ref=' + enc;
+    const plat = window.__rfPlat || 'both';
+    let text = '\uD83C\uDF81 *Join NESH!*\nFood, groceries & more delivered to your door \uD83D\uDEF5\nUse my code *' + code + '* in Refer & Earn after you sign up.';
+    if (plat !== 'iphone') text += '\n\n\uD83E\uDD16 Android: ' + androidLink;
+    if (plat !== 'android') text += '\n\n\uD83D\uDCF1 iPhone: ' + iphoneLink;
     try { if (navigator.share) { navigator.share({ text }).catch(() => {}); return; } } catch (e) {}
     try { window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank'); } catch (e) {}
   };
@@ -24456,7 +24666,7 @@ setTimeout(async function(){try{var a=JSON.parse(localStorage.getItem('nesh_pr')
 @media (min-width:1000px){
   :root{ --nd-w:1180px; }
   #app{ max-width:var(--nd-w); box-shadow:0 0 0 1px rgba(43,36,16,.06), 0 10px 40px rgba(43,36,16,.10); }
-  #area-unavail, #nesh-bnav, #nz-bar, .order-progress-bar, .cart-bar{ max-width:var(--nd-w); }
+  #area-unavail, #nesh-bnav, #nesh-fnav, #nz-bar, .order-progress-bar, .cart-bar{ max-width:var(--nd-w); }
 
   /* Home: Food / Groceries / Taxi cards in a row */
   .cat-wrap{ padding:28px 32px 32px !important; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)) !important; gap:20px !important; }
@@ -24515,7 +24725,7 @@ setTimeout(async function(){try{var a=JSON.parse(localStorage.getItem('nesh_pr')
 /* Medium screens (tablet / small laptop) */
 @media (min-width:700px) and (max-width:999px){
   #app{ max-width:760px; }
-  #area-unavail, #nesh-bnav, #nz-bar, .order-progress-bar, .cart-bar{ max-width:760px; }
+  #area-unavail, #nesh-bnav, #nesh-fnav, #nz-bar, .order-progress-bar, .cart-bar{ max-width:760px; }
   .rest-list{ display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)); }
   .item-grid{ grid-template-columns:repeat(3,minmax(0,1fr)) !important; }
 }
@@ -24788,7 +24998,7 @@ html[data-theme="dark"] #nd-top .nd-loc{ background:#2b2619; border-color:#534B3
 /* Full-width layout on wide screens (no narrow centred column) */
 @media (min-width:700px) and (max-width:999px){
   #app{ max-width:none; }
-  #area-unavail, #nesh-bnav, #nz-bar, .order-progress-bar, .cart-bar{ max-width:none; }
+  #area-unavail, #nesh-bnav, #nesh-fnav, #nz-bar, .order-progress-bar, .cart-bar{ max-width:none; }
   .cart-bar{ left:50%; transform:translateX(-50%); }
 }
 @media (min-width:1000px){
