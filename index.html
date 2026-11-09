@@ -455,9 +455,9 @@ html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
   .rf-plat button{ flex:1; border:1.5px solid #E3DCC6; border-radius:999px; padding:9px 6px; background:#fff; color:#5C4F2E; font:700 12.5px/1 Inter,sans-serif; cursor:pointer; white-space:nowrap; }
   .rf-plat button.on{ background:#FFF1B8; border-color:#F2B705; color:#2B2410; }
   html[data-theme="dark"] .rf-plat button{ background:#221E15; border-color:#3A3322; color:#CFC6A8; } html[data-theme="dark"] .rf-plat button.on{ background:#3A3010; border-color:#F2B705; color:#FFE27A; }
-  body.has-fnav .order-progress-bar{ bottom:calc(64px + env(safe-area-inset-bottom,0px)); }
+  body.has-fnav .order-progress-bar{ bottom:var(--fn-h,70px); }
   body.has-fnav .home-cart-stack{ z-index:895; }
-  body.has-fnav.has-hcc #fo-ov{ padding-bottom:140px; }
+  body.has-fnav.has-hcc #fo-ov{ padding-bottom:calc(var(--fn-h,70px) + 130px); }
   body.fn-kb #nesh-fnav{ display:none !important; }
   body.fn-kb .home-cart-stack{ bottom:12px; }
   /* ---- Food screen bottom bar: Home / Offers / Refer (offers strip + referral card moved here) ---- */
@@ -468,10 +468,10 @@ html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
   #nesh-fnav .nb-btn{ position:relative; }
   #nesh-fnav .nb-dot{ position:absolute; top:2px; left:calc(50% + 8px); width:9px; height:9px; border-radius:50%; background:#E23744; border:2px solid #fff; box-sizing:content-box; display:none; }
   #nesh-fnav .nb-dot.on{ display:block; }
-  body.has-fnav #screen-home{ padding-bottom:84px; }
-  body.has-fnav.has-hcc #screen-home{ padding-bottom:170px; }
-  body.has-fnav .home-cart-stack{ bottom:calc(72px + env(safe-area-inset-bottom)); }
-  #fo-ov{ position:fixed; left:50%; transform:translateX(-50%); width:100%; max-width:420px; top:0; bottom:calc(64px + env(safe-area-inset-bottom)); z-index:890; background:var(--bg,#FAF8F3); overflow-y:auto; display:none; padding:calc(env(safe-area-inset-top,0px) + 18px) 16px 24px; box-sizing:border-box; }
+  body.has-fnav #screen-home{ padding-bottom:calc(var(--fn-h,70px) + 24px); }
+  body.has-fnav.has-hcc #screen-home{ padding-bottom:calc(var(--fn-h,70px) + 110px); }
+  body.has-fnav .home-cart-stack{ bottom:calc(var(--fn-h,70px) + 8px); }
+  #fo-ov{ position:fixed; left:50%; transform:translateX(-50%); width:100%; max-width:420px; top:0; bottom:0; z-index:890; background:var(--bg,#FAF8F3); overflow-y:auto; display:none; padding:calc(env(safe-area-inset-top,0px) + 18px) 16px calc(var(--fn-h,70px) + 24px); box-sizing:border-box; }
   #fo-ov.show{ display:block; }
   #fo-ov .fo-ov-title{ margin:0 0 4px; font:800 20px/1.2 Poppins,Inter,sans-serif; color:var(--ink,#2B2410); }
   #fo-ov .fo-ov-sub{ margin:0 0 14px; font:500 13px/1.3 Inter,sans-serif; color:#8A7E5A; }
@@ -6485,7 +6485,14 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
                 // Operator offer for THIS portion (Operator Panel -> Trending Offers): customers pay the same amount less
                 // (offerMrp-style strike-through kept in sizeMrp) and the shop is paid the offer price. Ignored unless below the portion's own price.
                 const offSz = (m.offerSizePrices && typeof m.offerSizePrices === 'object') ? Number(m.offerSizePrices[sz]) : 0;
-                if (offSz > 0 && offSz < raw) {
+                // Operator offer typed as the CUSTOMER price (Operator Panel -> Trending Offers): customers pay exactly that; strike-through = their normal customer price.
+                // The discount comes out of the operator's markup: the shop is still paid exactly what it was paid before the offer.
+                const ocSz = (m.offerCustomerSizePrices && typeof m.offerCustomerSizePrices === 'object') ? Number(m.offerCustomerSizePrices[sz]) : 0;
+                if (ocSz > 0 && ocSz < pr) {
+                  mrps[sz] = pr;
+                  if (rt === undefined) rt = pr;   // no separate shop rate before = the shop was paid the full price: keep paying that
+                  pr = ocSz;
+                } else if (offSz > 0 && offSz < raw) {
                   mrps[sz] = pr;
                   pr = Math.max(1, pr - (raw - offSz));
                   if (rt !== undefined) rt = Math.max(0, offSz - (opSz > 0 ? 0 : commissionFor(mm)));
@@ -6504,7 +6511,14 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
           } catch (e) {}
           const base = Number(m.price) || 0, op = Number(m.offerPrice) || 0;
           // Food shops: a one-price item can have an offer too (items sold in portions use offerSizePrices above instead).
-          if ((businessType === 'groceries' || businessType === 'online_shop' || (businessType === 'hotel' && !obj.sizePrices)) && op > 0 && op < base) {
+          const offElig = (businessType === 'groceries' || businessType === 'online_shop' || (businessType === 'hotel' && !obj.sizePrices));
+          const ocp = Number(m.offerCustomerPrice) || 0;   // operator offer typed as the CUSTOMER price (wins over a shop-price offer)
+          if (offElig && ocp > 0 && ocp < obj.price) {
+            // Discount comes out of the operator's markup: the shop is still paid what it was paid before the offer.
+            obj.offerMrp = obj.price;
+            if (obj.shopRate === undefined) obj.shopRate = obj.price;
+            obj.price = ocp;
+          } else if (offElig && op > 0 && op < base) {
             obj.offerMrp = obj.price;
             obj.price = Math.max(1, obj.price - (base - op));
             if (obj.shopRate !== undefined) obj.shopRate = op - ((typeof commissionFor === 'function') ? commissionFor(m) : 0);
@@ -8230,6 +8244,24 @@ function neshFoodOffers(shops) {
   out.sort((a, b) => (1 - b.price / b.mrp) - (1 - a.price / a.mrp));
   return out.slice(0, 12);
 }
+// Offers card tap -> the shop menu is already open: find the item's card (menu cards are built in batches, so wait for it),
+// scroll it to the middle and mark it with an orange ring for a few seconds.
+function neshShowOfferItem(itemId) {
+  const sel = '#screen-menu .item-card2[data-item-id="' + (window.CSS && CSS.escape ? CSS.escape(String(itemId)) : String(itemId).replace(/"/g, '\\"')) + '"]';
+  let tries = 0;
+  const tick = () => {
+    let card = document.querySelector(sel);
+    if (!card && tries === 0) { try { if (window.__neshMenuFlush) window.__neshMenuFlush(); } catch (e) {} card = document.querySelector(sel); }
+    if (!card) { if (++tries < 30) setTimeout(tick, 100); return; }
+    try { document.querySelectorAll('#screen-menu .item-card2.nesh-offer-mark').forEach(x => { x.classList.remove('nesh-offer-mark'); x.style.boxShadow = ''; }); } catch (e) {}
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    card.classList.add('nesh-offer-mark');
+    card.style.transition = 'box-shadow .3s';
+    card.style.boxShadow = '0 0 0 3px #F2560C, 0 6px 18px rgba(242,86,12,.28)';
+    setTimeout(() => { card.style.boxShadow = ''; card.classList.remove('nesh-offer-mark'); }, 3500);
+  };
+  setTimeout(tick, 150);
+}
 // shops = the Food shops currently listed (null / empty = hide the strip)
 function neshRenderFoodOffers(shops) {
   const wrap = document.getElementById('food-offers-wrap'), el = document.getElementById('food-offers');
@@ -8259,8 +8291,8 @@ function neshRenderFoodOffers(shops) {
       const go = () => {
         state.category = 'hotel'; openRestaurant(o.r.id);
         if (state.selectedRestaurant && state.selectedRestaurant.id === o.r.id) {
-          if (o.sz) setSelectedSize(o.it.id, o.sz);   // open the item with the discounted portion already chosen
-          openItemDetail(o.it.id, false);
+          if (o.sz) setSelectedSize(o.it.id, o.sz);   // discounted portion preselected
+          neshShowOfferItem(o.it.id);                  // open the shop, scroll to the item and mark it (no item detail page)
         }
       };
       if (typeof requireLocationThen === 'function') requireLocationThen(go); else go();
@@ -8422,6 +8454,7 @@ function neshSyncFoodNav() {
   nav.classList.toggle('on', show);
   document.body.classList.toggle('has-fnav', show);
   if (!show) { neshCloseFoodOffers(); return; }
+  try { const h = nav.offsetHeight; if (h > 0) document.documentElement.style.setProperty('--fn-h', h + 'px'); } catch (e) {}
   let refOn = false; try { refOn = referralOn(); } catch (e) {}
   document.getElementById('fn-refer').style.display = refOn ? '' : 'none';
   const n = (window.__foCount || 0);
@@ -23348,9 +23381,20 @@ if ('serviceWorker' in navigator) {
     var anH = (an && an.offsetHeight) ? an.offsetHeight : 0;
     try { var _sh = document.getElementById('screen-home'); if (!anH && an && document.documentElement.classList.contains('nesh-abroad') && _sh && _sh.classList.contains('active')) anH = 70; } catch (e) {}   // nav not laid out yet   // Abroad bottom nav (Home/Chat) is visible -> sit above it (its height already includes the safe-area)
     try { if (anH) document.documentElement.style.setProperty('--ab-nav-h', anH + 'px'); else document.documentElement.style.removeProperty('--ab-nav-h'); } catch (e) {}
+    // Food screen bottom bar (Home / Offers / Refer) is showing -> sit just above it (its height already includes the safe-area).
+    // Without this the inline bottom below hid the card behind the bar, leaving only its green top edge visible on the Offers tab.
+    var fnv = document.getElementById('nesh-fnav');
+    var fnH = (!anH && fnv && fnv.classList.contains('on') && fnv.offsetHeight) ? fnv.offsetHeight : 0;
     if (anH) el.style.bottom = (off + anH) + 'px';
+    else if (fnH) el.style.bottom = (off - 4 + fnH) + 'px';
     else el.style.bottom = 'calc(env(safe-area-inset-bottom) + ' + off + 'px)';
   }
+  try {   // Food bottom bar shows/hides (tab change, keyboard) -> re-place the card right away (class change only, no network)
+    var _fn = document.getElementById('nesh-fnav');
+    if (_fn && window.MutationObserver) new MutationObserver(function () { try { sync(); } catch (e) {} }).observe(_fn, { attributes: true, attributeFilter: ['class'] });
+    document.addEventListener('focusin', function () { setTimeout(function () { try { sync(); } catch (e) {} }, 120); });
+    document.addEventListener('focusout', function () { setTimeout(function () { try { sync(); } catch (e) {} }, 200); });
+  } catch (e) {}
   try {   // the bottom nav hides/shows while scrolling -> move the card down/up with it
     var _bn = document.getElementById('nesh-bnav');
     if (_bn && window.MutationObserver) new MutationObserver(function () { try { sync(); } catch (e) {} }).observe(_bn, { attributes: true, attributeFilter: ['class'] });
