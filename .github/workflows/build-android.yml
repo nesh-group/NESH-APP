@@ -680,6 +680,74 @@ jobs:
           printf '\ndependencies {\n    implementation "com.google.android.gms:play-services-location:21.3.0"\n}\n' >> android/app/build.gradle
           cat android/app/src/main/java/com/neshgroup/nesh/*.java
 
+      # Refer & Earn: Google Play Install Referrer. A friend who installs from the
+      # share link (play.google.com/...&referrer=ref%3DCODE) opens the app for the
+      # first time -> this tiny native plugin hands "ref=CODE" to index.html, which
+      # pre-fills / auto-applies the friend's code. Plugin name: NeshReferrer.
+      - name: Install Referrer plugin (Refer & Earn code from Play Store link)
+        run: |
+          python3 - << 'PYEOF'
+          import glob, os
+          F = glob.glob("android/app/src/main/java/**/MainActivity.java", recursive=True)[0]
+          D = os.path.dirname(F)
+          pkg = [l for l in open(F) if l.startswith("package ")][0].strip()
+          open(D + "/NeshReferrerPlugin.java", "w").write(pkg + """
+
+          import com.android.installreferrer.api.InstallReferrerClient;
+          import com.android.installreferrer.api.InstallReferrerStateListener;
+          import com.android.installreferrer.api.ReferrerDetails;
+          import com.getcapacitor.JSObject;
+          import com.getcapacitor.Plugin;
+          import com.getcapacitor.PluginCall;
+          import com.getcapacitor.PluginMethod;
+          import com.getcapacitor.annotation.CapacitorPlugin;
+
+          @CapacitorPlugin(name = "NeshReferrer")
+          public class NeshReferrerPlugin extends Plugin {
+              private static void answer(PluginCall call, String ref) {
+                  try {
+                      JSObject o = new JSObject();
+                      o.put("referrer", ref == null ? "" : ref);
+                      call.resolve(o);
+                  } catch (Throwable ignored) { }
+              }
+
+              @PluginMethod
+              public void getReferrer(final PluginCall call) {
+                  try {
+                      final InstallReferrerClient client = InstallReferrerClient.newBuilder(getContext()).build();
+                      client.startConnection(new InstallReferrerStateListener() {
+                          @Override
+                          public void onInstallReferrerSetupFinished(int code) {
+                              String ref = "";
+                              try {
+                                  if (code == InstallReferrerClient.InstallReferrerResponse.OK) {
+                                      ReferrerDetails d = client.getInstallReferrer();
+                                      ref = d.getInstallReferrer();
+                                  }
+                              } catch (Throwable t) { ref = ""; }
+                              try { client.endConnection(); } catch (Throwable t) { }
+                              answer(call, ref);
+                          }
+
+                          @Override
+                          public void onInstallReferrerServiceDisconnected() { }
+                      });
+                  } catch (Throwable t) {
+                      answer(call, "");
+                  }
+              }
+          }
+          """.replace("\n          ", "\n"))
+          s = open(F).read()
+          a = "registerPlugin(NeshUpiPlugin.class);"
+          assert a in s, "NeshUpiPlugin registration not found in MainActivity"
+          s = s.replace(a, a + "\n        registerPlugin(NeshReferrerPlugin.class);", 1)
+          open(F, "w").write(s)
+          PYEOF
+          printf '\ndependencies {\n    implementation "com.android.installreferrer:installreferrer:2.2"\n}\n' >> android/app/build.gradle
+          grep -n "registerPlugin" android/app/src/main/java/com/neshgroup/nesh/MainActivity.java
+
       # Location + POST_NOTIFICATIONS (Android 13+ will not even show the
       # notification permission dialog unless the app declares it).
       - name: Add location + notification permissions to AndroidManifest.xml
