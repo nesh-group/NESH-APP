@@ -262,7 +262,22 @@ jobs:
         if: ${{ inputs.skip_smoke_test != true }}
         run: |
           pip install playwright -q
-          python3 -m playwright install --with-deps chromium
+          # azure.archive.ubuntu.com mirror is unreachable from the runner -> use the main Ubuntu mirror instead
+          for f in /etc/apt/sources.list /etc/apt/sources.list.d/*; do
+            [ -f "$f" ] && sudo sed -i 's#azure.archive.ubuntu.com#archive.ubuntu.com#g; s#http://security.ubuntu.com#http://archive.ubuntu.com#g; s#https://security.ubuntu.com#https://archive.ubuntu.com#g' "$f" || true
+          done
+          sudo apt-get clean
+          ok=0
+          for i in 1 2 3; do
+            sudo apt-get update -o Acquire::Retries=3 || true
+            if timeout 300 python3 -m playwright install --with-deps chromium; then ok=1; break; fi
+            echo "Attempt $i failed, retrying in 15s..."; sleep 15
+          done
+          # Fallback: browser only (runner already has most libraries) - do not fail the build because of apt
+          if [ "$ok" != "1" ]; then
+            echo "::warning::apt deps failed, trying browser download only"
+            python3 -m playwright install chromium
+          fi
           python3 - << 'PYEOF'
           import sys, threading, functools, http.server, socketserver
           from playwright.sync_api import sync_playwright
