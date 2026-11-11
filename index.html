@@ -317,6 +317,10 @@ html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://images.unsplash.com" crossorigin>
 <link rel="preconnect" href="https://texi-and-food-default-rtdb.firebaseio.com" crossorigin>
+<link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
+<link rel="preconnect" href="https://neshapp.in" crossorigin>
+<link rel="dns-prefetch" href="https://nominatim.openstreetmap.org">
+<link rel="dns-prefetch" href="https://overpass-api.de">
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js">
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
@@ -2345,7 +2349,7 @@ html.nesh-abroad-direct #screen-home[data-pravasi="1"] .home-back-btn{ display:n
   // jumps to a wrong place first. onDone(pos) fires once with the most accurate fix.
   window.neshFastFix = function (o) {
     o = o || {};
-    const GOOD = o.good || 8, SOFT = o.soft || 2500, MID = o.mid || 5000, HARD = o.hard || 15000;   // <= 8 m at once; else 15 m after 2.5 s, 30 m after 5 s; hard stop 15 s
+    const GOOD = o.good || 15, SOFT = o.soft || 2000, MID = o.mid || 4000, HARD = o.hard || 15000;   // <= 15 m at once; <= 30 m after 2 s and 4 s; hard stop 15 s   // <= 8 m at once; else 15 m after 2.5 s, 30 m after 5 s; hard stop 15 s
     const geo = navigator.geolocation;
     let best = null, done = false, watchId = null, lastErr = null, refining = false; const timers = [];
     const acc = p => { const a = Number(p && p.coords && p.coords.accuracy); return isFinite(a) && a > 0 ? a : 99999; };
@@ -2357,13 +2361,13 @@ html.nesh-abroad-direct #screen-home[data-pravasi="1"] .home-back-btn{ display:n
       if (o.onRefine && watchId != null && acc(best) > 4) {
         // first fix accepted: keep the GPS running ~12 s more and quietly upgrade the position if a clearly better fix arrives
         refining = true;
-        setTimeout(() => { refining = false; try { if (watchId != null) geo.clearWatch(watchId); } catch (e) {} watchId = null; }, 12000);
+        setTimeout(() => { refining = false; try { if (watchId != null) geo.clearWatch(watchId); } catch (e) {} watchId = null; }, o.refineMs || 12000);
       } else { try { if (watchId != null) geo.clearWatch(watchId); } catch (e) {} }
       try { if (best) { if (o.onDone) o.onDone(best); } else if (o.onFail) o.onFail(lastErr || { code: 3, message: 'timeout' }); } catch (e) {}
     }
     function giveUp() {
       if (done) return;
-      if (best && acc(best) <= 100) { finish(100); return; }
+      if (best && acc(best) <= (o.strict ? 60 : 100)) { finish(o.strict ? 60 : 100); return; }
       timers.forEach(clearTimeout);
       try { if (watchId != null) geo.clearWatch(watchId); } catch (e) {}
       watchId = null;
@@ -2371,6 +2375,7 @@ html.nesh-abroad-direct #screen-home[data-pravasi="1"] .home-back-btn{ display:n
       const useLoose = (p) => { if (done) return; done = true; try { p.approx = true; } catch (x) {} try { if (o.onDone) o.onDone(p); } catch (x) {} };
       // Location is ON but GPS never got within 100 m (indoors / weak signal / battery saver).
       // Do NOT report that as "location off": use the best loose fix we have (the pin can still be adjusted), else one quick network fix.
+      if (o.strict) { failNow({ code: 3, message: 'timeout' }); return; }
       if (best && acc(best) <= 3000) { useLoose(best); return; }
       // permission denied / location services switched off: a real failure. A plain "position unavailable" (GPS has not locked yet, code 2
       // without an "off" message) is NOT: it still gets the quick network fix below instead of showing "Turn on location" right away.
@@ -2384,12 +2389,12 @@ html.nesh-abroad-direct #screen-home[data-pravasi="1"] .home-back-btn{ display:n
       } catch (e) { failNow(); }
     }
     function consider(p) {
-      if (refining && p && p.coords && best && acc(p) < acc(best) * 0.7 && acc(p) <= 15 && !(p.timestamp && Date.now() - p.timestamp > 15000)) { best = p; try { o.onRefine(p); } catch (e) {} return; }
+      if (refining && p && p.coords && best && acc(p) < acc(best) * 0.8 && (acc(best) <= 40 || acc(p) <= 50) && !(p.timestamp && Date.now() - p.timestamp > 15000)) { best = p; try { o.onRefine(p); } catch (e) {} if (acc(p) <= 5) { refining = false; try { if (watchId != null) geo.clearWatch(watchId); } catch (e) {} watchId = null; } return; }   // keep upgrading every clearly better fix until ~5 m, then stop GPS (saves battery)
       if (done || !p || !p.coords) return;
       if (p.timestamp && Date.now() - p.timestamp > 15000) return;   // really old cached fix - ignore (30 s, so a phone clock that is a few seconds off never rejects every real GPS fix)
       if (!best || acc(p) < acc(best)) {
         best = p;
-        if (acc(p) <= 20) { try { if (o.onUpdate) o.onUpdate(p); } catch (e) {} }
+        if (acc(p) <= 30) { try { if (o.onUpdate) o.onUpdate(p); } catch (e) {} }
       }
       if (acc(best) <= GOOD) finish(GOOD);
     }
@@ -2397,8 +2402,14 @@ html.nesh-abroad-direct #screen-home[data-pravasi="1"] .home-back-btn{ display:n
     if (!geo) { onErr({ code: 2, message: 'no geolocation' }); return function () {}; }
     try { watchId = geo.watchPosition(consider, onErr, { enableHighAccuracy: true, timeout: HARD, maximumAge: 0 }); } catch (e) { onErr(e); }
     try { geo.getCurrentPosition(consider, function () {}, { enableHighAccuracy: true, timeout: HARD, maximumAge: 0 }); } catch (e) {}
-    timers.push(setTimeout(() => finish(15), SOFT));
-    timers.push(setTimeout(() => finish(30), MID));
+    if (o.early) {
+      // Swiggy-style: open the app FAST with the first rough position (<= earlyAcc m, from GPS or a quick network/last-known fix),
+      // then keep GPS running (refineMs) and quietly sharpen the pin to ~5 m while the customer is already using the app.
+      timers.push(setTimeout(() => finish(o.earlyAcc || 500), o.earlyMs || 1000));
+      try { geo.getCurrentPosition(p => { if (done || !p || !p.coords) return; if (!best || acc(p) < acc(best)) best = p; finish(o.earlyAcc || 500); }, function () {}, { enableHighAccuracy: false, timeout: (o.earlyMs || 1000) + 1500, maximumAge: 15000 }); } catch (e) {}
+    }
+    timers.push(setTimeout(() => finish(o.softAcc || 30), SOFT));
+    timers.push(setTimeout(() => finish(o.midAcc || 30), MID));
     timers.push(setTimeout(giveUp, HARD));
     return function cancel() { if (done && !refining) return; done = true; refining = false; timers.forEach(clearTimeout); try { if (watchId != null) geo.clearWatch(watchId); } catch (e) {} };
   };
@@ -4514,8 +4525,8 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
   var skipSplash = false;
   try { if (sessionStorage.getItem('nesh_ptr') === '1') { skipSplash = true; sessionStorage.removeItem('nesh_ptr'); } } catch (e) {}
   if (skipSplash) { el.style.transition = 'none'; el.classList.remove('show'); }
-  var MIN_SHOW = 700;      // never flash away faster than this
-  var MAX_SHOW = 8000;     // safety: always leave splash after this
+  var MIN_SHOW = 400;      // never flash away faster than this
+  var MAX_SHOW = 6000;     // safety: leave splash after this (+4 s only while location is still pending => hard cap 10 s total)
   var shownAt = Date.now(), hideT = null, maxT = null;
   // Always wait for: location, category-card order, Bus card switch.
   // Shop list/order/zones are only awaited if the app must reopen on a
@@ -4621,7 +4632,7 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
     maxT = setTimeout(function tick() {
       // GPS can need up to ~20 s (+ a quick network fix): keep "Locating..." up while only the location is pending.
       // It always ends: a fix, or the Turn-on-location / Choose-location screen, clears 'loc'.
-      if (pending.loc && !extended) { extended = true; maxT = setTimeout(tick, 20000); return; }
+      if (pending.loc && !extended) { extended = true; maxT = setTimeout(tick, 4000); return; }
       pending = {}; hide();
     }, MAX_SHOW);
   }
@@ -6533,7 +6544,7 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
       try { localStorage.setItem(CFG_KEY + '_on', cfgCtl.on ? '1' : '0'); } catch (e) {}
       apply();
     }, () => { cfgCtl = { ready: true, on: false, vers: {} }; apply(); });
-    setTimeout(() => { if (!cfgCtl.ready) { cfgCtl = { ready: true, on: false, vers: {} }; apply(); } }, 4000);
+    setTimeout(() => { if (!cfgCtl.ready) { cfgCtl = { ready: true, on: false, vers: {} }; apply(); } }, 2500);
   }
   function onValue(r, cb, errCb) {
     const node = cfgNodeOf(r);
@@ -8519,6 +8530,7 @@ function openCategory(cat, opts) {
   martState.cat = 'All';
   state.category = cat; // was never set here — a previous Groceries visit left it as 'groceries'
   window._neshCatAt = Date.now();
+  try { _shopLoadKey = null; syncShopLoading(); } catch (e) {}   // tapping a card: make sure this location's shops are being loaded
   renderHome();
   showScreen('home');
   persistScreen('home', { category: cat });
@@ -9974,7 +9986,7 @@ function pvApplySlots() {
 }
 function pvShopValues(r, km, closed) {
   const e = pravasiEntry(r) || {};
-  const v = { id: r.id, name: r.name, image: r.image, cuisine: r.cuisine, category: r.opCategory || '',
+  const v = { id: r.id, name: r.name, image: r.image, bannerImage: r.bannerImage || '', cuisine: r.cuisine, category: r.opCategory || '',
     rating: Number(r.rating) ? Number(r.rating).toFixed(1) : '', ratingCount: r.ratingCount || '',
     km: km != null ? km.toFixed(1) : '', price: r.priceForTwo, delivery: shopDeliveryLabel(r),
     status: closed.closed ? 'closed' : 'open', closed: closed.closed ? 'Closed' : '', closedMsg: closed.message || '' };
@@ -14832,6 +14844,7 @@ function renderMart(filtered, categoryFiltered, q, searchFiltered) {
   restListEl.innerHTML = '';
   if (list.length === 0) {
     if (!isAreaUnavailable(state.customerPos) && (shopsStillLoading() || shopsLoadFailed())) { restListEl.appendChild(shopsLoadingEl()); return; }
+    if (!searching && !isAreaUnavailable(state.customerPos) && neshZoneShopsMissing()) { restListEl.appendChild(shopsLoadingEl()); neshShopsRescue(); return; }
     const p = document.createElement('p');
     p.className = 'empty-text';
     p.textContent = isAreaUnavailable(state.customerPos)
@@ -14908,6 +14921,36 @@ function shopsLoadingEl() {
     '<div class="shops-skel"></div><div class="shops-skel"></div><div class="shops-skel"></div>';
   return w;
 }
+
+// ---- Zone has shops but none are downloaded yet = still loading, NEVER "No shops" ----
+// The customer's location zone lists shops, but none of them are in memory yet (first open right after the location was set,
+// slow network, stale cached shops of another place). Show "Loading shops..", kick the loader and redraw a few times, so the
+// list appears by itself instead of only after Back + open again. Gives up after 25 s (then the normal empty message shows).
+function neshZoneShopsMissing() {
+  try {
+    const pt = state.customerPos;
+    if (!pt || typeof pt.lat !== 'number' || typeof pt.lng !== 'number') return false;
+    if (!shopZonesConfigured() || neshZoneCheckSkipped()) return false;
+    const ids = new Set(); zonesAtPoint(pt).forEach(z => z.shopIds.forEach(id => ids.add(id)));
+    if (!ids.size) return false;
+    if ((window.RESTAURANTS || RESTAURANTS || []).some(r => ids.has(r.id))) return false;
+    const since = Math.max(shopsLoadT0, window._neshLocAt || 0, window._neshCatAt || 0);
+    return (Date.now() - since) < 25000;
+  } catch (e) { return false; }
+}
+function neshShopsRescue() {
+  try {
+    if (!window._neshRescueAt || Date.now() - window._neshRescueAt > 8000) {
+      window._neshRescueAt = Date.now();
+      try { _shopLoadKey = null; } catch (e) {}
+      try { syncShopLoading(); } catch (e) {}
+    }
+    (window._neshRescueTs || []).forEach(clearTimeout);
+    window._neshRescueTs = [1000, 2200, 4000, 7000, 11000, 16000, 22000, 26000].map(ms => setTimeout(() => {
+      try { const hs = document.getElementById('screen-home'); if (hs && hs.classList.contains('active')) renderRestaurantList(); } catch (e) {}
+    }, ms));
+  } catch (e) {}
+}
 setTimeout(() => { try { if (!restaurantsLoadedOnce) renderRestaurantList(); } catch (e) {} }, 6200);
 setTimeout(() => { try { if (!restaurantsLoadedOnce) renderRestaurantList(); } catch (e) {} }, 20200);
 setTimeout(() => { try { if (!restaurantsLoadedOnce) renderRestaurantList(); } catch (e) {} }, 45200);
@@ -14937,7 +14980,7 @@ function renderAbroadHome() {
     const r = x.r;
     const rt = Number(r.rating) > 0 ? '\u2605 ' + Number(r.rating).toFixed(1) + (r.ratingCount ? ' \u00B7 ' + esc(r.ratingCount) + ' reviews' : '') : '';
     const tag = r.cuisine || r.opCategory || '';
-    return '<div role="button" tabindex="0" class="ab-shop' + (x.closed ? ' ab-closed' : '') + '" data-shop="' + esc(r.id) + '"><div class="ab-cover" style="' + img(r.image || r.logo) + '">'
+    return '<div role="button" tabindex="0" class="ab-shop' + (x.closed ? ' ab-closed' : '') + '" data-shop="' + esc(r.id) + '"><div class="ab-cover" style="' + img(r.bannerImage || r.image || r.logo) + '">'
       + (x.closed ? '<s class="ab-cl">Closed</s>' : '') + '</div>'
       + '<div class="ab-row"><div><b>' + esc(r.name) + '</b>' + (rt ? '<small>' + rt + '</small>' : '') + '</div>'
       + '<div class="ab-r">' + (tag ? '<i>' + esc(tag) + '</i>' : '') + '</div></div></div>';
@@ -15111,6 +15154,7 @@ function renderRestaurantList() {
   restListEl.innerHTML = "";
   if (filtered.length === 0) {
     if (!isAreaUnavailable(state.customerPos) && (shopsStillLoading() || shopsLoadFailed())) { restListEl.appendChild(shopsLoadingEl()); return; }
+    if (!q && !isAreaUnavailable(state.customerPos) && neshZoneShopsMissing()) { restListEl.appendChild(shopsLoadingEl()); neshShopsRescue(); return; }
     // First open / just after the card was tapped or the location changed: this category has NO shops in memory yet
     // (they are still being fetched for this location). Show the loading state instead of "No restaurants match",
     // and draw again when the grace time is over, so the customer never sees a false "no shops" screen.
@@ -15149,7 +15193,7 @@ function renderRestaurantList() {
     const shopClosed = shopClosedInfo.closed;
     card.innerHTML = `
       <div class="rest-img-wrap${shopClosed ? ' is-shop-closed' : ''}">
-        <img class="rest-img" src="${r.image}" alt="${r.name}" loading="lazy"
+        <img class="rest-img" src="${r.bannerImage || r.image}" alt="${r.name}" loading="lazy"
           onerror="this.style.background='${r.color}'; this.src='';" />
         ${shopClosed ? `<div class="rest-badge-closed"><span>Closed</span></div>` : (r.opCategory ? `<div class="rest-badge-category">${escapeHtml(r.opCategory)}</div>` : '')}
         <div class="rest-dots"><span></span><span></span><span></span><span></span></div>
@@ -15269,7 +15313,7 @@ function renderFoodList(list) {
     card.className = 'food-card' + (closed.closed ? ' closed' : '');
     const rating = Number(r.rating) ? Number(r.rating).toFixed(1) : '';
     card.innerHTML = `
-      <img class="food-card-photo" src="${r.image}" alt="${escapeHtml(r.name)}" loading="lazy" decoding="async" onerror="this.onerror=null;this.style.background='${r.color}';this.src='';" />
+      <img class="food-card-photo" src="${escapeHtml(r.bannerImage || r.image || '')}" alt="${escapeHtml(r.name)}" loading="lazy" decoding="async" onerror="this.onerror=null;${r.bannerImage && r.image ? "this.src='" + escapeHtml(r.image) + "';" : "this.style.background='" + r.color + "';this.src='';"}" />
       <div class="food-card-top">
         ${closed.closed ? '<span class="food-tag closed">Closed</span>' : (r.opCategory ? `<span class="food-tag">${escapeHtml(r.opCategory)}</span>` : '<span></span>')}
         ${rating ? `<span class="food-rate">★ ${rating}</span>` : ''}
@@ -19575,17 +19619,17 @@ async function neshRevealPlaceThenDone(lat, lng) {
     const g0 = window.neshSplash.gen();
     // Use the SAME lookup (and cache) as the Home location label, so when the splash lifts the Home screen
     // already shows the real place name instead of filling it in a moment later.
-    const resolve = neshLabelFor({ lat: lat, lng: lng });
-    const name = await Promise.race([resolve, new Promise(r => setTimeout(() => r(null), 4500))]);   // wait for the place name (max 4.5 s, so the app never gets stuck)
+    neshLabelFor({ lat: lat, lng: lng }).catch(() => {});   // fetch the place name in the background only - nothing waits for it (zone/shops come from local data)
+    const name = (typeof neshAddrLabelSync === 'function') ? neshAddrLabelSync({ lat: lat, lng: lng }) : null;   // only a name we ALREADY know is shown   // slow network: wait for the place name max 1 s only - GPS fix must never be held back by the network
     if (window.neshSplash.gen() !== g0) return;   // splash was re-shown meanwhile (fresh fix pending) — don't touch it
     if (name && window.neshSplash.isActive()) {
       // Let "Locating..." be seen first (at least ~1.3s), then swap in the place name.
-      const wait = Math.max(0, 1300 - window.neshSplash.age());
+      const wait = Math.max(0, 200 - window.neshSplash.age());
       setTimeout(() => {
         if (window.neshSplash.gen() !== g0) return;
         if (!window.neshSplash.isActive()) return finish();
         window.neshSplash.setPlace(name);
-        setTimeout(() => { if (window.neshSplash.gen() === g0) finish(); }, 1000);
+        setTimeout(() => { if (window.neshSplash.gen() === g0) finish(); }, 200);
       }, wait);
     } else finish();
   } catch (e) { finish(); }
@@ -19596,8 +19640,39 @@ function schedulePlaceArea(lat, lng) {
   placeAreaDebounce = setTimeout(() => fetchPlaceArea(lat, lng), 500);
 }
 
+// ---- Background pre-fetch: right after Home opens, look up the nearby landmarks (local data first, then network) so the
+// location sheet / checkout shows them instantly. Nothing waits for this - Home and the shop list never depend on it.
+const neshLmCache = {};
+const neshLmKey = (lat, lng) => lat.toFixed(4) + ',' + lng.toFixed(4);
+async function neshPrefetchLandmarks(lat, lng) {
+  try {
+    const key = neshLmKey(lat, lng);
+    if (neshLmCache[key]) return;
+    if (isWithinLocalCoverage(lat, lng)) {
+      await loadLocalLandmarks();
+      for (const rad of [250, 600, 1500]) {
+        const lp = findLocalNearbyLandmarks(lat, lng, rad);
+        if (lp.length > 0) { neshLmCache[key] = lp; return; }
+      }
+    }
+    const ctl = new AbortController(); setTimeout(() => ctl.abort(), 8000);
+    for (const radius of [250, 800]) {
+      const q = `[out:json][timeout:8];(nwr["name"]["amenity"](around:${radius},${lat},${lng});nwr["name"]["shop"](around:${radius},${lat},${lng});nwr["name"]["office"](around:${radius},${lat},${lng});nwr["name"]["tourism"](around:${radius},${lat},${lng});nwr["name"]["leisure"](around:${radius},${lat},${lng});nwr["name"]["building"](around:${radius},${lat},${lng}););out center 30;`;
+      const res = await fetch("https://overpass-api.de/api/interpreter", { method: "POST", body: "data=" + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ctl.signal });
+      const data = await res.json(); const seen = new Set();
+      const places = (data.elements || []).map(el => {
+        const a = el.lat ?? el.center?.lat, b = el.lon ?? el.center?.lon;
+        if (a == null || b == null || !el.tags?.name) return null;
+        const type = el.tags.amenity || el.tags.shop || el.tags.office || el.tags.tourism || el.tags.leisure || (el.tags.building && el.tags.building !== 'yes' ? el.tags.building : 'building');
+        return { name: el.tags.name, type: String(type).replace(/_/g, ' '), dist: haversineMeters(lat, lng, a, b) };
+      }).filter(x => x && !seen.has(x.name) && seen.add(x.name)).sort((x, y) => x.dist - y.dist).slice(0, 8);
+      if (places.length > 0) { neshLmCache[key] = places; return; }
+    }
+  } catch (e) {}
+}
 async function fetchNearbyLandmarks(lat, lng) {
   if (!locLandmarkSuggestionsEl) return;
+  { const hit = neshLmCache[neshLmKey(lat, lng)]; if (hit && hit.length) { renderLandmarkSuggestions(hit, lat, lng); return; } }   // already pre-fetched in the background: show at once
   locLandmarkSuggestionsEl.innerHTML = `<p class="loc-search-loading">Finding nearby landmarks…</p>`;
   locLandmarkSuggestionsEl.classList.add('show');
 
@@ -22587,7 +22662,15 @@ function autoDetectLocation() {
     showLocationOffPopup(e && e.code);
   };
   // Best-of live GPS + quick network fix: takes the first good fix (<= 30 m) at once, sharpens up to ~4-8 s otherwise.
+  // hard: 10000 -> if GPS gives no usable fix within 10 s (indoors / weak signal) stop waiting and open the app
+  // (Choose-location / Turn-on-location screen) instead of keeping the customer on the splash for 20 s.
   window.neshFastFix({
+    strict: true,
+    hard: 8000,   // GPS gives up at 8 s so the Choose-location / Turn-on-location screen is up BEFORE the 10 s splash cap
+    early: true, earlyMs: 800, earlyAcc: 50,   // FAST OPEN: after ~1 s accept a quick last-known/network fix (<= 100 m, never a cell-tower guess) so Home opens at once; GPS keeps running and onRefine sharpens the pin
+    good: 30, refineMs: 60000,   // first real GPS fix <= 50 m ends "Locating" at once (no waiting for 5 m); GPS keeps running 30 s and sharpens the pin to ~5 m in the background
+    soft: 2000, softAcc: 30,     // 2 s: accept <= 30 m
+    mid: 4000, midAcc: 30,
     onDone: pos => { onLocationGranted(pos); },
     onRefine: pos => window.neshRefinePos(pos),
     onFail: failNow
@@ -22688,6 +22771,7 @@ function neshShowOpenChoice() {
     if (!navigator.geolocation || !secure) { slowFlow(); return; }
     btn.disabled = true; btn.textContent = 'Locating…';
     window.neshFastFix({
+      strict: true,
       onRefine: pos => window.neshRefinePos(pos),
       onDone: (pos) => {
         restore(); close();
@@ -22782,9 +22866,11 @@ window.neshRefinePos = function (pos) {
         const R = 6371000, dLa = (la - a.lat) * Math.PI / 180, dLo = (lo - a.lng) * Math.PI / 180;
         const h = Math.sin(dLa / 2) ** 2 + Math.cos(a.lat * Math.PI / 180) * Math.cos(la * Math.PI / 180) * Math.sin(dLo / 2) ** 2;
         const d = 2 * R * Math.asin(Math.sqrt(h));
-        if (d < 8) return;
+        if (d < 3) return;
         state.customerPos = { lat: la, lng: lo };
         try { localStorage.setItem('nesh_last_gps', JSON.stringify({ lat: la, lng: lo, t: Date.now() })); } catch (e) {}
+        try { neshAddRecentLoc(la, lo); } catch (e) {}
+        try { neshPrefetchLandmarks(la, lo); } catch (e) {}
         try { updateHomeLocationLabel(); } catch (e) {}
         if (d > 30) { try { renderHome(); } catch (e) {} }
       } catch (e) {}
@@ -22805,11 +22891,12 @@ function onLocationGranted(pos) {
   try { localStorage.setItem('nesh_last_gps', JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude, t: Date.now() })); } catch (e) {}
   neshAbFoodPre();
   state.customerPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-  try { neshAddRecentLoc(pos.coords.latitude, pos.coords.longitude); } catch (e) {}
+  try { if (!(Number(pos.coords.accuracy) > 50)) neshAddRecentLoc(pos.coords.latitude, pos.coords.longitude); } catch (e) {}   // a rough quick fix is not saved as a recent location - the refined GPS fix is (see neshRefinePos)
   state.locationDetectFailed = false;
   hideLocationOffPopup();
   renderHome();
   try { updateHomeLocationLabel(); } catch (e) {}
+  { const _la = pos.coords.latitude, _lo = pos.coords.longitude; setTimeout(() => { try { neshPrefetchLandmarks(_la, _lo); } catch (e) {} }, 300); }   // place + landmarks: background, after Home is shown
   // If a category tap was waiting on a location (picker open), continue it.
   if (pendingLocationRequiredAction && browseLocOverlay && browseLocOverlay.classList.contains('show')) {
     closeBrowseLocationPicker();
@@ -22863,7 +22950,8 @@ function tryEnableLocationCore(silent) {
     locOffEnableBtn.textContent = 'Checking…';
   }
   window.neshFastFix({
-    hard: 12000,
+    strict: true,
+    hard: 20000,
     onDone: onLocationGranted,
     onFail: (err) => {
       if (silent) return;
@@ -23105,7 +23193,7 @@ if ('serviceWorker' in navigator) {
     return Promise.all(list.filter(function (b) { return b && b.img && (b.home || b.mart || b.food || b.groceries || b.trending || b.popup) && live(b); }).map(function (b) {
       return new Promise(function (res) {
         if (keep[b.img]) return res();
-        var im = new Image(), t = setTimeout(res, 4000);   // one slow image never blocks the rest
+        var im = new Image(), t = setTimeout(res, 2500);   // one slow image never blocks the rest
         function ok() { clearTimeout(t); keep[b.img] = im; res(); }
         im.onload = function () { if (im.decode) im.decode().then(ok, ok); else ok(); };
         im.onerror = function () { clearTimeout(t); res(); };
@@ -23118,7 +23206,7 @@ if ('serviceWorker' in navigator) {
     if (postersSignalled) return; postersSignalled = true;
     try { window.neshSplash && window.neshSplash.done('posters'); } catch (e) {}
   }
-  setTimeout(postersReady, 3500);   // safety: never hold the splash for slow posters / no internet
+  setTimeout(postersReady, 2500);   // safety: never hold the splash for slow posters / no internet
 
   // One slider instance per placement. p = element id prefix ('posters' = home, 'posters-mart' = NESH Mart)
   function makeSlider(p, wants) {
