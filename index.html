@@ -95,6 +95,7 @@ html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
   #nesh-splash:not(.show){ opacity:0; visibility:hidden; pointer-events:none; }
   /* once the splash is gone, stop its infinite animations (logo pulse, dots, arrow) so they don't keep the GPU/CPU busy behind the app */
   #nesh-splash:not(.show), #nesh-splash:not(.show) *{ animation:none !important; }
+  #nesh-splash:not(.show)::before, #nesh-splash:not(.show)::after{ animation:none !important; }
   #nesh-splash .sp-top{ margin-top:17vh; display:flex; flex-direction:column; align-items:center; }
   #nesh-splash.no-loc .sp-top{ visibility:hidden; }
   /* no "Locating..." text: centre logo + tagline on the screen */
@@ -140,6 +141,7 @@ html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
   .food-card{ position:relative; border-radius:24px; overflow:hidden; margin:0 0 16px; box-shadow:0 8px 22px rgba(43,36,16,.18); cursor:pointer; background:#222; transition:transform .15s; }
   .food-card:active{ transform:scale(.98); }
   .food-card-photo{ width:100%; height:210px; object-fit:cover; display:block; }
+  .food-card{ content-visibility:auto; contain-intrinsic-size:auto 210px; }   /* long shop lists: skip off-screen cards -> smoother open + scroll */
   .food-card::after{ content:""; position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,.86) 0%, rgba(0,0,0,.35) 45%, rgba(0,0,0,0) 70%); pointer-events:none; }
 
   /* ---- Closed shop: browse-only mode ---- */
@@ -525,7 +527,7 @@ html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
   .nb-btn:active svg{ transform:scale(.9); }
   .nb-btn.active{ background:transparent; color:#E8860C; }
   #nb-trending.active svg{ color:#F2560C; }
-  body.has-bnav #screen-category, body.has-bnav #screen-trending{ padding-bottom:24px; }
+  body.has-bnav #screen-category, body.has-bnav #screen-trending{ padding-bottom:calc(var(--bn-h,72px) + 24px) !important; }   /* last card stops ABOVE the floating bottom bar, like the Food screen */
   /* ---- Trending offers (warm, chunky "sticker" look to match the rest of the app) ---- */
   #screen-trending{ background:linear-gradient(180deg,#FFEDB0 0,#FFF6DC 230px,rgba(255,251,240,0) 470px); }
   #screen-trending .tr-head{ position:relative; padding:22px 20px 8px; }
@@ -4417,6 +4419,47 @@ html[data-theme="dark"] .pvc-order .it{ color:#B9AE90; }
   }
 </style>
 
+<style id="nesh-splash-pro">
+  /* ===== Splash: glow + ripple rings + floating category icons + nicer loader (decoration only, no logic changes) ===== */
+  #nesh-splash{ overflow:hidden; }
+  #nesh-splash .sp-deco{ position:absolute; inset:0; pointer-events:none; z-index:0; }
+  #nesh-splash .sp-glow, #nesh-splash .sp-ring{ position:absolute; left:50%; top:46%; border-radius:50%; transform:translate(-50%,-50%); }
+  #nesh-splash .sp-glow{
+    width:min(86vw,380px); aspect-ratio:1;
+    background:radial-gradient(circle, rgba(255,247,205,.85) 0%, rgba(255,236,150,.35) 42%, rgba(255,236,150,0) 70%);
+    animation:spGlow 3.2s ease-in-out infinite;
+  }
+  #nesh-splash .sp-ring{ width:min(46vw,196px); aspect-ratio:1; border:2px solid rgba(255,255,255,.6); opacity:0; animation:spRing 2.8s ease-out infinite; }
+  #nesh-splash .sp-ring.r2{ animation-delay:1.4s; }
+  #nesh-splash .sp-fl{
+    position:absolute; line-height:1; opacity:0;
+    animation:spFlIn .7s ease var(--d,.3s) forwards, spFlBob 3.6s ease-in-out var(--d,.3s) infinite;
+  }
+  #nesh-splash .sp-logo, #nesh-splash.no-loc .sp-logo{ top:46%; width:min(46vw,196px); z-index:1; }
+  #nesh-splash .sp-logo img{ filter:drop-shadow(0 12px 20px rgba(43,36,16,.28)); }
+  #nesh-splash .sp-tag, #nesh-splash.no-loc .sp-tag{
+    top:calc(46% + min(26.5vw,113px) + 22px); z-index:1;
+    font-size:11px; font-weight:700; letter-spacing:.22em; color:#2B2410;
+  }
+  #nesh-splash .sp-tag b{ width:4px; height:4px; opacity:.55; }
+  /* loader: wider track with a sliding bar */
+  #nesh-splash::after{ width:120px; height:4px; margin-left:-60px; background:rgba(43,36,16,.14); }
+  #nesh-splash::before{ width:44px; height:4px; margin-left:-60px; animation:spBar2 1.2s ease-in-out infinite; }
+  /* "Locating..." as a soft pill */
+  #nesh-splash .sp-top{
+    left:50%; right:auto; transform:translateX(-50%); width:max-content; max-width:88vw; padding:7px 16px; z-index:1;
+    background:rgba(43,36,16,.10); border-radius:999px; bottom:calc(9% + 28px + env(safe-area-inset-bottom));
+  }
+  #nesh-splash .sp-text{ font-size:14px !important; font-weight:700; color:#2B2410; }
+  #nesh-splash .sp-pin svg{ width:15px; height:15px; fill:#2B2410; }
+  @keyframes spGlow{ 0%,100%{ transform:translate(-50%,-50%) scale(1); opacity:.8; } 50%{ transform:translate(-50%,-50%) scale(1.12); opacity:1; } }
+  @keyframes spRing{ 0%{ transform:translate(-50%,-50%) scale(.7); opacity:.7; } 100%{ transform:translate(-50%,-50%) scale(2.5); opacity:0; } }
+  @keyframes spFlIn{ from{ opacity:0; transform:translateY(14px) scale(.6); } to{ opacity:.95; transform:none; } }
+  @keyframes spFlBob{ 0%,100%{ transform:translateY(0) rotate(-4deg); } 50%{ transform:translateY(-10px) rotate(5deg); } }
+  @keyframes spBar2{ 0%,100%{ transform:translateX(0); } 50%{ transform:translateX(76px); } }
+  @media (prefers-reduced-motion:reduce){ #nesh-splash .sp-ring, #nesh-splash .sp-glow{ animation:none; } #nesh-splash .sp-fl{ animation:none; opacity:.9; } }
+</style>
+
 <style id="nesh-checkout-trust-css">
 .cp-zerofee{ display:flex; align-items:center; justify-content:center; gap:8px; margin:0 12px 2px; padding:11px 14px; border-radius:12px; background:linear-gradient(135deg,#0E8A3C,#1AA84F); color:#fff; font:800 14px Inter,system-ui,sans-serif; letter-spacing:.1px; box-shadow:0 3px 10px rgba(14,138,60,.28); flex:none; }
 .cp-zerofee i{ font-style:normal; opacity:.8; }
@@ -4436,6 +4479,15 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
 </head>
 <body>
 <div id="nesh-splash" class="show" aria-live="polite">
+  <div class="sp-deco" aria-hidden="true">
+    <i class="sp-glow"></i><i class="sp-ring"></i><i class="sp-ring r2"></i>
+    <span class="sp-fl" style="left:11%;top:17%;--d:.15s;font-size:34px">🍔</span>
+    <span class="sp-fl" style="left:76%;top:13%;--d:.35s;font-size:30px">🛒</span>
+    <span class="sp-fl" style="left:5%;top:35%;--d:.55s;font-size:28px">🚕</span>
+    <span class="sp-fl" style="left:85%;top:36%;--d:.25s;font-size:30px">🛍️</span>
+    <span class="sp-fl" style="left:15%;top:73%;--d:.45s;font-size:32px">🍕</span>
+    <span class="sp-fl" style="left:75%;top:74%;--d:.65s;font-size:30px">🥦</span>
+  </div>
   <div class="sp-top">
     <div class="sp-pin">
       <svg viewBox="0 0 24 24" fill="#FFF8DF"><path d="M21 3 3 10.5l7 2.5 2.5 7z"/></svg>
@@ -15201,7 +15253,7 @@ function renderFoodList(list) {
     card.className = 'food-card' + (closed.closed ? ' closed' : '');
     const rating = Number(r.rating) ? Number(r.rating).toFixed(1) : '';
     card.innerHTML = `
-      <img class="food-card-photo" src="${r.image}" alt="${escapeHtml(r.name)}" loading="lazy" onerror="this.onerror=null;this.style.background='${r.color}';this.src='';" />
+      <img class="food-card-photo" src="${r.image}" alt="${escapeHtml(r.name)}" loading="lazy" decoding="async" onerror="this.onerror=null;this.style.background='${r.color}';this.src='';" />
       <div class="food-card-top">
         ${closed.closed ? '<span class="food-tag closed">Closed</span>' : (r.opCategory ? `<span class="food-tag">${escapeHtml(r.opCategory)}</span>` : '<span></span>')}
         ${rating ? `<span class="food-rate">★ ${rating}</span>` : ''}
@@ -15248,10 +15300,10 @@ function buildFoodItemStrip(rows) {
     const rating = Number(r.rating) ? Number(r.rating).toFixed(1) : '';
     const t = document.createElement('div');
     t.className = 'food-item-tile';
-    const logo = r.image ? `<img src="${escapeHtml(r.image)}" alt="" loading="lazy" onerror="this.onerror=null;this.remove();" />` : '🍽️';
+    const logo = r.image ? `<img src="${escapeHtml(r.image)}" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.remove();" />` : '🍽️';
     t.innerHTML = `
       <div class="food-item-photo">
-        <img class="food-item-img" src="${escapeHtml(it.image)}" alt="${escapeHtml(it.name)}" loading="lazy" onerror="this.onerror=null;this.src='icon-192.png';" />
+        <img class="food-item-img" src="${escapeHtml(it.image)}" alt="${escapeHtml(it.name)}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='icon-192.png';" />
         <span class="food-item-logo" title="${escapeHtml(r.name)}">${logo}</span>
         <span class="food-item-price">₹${escapeHtml(String(it.price))}${UNIT_SUFFIX[it.unit] || ''}</span>
       </div>
@@ -15263,7 +15315,7 @@ function buildFoodItemStrip(rows) {
   wrap.appendChild(row);
   return wrap;
 }
-searchInput.addEventListener('input', renderRestaurantList);
+{ let _srT = 0; searchInput.addEventListener('input', () => { clearTimeout(_srT); _srT = setTimeout(renderRestaurantList, 140); }); }
 try { window.matchMedia('(min-width:1000px)').addEventListener('change', () => { try { if (state.category === 'online_shop') renderRestaurantList(); } catch (e) {} }); } catch (e) {}
 
 const productResultsWrap = document.getElementById('product-results-wrap');
@@ -20599,7 +20651,7 @@ function openOrderSummary() {
   const cpWasOpen = orderSummaryOverlay.classList.contains('show');
   orderSummaryRestEl.textContent = r.name;
   orderSummaryListEl.innerHTML = "";
-  const shopLogoHtml = r.image ? `<img src="${escapeHtml(r.image)}" alt="" loading="lazy" onerror="this.onerror=null;this.remove();" />` : '🍽️';
+  const shopLogoHtml = r.image ? `<img src="${escapeHtml(r.image)}" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.remove();" />` : '🍽️';
   try {
     const shEl = document.getElementById('os-shop-head');
     if (shEl) { shEl.innerHTML = `<span class="os-shop-logo">${shopLogoHtml}</span><span class="os-shop-name">${escapeHtml(r.name || '')}</span>`; shEl.style.display = ''; }
@@ -26410,7 +26462,9 @@ body.has-fnav.fn-kb #screen-home{ padding-bottom:20px !important; }
       return m ? { r: +m[1], g: +m[2], b: +m[3], a: m[4] == null ? 1 : +m[4] } : null;
     }
     function topColor() {
-      var x = Math.round(window.innerWidth / 2), el = document.elementFromPoint(x, 2) || document.elementFromPoint(x, 8);
+      var x = Math.round(window.innerWidth / 2), el = null, stack = (document.elementsFromPoint ? document.elementsFromPoint(x, 2) : [document.elementFromPoint(x, 2)]);
+      for (var q = 0; q < stack.length; q++) { if (stack[q] && !(stack[q].closest && stack[q].closest('#nesh-splash'))) { el = stack[q]; break; } }   // skip the splash while it fades out
+      if (!el) el = document.elementFromPoint(x, 8);
       while (el && el.nodeType === 1) {
         var cs = getComputedStyle(el), col = parse(cs.backgroundColor);
         if (col && col.a >= 0.9) return col;
@@ -26462,7 +26516,14 @@ body.has-fnav.fn-kb #screen-home{ padding-bottom:20px !important; }
         if (native) { try { NB.setColor({ color: hex }); } catch (e) {} }
       } catch (e) {}
     }
-    function soon() { if (busy) return; busy = true; setTimeout(function () { busy = false; apply(); setTimeout(apply, 450); }, 120); }
+    var follow = false;
+    function soon() {
+      if (busy) return; busy = true;
+      setTimeout(function () {
+        busy = false; apply();
+        if (!follow) { follow = true; setTimeout(function () { follow = false; apply(); }, 450); }   // one follow-up after a screen animation, never a pile-up
+      }, 200);
+    }
     new MutationObserver(soon).observe(document.documentElement, { attributes: true, subtree: true, attributeFilter: ['class', 'data-cat', 'data-theme', 'hidden'] });
     window.addEventListener('scroll', soon, true);
     window.addEventListener('resize', soon);
