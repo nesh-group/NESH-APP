@@ -239,22 +239,29 @@ jobs:
               db_ok = mod_ok and wait("Array.isArray(window.SHOP_ZONES)", 45)
               shops_ok = db_ok and wait(SHOPS, 25)
               if db_ok and not shops_ok:
-                  # The test point may be outside every shop zone: move the test customer
-                  # to the middle of a zone that has shops, then wait again.
-                  print("moving test customer into a shop zone:", page.evaluate("""() => {
+                  # Try EVERY zone that lists shops, not just the first one. A zone can list shops
+                  # that are inactive / deleted (only status=active shops are shown), which gives
+                  # 0 shops even though the app itself is fine.
+                  JS = """(zi) => {
                     try {
-                      const zs = (window.SHOP_ZONES || []).filter(z => z.shopIds.length);
-                      for (const z of zs) {
-                        const n = z.bounds.length;
-                        const c = { lat: z.bounds.reduce((a, p) => a + p.lat, 0) / n, lng: z.bounds.reduce((a, p) => a + p.lng, 0) / n };
-                        const pts = [c].concat(z.bounds.map(p => ({ lat: c.lat + (p.lat - c.lat) * 0.5, lng: c.lng + (p.lng - c.lng) * 0.5 })));
-                        const hit = pts.find(q => isPointInZone(q, z.bounds));
-                        if (hit) { state.customerPos = hit; return z.name + ' ' + JSON.stringify(hit); }
-                      }
-                      return 'no zone with shops found';
+                      const z = (window.SHOP_ZONES || []).filter(z => z.shopIds.length)[zi];
+                      const n = z.bounds.length;
+                      const c = { lat: z.bounds.reduce((a, p) => a + p.lat, 0) / n, lng: z.bounds.reduce((a, p) => a + p.lng, 0) / n };
+                      const pts = [c].concat(z.bounds.map(p => ({ lat: c.lat + (p.lat - c.lat) * 0.5, lng: c.lng + (p.lng - c.lng) * 0.5 })));
+                      const hit = pts.find(q => isPointInZone(q, z.bounds));
+                      if (!hit) return z.name + ' (' + z.shopIds.length + ' ids): no test point inside zone';
+                      state.customerPos = hit;
+                      return z.name + ' (' + z.shopIds.length + ' ids) ' + JSON.stringify(hit);
                     } catch (e) { return 'error: ' + e; }
-                  }"""))
-                  shops_ok = wait(SHOPS, 45)
+                  }"""
+                  nz = page.evaluate("(window.SHOP_ZONES || []).filter(z => z.shopIds.length).length")
+                  print("zones that list shops:", nz)
+                  for zi in range(nz):
+                      print("trying zone:", page.evaluate(JS, zi))
+                      if wait(SHOPS, 25):
+                          shops_ok = True
+                          break
+                      print("  -> 0 shops in this zone")
               n = page.evaluate("(window.RESTAURANTS || []).length") if shops_ok else 0
               b.close()
 
