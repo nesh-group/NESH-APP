@@ -7,6 +7,10 @@ on:
         description: 'Skip the pre-build "shops load" check (only if the check itself is wrong)'
         type: boolean
         default: false
+      skip_minify:
+        description: 'Skip the app-only minify step (tick only if the app misbehaves after minify)'
+        type: boolean
+        default: false
   push:
     branches: [ main ]
     paths:
@@ -121,13 +125,14 @@ jobs:
           except Exception as e:
               print("firebase modules skipped:", e)
 
-          # Fixed Unsplash images (downloaded at 1100px wide, quality 80: sharp on phones but light to decode, so the app opens without lag)
+          # Fixed Unsplash images. Width stays 1100px (that is what the phone has to decode, so the app opens without lag).
+          # Only the JPEG quality is raised (80 -> 95): sharper photos and a bigger app (MB), with the SAME decode cost.
           urls = sorted(set(re.findall(r'https://images\.unsplash\.com/[^"\'\s)`<>]+', html)), key=len, reverse=True)
           ok = 0
           for u in urls:
               try:
                   big = re.sub(r"w=\d+", "w=1100", u)
-                  big = re.sub(r"q=\d+", "q=80", big)
+                  big = re.sub(r"q=\d+", "q=95", big)
                   name = "img/" + hashlib.sha1(big.encode()).hexdigest()[:12] + ".jpg"
                   if not os.path.exists(B + "/" + name):
                       open(B + "/" + name, "wb").write(get(big))
@@ -136,6 +141,11 @@ jobs:
               except Exception as e:
                   print("skip", u, e)
           print("images", ok, "of", len(urls))
+          try:
+              tot = sum(os.path.getsize(B + "/img/" + f) for f in os.listdir(B + "/img"))
+              print("bundled image MB: %.1f" % (tot / 1048576.0))
+          except Exception as e:
+              print("size print skipped:", e)
 
           open("www/index.html", "w", encoding="utf-8").write(html)
           PYEOF
@@ -164,6 +174,15 @@ jobs:
             var t = e.target;
             if (t && t.tagName !== 'INPUT' && t.tagName !== 'TEXTAREA') e.preventDefault();
           });
+          // Light tap vibration (native feel) on Add / primary buttons. Does nothing if the plugin is missing.
+          document.addEventListener('click', function (e) {
+            try {
+              var t = e.target && e.target.closest && e.target.closest('.add-btn,.btn-primary,#pay-confirm-btn');
+              if (!t || t.disabled) return;
+              var H = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics;
+              if (H && H.impact) H.impact({ style: 'LIGHT' });
+            } catch (x) {}
+          }, true);
           </script>
           """.replace("\n          ", "\n")
           assert "</head>" in h, "no </head> found"
@@ -171,6 +190,59 @@ jobs:
           open(p, "w", encoding="utf-8").write(h)
           print("app-feel injected")
           PYEOF
+
+      # App-only MINIFY (smaller / faster to parse index.html -> the app opens quicker). Only the www/ copy is changed,
+      # the website index.html is not. Whitespace + syntax only, NO name changes, so nothing that calls a function by name breaks.
+      # It runs BEFORE the smoke test below, so a minified app that fails to list shops stops the build (nothing reaches Play Store).
+      # If minify itself fails, the un-minified app is used. Manual run: tick "skip_minify" to leave it out.
+      - name: App-only minify (index.html)
+        if: ${{ inputs.skip_minify != true }}
+        run: |
+          cp www/index.html www/index.before-minify.html
+          cat > minify-app.js << 'JSEOF'
+          // App-only minify of www/index.html (the website copy in the repo is NOT touched).
+          // Whitespace + syntax minify only: NO renaming of any variable/function names, so inline onclick="..." handlers,
+          // window.* globals and code that shares names between the separate <script> blocks keep working.
+          // Every block is minified on its own; if one block fails, that block simply stays as it was.
+          const fs = require('fs');
+          const esbuild = require(process.env.ESBUILD_PATH || 'esbuild');
+          const file = 'www/index.html';
+          const src = fs.readFileSync(file, 'utf8');
+          let jsDone = 0, jsKept = 0, cssDone = 0, cssKept = 0;
+
+          let out = src.replace(/<script(\s[^>]*)?>([\s\S]*?)<\/script>/gi, (all, attrs, body) => {
+            attrs = attrs || '';
+            if (/\ssrc\s*=/i.test(attrs) || !body.trim()) return all;
+            const t = (attrs.match(/\stype\s*=\s*["']?([^"'\s>]+)/i) || [])[1];
+            if (t && !/^(module|text\/javascript|application\/javascript)$/i.test(t)) return all;   // JSON-LD, templates...
+            try {
+              const r = esbuild.transformSync(body, { minifyWhitespace: true, minifySyntax: true, minifyIdentifiers: false, charset: 'utf8', legalComments: 'none', target: 'esnext' });
+              jsDone++;
+              return '<script' + attrs + '>' + r.code.replace(/\n+$/, '') + '</script>';
+            } catch (e) { jsKept++; console.log('script kept as is:', String(e.message).split('\n')[0]); return all; }
+          });
+
+          out = out.replace(/<style(\s[^>]*)?>([\s\S]*?)<\/style>/gi, (all, attrs, body) => {
+            if (!body.trim()) return all;
+            try {
+              const r = esbuild.transformSync(body, { loader: 'css', minifyWhitespace: true, charset: 'utf8', legalComments: 'none' });
+              cssDone++;
+              return '<style' + (attrs || '') + '>' + r.code.trim() + '</style>';
+            } catch (e) { cssKept++; console.log('style kept as is:', String(e.message).split('\n')[0]); return all; }
+          });
+
+          if (out.length < src.length * 0.4) { console.log('result looks wrong (too small) - keeping the original'); process.exit(0); }
+          fs.writeFileSync(file, out);
+          console.log('minify: scripts ' + jsDone + ' ok / ' + jsKept + ' kept, styles ' + cssDone + ' ok / ' + cssKept + ' kept, ' +
+            Math.round(src.length / 1024) + ' KB -> ' + Math.round(out.length / 1024) + ' KB');
+          JSEOF
+          if npm install --prefix /tmp/esb esbuild --no-audit --no-fund --silent; then
+            ESBUILD_PATH=/tmp/esb/node_modules/esbuild node minify-app.js || cp www/index.before-minify.html www/index.html
+          else
+            echo "esbuild could not be installed - minify skipped, app stays as is"
+          fi
+          rm -f www/index.before-minify.html minify-app.js
+          ls -l www/index.html
 
       # SAFETY CHECK: opens the exact www/ app in a real headless Chrome (like a
       # first-time customer, empty cache) BEFORE the Android build.
@@ -350,6 +422,7 @@ jobs:
           npm install @capacitor/push-notifications
           npm install @capacitor/local-notifications
           npm install @capacitor/share
+          npm install @capacitor/haptics
           npm install @capacitor-firebase/authentication firebase
           npm install @capawesome/capacitor-app-update
           npm install @capacitor/assets --save-dev
