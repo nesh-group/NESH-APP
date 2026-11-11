@@ -26015,6 +26015,8 @@ body.has-fnav.nav-hid .order-progress-bar, body.has-bnav.nav-hid .order-progress
   #screen-home[data-cat="hotel"] #food-filters.nesh-fx{ transition:transform .22s ease, box-shadow .18s ease; will-change:transform; box-shadow:0 4px 10px rgba(43,36,16,.10); }
   #screen-home[data-cat="hotel"] #food-filters.nesh-fx.ff-away{ transform:translateY(-130%); box-shadow:none; }
   .nesh-spacer{ display:none; flex:none; }
+  /* NESH Mart: same pinned search bar (yellow, stays on top while scrolling) */
+  #screen-home[data-cat="online_shop"] .search-wrap.nesh-fx{ position:fixed !important; top:0 !important; z-index:60; box-sizing:border-box; padding-top:max(8px, env(safe-area-inset-top,0px)) !important; background:#F2B705 !important; box-shadow:0 3px 10px rgba(43,36,16,.18); }
 }
 </style>
 <script id="nesh-pin-js">
@@ -26028,12 +26030,13 @@ body.has-fnav.nav-hid .order-progress-bar, body.has-bnav.nav-hid .order-progress
     return true;
   }
   function unpin(){
-    [sw,ff].forEach(function(e){ if(!e) return; e.classList.remove('nesh-fx','ff-away'); e.style.left=e.style.width=''; });
+    [sw,ff].forEach(function(e){ if(!e) return; e.classList.remove('nesh-fx','ff-away'); e.style.left=e.style.right=e.style.width=''; });
     if(sSp) sSp.style.display='none'; if(fSp) fSp.style.display='none';
   }
   function upd(){
     raf=0; if(!init()) return;
-    var on = home.classList.contains('active') && home.getAttribute('data-cat')==='hotel' && window.innerWidth<1000 && home.offsetParent!==null;
+    var cat = home.getAttribute('data-cat');
+    var on = home.classList.contains('active') && (cat==='hotel' || cat==='online_shop') && window.innerWidth<1000 && home.offsetParent!==null;
     if(!on){ unpin(); return; }
     var y=window.scrollY||0;
     var fx=sw.classList.contains('nesh-fx'), cx=ff.classList.contains('nesh-fx');
@@ -26046,15 +26049,15 @@ body.has-fnav.nav-hid .order-progress-bar, body.has-bnav.nav-hid .order-progress
     if(!fx && y>=sTop){
       var r=sw.getBoundingClientRect();
       sSp.style.height=sw.offsetHeight+'px'; sSp.style.display='block';
-      sw.style.left=r.left+'px'; sw.style.width=r.width+'px'; sw.classList.add('nesh-fx'); fx=true;
+      sw.style.left='0px'; sw.style.right='0px'; sw.style.width='100%'; sw.classList.add('nesh-fx'); fx=true;
     } else if(fx && y<sTop){
-      sw.classList.remove('nesh-fx'); sw.style.left=sw.style.width=''; sSp.style.display='none'; fx=false;
+      sw.classList.remove('nesh-fx'); sw.style.left=sw.style.right=sw.style.width=''; sSp.style.display='none'; fx=false;
     }
     var curH = fx ? sw.offsetHeight : 0;
     document.documentElement.style.setProperty('--sw-h', Math.max(0,curH-1)+'px');
     // 3) coupon strip + "Cravings Loaded" hero fade away quickly as you scroll (search + chips stay pinned)
     var slot=document.getElementById('np-banner-slot');
-    if(slot){ var p=Math.min(1,Math.max(0,(y-20)/160)); slot.style.opacity=String(1-p); slot.style.transition='none'; }
+    if(slot){ if(cat==='hotel'){ var p=Math.min(1,Math.max(0,(y-20)/160)); slot.style.opacity=String(1-p); slot.style.transition='none'; } else { slot.style.opacity=''; } }
   }
   function req(){ if(!raf) raf=requestAnimationFrame(upd); }
   window.addEventListener('scroll',req,{passive:true,capture:true});
