@@ -6896,6 +6896,8 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
           location: v.location || null,
           priceForTwo: 199 + (i * 23) % 300,
           image: neshCld(v.photo, 800) || storePhotoSet[i % storePhotoSet.length],
+          // Optional separate background picture for the shop's menu header. "" = not set -> header keeps using `image` (the shop photo) exactly as before.
+          bannerImage: neshCld(v.bannerPhoto, 900) || "",
           color: REST_COLORS[i++ % REST_COLORS.length],
           businessType,
           // Operator-set label shown as a badge on top of the shop's photo
@@ -7072,7 +7074,8 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
       'discountCardImage', 'goSeries', 'gpayNumber', 'hoursEnabled', 'itemCategories', 'location', 'menu',
       'minOrderAmount', 'opCategory', 'openTime', 'photo', 'popularItems', 'ratingCount', 'ratingSum', 'suggestItems',
       'restaurantName', 'shopUnavailable', 'shopUnavailableMessage', 'status', 'deliveryTimeMins', 'opDeliveryTimeMins',
-      'martRanges', 'priceMarkup'];   // operator-set price ranges / markup: without these the customer would see the shop's own price
+      'martRanges', 'priceMarkup',   // operator-set price ranges / markup: without these the customer would see the shop's own price
+      'bannerPhoto'];                  // optional wide photo for the shop's menu header (Partner app -> Account / Operator panel). Empty = the normal shop photo is used
     added.forEach(id => {
       const verAtAttach = catOn ? catTok(id) : null;
       let saveT = null;
@@ -16049,7 +16052,7 @@ function renderMenu() {
   const menuHeaderEl = menuRestLogo.closest('.menu-header');
   if (menuHeaderEl) {
     menuHeaderEl.classList.toggle('has-logo', !!r.image);
-    if (r.image) menuHeaderEl.style.setProperty('--shop-img', 'url("' + String(r.image).replace(/"/g, '%22') + '")');
+    if (r.image) menuHeaderEl.style.setProperty('--shop-img', 'url("' + String(r.bannerImage || r.image).replace(/"/g, '%22') + '")');   // own header picture if the shop/operator set one, else the shop photo
   }
   // If the shop's photo URL 404s / times out, hide the slot instead of
   // leaving the browser's broken-image icon on screen.
