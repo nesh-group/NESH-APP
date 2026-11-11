@@ -201,9 +201,18 @@ jobs:
               b = p.chromium.launch()
               ctx = b.new_context(
                   viewport={"width": 412, "height": 915},
+                  timezone_id="Asia/Kolkata", locale="en-IN",
                   geolocation={"latitude": 9.8667, "longitude": 76.3},
                   permissions=["geolocation"])
+              # The app detects the customer's country from the IP address (api.country.is / ipapi.co).
+              # GitHub runners are in the US, so without this the app would switch to "abroad / Pravasi"
+              # mode and not list the normal Food shops. Pretend this test customer is in India.
+              ctx.route("https://api.country.is/**", lambda r: r.fulfill(status=200, content_type="application/json", headers={"access-control-allow-origin": "*"}, body='{"country":"IN"}'))
+              ctx.route("https://ipapi.co/**", lambda r: r.fulfill(status=200, content_type="text/plain", headers={"access-control-allow-origin": "*"}, body="IN"))
+              ctx.add_init_script("try{localStorage.setItem('nesh_ip_cc',JSON.stringify({cc:'IN',t:Date.now()}))}catch(e){}")
               page = ctx.new_page()
+              cons = []
+              page.on("console", lambda m: cons.append(m.type + ": " + m.text[:300]) if m.type in ("error", "warning") else None)
 
               def on_err(e):
                   m = str(e)
@@ -262,6 +271,25 @@ jobs:
                           shops_ok = True
                           break
                       print("  -> 0 shops in this zone")
+
+              if not shops_ok:
+                  print("---- DIAGNOSTICS (why 0 shops) ----")
+                  probe = page.evaluate("""async () => {
+                    const z = (window.SHOP_ZONES || []).find(z => z.shopIds.length);
+                    const out = [];
+                    if (!z) return ['no zone with shop ids'];
+                    for (const id of z.shopIds.slice(0, 3)) {
+                      for (const f of ['status', 'restaurantName']) {
+                        try {
+                          const r = await fetch('https://texi-and-food-default-rtdb.firebaseio.com/restaurants/' + encodeURIComponent(id) + '/' + f + '.json');
+                          out.push(id + '/' + f + ' -> HTTP ' + r.status + '  ' + (await r.text()).slice(0, 80));
+                        } catch (e) { out.push(id + '/' + f + ' -> fetch error ' + e); }
+                      }
+                    }
+                    return out;
+                  }""")
+                  for x in probe: print("probe:", x)
+                  for x in cons[-20:]: print("console:", x)
               n = page.evaluate("(window.RESTAURANTS || []).length") if shops_ok else 0
               b.close()
 
