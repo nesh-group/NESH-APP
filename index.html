@@ -7804,7 +7804,7 @@ function syncShopLoading() {
   Object.defineProperty(state, 'customerPos', {
     configurable: true, enumerable: true,
     get() { return _pos; },
-    set(v) { _pos = v; try { syncShopLoading(); } catch (e) {} try { if (typeof neshPrefetchSoon === 'function') neshPrefetchSoon(); } catch (e) {} try { if (typeof neshSyncZoneTopicsSoon === 'function') neshSyncZoneTopicsSoon(); } catch (e) {} }
+    set(v) { _pos = v; window._neshLocAt = Date.now(); try { syncShopLoading(); } catch (e) {} try { if (typeof neshPrefetchSoon === 'function') neshPrefetchSoon(); } catch (e) {} try { if (typeof neshSyncZoneTopicsSoon === 'function') neshSyncZoneTopicsSoon(); } catch (e) {} }
   });
 })();
 
@@ -8515,6 +8515,7 @@ function openCategory(cat, opts) {
   state.pravasi = !!(opts && opts.pravasi) && cat === 'online_shop';
   martState.cat = 'All';
   state.category = cat; // was never set here — a previous Groceries visit left it as 'groceries'
+  window._neshCatAt = Date.now();
   renderHome();
   showScreen('home');
   persistScreen('home', { category: cat });
@@ -15107,6 +15108,18 @@ function renderRestaurantList() {
   restListEl.innerHTML = "";
   if (filtered.length === 0) {
     if (!isAreaUnavailable(state.customerPos) && (shopsStillLoading() || shopsLoadFailed())) { restListEl.appendChild(shopsLoadingEl()); return; }
+    // First open / just after the card was tapped or the location changed: this category has NO shops in memory yet
+    // (they are still being fetched for this location). Show the loading state instead of "No restaurants match",
+    // and draw again when the grace time is over, so the customer never sees a false "no shops" screen.
+    if (!q && categoryFiltered.length === 0 && !isAreaUnavailable(state.customerPos)) {
+      const _graceMs = 9000, _since = Math.max(shopsLoadT0, window._neshLocAt || 0, window._neshCatAt || 0, window._neshShopLoadAt || 0), _left = _graceMs - (Date.now() - _since);
+      if (_left > 0) {
+        restListEl.appendChild(shopsLoadingEl());
+        clearTimeout(window._neshEmptyGraceT);
+        window._neshEmptyGraceT = setTimeout(() => { try { renderRestaurantList(); } catch (e) {} }, _left + 100);
+        return;
+      }
+    }
     const p = document.createElement('p');
     p.className = "empty-text";
     const noun = state.category === 'groceries' ? 'stores' : state.category === 'online_shop' ? 'shops' : 'restaurants';
