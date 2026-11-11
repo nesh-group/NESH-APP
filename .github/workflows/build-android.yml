@@ -751,6 +751,59 @@ jobs:
           printf '\ndependencies {\n    implementation "com.android.installreferrer:installreferrer:2.2"\n}\n' >> android/app/build.gradle
           grep -n "registerPlugin" android/app/src/main/java/com/neshgroup/nesh/MainActivity.java
 
+      # Status bar colour follows the screen: index.html reads the colour at the top of the
+      # current screen (yellow header on Home, white on Menu / Checkout, dark in dark mode) and
+      # sends it here, so the status bar and the header look like ONE piece. Also flips the
+      # status bar icons dark/light by how bright that colour is. Plugin name: NeshBars.
+      - name: Status bar colour follows the screen (NeshBars plugin)
+        run: |
+          python3 - << 'PYEOF'
+          import glob, os
+          F = glob.glob("android/app/src/main/java/**/MainActivity.java", recursive=True)[0]
+          D = os.path.dirname(F)
+          pkg = [l for l in open(F) if l.startswith("package ")][0].strip()
+          open(D + "/NeshBarsPlugin.java", "w").write(pkg + """
+
+          import android.graphics.Color;
+          import android.graphics.drawable.ColorDrawable;
+          import android.view.Window;
+          import androidx.core.view.WindowCompat;
+          import com.getcapacitor.Plugin;
+          import com.getcapacitor.PluginCall;
+          import com.getcapacitor.PluginMethod;
+          import com.getcapacitor.annotation.CapacitorPlugin;
+
+          @CapacitorPlugin(name = "NeshBars")
+          public class NeshBarsPlugin extends Plugin {
+              @PluginMethod
+              public void setColor(final PluginCall call) {
+                  try {
+                      final String hex = call.getString("color");
+                      if (hex == null || getActivity() == null) { call.resolve(); return; }
+                      final int col = Color.parseColor(hex);
+                      getActivity().runOnUiThread(() -> {
+                          try {
+                              Window w = getActivity().getWindow();
+                              w.setBackgroundDrawable(new ColorDrawable(col));
+                              double lum = (0.299 * Color.red(col) + 0.587 * Color.green(col) + 0.114 * Color.blue(col)) / 255.0;
+                              WindowCompat.getInsetsController(w, w.getDecorView()).setAppearanceLightStatusBars(lum > 0.5);
+                          } catch (Throwable t) { }
+                          call.resolve();
+                      });
+                  } catch (Throwable t) {
+                      call.resolve();
+                  }
+              }
+          }
+          """.replace("\n          ", "\n"))
+          s = open(F).read()
+          a = "registerPlugin(NeshReferrerPlugin.class);"
+          assert a in s, "NeshReferrerPlugin registration not found in MainActivity"
+          s = s.replace(a, a + "\n        registerPlugin(NeshBarsPlugin.class);", 1)
+          open(F, "w").write(s)
+          PYEOF
+          grep -n "registerPlugin" android/app/src/main/java/com/neshgroup/nesh/MainActivity.java
+
       # Location + POST_NOTIFICATIONS (Android 13+ will not even show the
       # notification permission dialog unless the app declares it).
       - name: Add location + notification permissions to AndroidManifest.xml
