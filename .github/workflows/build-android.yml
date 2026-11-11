@@ -212,6 +212,13 @@ jobs:
               ctx.add_init_script("try{localStorage.setItem('nesh_ip_cc',JSON.stringify({cc:'IN',t:Date.now()}))}catch(e){}")
               page = ctx.new_page()
               cons = []
+              wsb = [0]
+              def _ws(ws):
+                  def _fr(f):
+                      try: wsb[0] += len(f["payload"] if isinstance(f, dict) else f)
+                      except Exception: pass
+                  ws.on("framereceived", _fr)
+              page.on("websocket", _ws)
               page.on("console", lambda m: cons.append(m.type + ": " + m.text[:300]) if m.type in ("error", "warning") else None)
 
               def on_err(e):
@@ -253,7 +260,7 @@ jobs:
                   # 0 shops even though the app itself is fine.
                   JS = """(zi) => {
                     try {
-                      const z = (window.SHOP_ZONES || []).filter(z => z.shopIds.length)[zi];
+                      const z = (window.SHOP_ZONES || []).filter(z => z.shopIds.length).sort((a, b) => a.shopIds.length - b.shopIds.length)[zi];
                       const n = z.bounds.length;
                       const c = { lat: z.bounds.reduce((a, p) => a + p.lat, 0) / n, lng: z.bounds.reduce((a, p) => a + p.lng, 0) / n };
                       const pts = [c].concat(z.bounds.map(p => ({ lat: c.lat + (p.lat - c.lat) * 0.5, lng: c.lng + (p.lng - c.lng) * 0.5 })));
@@ -265,12 +272,33 @@ jobs:
                   }"""
                   nz = page.evaluate("(window.SHOP_ZONES || []).filter(z => z.shopIds.length).length")
                   print("zones that list shops:", nz)
-                  for zi in range(nz):
+
+                  # A zone can still list ids of deleted / inactive shops (e.g. an empty zone). Ask Firebase directly
+                  # which zones really have an ACTIVE shop and only try those (smallest first = least to download).
+                  good = page.evaluate("""async () => {
+                    const zs = (window.SHOP_ZONES || []).filter(z => z.shopIds.length).sort((a, b) => a.shopIds.length - b.shopIds.length);
+                    const out = [];
+                    for (let i = 0; i < zs.length; i++) {
+                      let act = 0;
+                      for (const id of zs[i].shopIds.slice(0, 6)) {
+                        try {
+                          const r = await fetch('https://texi-and-food-default-rtdb.firebaseio.com/restaurants/' + encodeURIComponent(id) + '/status.json');
+                          if ((await r.text()).replace(/"/g, '') === 'active') act++;
+                        } catch (e) {}
+                      }
+                      out.push([i, zs[i].name, act]);
+                    }
+                    return out;
+                  }""")
+                  print("active shops (of first 6 ids) per zone:", good)
+                  order = [g[0] for g in good if g[2] > 0]
+                  for n_try, zi in enumerate(order):
                       print("trying zone:", page.evaluate(JS, zi))
-                      if wait(SHOPS, 25):
+                      if wait(SHOPS, 150 if n_try == 0 else 40):
                           shops_ok = True
                           break
-                      print("  -> 0 shops in this zone")
+                      st = page.evaluate("""() => { try { return JSON.stringify({ abroad: neshIsAbroad(), abroadActive: neshAbroadActive(), pos: state.customerPos, loadingShops: !!(window.neshShopsPending && window.neshShopsPending()), restaurants: (window.RESTAURANTS || []).length }); } catch (e) { return 'state error: ' + e; } }""")
+                      print("  -> 0 shops in this zone | Firebase data received so far: %d KB | %s" % (wsb[0] // 1024, st))
 
               if not shops_ok:
                   print("---- DIAGNOSTICS (why 0 shops) ----")
@@ -279,10 +307,10 @@ jobs:
                     const out = [];
                     if (!z) return ['no zone with shop ids'];
                     for (const id of z.shopIds.slice(0, 3)) {
-                      for (const f of ['status', 'restaurantName']) {
+                      for (const f of ['status', 'menu']) {
                         try {
                           const r = await fetch('https://texi-and-food-default-rtdb.firebaseio.com/restaurants/' + encodeURIComponent(id) + '/' + f + '.json');
-                          out.push(id + '/' + f + ' -> HTTP ' + r.status + '  ' + (await r.text()).slice(0, 80));
+                          const t0 = Date.now(); const tx = await r.text(); out.push(id + '/' + f + ' -> HTTP ' + r.status + '  ' + Math.round(tx.length / 1024) + ' KB in ' + (Date.now() - t0) + ' ms  ' + tx.slice(0, 40));
                         } catch (e) { out.push(id + '/' + f + ' -> fetch error ' + e); }
                       }
                     }
