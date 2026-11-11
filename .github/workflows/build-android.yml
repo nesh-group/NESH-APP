@@ -292,9 +292,18 @@ jobs:
                   }""")
                   print("active shops (of first 6 ids) per zone:", good)
                   order = [g[0] for g in good if g[2] > 0]
+
+                  page.evaluate("""() => { const o = window.setShopLoading; window.__ssl = []; window.setShopLoading = function (m, ids) { try { window.__ssl.push(m + ':' + (ids || []).length); } catch (e) {} return o.apply(this, arguments); }; }""")
+                  STATE_JS = """() => {
+                    let se = 'ok';
+                    try { syncShopLoading(); } catch (e) { se = 'ERR ' + e; }
+                    return JSON.stringify({ setShopLoadingCalls: (window.__ssl || []).slice(-6), syncNow: se, zones: (window.SHOP_ZONES || []).length, restaurants: (window.RESTAURANTS || []).length, pending: !!(window.neshShopsPending && window.neshShopsPending()) });
+                  }"""
                   for n_try, zi in enumerate(order):
                       print("trying zone:", page.evaluate(JS, zi))
-                      if wait(SHOPS, 150 if n_try == 0 else 40):
+                      page.wait_for_timeout(6000)
+                      print("  [after 6s]", page.evaluate(STATE_JS), "| data KB:", wsb[0] // 1024)
+                      if wait(SHOPS, 90 if n_try == 0 else 15):
                           shops_ok = True
                           break
                       st = page.evaluate("""() => { try { return JSON.stringify({ abroad: neshIsAbroad(), abroadActive: neshAbroadActive(), pos: state.customerPos, loadingShops: !!(window.neshShopsPending && window.neshShopsPending()), restaurants: (window.RESTAURANTS || []).length }); } catch (e) { return 'state error: ' + e; } }""")
@@ -933,13 +942,13 @@ jobs:
       - name: Sync web assets into Android project
         run: npx cap sync android
 
-      # versionCode 11 (1.0.10) may already be uploaded to Play Console, and every
+      # versionCode 12 (1.0.11) may already be uploaded to Play Console, and every
       # new upload must have a strictly higher versionCode, so this build
-      # uses 12. versionName is only the label users see (1.0.11).
+      # uses 13. versionName is only the label users see (1.0.12).
       - name: Set version code and name
         run: |
-          sed -i "s/versionCode 1/versionCode 12/" android/app/build.gradle
-          sed -i 's/versionName "1.0"/versionName "1.0.11"/' android/app/build.gradle
+          sed -i "s/versionCode 1/versionCode 13/" android/app/build.gradle
+          sed -i 's/versionName "1.0"/versionName "1.0.12"/' android/app/build.gradle
           grep -E "versionCode|versionName" android/app/build.gradle
 
       - name: Fix Kotlin stdlib duplicate class conflict
