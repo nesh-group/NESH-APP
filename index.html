@@ -2311,7 +2311,7 @@ html.nesh-abroad-direct #screen-home[data-pravasi="1"] .home-back-btn{ display:n
       // Return a real id straight away (the plugin hands its id back asynchronously), so clearWatch() can stop it.
       const id = ++_wid; const w = _wmap[id] = { cap: null, dead: false };
       ensurePerm(CapGeo)
-        .then(() => CapGeo.watchPosition(options || {}, (pos, err) => {
+        .then(() => CapGeo.watchPosition(Object.assign({}, options || {}, { timeout: 1500, minimumUpdateInterval: 500 }), (pos, err) => {
           if (w.dead) return;
           if (err) { if (error) error(geoErr(err)); return; }
           if (pos) { try { success(pos); } catch (e) { console.error(e); } }
@@ -2343,16 +2343,20 @@ html.nesh-abroad-direct #screen-home[data-pravasi="1"] .home-back-btn{ display:n
   // jumps to a wrong place first. onDone(pos) fires once with the most accurate fix.
   window.neshFastFix = function (o) {
     o = o || {};
-    const GOOD = o.good || 5, SOFT = o.soft || 5000, MID = o.mid || 9000, HARD = o.hard || 20000;   // exact (<= 5 m) at once; else 10 m after 5 s, 25 m after 9 s
+    const GOOD = o.good || 8, SOFT = o.soft || 2500, MID = o.mid || 5000, HARD = o.hard || 15000;   // <= 8 m at once; else 15 m after 2.5 s, 30 m after 5 s; hard stop 15 s
     const geo = navigator.geolocation;
-    let best = null, done = false, watchId = null, lastErr = null; const timers = [];
+    let best = null, done = false, watchId = null, lastErr = null, refining = false; const timers = [];
     const acc = p => { const a = Number(p && p.coords && p.coords.accuracy); return isFinite(a) && a > 0 ? a : 99999; };
     function finish(maxAcc) {
       if (done) return;
       if (!best || acc(best) > maxAcc) return;   // no fix yet, or not accurate enough yet - keep waiting (giveUp() at HARD handles the no-fix case)
       done = true;
       timers.forEach(clearTimeout);
-      try { if (watchId != null) geo.clearWatch(watchId); } catch (e) {}
+      if (o.onRefine && watchId != null && acc(best) > 4) {
+        // first fix accepted: keep the GPS running ~12 s more and quietly upgrade the position if a clearly better fix arrives
+        refining = true;
+        setTimeout(() => { refining = false; try { if (watchId != null) geo.clearWatch(watchId); } catch (e) {} watchId = null; }, 12000);
+      } else { try { if (watchId != null) geo.clearWatch(watchId); } catch (e) {} }
       try { if (best) { if (o.onDone) o.onDone(best); } else if (o.onFail) o.onFail(lastErr || { code: 3, message: 'timeout' }); } catch (e) {}
     }
     function giveUp() {
@@ -2378,6 +2382,7 @@ html.nesh-abroad-direct #screen-home[data-pravasi="1"] .home-back-btn{ display:n
       } catch (e) { failNow(); }
     }
     function consider(p) {
+      if (refining && p && p.coords && best && acc(p) < acc(best) * 0.7 && acc(p) <= 15 && !(p.timestamp && Date.now() - p.timestamp > 15000)) { best = p; try { o.onRefine(p); } catch (e) {} return; }
       if (done || !p || !p.coords) return;
       if (p.timestamp && Date.now() - p.timestamp > 15000) return;   // really old cached fix - ignore (30 s, so a phone clock that is a few seconds off never rejects every real GPS fix)
       if (!best || acc(p) < acc(best)) {
@@ -2390,10 +2395,10 @@ html.nesh-abroad-direct #screen-home[data-pravasi="1"] .home-back-btn{ display:n
     if (!geo) { onErr({ code: 2, message: 'no geolocation' }); return function () {}; }
     try { watchId = geo.watchPosition(consider, onErr, { enableHighAccuracy: true, timeout: HARD, maximumAge: 0 }); } catch (e) { onErr(e); }
     try { geo.getCurrentPosition(consider, function () {}, { enableHighAccuracy: true, timeout: HARD, maximumAge: 0 }); } catch (e) {}
-    timers.push(setTimeout(() => finish(10), SOFT));
-    timers.push(setTimeout(() => finish(25), MID));
+    timers.push(setTimeout(() => finish(15), SOFT));
+    timers.push(setTimeout(() => finish(30), MID));
     timers.push(setTimeout(giveUp, HARD));
-    return function cancel() { if (done) return; done = true; timers.forEach(clearTimeout); try { if (watchId != null) geo.clearWatch(watchId); } catch (e) {} };
+    return function cancel() { if (done && !refining) return; done = true; refining = false; timers.forEach(clearTimeout); try { if (watchId != null) geo.clearWatch(watchId); } catch (e) {} };
   };
 </script>
 <script>
@@ -22516,6 +22521,7 @@ function autoDetectLocation() {
   // Best-of live GPS + quick network fix: takes the first good fix (<= 30 m) at once, sharpens up to ~4-8 s otherwise.
   window.neshFastFix({
     onDone: pos => { onLocationGranted(pos); },
+    onRefine: pos => window.neshRefinePos(pos),
     onFail: failNow
   });
 }
@@ -22614,6 +22620,7 @@ function neshShowOpenChoice() {
     if (!navigator.geolocation || !secure) { slowFlow(); return; }
     btn.disabled = true; btn.textContent = 'Locating…';
     window.neshFastFix({
+      onRefine: pos => window.neshRefinePos(pos),
       onDone: (pos) => {
         restore(); close();
         try { onLocationGranted(pos); } catch (e) {}
@@ -22699,6 +22706,21 @@ if (locOffLastBtn) locOffLastBtn.addEventListener('click', () => {
   }
 });
 
+window.neshRefinePos = function (pos) {
+      // a sharper GPS fix arrived a few seconds after the app opened: move the pin quietly (re-draw shops only if it really moved)
+      try {
+        const a = state.customerPos, la = pos.coords.latitude, lo = pos.coords.longitude;
+        if (!a) return;
+        const R = 6371000, dLa = (la - a.lat) * Math.PI / 180, dLo = (lo - a.lng) * Math.PI / 180;
+        const h = Math.sin(dLa / 2) ** 2 + Math.cos(a.lat * Math.PI / 180) * Math.cos(la * Math.PI / 180) * Math.sin(dLo / 2) ** 2;
+        const d = 2 * R * Math.asin(Math.sqrt(h));
+        if (d < 8) return;
+        state.customerPos = { lat: la, lng: lo };
+        try { localStorage.setItem('nesh_last_gps', JSON.stringify({ lat: la, lng: lo, t: Date.now() })); } catch (e) {}
+        try { updateHomeLocationLabel(); } catch (e) {}
+        if (d > 30) { try { renderHome(); } catch (e) {} }
+      } catch (e) {}
+    };
 function onLocationGranted(pos) {
   if (browseFromCheckout && browseLocOverlay && browseLocOverlay.classList.contains('show')) {
     // Opened from checkout: use the fix for THIS order's pin only (don't change the home "Deliver to").
@@ -26392,30 +26414,61 @@ body.has-fnav.fn-kb #screen-home{ padding-bottom:20px !important; }
       while (el && el.nodeType === 1) {
         var cs = getComputedStyle(el), col = parse(cs.backgroundColor);
         if (col && col.a >= 0.9) return col;
+        if (col && col.a > 0.05) {   // see-through layer: blend it over the first solid colour behind it
+          var up = el.parentElement, base = null;
+          while (up && up.nodeType === 1) { var pc = parse(getComputedStyle(up).backgroundColor); if (pc && pc.a >= 0.9) { base = pc; break; } up = up.parentElement; }
+          if (base) return { r: Math.round(col.r * col.a + base.r * (1 - col.a)), g: Math.round(col.g * col.a + base.g * (1 - col.a)), b: Math.round(col.b * col.a + base.b * (1 - col.a)), a: 1 };
+        }
         var gi = cs.backgroundImage;
-        if (gi && gi.indexOf('gradient') > -1) { var g = parse(gi); if (g && g.a >= 0.9) return g; }
+        if (gi && gi.indexOf('gradient') > -1) {
+          // a header can stack several gradients (white glow, shadow, solid yellow): pick the first OPAQUE colour, skip the see-through ones
+          var all = gi.match(/rgba?\([^)]*\)/g) || [];
+          for (var k = 0; k < all.length; k++) { var g = parse(all[k]); if (g && g.a >= 0.9) return g; }
+        }
         el = el.parentElement;
       }
       return null;
     }
+    function splashColor() {
+      try {
+        var el = document.getElementById('nesh-splash'), m = el && /rgba?\([^)]*\)/.exec(getComputedStyle(el).backgroundImage || '');
+        var c = m && parse(m[0]); if (c && c.a >= 0.9) return c;
+      } catch (e) {}
+      return { r: 168, g: 123, b: 0, a: 1 };
+    }
+    // Restaurant menu screen: yellow status bar while the photo header is at the very top, white as soon as the person scrolls down.
+    function menuColor() {
+      try {
+        var scr = document.getElementById('screen-menu');
+        if (!scr || !scr.classList.contains('active')) return null;
+        var x = Math.round(window.innerWidth / 2), el = document.elementFromPoint(x, 2);
+        if (!el || !el.closest || !el.closest('#screen-menu .menu-header')) return null;
+        var y = Math.max(window.pageYOffset || 0, (document.scrollingElement || {}).scrollTop || 0, scr.scrollTop || 0);
+        if (y < 8) return { r: 242, g: 183, b: 5, a: 1 };
+        var bg = parse(getComputedStyle(scr).backgroundColor);
+        return (bg && bg.a >= 0.9) ? bg : { r: 255, g: 255, b: 255, a: 1 };
+      } catch (e) { return null; }
+    }
     function apply() {
       try {
         if (document.hidden) return;
-        var sp = window.neshSplash;
-        if (sp && sp.isActive && sp.isActive()) return;   // keep the plain yellow while the NESH splash is showing
-        var c = topColor(); if (!c) return;
+        var sp = window.neshSplash, c = null;
+        if (sp && sp.isActive && sp.isActive()) c = splashColor();   // splash showing: match the top of the splash gradient
+        else c = menuColor() || topColor();
+        if (!c) return;
         var hex = '#' + [c.r, c.g, c.b].map(function (v) { return ('0' + v.toString(16)).slice(-2); }).join('');
         if (hex === last) return; last = hex;
         if (meta) meta.setAttribute('content', hex);
         if (native) { try { NB.setColor({ color: hex }); } catch (e) {} }
       } catch (e) {}
     }
-    function soon() { if (busy) return; busy = true; setTimeout(function () { busy = false; apply(); }, 250); }
-    new MutationObserver(soon).observe(document.documentElement, { attributes: true, subtree: true, attributeFilter: ['class'] });
+    function soon() { if (busy) return; busy = true; setTimeout(function () { busy = false; apply(); setTimeout(apply, 450); }, 120); }
+    new MutationObserver(soon).observe(document.documentElement, { attributes: true, subtree: true, attributeFilter: ['class', 'data-cat', 'data-theme', 'hidden'] });
     window.addEventListener('scroll', soon, true);
     window.addEventListener('resize', soon);
     document.addEventListener('visibilitychange', soon);
     [300, 1200, 3000, 6000].forEach(function (t) { setTimeout(apply, t); });
+    setInterval(function () { last = ''; apply(); }, 1500);   // safety net: re-send the colour so the bar can never stay stuck on a wrong one
     window.neshStatusBarSync = apply;
   } catch (e) {}
 })();
