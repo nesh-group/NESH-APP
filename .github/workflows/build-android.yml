@@ -1058,13 +1058,13 @@ jobs:
       - name: Sync web assets into Android project
         run: npx cap sync android
 
-      # versionCode 12 (1.0.11) may already be uploaded to Play Console, and every
+      # versionCode 13 (1.0.12) may already be uploaded to Play Console, and every
       # new upload must have a strictly higher versionCode, so this build
-      # uses 13. versionName is only the label users see (1.0.12).
+      # uses 14. versionName is only the label users see (1.0.13).
       - name: Set version code and name
         run: |
-          sed -i "s/versionCode 1/versionCode 13/" android/app/build.gradle
-          sed -i 's/versionName "1.0"/versionName "1.0.12"/' android/app/build.gradle
+          sed -i "s/versionCode 1/versionCode 14/" android/app/build.gradle
+          sed -i 's/versionName "1.0"/versionName "1.0.13"/' android/app/build.gradle
           grep -E "versionCode|versionName" android/app/build.gradle
 
       - name: Fix Kotlin stdlib duplicate class conflict
