@@ -126,13 +126,19 @@ jobs:
               print("firebase modules skipped:", e)
 
           # Fixed Unsplash images. Width stays 1100px (that is what the phone has to decode, so the app opens without lag).
-          # Only the JPEG quality is raised (80 -> 95): sharper photos and a bigger app (MB), with the SAME decode cost.
+          # Only the JPEG quality is raised (95 -> 100) and WebP/AVIF auto-format is forced to plain JPEG:
+          # sharper photos and a bigger app (MB), with the SAME decode cost (pixel size unchanged, so no lag).
           urls = sorted(set(re.findall(r'https://images\.unsplash\.com/[^"\'\s)`<>]+', html)), key=len, reverse=True)
           ok = 0
           for u in urls:
               try:
                   big = re.sub(r"w=\d+", "w=1100", u)
-                  big = re.sub(r"q=\d+", "q=95", big)
+                  big = re.sub(r"q=\d+", "q=100", big)
+                  # force plain JPEG (auto=format would hand us smaller WebP/AVIF)
+                  big = big.replace("auto=format", "fm=jpg")
+                  big = re.sub(r"fm=\w+", "fm=jpg", big)
+                  if "fm=jpg" not in big:
+                      big += ("&" if "?" in big else "?") + "fm=jpg"
                   name = "img/" + hashlib.sha1(big.encode()).hexdigest()[:12] + ".jpg"
                   if not os.path.exists(B + "/" + name):
                       open(B + "/" + name, "wb").write(get(big))
