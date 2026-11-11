@@ -536,6 +536,7 @@ jobs:
                   WindowCompat.setDecorFitsSystemWindows(w, false);
                   w.setBackgroundDrawable(new ColorDrawable(Color.parseColor("#F2B705")));
                   WindowCompat.getInsetsController(w, w.getDecorView()).setAppearanceLightStatusBars(true);
+                  WindowCompat.getInsetsController(w, w.getDecorView()).setAppearanceLightNavigationBars(true);
 
                   View content = findViewById(android.R.id.content);
                   ViewCompat.setOnApplyWindowInsetsListener(content, (v, insets) -> {
@@ -838,6 +839,11 @@ jobs:
 
           import android.graphics.Color;
           import android.graphics.drawable.ColorDrawable;
+          import android.graphics.drawable.Drawable;
+          import android.graphics.drawable.LayerDrawable;
+          import android.view.Gravity;
+          import androidx.core.view.ViewCompat;
+          import androidx.core.view.WindowInsetsCompat;
           import android.view.Window;
           import androidx.core.view.WindowCompat;
           import com.getcapacitor.Plugin;
@@ -856,7 +862,23 @@ jobs:
                       getActivity().runOnUiThread(() -> {
                           try {
                               Window w = getActivity().getWindow();
-                              w.setBackgroundDrawable(new ColorDrawable(col));
+                              int top = 0;
+                              try {
+                                  WindowInsetsCompat ins = ViewCompat.getRootWindowInsets(w.getDecorView());
+                                  if (ins != null) top = ins.getInsets(WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.displayCutout()).top;
+                              } catch (Throwable t) { }
+                              if (top <= 0) {
+                                  int rid = getActivity().getResources().getIdentifier("status_bar_height", "dimen", "android");
+                                  if (rid > 0) top = getActivity().getResources().getDimensionPixelSize(rid);
+                              }
+                              // whole window = cream (shows behind the bottom navigation bar), only the top strip = screen colour
+                              LayerDrawable ld = new LayerDrawable(new Drawable[] {
+                                  new ColorDrawable(Color.parseColor("#FFFBEF")), new ColorDrawable(col) });
+                              ld.setLayerGravity(1, Gravity.TOP);
+                              ld.setLayerHeight(1, top > 0 ? top : 120);
+                              w.setBackgroundDrawable(ld);
+                              WindowCompat.getInsetsController(w, w.getDecorView()).setAppearanceLightNavigationBars(true);
+                              try { if (android.os.Build.VERSION.SDK_INT >= 29) w.setNavigationBarContrastEnforced(false); } catch (Throwable t) { }
                               double lum = (0.299 * Color.red(col) + 0.587 * Color.green(col) + 0.114 * Color.blue(col)) / 255.0;
                               WindowCompat.getInsetsController(w, w.getDecorView()).setAppearanceLightStatusBars(lum > 0.5);
                           } catch (Throwable t) { }
