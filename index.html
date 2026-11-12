@@ -12943,13 +12943,44 @@ const otpResendBtn = document.getElementById('login-otp-resend');
 const otpChangeBtn = document.getElementById('login-otp-change');
 const otpSub = document.getElementById('login-otp-sub');
 let otpConfirmation = null, otpNumber = '', otpTimer = null, otpVerifier = null, otpSends = 0;
+let otpConfs = { wa: null, sms: null }, otpLastCh = '', otpBoth = false, otpHasWa = false, otpViaSms = false;
+let otpNativeHandles = [], otpLoggingIn = false;
+function otpClearNativeListeners() { otpNativeHandles.forEach(h => { try { h.remove(); } catch (_) {} }); otpNativeHandles = []; }
+// Classifies a verify error so the customer gets the right message (not always "Wrong code").
+function otpErrKind(e) {
+  const s = (String((e && e.code) || '') + ' ' + String((e && e.message) || '')).toLowerCase();
+  if (/network|timeout|unreachable|offline/.test(s)) return 'network';
+  if (/expired/.test(s)) return 'expired';
+  if (/too[-_ ]?many|quota|blocked/.test(s)) return 'toomany';
+  if (/invalid[-_ ]?verification|invalid[-_ ]?code|wrong|incorrect|credential/.test(s)) return 'wrong';
+  return 'other';
+}
+function otpFailMsg(e) {
+  const k = otpErrKind(e);
+  const c = String((e && e.code) || '').replace(/^auth\//, '') || String((e && e.message) || '').slice(0, 50);
+  const ref = c ? ' (ref: ' + c + ')' : '';
+  if (k === 'network') return 'Check your connection and try again.';
+  if (k === 'expired') return 'Code expired. Tap Resend code.';
+  if (k === 'toomany') return 'Too many attempts. Please try again after some time.';
+  if (k === 'wrong') return 'Wrong code. Please check and try again.' + ref;
+  return "Couldn't verify the code. Tap Resend code and try again." + ref;
+}
+// Android read the SMS by itself and verified the phone: log the customer in without waiting for the typed code.
+async function otpAutoLogin() {
+  if (otpLoggingIn || !otpNumber) return;
+  otpLoggingIn = true;
+  try { clearInterval(otpTimer); loginErrorEl.style.display = 'none'; await loginAfterVerified(otpNumber); }
+  finally { otpLoggingIn = false; }
+}
 const OTP_MAX_SENDS = 3, OTP_RESEND_SECS = 120;
 // Login OTP switch: false = no OTP, number alone logs in. Set to true to bring OTP back.
 const NESH_OTP_REQUIRED = true;
 function fmtSecs(n) { return Math.floor(n / 60) + ':' + String(n % 60).padStart(2, '0'); }
 
 function neshOtpReset() {
-  otpConfirmation = null; otpNumber = ''; otpSends = 0;
+  otpConfirmation = null; otpNumber = ''; otpSends = 0; otpLoggingIn = false;
+  otpConfs = { wa: null, sms: null }; otpLastCh = ''; otpBoth = false; otpHasWa = false; otpViaSms = false;
+  otpClearNativeListeners();
   clearInterval(otpTimer);
   otpWrap.style.display = 'none';
   otpInput.value = '';
@@ -12969,7 +13000,7 @@ function startResendTimer() {
     if (left <= 0) {
       clearInterval(otpTimer);
       otpResendBtn.disabled = otpSends >= OTP_MAX_SENDS;
-      otpResendBtn.textContent = otpSends >= OTP_MAX_SENDS ? 'Limit reached' : 'Resend code';
+      otpResendBtn.textContent = otpSends >= OTP_MAX_SENDS ? 'Limit reached' : otpResendLabel();
     } else otpResendBtn.textContent = 'Resend in ' + fmtSecs(left);
   }, 1000);
 }
@@ -12982,25 +13013,119 @@ function nativeAuth() {
 }
 let otpAutoVerified = false;
 
+// ---- OTP method: SMS / WhatsApp / both, set from Operator Panel -> Login OTP (app_config/otpMethod, otpFirst, waOtpUrl). No app update needed. ----
+// 'both': the FIRST send goes by the channel chosen as "first"; each Resend goes by the OTHER channel. Any code sent in this login still works.
+// If WhatsApp is not set up or fails, the customer still gets the SMS OTP, so login never breaks.
+let _neshCfgP = null, _neshCfgAt = 0;
+async function _neshOtpCfgRead() {
+  try {
+    const { db, ref, get } = window.fb;
+    const t = p => Promise.race([get(ref(db, p)), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000))]);
+    const r = await Promise.all([t('app_config/otpMethod'), t('app_config/otpFirst'), t('app_config/waOtpUrl')]);
+    const m = r[0].val();
+    return {
+      method: (m === 'whatsapp' || m === 'both') ? m : 'sms',
+      first: r[1].val() === 'sms' ? 'sms' : 'wa',
+      url: String(r[2].val() || '').trim().replace(/\/+$/, '')
+    };
+  } catch (_) { return { method: 'sms', first: 'wa', url: '' }; }
+}
+function neshOtpCfg() {
+  if (!_neshCfgP || Date.now() - _neshCfgAt > 60000) { _neshCfgAt = Date.now(); _neshCfgP = _neshOtpCfgRead(); }
+  return _neshCfgP;
+}
+async function _waPost(url, path, body) {
+  const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 15000);
+  let r, j;
+  try {
+    r = await fetch(url + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: ctl.signal });
+    j = await r.json().catch(() => ({}));
+  } catch (err) {
+    const e = new Error('network timeout'); e.code = 'wa/network'; throw e;
+  } finally { clearTimeout(tm); }
+  if (!r.ok || !j.ok) { const e = new Error(j.error || ('http ' + r.status)); e.code = j.error || 'wa/failed'; throw e; }
+  return j;
+}
+// Text shown above the code box: tells the customer WHERE the code was sent.
+function otpSentText(number) {
+  const how = otpLastCh === 'wa' ? ' on WhatsApp' : (otpHasWa ? ' by SMS' : '');
+  return 'Enter the 6-digit code sent' + how + ' to +91 ' + number + '.';
+}
+function otpResendLabel() {
+  if (!otpBoth) return 'Resend code';
+  return otpLastCh === 'wa' ? 'Send code by SMS' : 'Send code on WhatsApp';
+}
+
 async function sendOtp(number) {
+  const cfg = await neshOtpCfg();
+  const hasWa = (cfg.method === 'whatsapp' || cfg.method === 'both') && /^https:\/\//.test(cfg.url);
+  const hasSms = cfg.method !== 'whatsapp' || !hasWa;
+  otpHasWa = hasWa; otpBoth = hasWa && hasSms;
+  let order;
+  if (otpBoth) {
+    const first = cfg.first === 'sms' ? 'sms' : 'wa';
+    const next = otpSends > 0 && otpLastCh ? (otpLastCh === 'wa' ? 'sms' : 'wa') : first;   // first send -> chosen channel, Resend -> the other one
+    order = [next, next === 'wa' ? 'sms' : 'wa'];   // if it fails, try the other
+  } else order = hasWa ? ['wa', 'sms'] : ['sms'];
+  const sentBefore = otpSends;
+  window.__neshAutoVerified = false; otpAutoVerified = false;
+  let sentCh = '', waErr = null, smsErr = null;
+  for (const ch of order) {
+    try {
+      if (ch === 'wa') {
+        await _waPost(cfg.url, '/send-otp', { phone: number });
+        otpConfs.wa = code => _waPost(cfg.url, '/verify-otp', { phone: number, code: code });
+      } else {
+        await sendSmsOtp(number);
+        { const smsConf = otpConfirmation;   // FIX: store a FUNCTION (was the object itself -> "c is not a function" -> every typed SMS code failed)
+          otpConfs.sms = code => {
+            if (!smsConf || smsConf.auto) { const e = new Error('invalid-verification-code'); e.code = 'auth/invalid-verification-code'; throw e; }   // auto-read code is already used up
+            return smsConf.confirm(code);
+          }; }
+      }
+      sentCh = ch; break;
+    } catch (e) { if (ch === 'wa') waErr = e; else smsErr = e; }
+  }
+  if (!sentCh) {
+    if (smsErr) throw smsErr;
+    if (waErr && waErr.code === 'too-many') waErr.code = 'auth/too-many-requests';
+    throw waErr || new Error('otp-failed');
+  }
+  otpLastCh = sentCh; otpViaSms = !!otpConfs.sms;
+  otpConfirmation = { confirm: async code => {
+    let lastE;
+    const list = otpLastCh === 'sms' ? [otpConfs.sms, otpConfs.wa] : [otpConfs.wa, otpConfs.sms];   // latest channel first, older code still works
+    for (const c of list) { if (!c) continue; try { return await c(code); } catch (e) { lastE = e; } }
+    throw lastE;
+  } };
+  otpSends = sentBefore + 1;
+}
+
+async function sendSmsOtp(number) {
   const na = nativeAuth();
   if (na) {
     // Android app: native Firebase Phone Auth (no reCAPTCHA).
+    otpClearNativeListeners();
+    try { await na.signOut(); } catch (_) {}   // clear any old native session before a fresh OTP
+    window.__neshAutoVerified = false; otpAutoVerified = false;
     await new Promise(async (resolve, reject) => {
-      const handles = [];
       let finished = false;
-      const cleanup = () => { handles.forEach(h => { try { h.remove(); } catch (_) {} }); };
-      const done = (fn, v) => { if (finished) return; finished = true; clearTimeout(tm); cleanup(); fn(v); };
+      const done = (fn, v) => { if (finished) return; finished = true; clearTimeout(tm); fn(v); };
       const tm = setTimeout(() => { const e = new Error('timeout'); e.code = 'auth/timeout'; done(reject, e); }, 60000);
       try {
-        handles.push(await na.addListener('phoneCodeSent', ev => {
-          otpConfirmation = { confirm: code => na.confirmVerificationCode({ verificationId: ev.verificationId, verificationCode: code }) };
+        // These listeners stay alive until the OTP screen is left, so an SMS auto-read AFTER the code screen is shown is still handled.
+        otpNativeHandles.push(await na.addListener('phoneCodeSent', ev => {
+          const vid = ev && ev.verificationId;
+          otpConfirmation = { confirm: code => na.confirmVerificationCode({ verificationId: vid, verificationCode: code }) };
           done(resolve);
         }));
-        handles.push(await na.addListener('phoneVerificationCompleted', () => {
-          otpAutoVerified = true; otpConfirmation = { confirm: async () => ({}) }; done(resolve);
+        otpNativeHandles.push(await na.addListener('phoneVerificationCompleted', () => {
+          window.__neshAutoVerified = true;
+          if (!finished) { otpAutoVerified = true; otpConfirmation = { auto: true, confirm: async () => ({}) }; done(resolve); }
+          else otpAutoLogin();
         }));
-        handles.push(await na.addListener('phoneVerificationFailed', ev => {
+        otpNativeHandles.push(await na.addListener('phoneVerificationFailed', ev => {
+          if (finished) return;
           const msg = (ev && ev.message) || '';
           const e = new Error(msg); e.code = /quota/i.test(msg) ? 'auth/quota-exceeded' : 'auth/native-failed'; done(reject, e);
         }));
@@ -13030,12 +13155,13 @@ function showOtpStep(number) {
   otpNumber = number;
   loginNumberInput.readOnly = true;
   loginSubmitBtn.style.display = 'none';
-  otpSub.textContent = 'Enter the 6-digit code sent to +91 ' + number + '.';
+  otpSub.textContent = otpSentText(number);
   otpWrap.style.display = 'block';
   otpInput.value = '';
   otpVerifyBtn.disabled = true;
   startResendTimer();
   setTimeout(() => otpInput.focus(), 50);
+  if (window.__neshAutoVerified) setTimeout(otpAutoLogin, 0);
 }
 
 // Returns true if the error means "daily SMS quota used up".
@@ -13066,7 +13192,7 @@ function neshOtpSwitchedOff() {
   if (!_neshOtpOffP || Date.now() - _neshOtpOffAt > 60000) { _neshOtpOffAt = Date.now(); _neshOtpOffP = _neshOtpSwitchedOffRead(); }
   return _neshOtpOffP;
 }
-loginNumberInput.addEventListener('input', () => { if (loginNumberInput.value.length >= 1) neshOtpSwitchedOff(); });
+loginNumberInput.addEventListener('input', () => { if (loginNumberInput.value.length >= 1) { neshOtpSwitchedOff(); neshOtpCfg(); } });
 
 loginSubmitBtn.addEventListener('click', async () => {
   const number = loginNumberInput.value;
@@ -13103,20 +13229,39 @@ otpInput.addEventListener('input', () => {
 });
 
 otpVerifyBtn.addEventListener('click', async () => {
-  if (!otpConfirmation || otpInput.value.length !== 6) return;
+  if (!otpConfirmation || otpInput.value.length !== 6 || otpLoggingIn) return;
   otpVerifyBtn.disabled = true;
-  try {
-    await otpConfirmation.confirm(otpInput.value);
-  } catch (e) {
-    const c = e && e.code;
-    showLoginError(c === 'auth/code-expired' ? 'Code expired. Tap Resend code.' :
-                   c === 'auth/network-request-failed' ? 'Check your connection and try again.' :
-                   'Wrong code. Please check and try again.');
-    otpVerifyBtn.disabled = false;
+  const lbl = otpVerifyBtn.textContent; otpVerifyBtn.textContent = 'Verifying…';
+  const na = nativeAuth(), code = otpInput.value;
+  // True if Android already verified THIS phone by itself (SMS auto-read). That uses up the code, so typing it again fails.
+  const phoneAlreadyVerified = async () => {
+    if (!na) return false;
+    try { const r = await na.getCurrentUser(); const u = r && r.user; return !!(u && u.phoneNumber === '+91' + otpNumber); }
+    catch (_) { return false; }
+  };
+  let ok = false, lastErr = null;
+  try { await otpConfirmation.confirm(code); ok = true; } catch (e1) { lastErr = e1; }
+  if (!ok && na && otpViaSms && otpErrKind(lastErr) !== 'network') {
+    if (await phoneAlreadyVerified()) ok = true;
+    else if (otpErrKind(lastErr) !== 'expired') {
+      await new Promise(r => setTimeout(r, 1500));   // auto-verification may still be finishing
+      if (await phoneAlreadyVerified()) ok = true;
+      else {
+        try { await otpConfirmation.confirm(code); ok = true; }
+        catch (e2) { lastErr = e2; if (await phoneAlreadyVerified()) ok = true; }
+      }
+    }
+  }
+  otpVerifyBtn.textContent = lbl;
+  if (!ok) {
+    try { console.log('OTP confirm error', JSON.stringify(lastErr), lastErr && lastErr.message); } catch (_) {}
+    showLoginError(otpFailMsg(lastErr));
+    otpVerifyBtn.disabled = otpInput.value.length !== 6;
     return;
   }
-  const n = otpNumber;
-  await loginAfterVerified(n);
+  if (otpLoggingIn) return;
+  otpLoggingIn = true;
+  try { await loginAfterVerified(otpNumber); } finally { otpLoggingIn = false; }
 });
 
 otpResendBtn.addEventListener('click', async () => {
@@ -13125,6 +13270,8 @@ otpResendBtn.addEventListener('click', async () => {
   try {
     await sendOtp(otpNumber);
     loginErrorEl.style.display = 'none';
+    if (otpAutoVerified) { otpAutoVerified = false; await otpAutoLogin(); return; }
+    otpSub.textContent = otpSentText(otpNumber); otpInput.value = ''; otpVerifyBtn.disabled = true;
     startResendTimer();
   } catch (e) {
     if (isQuotaError(e)) { await loginAfterVerified(otpNumber); return; }
@@ -22495,6 +22642,7 @@ async function neshDetachPushToken(number) {
   } catch (e) {}
 }
 function logoutUser() {
+  try { const _na = nativeAuth(); if (_na) _na.signOut(); } catch (e) {}
   try { neshDetachPushToken(state.user && state.user.number); } catch (e) {}
   state.user = null;
   updateVerifiedBadges();
