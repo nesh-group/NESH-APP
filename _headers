@@ -1,3 +1,6 @@
+/*
+  Access-Control-Allow-Origin: *
+
 /version.json
   Access-Control-Allow-Origin: *
   Cache-Control: no-store
