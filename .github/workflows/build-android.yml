@@ -448,6 +448,10 @@ jobs:
           npm install @capawesome/capacitor-app-update
           npm install @capacitor/assets --save-dev
 
+      # Debug aid: shows exactly which Capacitor / Firebase plugin versions this build got.
+      - name: Show installed plugin versions
+        run: npm ls --depth=0 || true
+
       # IMPORTANT: appId must stay exactly the same as the package name
       # already live on Play Store (com.neshgroup.nesh), otherwise Play
       # Console will treat this as a brand-new app instead of an update.
@@ -1063,8 +1067,8 @@ jobs:
       # uses 14. versionName is only the label users see (1.0.13).
       - name: Set version code and name
         run: |
-          sed -i "s/versionCode 1/versionCode 14/" android/app/build.gradle
-          sed -i 's/versionName "1.0"/versionName "1.0.13"/' android/app/build.gradle
+          sed -i "s/versionCode 1/versionCode 15/" android/app/build.gradle
+          sed -i 's/versionName "1.0"/versionName "1.0.14"/' android/app/build.gradle
           grep -E "versionCode|versionName" android/app/build.gradle
 
       - name: Fix Kotlin stdlib duplicate class conflict
@@ -1083,6 +1087,36 @@ jobs:
       - name: Decode signing keystore
         run: |
           echo "${{ secrets.NESH_KEYSTORE_BASE64 }}" | base64 -d > android/app/signing.keystore
+
+      # Debug aid for Firebase phone-OTP. Prints the UPLOAD key SHA-1 / SHA-256 (public fingerprints, not secrets)
+      # and what google-services.json knows. NOTE: apps installed from Play Store are re-signed by Google with the
+      # "App signing key" - its SHA-1 AND SHA-256 (Play Console > Test and release > App integrity) must ALSO be added
+      # in Firebase > Project settings > your Android app, otherwise OTP can fail only for Play Store installs.
+      # This step never fails the build; it only prints / warns.
+      - name: Show signing fingerprints + google-services.json check (OTP debug)
+        env:
+          KS_PASS: ${{ secrets.NESH_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.NESH_KEY_ALIAS }}
+        run: |
+          keytool -list -v -keystore android/app/signing.keystore -alias "$KS_ALIAS" -storepass "$KS_PASS" 2>/dev/null | grep -E "SHA1:|SHA256:" || echo "::warning::could not read the upload key fingerprints"
+          python3 - << 'PYEOF'
+          import json
+          try:
+              d = json.load(open("google-services.json"))
+              found = False
+              for c in d.get("client", []):
+                  pkg = c["client_info"]["android_client_info"]["package_name"]
+                  hashes = [o["android_info"].get("certificate_hash") for o in c.get("oauth_client", []) if o.get("android_info")]
+                  print("google-services.json package:", pkg, "| SHA-1 registered:", hashes)
+                  if pkg == "com.neshgroup.nesh":
+                      found = True
+                      if not hashes:
+                          print("::warning::No SHA-1 is registered for com.neshgroup.nesh in google-services.json - add the upload key AND the Play App Signing key SHA-1/SHA-256 in Firebase, then replace google-services.json")
+              if not found:
+                  print("::warning::google-services.json has no entry for com.neshgroup.nesh")
+          except Exception as e:
+              print("::warning::could not read google-services.json:", e)
+          PYEOF
 
       # Wire the keystore into the release build type so `bundleRelease`
       # outputs an already-signed AAB, matching the existing app's signature.
