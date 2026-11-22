@@ -6453,7 +6453,7 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getDatabase, ref, onValue as rawOnValue, push, set, get, update, remove, runTransaction, goOffline, goOnline } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  import { getDatabase, ref, onValue as rawOnValue, push, set, get, update, remove, runTransaction, goOffline, goOnline, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCrM5wKwsnGtIc7HSTk_5R1d3dXEcYyd7o",
@@ -6702,6 +6702,12 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
   // onValue is also used by the order-tracking screen to live-watch an
   // order's status as the restaurant partner app updates it.
   window.fb = { db, ref, push, set, get, update, remove, onValue, runTransaction };
+  // Online drivers only (Firebase rules need  "taxi_drivers": {".indexOn": ["isOnline"]}).
+  // Without the index, or on any error, it falls back to the old full read - same result, just heavier.
+  window.fb.getOnlineDrivers = async function () {
+    try { return await get(query(ref(db, 'taxi_drivers'), orderByChild('isOnline'), equalTo(true))); }
+    catch (e) { return await get(ref(db, 'taxi_drivers')); }
+  };
 
   // Operator-set flat amount (₹) added on top of every restaurant's own item
   // price before it's shown to customers. Set/edited from the Operator Panel
@@ -7046,6 +7052,57 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
     shopVer = s0.val() || {}; catGot.sv = true; catCheckKnown();
     if (!first) catReload(id => shopVer[id] !== old[id]);
   }, () => { catGot.sv = true; catCheckKnown(); });
+  // ---- Oracle catalog (bandwidth saver) ----
+  // Shops + menu are read from https://api.neshapp.in/shops (Postgres on Oracle) instead of Firebase.
+  // ON when Firebase app_config/oracleCatalogOn === true, or on one device via ?oracle=1 (OFF again with ?oracle=0).
+  // Any Oracle failure at start -> the normal Firebase path below is used. Orders/login/chat stay on Firebase.
+  const ORACLE_URL = 'https://api.neshapp.in/shops';
+  let oracleFlag = false, oracleFlagKnown = false, oracleState = 'idle', oracleData = null, oracleT0 = 0, oracleOverride = false;
+  try {
+    const q = new URLSearchParams(location.search).get('oracle');
+    if (q === '1') localStorage.setItem('nesh_oracle_test', '1');
+    if (q === '0') localStorage.removeItem('nesh_oracle_test');
+    oracleOverride = localStorage.getItem('nesh_oracle_test') === '1';
+  } catch (e) {}
+  const oracleOn = () => oracleOverride || oracleFlag;
+  const oracleDecided = () => oracleOverride || oracleFlagKnown;
+  async function oracleFetch() {
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem('nesh_oracle_cat') || 'null'); } catch (e) {}
+    if (cached && !(cached.shops && cached.ver)) cached = null;
+    const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 10000);
+    try {
+      const r = await fetch(ORACLE_URL + (cached ? '?ver=' + encodeURIComponent(cached.ver) : ''), { signal: ctl.signal, cache: 'no-store' });
+      if (!r.ok) throw new Error('http ' + r.status);
+      const j = await r.json();
+      if (j.unchanged && cached) return cached;
+      if (!j.shops || typeof j.shops !== 'object') throw new Error('bad payload');
+      const d = { ver: j.ver, shops: j.shops };
+      try { localStorage.setItem('nesh_oracle_cat', JSON.stringify(d)); } catch (e) {}
+      return d;
+    } finally { clearTimeout(tm); }
+  }
+  function oracleStart() {
+    if (oracleState !== 'idle' || !oracleOn()) return;
+    oracleState = 'pending';
+    oracleFetch().then(d => { oracleData = d; oracleState = 'ready'; }).catch(e => { oracleState = 'failed'; console.warn('Oracle catalog failed, using Firebase', e); });
+  }
+  // Re-check every 2 min (tiny reply when nothing changed). On change: re-read those shops from the new data.
+  setInterval(() => {
+    if (oracleState !== 'ready' || !oracleOn() || document.hidden) return;
+    oracleFetch().then(d => {
+      if (oracleData && d.ver === oracleData.ver) return;
+      oracleData = d;
+      if (lastShopArgs) {
+        Object.keys(shopUnsubs).forEach(id => { if (shopUnsubs[id] && shopUnsubs[id]._oracle) delete shopUnsubs[id]; });
+        try { window.setShopLoading(lastShopArgs[0], lastShopArgs[1]); } catch (e) {}
+      }
+    }).catch(() => {});   // keep showing the last good data
+  }, 120000);
+  onValue(ref(db, 'app_config/oracleCatalogOn'), s0 => { oracleFlag = s0.val() === true; oracleFlagKnown = true; oracleStart(); }, () => { oracleFlagKnown = true; });
+  if (oracleOverride) oracleStart();
+  window.neshOracleInfo = () => ({ on: oracleOn(), state: oracleState, ver: oracleData && oracleData.ver, shops: oracleData ? Object.keys(oracleData.shops).length : 0 });
+
   window.setShopLoading = function (mode, ids) {
     const _prevKey = lastShopArgs ? lastShopArgs[0] + ':' + (lastShopArgs[1] || []).join(',') : null;
     lastShopArgs = [mode, ids];
@@ -7068,6 +7125,12 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
     if (!catKnown && Date.now() - (catT0 || (catT0 = Date.now())) < 1500) {
       clearTimeout(window._neshCatRetry);
       window._neshCatRetry = setTimeout(() => { try { window.setShopLoading(mode, ids); } catch (e) {} }, 120);
+      return;
+    }
+    // wait (max 4 s) until we know whether Oracle is on and its data has arrived; after that fall back to Firebase
+    if (!(oracleDecided() ? (!oracleOn() || oracleState === 'ready' || oracleState === 'failed') : false) && Date.now() - (oracleT0 || (oracleT0 = Date.now())) < 4000) {
+      clearTimeout(window._neshOraRetry);
+      window._neshOraRetry = setTimeout(() => { try { window.setShopLoading(mode, ids); } catch (e) {} }, 150);
       return;
     }
     const want = new Set(ids || []);
@@ -7107,6 +7170,15 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
           }
         };
       };
+      const oc = (oracleOn() && oracleState === 'ready' && oracleData) ? oracleData.shops[id] : null;
+      if (oc && (oc.status || oc.restaurantName)) {   // Oracle copy: no Firebase download for this shop
+        SHOP_FIELDS.forEach(k => { if (oc[k] !== undefined && oc[k] !== null) { const val = oc[k]; fieldSnaps[k] = { exists: () => true, val: () => val }; } });
+        publish();
+        if (shopInitPending) shopInitPending.delete(id);
+        const noopO = () => {}; noopO._cached = true; noopO._oracle = true; shopUnsubs[id] = noopO;
+        scheduleShopRebuild();
+        return;
+      }
       const hit = catOn ? catRead(id) : null;
       if (hit) {   // cached copy is current: no download for this shop
         SHOP_FIELDS.forEach(k => { if (hit.f && k in hit.f) { const val = hit.f[k]; fieldSnaps[k] = { exists: () => true, val: () => val }; } });
@@ -11808,7 +11880,7 @@ async function openTaxiChoiceDriverScreen(zone) {
   const { db, ref, get } = window.fb;
   let driversSnap;
   try {
-    driversSnap = await get(ref(db, 'taxi_drivers'));
+    driversSnap = await window.fb.getOnlineDrivers();
   } catch (e) {
     taxiChoiceDriverHintEl.textContent = "Couldn't load drivers — check your connection and try again.";
     return;
@@ -12034,7 +12106,7 @@ async function findNearestTaxiCandidate(pickup, excludeIds, vehicleType, created
   let driversSnap, zonesSnap;
   try {
     [driversSnap, zonesSnap] = await Promise.all([
-      get(ref(db, 'taxi_drivers')),
+      window.fb.getOnlineDrivers(),
       get(ref(db, 'driver_zones')),
     ]);
   } catch (e) { return null; }
@@ -13523,6 +13595,18 @@ function iosNeedsInstall() {
 // failed request; it is also repeated on every app open (idempotent).
 async function subscribeToBroadcastTopic(token, attempt) {
   attempt = attempt || 0;
+  // Saves Worker requests: same token already subscribed within the last 30 days -> nothing to do
+  // (zone topics are still synced below, that call is itself skipped when nothing changed).
+  if (attempt === 0) {
+    try {
+      const lastTok = localStorage.getItem('nesh_topic_token');
+      const lastAt = Number(localStorage.getItem('nesh_topic_sub_at') || 0);
+      if (lastTok === token && lastAt && (Date.now() - lastAt) < 30 * 864e5) {
+        try { neshSyncZoneTopicsSoon(); } catch (e) {}
+        return;
+      }
+    } catch (e) {}
+  }
   try {
     const r = await fetch('https://broad-paper-6445.raise3715.workers.dev', {
       method: 'POST',
@@ -13530,7 +13614,7 @@ async function subscribeToBroadcastTopic(token, attempt) {
       body: JSON.stringify({ type: 'subscribe_topic', token }),
     });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    try { localStorage.setItem('nesh_topic_token', token); } catch (e) {}
+    try { localStorage.setItem('nesh_topic_token', token); localStorage.setItem('nesh_topic_sub_at', String(Date.now())); } catch (e) {}
     try { neshSyncZoneTopicsSoon(); } catch (e) {}
   } catch (e) {
     if (attempt < 3) setTimeout(() => subscribeToBroadcastTopic(token, attempt + 1), [3000, 10000, 30000][attempt]);
