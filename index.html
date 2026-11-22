@@ -7054,18 +7054,19 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
   }, () => { catGot.sv = true; catCheckKnown(); });
   // ---- Oracle catalog (bandwidth saver) ----
   // Shops + menu are read from https://api.neshapp.in/shops (Postgres on Oracle) instead of Firebase.
-  // ON when Firebase app_config/oracleCatalogOn === true, or on one device via ?oracle=1 (OFF again with ?oracle=0).
-  // Any Oracle failure at start -> the normal Firebase path below is used. Orders/login/chat stay on Firebase.
+  // Oracle is the DEFAULT source. Firebase shop/menu listeners are used only if Oracle cannot be reached at start,
+  // if a shop is missing in Oracle, or if app_config/oracleCatalogOn === false (kill switch). ?oracle=0 forces Firebase on one device.
+  // Orders/login/chat/app_config stay on Firebase.
   const ORACLE_URL = 'https://api.neshapp.in/shops';
-  let oracleFlag = false, oracleFlagKnown = false, oracleState = 'idle', oracleData = null, oracleT0 = 0, oracleOverride = false;
+  let oracleState = 'idle', oracleData = null, oracleT0 = 0, oracleKill = false, oracleOff = false;
   try {
     const q = new URLSearchParams(location.search).get('oracle');
-    if (q === '1') localStorage.setItem('nesh_oracle_test', '1');
-    if (q === '0') localStorage.removeItem('nesh_oracle_test');
-    oracleOverride = localStorage.getItem('nesh_oracle_test') === '1';
+    if (q === '0') localStorage.setItem('nesh_oracle_off', '1');   // this device only: force the old Firebase path (for comparing)
+    if (q === '1') localStorage.removeItem('nesh_oracle_off');
+    oracleOff = localStorage.getItem('nesh_oracle_off') === '1';
   } catch (e) {}
-  const oracleOn = () => oracleOverride || oracleFlag;
-  const oracleDecided = () => oracleOverride || oracleFlagKnown;
+  const oracleOn = () => !oracleOff && !oracleKill;   // Oracle is the normal source; Firebase only if Oracle is down or kill switch
+  const oracleDecided = () => true;
   async function oracleFetch() {
     let cached = null;
     try { cached = JSON.parse(localStorage.getItem('nesh_oracle_cat') || 'null'); } catch (e) {}
@@ -7099,8 +7100,18 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
       }
     }).catch(() => {});   // keep showing the last good data
   }, 120000);
-  onValue(ref(db, 'app_config/oracleCatalogOn'), s0 => { oracleFlag = s0.val() === true; oracleFlagKnown = true; oracleStart(); }, () => { oracleFlagKnown = true; });
-  if (oracleOverride) oracleStart();
+  // Kill switch: Firebase app_config/oracleCatalogOn === false sends everyone back to the Firebase path at once.
+  onValue(ref(db, 'app_config/oracleCatalogOn'), s0 => {
+    const k = s0.val() === false;
+    if (k && !oracleKill) {
+      oracleKill = true;
+      if (lastShopArgs) {
+        Object.keys(shopUnsubs).forEach(id => { if (shopUnsubs[id] && shopUnsubs[id]._oracle) delete shopUnsubs[id]; });
+        try { window.setShopLoading(lastShopArgs[0], lastShopArgs[1]); } catch (e) {}
+      }
+    } else if (!k) oracleKill = false;
+  }, () => {});
+  oracleStart();
   window.neshOracleInfo = () => ({ on: oracleOn(), state: oracleState, ver: oracleData && oracleData.ver, shops: oracleData ? Object.keys(oracleData.shops).length : 0 });
 
   window.setShopLoading = function (mode, ids) {
@@ -7122,7 +7133,7 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
     }
     if (fullListUnsub) { try { fullListUnsub(); } catch (e) {} fullListUnsub = null; lastRestaurantsSnapshot = null; }
     // wait (max 1.5 s) until we know whether the catalog cache is on, so the first load can use it
-    if (!catKnown && Date.now() - (catT0 || (catT0 = Date.now())) < 1500) {
+    if (!catKnown && !oracleOn() && Date.now() - (catT0 || (catT0 = Date.now())) < 1500) {
       clearTimeout(window._neshCatRetry);
       window._neshCatRetry = setTimeout(() => { try { window.setShopLoading(mode, ids); } catch (e) {} }, 120);
       return;
