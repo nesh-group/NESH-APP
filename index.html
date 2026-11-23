@@ -402,6 +402,45 @@ html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
   html.au-on, html.au-on body{ overflow:hidden !important; height:100%; }
   html.au-on .screen{ display:none !important; }
 
+  /* ---- LAST CALL (cheap price before the shop closes) ---- */
+  #screen-home:not([data-cat="hotel"]) #lc-home-wrap{ display:none !important; }
+  #lc-home-wrap{ margin:0 0 4px; }
+  #lc-home .lc-hc{ flex:none; width:150px; background:#fff; border-radius:16px; overflow:hidden; cursor:pointer; -webkit-tap-highlight-color:transparent; box-shadow:0 2px 10px rgba(220,38,38,.16); border:1.5px solid #FCA5A5; }
+  #lc-home .lc-hc .lc-img{ position:relative; height:96px; background:#f3f0e8; }
+  #lc-home .lc-hc .lc-img img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .lc-left{ position:absolute; left:6px; top:6px; background:#DC2626; color:#fff; font-weight:800; font-size:11px; padding:2px 7px; border-radius:8px; }
+  #lc-home .lc-info{ padding:7px 9px 9px; }
+  #lc-home .lc-name{ margin:0; font-size:13px; font-weight:700; color:#2B2410; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #lc-home .lc-price{ margin:2px 0 0; font-size:14px; font-weight:800; color:#DC2626; }
+  #lc-home .lc-price s, .lc-row s, .lc-card s{ color:#8a8576; font-weight:500; font-size:11px; margin-left:5px; }
+  #lc-home .lc-shop{ margin:2px 0 0; font-size:11px; color:#6b6554; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .lc-cd{ font-variant-numeric:tabular-nums; font-weight:800; color:#C2410C; }
+  .lc-cd.urgent{ color:#DC2626; display:inline-block; animation:lcShake .6s infinite; }
+  @keyframes lcShake{ 0%,100%{ transform:translateX(0); } 20%{ transform:translateX(-2px); } 40%{ transform:translateX(2px); } 60%{ transform:translateX(-2px); } 80%{ transform:translateX(2px); } }
+  #lc-home .lc-all{ flex:none; width:110px; border-radius:16px; background:linear-gradient(135deg,#DC2626,#F2560C); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; font-weight:800; font-size:14px; cursor:pointer; }
+  #lc-shop-top{ margin:0 0 14px; }
+  .lc-banner{ background:linear-gradient(135deg,#DC2626,#F2560C); color:#fff; border-radius:16px; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; font-weight:900; font-size:18px; letter-spacing:.5px; }
+  .lc-banner .lc-cd{ color:#fff; font-size:24px; background:rgba(0,0,0,.18); padding:2px 10px; border-radius:10px; }
+  .lc-banner .lc-cd.urgent{ background:#fff; color:#DC2626; }
+  .lc-card{ position:relative; margin-top:12px; background:#fff; border-radius:18px; overflow:hidden; border:1.5px solid #FCA5A5; box-shadow:0 3px 14px rgba(220,38,38,.14); }
+  .lc-card .lc-photo{ position:relative; height:190px; background:#f3f0e8; }
+  .lc-card .lc-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .lc-card .lc-left{ font-size:13px; padding:4px 10px; left:10px; top:10px; }
+  .lc-card .lc-off{ position:absolute; right:10px; top:10px; background:#16A34A; color:#fff; font-weight:800; font-size:13px; padding:4px 10px; border-radius:8px; }
+  .lc-card .lc-body{ padding:12px 14px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .lc-card .lc-t{ margin:0; font-size:16px; font-weight:800; color:#2B2410; }
+  .lc-card .lc-p{ margin:3px 0 0; font-size:20px; font-weight:900; color:#DC2626; }
+  .lc-card .lc-only{ margin:3px 0 0; font-size:12px; font-weight:800; color:#DC2626; }
+  .lc-card .lc-tl{ margin:3px 0 0; font-size:12px; color:#6b6554; }
+  #lc-all-ov{ position:fixed; inset:0; z-index:2600; background:#FFF8EE; display:none; flex-direction:column; }
+  #lc-all-ov.on{ display:flex; }
+  #lc-all-ov .lc-ovh{ display:flex; align-items:center; gap:10px; padding:14px 16px; font-weight:900; font-size:18px; color:#2B2410; background:#fff; box-shadow:0 1px 6px rgba(0,0,0,.08); }
+  #lc-all-ov .lc-ovh button{ border:0; background:#f3f0e8; border-radius:10px; width:36px; height:36px; font-size:18px; }
+  #lc-all-list{ overflow-y:auto; padding:12px 16px 40px; flex:1; }
+  .lc-row{ display:flex; gap:12px; background:#fff; border-radius:14px; padding:10px; margin-bottom:10px; border:1.5px solid #FCA5A5; cursor:pointer; }
+  .lc-row img{ width:84px; height:84px; border-radius:10px; object-fit:cover; flex:none; background:#f3f0e8; }
+  .lc-row p{ margin:0; }
+  .lc-toast{ position:fixed; left:50%; bottom:90px; transform:translateX(-50%); background:#2B2410; color:#fff; padding:10px 16px; border-radius:12px; font-size:13px; z-index:3000; max-width:86%; text-align:center; }
   /* ---- Food screen: "Offers on food" strip (discounted items / portions, built from the shops already loaded) ---- */
   #screen-home:not([data-cat="hotel"]) #food-offers-wrap{ display:none !important; }
   #food-offers-wrap{ margin:0 0 4px; }
@@ -5407,6 +5446,10 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
       <span class="posters-count" id="posters-food-count"></span>
       <div class="posters-dots" id="posters-food-dots"></div>
     </div>
+    <div id="lc-home-wrap" style="display:none;">
+      <p class="mart-sec-title">⏰ Last Call – ഇപ്പോൾ വിലക്കുറവ്</p>
+      <div class="mart-hscroll" id="lc-home"></div>
+    </div>
     <div id="food-offers-wrap" style="display:none;">
       <p class="mart-sec-title">🏷️ Offers on food</p>
       <div class="mart-hscroll" id="food-offers"></div>
@@ -5506,6 +5549,7 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
       <aside id="nesh-cat-rail" aria-label="Categories"></aside>
       <div id="menu-main">
         <div id="free-offer-banner" style="display:none"></div>
+        <div id="lc-shop-top" style="display:none"></div>
         <div class="item-head" id="item-head">
           <p class="item-list-label" id="item-list-label">Items</p>
           <div id="menu-price-bar" style="display:none">
@@ -6819,6 +6863,20 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
             obj.price = Math.max(1, obj.price - (base - op));
             if (obj.shopRate !== undefined) obj.shopRate = op - ((typeof commissionFor === 'function') ? commissionFor(m) : 0);
           }
+          // LAST CALL: shop-set cheap price + pieces + end time. Overrides an ordinary offer on this item while live.
+          // Food, one-price piece items only (portions: ignored in v1). The shop bears the discount (assumed: shop is paid lastCallPrice - commission).
+          try {
+            const lcp = Number(m.lastCallPrice) || 0, lcq = Math.floor(Number(m.lastCallQty) || 0), lce = Number(m.lastCallEndsAt) || 0;
+            if (businessType === 'hotel' && !obj.sizePrices && (!m.unit || m.unit === 'piece') && lcp > 0 && lcp < base && lce > (Date.now() + (Number(window.__neshSrvOff) || 0)) && lcq > 0) {
+              const normPrice = obj.price, normMrp = obj.offerMrp, normRate = obj.shopRate;
+              const mrp = (Number(normMrp) > normPrice) ? Number(normMrp) : normPrice;
+              if (lcp < mrp) {
+                obj.offerMrp = mrp; obj.price = lcp;
+                obj.shopRate = Math.max(0, lcp - ((typeof commissionFor === 'function') ? commissionFor(m) : 0));
+                obj.lastCall = { price: lcp, qty: lcq, endsAt: lce, normPrice: normPrice, normMrp: normMrp, normRate: normRate };
+              }
+            }
+          } catch (e) {}
           return obj;
         };
         // Shop-set price ranges (Delivery Charges -> free-delivery ranges): items priced in [min, max) get +add on the price the
@@ -7106,6 +7164,8 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
       }
     }).catch(() => {});   // keep showing the last good data
   }, 120000);
+  // Server clock offset (Firebase gives it locally: no data download). Last Call end times use server time, not the phone clock.
+  try { onValue(ref(db, '.info/serverTimeOffset'), so => { window.__neshSrvOff = Number(so.val()) || 0; }); } catch (e) {}
   // Kill switch: Firebase app_config/oracleCatalogOn === false sends everyone back to the Firebase path at once.
   onValue(ref(db, 'app_config/oracleCatalogOn'), s0 => {
     const k = false;   // kill switch removed: the catalog is Oracle-only
@@ -8632,13 +8692,193 @@ function openCategory(cat, opts) {
 // ---------- FOOD OFFERS STRIP ----------
 // Food-screen strip: discounted Food items. A discounted portion (Quarter / Half / Full) is shown as its own item.
 // Built only from the shops already in memory (RESTAURANTS) -> no extra database reads; at most 12 small lazy-loaded photos.
+// ---------- LAST CALL (customer app) ----------
+// Data comes from the shop menu already loaded from Oracle (/shops): lastCallPrice / lastCallQty / lastCallEndsAt (see neshWithOffer).
+// No Firebase listener is added. Countdown = ONE shared 1-second timer, phone only. The only network call is POST /lastcall/claim at checkout.
+const NESH_LC_URL = 'https://api.neshapp.in/lastcall/claim';
+function neshLcLive(it) { const l = it && it.lastCall; return !!(l && l.endsAt > (Date.now() + (Number(window.__neshSrvOff) || 0)) && l.qty > 0); }
+function neshLcExpire(it) {   // offer over / sold out: back to the normal price, in place
+  const l = it && it.lastCall; if (!l) return;
+  it.price = l.normPrice;
+  if (l.normMrp) it.offerMrp = l.normMrp; else delete it.offerMrp;
+  if (l.normRate === undefined) delete it.shopRate; else it.shopRate = l.normRate;
+  delete it.lastCall;
+}
+function neshLcFmt(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000)), p = n => (n < 10 ? '0' : '') + n;
+  return p(Math.floor(s / 3600)) + ':' + p(Math.floor(s % 3600 / 60)) + ':' + p(s % 60);
+}
+function neshLcToast(msg) {
+  try {
+    const t = document.createElement('div'); t.className = 'lc-toast'; t.textContent = msg; document.body.appendChild(t);
+    setTimeout(() => { try { t.remove(); } catch (e) {} }, 2600);
+  } catch (e) {}
+}
+function neshLcShopItems(r) {
+  return ((r && r.items) || []).filter(it => it && neshLcLive(it) && !it.soldOut && !it.outOfStock && it.available !== false)
+    .sort((a, b) => a.lastCall.endsAt - b.lastCall.endsAt);
+}
+// Shop screen: big banner + one large card per live Last Call item. Returns how many cards are shown.
+function neshRenderLcShop(r, hide) {
+  const host = document.getElementById('lc-shop-top'); if (!host) return 0;
+  const its = (!r || hide) ? [] : neshLcShopItems(r);
+  if (!its.length) { host.style.display = 'none'; host.innerHTML = ''; return 0; }
+  const money = n => String(Math.round(n * 100) / 100);
+  host.style.display = 'block';
+  host.innerHTML = '<div class="lc-banner"><span>🔥 LAST CALL</span><span class="lc-cd" data-end="' + its[0].lastCall.endsAt + '">' + neshLcFmt(its[0].lastCall.endsAt - (Date.now() + (Number(window.__neshSrvOff) || 0))) + '</span></div>';
+  its.forEach(it => {
+    const l = it.lastCall, mrp = Number(it.offerMrp) || l.price, off = Math.max(1, Math.round((1 - it.price / mrp) * 100));
+    const c = document.createElement('div'); c.className = 'lc-card'; c.dataset.itemId = it.id;
+    c.innerHTML = '<div class="lc-photo"><img src="' + escapeHtml(it.image || 'icon-192.png') + '" alt="" decoding="async" onerror="this.onerror=null;this.src=\'icon-192.png\';" />'
+      + '<span class="lc-left">' + l.qty + ' left</span><span class="lc-off">' + off + '% OFF</span></div>'
+      + '<div class="lc-body"><div><p class="lc-t">' + escapeHtml(it.name) + '</p>'
+      + '<p class="lc-p">₹' + money(it.price) + '<s>₹' + money(mrp) + '</s></p>'
+      + (l.qty < 3 ? '<p class="lc-only">Only ' + l.qty + ' left!</p>' : '')
+      + '<p class="lc-tl">⏱ <span class="lc-cd" data-end="' + l.endsAt + '">' + neshLcFmt(l.endsAt - (Date.now() + (Number(window.__neshSrvOff) || 0))) + '</span></p></div>'
+      + '<div class="qty-slot"></div></div>';
+    host.appendChild(c);
+    renderQtyControl(c.querySelector('.qty-slot'), it.id, state.cart[it.id] || 0);
+  });
+  return its.length;
+}
+// Home strip (Food tab): one card per ITEM, soonest end first, max 3 per shop, max 12, last card = See all.
+function neshLcList(shops) {
+  const out = [];
+  (shops || []).forEach(r => {
+    if (!r || (r.businessType && r.businessType !== 'hotel') || r.id === 'NESH_STORE') return;
+    try { if (r.shopUnavailable || getShopClosedInfo(r).closed) return; } catch (e) {}
+    try { if (!shopAllowedAtPoint(r.id, state.customerPos)) return; } catch (e) {}
+    neshLcShopItems(r).forEach(it => out.push({ r, it }));
+  });
+  out.sort((a, b) => a.it.lastCall.endsAt - b.it.lastCall.endsAt);   // stable sort: equal end times keep the shop list order
+  return out;
+}
+function neshLcOpenShop(r) {
+  const go = () => { state.category = 'hotel'; try { const o = document.getElementById('lc-all-ov'); if (o) o.classList.remove('on'); } catch (e) {} openRestaurant(r.id); };
+  if (typeof requireLocationThen === 'function') requireLocationThen(go); else go();
+}
+function neshRenderLcStrip(shops) {
+  window.__lcShops = shops || null;
+  const wrap = document.getElementById('lc-home-wrap'), el = document.getElementById('lc-home');
+  if (!wrap || !el) return;
+  const all = shops ? neshLcList(shops) : [];
+  const per = {}, picked = [];
+  all.forEach(o => { per[o.r.id] = (per[o.r.id] || 0) + 1; if (per[o.r.id] <= 3 && picked.length < 12) picked.push(o); });
+  wrap.style.display = picked.length ? 'block' : 'none';   // nothing qualifies = no gap at all
+  const sig = picked.map(o => [o.r.id, o.it.id, o.it.price, o.it.lastCall.qty, o.it.lastCall.endsAt].join('~')).join('|');
+  if (el.dataset.sig === sig) return;
+  el.dataset.sig = sig; el.innerHTML = '';
+  const money = n => String(Math.round(n * 100) / 100);
+  picked.forEach(o => {
+    const l = o.it.lastCall, img = o.it.image ? String(o.it.image).replace('/w_640/', '/w_300/') : 'icon-192.png';
+    const c = document.createElement('div'); c.className = 'lc-hc';
+    c.innerHTML = '<div class="lc-img"><img src="' + escapeHtml(img) + '" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=\'icon-192.png\';" /><span class="lc-left">' + l.qty + ' left</span></div>'
+      + '<div class="lc-info"><p class="lc-name">' + escapeHtml(o.it.name) + '</p>'
+      + '<p class="lc-price">₹' + money(o.it.price) + '<s>₹' + money(o.it.offerMrp) + '</s></p>'
+      + '<p class="lc-shop">' + escapeHtml(o.r.name) + '</p>'
+      + '<p class="lc-shop">⏱ <span class="lc-cd" data-end="' + l.endsAt + '">' + neshLcFmt(l.endsAt - (Date.now() + (Number(window.__neshSrvOff) || 0))) + '</span></p></div>';
+    c.addEventListener('click', () => neshLcOpenShop(o.r));
+    el.appendChild(c);
+  });
+  if (picked.length) {
+    const a = document.createElement('div'); a.className = 'lc-all'; a.innerHTML = '<span style="font-size:22px">🔥</span><span>See all</span><span style="font-size:11px;font-weight:600">' + all.length + ' offers</span>';
+    a.addEventListener('click', neshLcOpenAll);
+    el.appendChild(a);
+  }
+}
+function neshLcOpenAll() {
+  let ov = document.getElementById('lc-all-ov');
+  if (!ov) {
+    ov = document.createElement('div'); ov.id = 'lc-all-ov';
+    ov.innerHTML = '<div class="lc-ovh"><button type="button" id="lc-all-back" aria-label="Back">←</button><span>🔥 Last Call</span></div><div id="lc-all-list"></div>';
+    document.body.appendChild(ov);
+    ov.querySelector('#lc-all-back').addEventListener('click', () => ov.classList.remove('on'));
+  }
+  neshLcRenderAll(); ov.classList.add('on');
+}
+function neshLcRenderAll() {
+  const ov = document.getElementById('lc-all-ov'), list = document.getElementById('lc-all-list'); if (!ov || !list) return;
+  const all = window.__lcShops ? neshLcList(window.__lcShops) : [];
+  const money = n => String(Math.round(n * 100) / 100);
+  list.innerHTML = all.length ? '' : '<p style="text-align:center;color:#6b6554;margin-top:40px">No Last Call offers right now.</p>';
+  all.forEach(o => {
+    const l = o.it.lastCall, row = document.createElement('div'); row.className = 'lc-row';
+    row.innerHTML = '<img src="' + escapeHtml(o.it.image || 'icon-192.png') + '" alt="" loading="lazy" onerror="this.onerror=null;this.src=\'icon-192.png\';" />'
+      + '<div><p style="font-weight:800;color:#2B2410">' + escapeHtml(o.it.name) + '</p><p style="font-size:12px;color:#6b6554">' + escapeHtml(o.r.name) + '</p>'
+      + '<p style="font-weight:900;color:#DC2626">₹' + money(o.it.price) + '<s>₹' + money(o.it.offerMrp) + '</s></p>'
+      + '<p style="font-size:12px"><b style="color:#DC2626">' + l.qty + ' left</b> · ⏱ <span class="lc-cd" data-end="' + l.endsAt + '">' + neshLcFmt(l.endsAt - (Date.now() + (Number(window.__neshSrvOff) || 0))) + '</span></p></div>';
+    row.addEventListener('click', () => neshLcOpenShop(o.r));
+    list.appendChild(row);
+  });
+}
+// Something changed (an offer ended / sold out): redraw what is on screen.
+function neshLcRefreshUI() {
+  try { neshRenderLcStrip(window.__lcShops || null); } catch (e) {}
+  try { const ov = document.getElementById('lc-all-ov'); if (ov && ov.classList.contains('on')) neshLcRenderAll(); } catch (e) {}
+  try { const a = document.querySelector('.screen.active'); if (a && a.id === 'screen-menu' && state.selectedRestaurant) renderMenu(); } catch (e) {}
+}
+// ONE timer for every countdown on screen. Runs on the phone only.
+let __lcSweepAt = 0;
+setInterval(() => {
+  try {
+    if (document.hidden) return;
+    const now = (Date.now() + (Number(window.__neshSrvOff) || 0));
+    let dead = false;
+    document.querySelectorAll('.lc-cd[data-end]').forEach(el => {
+      const left = Number(el.dataset.end) - now;
+      el.textContent = neshLcFmt(left);
+      el.classList.toggle('urgent', left < 600000);
+      if (left <= 0) dead = true;
+    });
+    if (dead || now - __lcSweepAt > 30000) {
+      __lcSweepAt = now;
+      let changed = false;
+      (window.RESTAURANTS || []).forEach(r => (r.items || []).forEach(it => { if (it && it.lastCall && !neshLcLive(it)) { neshLcExpire(it); changed = true; } }));
+      if (changed) neshLcRefreshUI();
+    }
+  } catch (e) {}
+}, 1000);
+// Checkout: take the pieces on the server BEFORE the order is written. Returns null = go on, {stop:true} = do not place the order.
+async function neshLcClaim(r, lcItems) {
+  if (!lcItems || !lcItems.length) return null;
+  const payload = lcItems.map(it => ({ id: it.id, qty: Math.max(1, Math.min(50, Math.floor(Number(state.cart[it.id]) || 1))) }));
+  const sig = r.id + '|' + payload.map(p => p.id + ':' + p.qty).join(',');
+  const d = window.__lcDone;
+  if (d && d.sig === sig && (Date.now() + (Number(window.__neshSrvOff) || 0)) - d.t < 120000) return null;   // already taken for this same cart (order write failed, customer tapped again): do not take twice
+  let j = null;
+  const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 10000);
+  try {
+    const resp = await fetch(NESH_LC_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shopId: r.id, items: payload }), signal: ctl.signal, cache: 'no-store' });
+    j = await resp.json();
+  } catch (e) { j = null; } finally { clearTimeout(tm); }
+  if (!j || (j.ok !== true && j.error !== 'soldout')) {
+    showInfoModal('Check your connection', 'We could not confirm your Last Call pieces. Please try again. / ഒന്നുകൂടി ശ്രമിക്കൂ.');
+    return { stop: true };
+  }
+  if (j.ok === true) {
+    window.__lcDone = { sig, t: (Date.now() + (Number(window.__neshSrvOff) || 0)) };
+    try { if (j.left) lcItems.forEach(it => { if (j.left[it.id] != null && it.lastCall) it.lastCall.qty = Number(j.left[it.id]) || 0; }); } catch (e) {}
+    return null;
+  }
+  // sold out / not enough pieces
+  const bad = lcItems.find(it => it.id === j.id) || lcItems[0];
+  let n = (typeof j.left === 'number') ? j.left : (j.left && typeof j.left === 'object' ? j.left[bad.id] : 0);
+  n = Math.max(0, Number(n) || 0);
+  if (bad.lastCall) { bad.lastCall.qty = n; if (n <= 0) neshLcExpire(bad); }
+  if (n > 0 && state.cart[bad.id] > n) state.cart[bad.id] = n; else if (n <= 0) delete state.cart[bad.id];
+  try { persistCart(); } catch (e) {}
+  showInfoModal('Sold out', 'Sold out - only ' + n + ' left. / വിറ്റുതീർന്നു - ' + n + ' എണ്ണം മാത്രം ബാക്കി. Prices refreshed, please check your cart.');
+  try { closePaymentConfirm(); } catch (e) {}
+  neshLcRefreshUI();
+  return { stop: true };
+}
 function neshFoodOffers(shops) {
   const out = [];
   (shops || []).forEach(r => {
     if (!r || (r.businessType && r.businessType !== 'hotel')) return;
     try { if (r.shopUnavailable || getShopClosedInfo(r).closed) return; } catch (e) {}
     (r.items || []).forEach(it => {
-      if (!it || it.soldOut || it.outOfStock || it.available === false) return;
+      if (!it || it.soldOut || it.outOfStock || it.available === false || it.lastCall) return;
       if (it.sizeMrp && hasSizes(it) && it.sizePrices) {
         it.sizes.forEach(sz => {
           const mrp = Number(it.sizeMrp[sz]), pr = Number(it.sizePrices[sz]);
@@ -15393,6 +15633,7 @@ function renderRestaurantList() {
     ? searchFiltered.filter(r => shopDeliversTo(r, state.customerPos))
     : searchFiltered;
   if (state.category === 'hotel' || martFoodLook()) filtered = neshApplyShopFilters(filtered);
+  try { neshRenderLcStrip((state.category === 'hotel' && !martFoodLook() && !q && !_pvAp) ? filtered : null); } catch (e) {}   // ⏰ Last Call strip (Food only, above the Offers strip)
   try { neshRenderFoodOffers((state.category === 'hotel' && !martFoodLook() && !q && !_pvAp) ? filtered : null); } catch (e) {}   // 🔥 Offers strip (Food only, not while searching)
   try { neshRenderReferralCard(); } catch (e) {}   // 🎁 Refer & Earn card (Food only)
   try { neshSyncFoodNav(); } catch (e) {}
@@ -16383,7 +16624,8 @@ function renderMenu() {
   const itemsRaw = mpOn ? itemsQ.filter(it => { const p = neshItemPrice(it); return p >= neshMP.min && p <= neshMP.max; }) : itemsQ;
   // Trending (offer) products go to the top of the shop's menu; everything else keeps its order.
   const neshIsOffer = it => (Number(it.offerMrp) > Number(it.price) && Number(it.price) > 0) || !!it.sizeMrp;
-  const items = itemsRaw.map((it, i) => ({ it, i }))
+  window.__lcShown = neshRenderLcShop(r, !!(query || mpOn));   // LAST CALL banner + cards at the very top
+  const items = ((query || mpOn) ? itemsRaw : itemsRaw.filter(it => !neshLcLive(it))).map((it, i) => ({ it, i }))
     .sort((a, b) => (neshIsOffer(b.it) - neshIsOffer(a.it)) || (a.i - b.i))
     .map(x => x.it);
   // Swiggy-style sections: only when nothing narrows the list (no search / price filter / chosen category)
@@ -16415,7 +16657,7 @@ function renderMenu() {
       : "Items (" + r.items.length + ")";
   try { renderFreeOfferBanner(query); } catch (e) {}
   itemListEl.innerHTML = "";
-  menuNoResults.style.display = items.length === 0 ? 'block' : 'none';
+  menuNoResults.style.display = (items.length === 0 && !window.__lcShown) ? 'block' : 'none';
   itemListLabel.style.display = items.length === 0 ? 'none' : 'block';
   // Speed: build the first screenful of cards at once, the rest in small batches on the next frames,
   // so opening Groceries / a shop never freezes while hundreds of cards + photos are created.
@@ -16754,13 +16996,20 @@ function changeQty(itemId, delta, size) {
   try { if (delta > 0 && state.selectedRestaurant && getShopClosedInfo(state.selectedRestaurant).closed) { showInfoModal('Shop closed', getShopClosedInfo(state.selectedRestaurant).message); return; } } catch (e) {}
   const current = state.cart[itemId] || 0;
   let next = Math.max(0, current + delta);
+  { const _r0 = state.selectedRestaurant, _i0 = _r0 && (_r0.items || []).find(i => i.id === itemId);
+    if (delta > 0 && _i0 && neshLcLive(_i0) && next > _i0.lastCall.qty) {   // Last Call: never more than the pieces left
+      neshLcToast('Only ' + _i0.lastCall.qty + ' left at this price / ' + _i0.lastCall.qty + ' എണ്ണം മാത്രം');
+      next = Math.min(current, _i0.lastCall.qty);
+      if (next === current) { try { const c0 = document.querySelector('#lc-shop-top .lc-card[data-item-id="' + String(itemId).replace(/"/g, '\\"') + '"] .qty-slot'); if (c0) renderQtyControl(c0, itemId, current); } catch (e) {} return; }
+    } }
   { const _r = state.selectedRestaurant, _it = _r && (_r.items || []).find(i => i.id === itemId);
     if (_it && hasSizes(_it) && !isWeightUnit(_it.unit)) next = neshAdjustPortion(_it, delta, size); }
   if (next === 0) delete state.cart[itemId];
   else state.cart[itemId] = next;
   // Instant: only swap this item's Add / − qty + control and refresh the cart bar. Re-rendering the whole
   // menu on every tap (all cards + photos rebuilt) was what made Add feel slow.
-  const card = itemListEl.querySelector('.item-card2[data-item-id="' + (window.CSS && CSS.escape ? CSS.escape(String(itemId)) : String(itemId)) + '"]');
+  const card = itemListEl.querySelector('.item-card2[data-item-id="' + (window.CSS && CSS.escape ? CSS.escape(String(itemId)) : String(itemId)) + '"]')
+    || document.querySelector('#lc-shop-top .lc-card[data-item-id="' + (window.CSS && CSS.escape ? CSS.escape(String(itemId)) : String(itemId)) + '"]');
   const slot = card && card.querySelector('.qty-slot');
   if (slot) { renderQtyControl(slot, itemId, next); updateCartBar(); if (card._it) neshSyncSizedCard(card); }
   else renderMenu();
@@ -21644,6 +21893,7 @@ payConfirmBtn.addEventListener('click', async () => {
   const orderNumber = (r.businessType === 'hotel' || !r.businessType)
     ? "KOT-" + Math.floor(1000 + Math.random() * 9000)
     : "ORD-" + Math.floor(1000 + Math.random() * 9000);
+  const _lcItems = (r.items || []).filter(it => state.cart[it.id] > 0 && neshLcLive(it));   // Last Call items in this cart (read BEFORE prices are copied)
   const orderItems = r.items
     .filter(it => state.cart[it.id])
     .flatMap(it => {
@@ -21721,6 +21971,7 @@ payConfirmBtn.addEventListener('click', async () => {
   let orderSaved = false;
 
   try {
+    { const _lcr = await neshLcClaim(r, _lcItems); if (_lcr && _lcr.stop) return; }   // Last Call pieces are taken on the server first; sold out / no network = no order
     // Push the order into the restaurant's own node in Firebase. The
     // restaurant partner app has a live listener on this exact path and
     // will pop up an alert with sound as soon as this write lands. Lat/lng
@@ -21806,6 +22057,7 @@ payConfirmBtn.addEventListener('click', async () => {
       orderPayload.paidByName = (state.user && state.user.name) || ''; orderPayload.paidByPhone = (state.user && state.user.number) || '';
       orderPayload.payRequestId = P.id; if (P.msg) orderPayload.giftMessage = P.msg; }
     await set(orderRef, orderPayload);
+    window.__lcDone = null;
     try { if (window.__neshPayFor) { const P = window.__neshPayFor; window.__neshPayFor = null; window.neshPayDone && window.neshPayDone(P.id, orderRef.key); } } catch (e) {}
     orderSaved = true;
     window.__neshUpiPaid = null;
