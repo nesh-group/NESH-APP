@@ -7040,7 +7040,7 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
     Object.keys(shopUnsubs).forEach(id => { if (shopUnsubs[id] && shopUnsubs[id]._cached && test(id)) { delete shopUnsubs[id]; any = true; } });
     if (any && lastShopArgs) { try { window.setShopLoading(lastShopArgs[0], lastShopArgs[1]); } catch (e) {} }
   };
-  onValue(ref(db, 'app_config/catalogCacheOn'), s0 => { catOn = s0.val() === true; catGot.on = true; catCheckKnown(); }, () => { catGot.on = true; catCheckKnown(); });
+  onValue(ref(db, 'app_config/catalogCacheOn'), s0 => { catOn = false; catGot.on = true; catCheckKnown(); }, () => { catGot.on = true; catCheckKnown(); });
   onValue(ref(db, 'catalogVer'), s0 => {
     const nv = s0.val(), changed = catGot.ver && nv !== catVer;
     catVer = (typeof nv === 'number') ? nv : null; catGot.ver = true; catCheckKnown();
@@ -7065,7 +7065,7 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
     if (q === '1') localStorage.removeItem('nesh_oracle_off');
     oracleOff = localStorage.getItem('nesh_oracle_off') === '1';
   } catch (e) {}
-  const oracleOn = () => !oracleOff && !oracleKill;   // Oracle is the normal source; Firebase only if Oracle is down or kill switch
+  const oracleOn = () => true;   // Oracle is the normal source; Firebase only if Oracle is down or kill switch
   const oracleDecided = () => true;
   async function oracleFetch() {
     let cached = null;
@@ -7086,7 +7086,13 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
   function oracleStart() {
     if (oracleState !== 'idle' || !oracleOn()) return;
     oracleState = 'pending';
-    oracleFetch().then(d => { oracleData = d; oracleState = 'ready'; }).catch(e => { oracleState = 'failed'; console.warn('Oracle catalog failed, using Firebase', e); });
+    oracleFetch().then(d => { oracleData = d; oracleState = 'ready'; }).catch(e => {
+      // Oracle only: no Firebase fallback. Use the last saved copy if there is one, and keep retrying.
+      console.warn('Oracle catalog failed, retrying', e);
+      let c = null; try { c = JSON.parse(localStorage.getItem('nesh_oracle_cat') || 'null'); } catch (x) {}
+      if (c && c.shops && c.ver) { oracleData = c; oracleState = 'ready'; } else { oracleState = 'idle'; }
+      setTimeout(() => { if (oracleState === 'idle') oracleStart(); }, 8000);
+    });
   }
   // Re-check every 2 min (tiny reply when nothing changed). On change: re-read those shops from the new data.
   setInterval(() => {
@@ -7102,7 +7108,7 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
   }, 120000);
   // Kill switch: Firebase app_config/oracleCatalogOn === false sends everyone back to the Firebase path at once.
   onValue(ref(db, 'app_config/oracleCatalogOn'), s0 => {
-    const k = s0.val() === false;
+    const k = false;   // kill switch removed: the catalog is Oracle-only
     if (k && !oracleKill) {
       oracleKill = true;
       if (lastShopArgs) {
@@ -7118,6 +7124,11 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
     const _prevKey = lastShopArgs ? lastShopArgs[0] + ':' + (lastShopArgs[1] || []).join(',') : null;
     lastShopArgs = [mode, ids];
     if (mode === 'ids' && _prevKey !== mode + ':' + (ids || []).join(',')) window._neshShopLoadAt = Date.now();
+    // Oracle-only: "all shops" = every shop in the Oracle catalog. Never the Firebase `restaurants` node.
+    if (mode === 'all') {
+      if (oracleState === 'ready' && oracleData) { ids = Object.keys(oracleData.shops); mode = 'ids'; }
+      else { clearTimeout(window._neshOraRetry); window._neshOraRetry = setTimeout(() => { try { window.setShopLoading('all', ids); } catch (e) {} }, 700); return; }
+    }
     if (mode === 'all') {
       Object.keys(shopUnsubs).forEach(id => { try { shopUnsubs[id](); } catch (e) {} delete shopUnsubs[id]; delete shopSnaps[id]; });
       shopInitPending = null;
@@ -7139,9 +7150,9 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
       return;
     }
     // wait (max 4 s) until we know whether Oracle is on and its data has arrived; after that fall back to Firebase
-    if (!(oracleDecided() ? (!oracleOn() || oracleState === 'ready' || oracleState === 'failed') : false) && Date.now() - (oracleT0 || (oracleT0 = Date.now())) < 4000) {
+    if (oracleState !== 'ready') {   // wait for Oracle (never fall back to Firebase)
       clearTimeout(window._neshOraRetry);
-      window._neshOraRetry = setTimeout(() => { try { window.setShopLoading(mode, ids); } catch (e) {} }, 150);
+      window._neshOraRetry = setTimeout(() => { try { window.setShopLoading(mode, ids); } catch (e) {} }, 500);
       return;
     }
     const want = new Set(ids || []);
@@ -7199,14 +7210,10 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
         scheduleShopRebuild();
         return;
       }
-      SHOP_FIELDS.forEach(f => {
-        let got = false;
-        const done = () => { if (!got) { got = true; waiting--; } if (waiting <= 0) first(); };
-        unsubs.push(onValue(ref(db, 'restaurants/' + id + '/' + f), (snap) => {
-          fieldSnaps[f] = snap; publish(); done(); scheduleShopRebuild();
-        }, () => { done(); scheduleShopRebuild(); }));
-      });
-      shopUnsubs[id] = () => unsubs.forEach(u => { try { u(); } catch (e) {} });
+      // Oracle only: a shop that is not in the Oracle catalog is simply not shown. No Firebase read.
+      if (shopInitPending) shopInitPending.delete(id);
+      const noopM = () => {}; noopM._cached = true; noopM._oracle = true; shopUnsubs[id] = noopM;
+      scheduleShopRebuild();
     });
     if (removed || !added.length || !shopLoadRanOnce) scheduleShopRebuild();
     shopLoadRanOnce = true;
@@ -12153,7 +12160,7 @@ async function findNearestTaxiCandidate(pickup, excludeIds, vehicleType, created
       if (Date.now() - loc.updatedAt > TAXI_CANDIDATE_STALE_MS) return;
       const distanceKm = haversineMeters(pickup.lat, pickup.lng, loc.lat, loc.lng) / 1000;
       if (distanceKm > TAXI_CANDIDATE_MAX_RADIUS_KM) return;
-      candidates.push({ id, distanceKm, name: d.name || 'Driver', vehicleNumber: d.vehicleNumber || '', photo: d.photo || '', onlineSince: d.onlineSince || Infinity });
+      candidates.push({ id, distanceKm, name: d.name || 'Driver', vehicleNumber: d.vehicleNumber || '', photo: d.photo || d.photoUrl || '', onlineSince: d.onlineSince || Infinity });
     });
     return candidates;
   };
@@ -13410,6 +13417,7 @@ regSendOtpBtn.addEventListener('click', async () => {
     const newUser = {
       name: regName.value.trim(),
       number: state.pendingRegNumber,
+      orderIndexReady: true,   // brand-new customer has no old orders: skips the one-time full 'restaurants' download in ensureOrderIndex
     };
     await set(ref(db, 'customers/' + newUser.number), newUser);
     state.user = { name: newUser.name, number: newUser.number };
