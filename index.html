@@ -403,42 +403,150 @@ html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
   html.au-on .screen{ display:none !important; }
 
   /* ---- LAST CALL (cheap price before the shop closes) ---- */
+  .st-ring{ width:64px; height:64px; border-radius:50%; padding:3px; background:linear-gradient(135deg,#DC2626,#F59E0B,#EA580C); box-sizing:border-box; }
+  .st-ring.seen{ background:#cfd3d8; }
+  .st-ring img{ width:100%; height:100%; border-radius:50%; object-fit:cover; border:2px solid #fff; box-sizing:border-box; display:block; background:#eee; }
+  .st-chip small{ display:block; margin-top:3px; font-size:10.5px; font-weight:700; color:#3b2a1f; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #screen-home:not([data-cat="hotel"]) #story-home-wrap{ display:none !important; }
+  #story-home-wrap{ margin:0 0 2px; }
+  #story-home{ display:flex; gap:12px; overflow-x:auto; padding:2px 24px 4px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+  #story-home::-webkit-scrollbar{ display:none; }
+  .st-chip{ flex:none; width:62px; text-align:center; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .st-chip .st-ring{ width:58px; height:58px; margin:0 auto; }
+  .st-cardring{ position:absolute; top:54px; left:12px; z-index:3; width:62px; text-align:center; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .st-cardring .st-ring{ width:58px; height:58px; box-shadow:0 3px 10px rgba(0,0,0,.45); }
+  .st-cardring small{ display:block; margin-top:3px; font-size:10px; font-weight:800; color:#fff; text-shadow:0 1px 4px rgba(0,0,0,.9); }
+  .menu-header.has-logo .menu-header-logo.has-story, .menu-header-logo.has-story{ box-shadow:0 0 0 3px #fff, 0 0 0 6px #DC2626, 0 10px 22px rgba(0,0,0,.45); cursor:pointer; animation:stPulse 1.8s ease-in-out infinite; }
+  .menu-header.has-logo .menu-header-logo.has-story.seen, .menu-header-logo.has-story.seen{ box-shadow:0 0 0 3px #fff, 0 0 0 6px #b5b9bf, 0 10px 22px rgba(0,0,0,.45); animation:none; }
+  @keyframes stPulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.05); } }
+  #st-ov{ position:fixed; inset:0; z-index:100000; background:#000; display:none; flex-direction:column; color:#fff; touch-action:manipulation; }
+  #st-ov.on{ display:flex; }
+  #st-bars{ display:flex; gap:4px; padding:calc(env(safe-area-inset-top,0px) + 10px) 10px 6px; }
+  #st-bars i{ flex:1; height:3px; border-radius:2px; background:rgba(255,255,255,.3); overflow:hidden; }
+  #st-bars i b{ display:block; height:100%; width:0; background:#fff; }
+  #st-head{ display:flex; align-items:center; gap:10px; padding:4px 12px 8px; }
+  #st-head img{ width:34px; height:34px; border-radius:50%; object-fit:cover; background:#333; }
+  #st-hn{ flex:1; min-width:0; display:flex; align-items:baseline; gap:8px; cursor:pointer; }
+  #st-hn b{ flex:none; max-width:70%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:15px; }
+  #st-hn small{ font-size:12px; opacity:.75; font-weight:600; }
+  #st-av{ cursor:pointer; }
+  #st-x{ background:none; border:0; color:#fff; font-size:28px; line-height:1; padding:4px 8px; }
+  #st-stage{ flex:1; position:relative; display:flex; align-items:center; justify-content:center; min-height:0; }
+  #st-stage img{ max-width:100%; max-height:100%; object-fit:contain; }
+  #st-tl,#st-tr{ position:absolute; top:0; bottom:0; width:35%; }
+  #st-tl{ left:0; } #st-tr{ right:0; width:65%; }
+  #st-vd{ display:none; width:100%; height:100%; max-width:100%; max-height:100%; object-fit:contain; background:#000; }
+  #st-ov.vid #st-vd{ display:block; } #st-ov.vid #st-im{ display:none; }
+  #st-snd{ position:absolute; right:12px; bottom:64px; z-index:3; width:40px; height:40px; border-radius:50%; border:0; background:rgba(0,0,0,.5); color:#fff; font-size:18px; display:none; align-items:center; justify-content:center; padding:0; }
+  #st-ov.vid #st-snd{ display:flex; }
+  #rl-ov{ position:fixed; inset:0; z-index:100000; background:#000; display:none; color:#fff; }
+  #rl-ov.on{ display:block; }
+  #rl-feed{ position:absolute; inset:0; overflow-y:scroll; scroll-snap-type:y mandatory; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+  #rl-feed::-webkit-scrollbar{ display:none; }
+  .rl-item{ position:relative; height:100%; scroll-snap-align:start; scroll-snap-stop:always; background:#000; overflow:hidden; }
+  .rl-item video{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; background:#000; }
+  .rl-item.rl-wide video{ object-fit:contain; }
+  .rl-item::before{ content:""; position:absolute; left:0; right:0; top:0; height:130px; background:linear-gradient(rgba(0,0,0,.55),transparent); z-index:2; pointer-events:none; }
+  .rl-ctr{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:3; display:flex; flex-direction:column; align-items:center; gap:30px; pointer-events:none; }
+  .rl-spk{ width:60px; height:60px; border-radius:50%; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .25s; pointer-events:none; }
+  .rl-item.rl-hud .rl-spk, .rl-item.rl-paused .rl-spk{ opacity:1; pointer-events:auto; }
+  .rl-pz{ width:96px; height:96px; border-radius:50%; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .15s; padding-left:5px; box-sizing:border-box; }
+  .rl-item.rl-paused .rl-pz{ opacity:1; }
+  #rl-ov.rl-muted .sp-on{ display:none; } #rl-ov:not(.rl-muted) .sp-off{ display:none; }
+  .rl-bar{ position:absolute; left:0; right:0; bottom:0; height:3px; background:rgba(255,255,255,.25); z-index:4; pointer-events:none; }
+  .rl-bar b{ display:block; height:100%; width:0; background:#fff; }
+  .rl-info{ position:absolute; left:0; right:64px; bottom:0; z-index:3; padding:90px 14px calc(env(safe-area-inset-bottom,0px) + 18px); pointer-events:none; }
+  .rl-item::after{ content:""; position:absolute; left:0; right:0; bottom:0; height:46%; background:linear-gradient(transparent,rgba(0,0,0,.82)); z-index:1; pointer-events:none; }
+  .rl-info > *{ pointer-events:auto; }
+  .rl-shoprow{ display:flex; align-items:center; gap:10px; }
+  .rl-shop{ display:flex; align-items:center; gap:10px; cursor:pointer; min-width:0; }
+  .rl-ring{ flex:none; width:46px; height:46px; border-radius:50%; padding:2.5px; background:linear-gradient(45deg,#F2B705,#F2560C 55%,#DC2626); box-sizing:border-box; }
+  .rl-off .rl-open, .rl-off .rl-shopbtn2{ display:none !important; }
+  .rl-ring img{ width:100%; height:100%; border-radius:50%; object-fit:cover; background:#222; border:2px solid #000; box-sizing:border-box; display:block; }
+  .rl-shop b{ font-size:16px; font-weight:800; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-shadow:0 1px 6px rgba(0,0,0,.7); }
+  .rl-open{ flex:none; background:rgba(255,255,255,.08); color:#fff; border:1.5px solid rgba(255,255,255,.85); font-weight:800; font-size:13.5px; padding:7px 14px; border-radius:10px; -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); }
+  .rl-txt{ margin:10px 0 0; font-size:14.5px; line-height:1.35; font-weight:500; text-shadow:0 1px 6px rgba(0,0,0,.85); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .rl-txt.open{ -webkit-line-clamp:unset; display:block; max-height:34vh; overflow:auto; }
+  .rl-txt:empty{ display:none; }
+  .rl-cta{ margin-top:10px; }
+  .rl-cta:empty{ display:none; }
+  .rl-card{ display:flex; align-items:center; gap:10px; background:rgba(30,26,18,.62); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,.18); border-radius:14px; padding:8px 8px 8px 12px; }
+  .rl-card div{ flex:1; min-width:0; }
+  .rl-card b{ display:block; font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rl-card .st-pr{ font-size:15px; font-weight:900; color:#FFD95A; } .rl-card s{ font-size:12px; color:#bbb; margin-left:6px; font-weight:600; }
+  .rl-card .lc-pill{ font-size:12px; }
+  .rl-card button{ flex:none; border:0; background:linear-gradient(135deg,#DC2626,#F2560C); color:#fff; font-weight:900; font-size:13.5px; padding:10px 14px; border-radius:10px; }
+  .rl-side{ position:absolute; right:6px; bottom:calc(env(safe-area-inset-bottom,0px) + 40px); z-index:3; display:flex; flex-direction:column; align-items:center; gap:20px; }
+  .rl-side button{ background:none; border:0; color:#fff; display:flex; flex-direction:column; align-items:center; gap:4px; font-size:11.5px; font-weight:700; padding:4px 8px; text-shadow:0 1px 5px rgba(0,0,0,.7); }
+  .rl-side svg{ width:30px; height:30px; filter:drop-shadow(0 1px 4px rgba(0,0,0,.6)); }
+  #rl-x{ position:absolute; top:calc(env(safe-area-inset-top,0px) + 8px); left:8px; z-index:5; background:none; border:0; color:#fff; font-size:34px; line-height:1; width:44px; height:44px; padding:0; text-shadow:0 1px 6px rgba(0,0,0,.6); }
+  #rl-title{ position:absolute; top:calc(env(safe-area-inset-top,0px) + 8px); left:52px; z-index:5; height:44px; display:flex; align-items:center; font-size:22px; font-weight:800; letter-spacing:.2px; text-shadow:0 1px 8px rgba(0,0,0,.6); pointer-events:none; }
+  #st-text{ position:absolute; left:14px; right:14px; bottom:14px; text-align:center; font-size:17px; font-weight:700; text-shadow:0 1px 6px rgba(0,0,0,.85); pointer-events:none; }
+  #st-cta{ padding:10px 14px calc(env(safe-area-inset-bottom,0px) + 14px); }
+  #st-cta .st-card{ background:#fff; color:#222; border-radius:16px; padding:10px 12px; display:flex; align-items:center; gap:10px; }
+  #st-cta .st-card div{ flex:1; min-width:0; }
+  #st-cta .st-card b{ display:block; font-size:14px; }
+  #st-cta .st-card .st-pr{ font-size:15px; font-weight:900; color:#DC2626; } #st-cta .st-card s{ font-size:12px; color:#888; margin-left:6px; font-weight:600; }
+  #st-cta .st-card .lc-pill{ font-size:12px; }
+  #st-cta button{ border:0; background:linear-gradient(135deg,#DC2626,#F2560C); color:#fff; font-weight:900; font-size:14px; padding:11px 16px; border-radius:12px; }
+  #st-cta .st-shopbtn{ width:100%; background:rgba(255,255,255,.16); }
   #screen-home:not([data-cat="hotel"]) #lc-home-wrap{ display:none !important; }
-  #lc-home-wrap{ margin:0 0 4px; }
-  #lc-home .lc-hc{ flex:none; width:150px; background:#fff; border-radius:16px; overflow:hidden; cursor:pointer; -webkit-tap-highlight-color:transparent; box-shadow:0 2px 10px rgba(220,38,38,.16); border:1.5px solid #FCA5A5; }
-  #lc-home .lc-hc .lc-img{ position:relative; height:96px; background:#f3f0e8; }
-  #lc-home .lc-hc .lc-img img{ width:100%; height:100%; object-fit:cover; display:block; }
-  .lc-left{ position:absolute; left:6px; top:6px; background:#DC2626; color:#fff; font-weight:800; font-size:11px; padding:2px 7px; border-radius:8px; }
-  #lc-home .lc-info{ padding:7px 9px 9px; }
-  #lc-home .lc-name{ margin:0; font-size:13px; font-weight:700; color:#2B2410; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  #lc-home .lc-price{ margin:2px 0 0; font-size:14px; font-weight:800; color:#DC2626; }
-  #lc-home .lc-price s, .lc-row s, .lc-card s{ color:#8a8576; font-weight:500; font-size:11px; margin-left:5px; }
-  #lc-home .lc-shop{ margin:2px 0 0; font-size:11px; color:#6b6554; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #lc-home-wrap{ margin:6px 0 10px; }
+  .lc-head{ display:flex; align-items:center; gap:10px; padding:0 24px 10px; }
+  .lc-head .lc-flame{ width:38px; height:38px; border-radius:12px; background:linear-gradient(135deg,#DC2626,#F2560C); display:flex; align-items:center; justify-content:center; font-size:20px; box-shadow:0 4px 10px rgba(220,38,38,.3); flex:none; }
+  .lc-head b{ display:block; font-size:17px; font-weight:900; color:#7C1D0B; line-height:1.2; }
+  .lc-head span{ display:block; font-size:12px; font-weight:600; color:#8a5a3c; margin-top:1px; }
+  #lc-home{ align-items:stretch; }
+  #lc-home .lc-hc{ flex:none; width:158px; background:#fff; border-radius:18px; overflow:hidden; cursor:pointer; -webkit-tap-highlight-color:transparent; box-shadow:0 4px 14px rgba(220,38,38,.18); display:flex; flex-direction:column; }
+  #lc-home .lc-hc .lc-img{ position:relative; height:112px; background:linear-gradient(160deg,#FFF3E8,#FFD9C2); }
+  #lc-home .lc-hc .lc-img img{ width:100%; height:100%; object-fit:contain; display:block; padding:6px; box-sizing:border-box; }
+  .lc-left{ position:absolute; left:8px; top:8px; background:#DC2626; color:#fff; font-weight:800; font-size:11px; padding:3px 8px; border-radius:20px; box-shadow:0 2px 6px rgba(220,38,38,.4); }
+  .lc-offb{ position:absolute; right:8px; top:8px; background:#16A34A; color:#fff; font-weight:800; font-size:11px; padding:3px 8px; border-radius:20px; }
+  #lc-home .lc-info{ padding:9px 11px 11px; display:flex; flex-direction:column; flex:1; }
+  #lc-home .lc-name{ margin:0; font-size:13.5px; font-weight:800; color:#2B2410; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #lc-home .lc-shop{ margin:2px 0 0; font-size:11px; color:#7a7360; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #lc-home .lc-price{ margin:6px 0 0; font-size:19px; font-weight:900; color:#DC2626; line-height:1; }
+  #lc-home .lc-price s, .lc-row s, .lc-card s{ color:#9a9585; font-weight:600; font-size:12px; margin-left:6px; }
+  #lc-home .lc-time{ margin:auto 0 0; padding-top:8px; }
+  .lc-pill{ display:inline-flex; align-items:center; gap:4px; background:#FFF1E6; border-radius:20px; padding:3px 9px; font-size:12px; font-weight:800; color:#C2410C; }
   .lc-cd{ font-variant-numeric:tabular-nums; font-weight:800; color:#C2410C; }
   .lc-cd.urgent{ color:#DC2626; display:inline-block; animation:lcShake .6s infinite; }
   @keyframes lcShake{ 0%,100%{ transform:translateX(0); } 20%{ transform:translateX(-2px); } 40%{ transform:translateX(2px); } 60%{ transform:translateX(-2px); } 80%{ transform:translateX(2px); } }
-  #lc-home .lc-all{ flex:none; width:110px; border-radius:16px; background:linear-gradient(135deg,#DC2626,#F2560C); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; font-weight:800; font-size:14px; cursor:pointer; }
+  #lc-home .lc-all{ flex:none; width:104px; border-radius:18px; background:linear-gradient(160deg,#DC2626,#F2560C); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; font-weight:900; font-size:14px; text-align:center; cursor:pointer; box-shadow:0 4px 14px rgba(220,38,38,.25); }
+  #lc-home .lc-all i{ font-style:normal; width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,.25); display:flex; align-items:center; justify-content:center; font-size:18px; }
+  #lc-home .lc-all small{ font-size:11px; font-weight:600; opacity:.9; }
   #lc-shop-top{ margin:0 0 14px; }
-  .lc-banner{ background:linear-gradient(135deg,#DC2626,#F2560C); color:#fff; border-radius:16px; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; font-weight:900; font-size:18px; letter-spacing:.5px; }
-  .lc-banner .lc-cd{ color:#fff; font-size:24px; background:rgba(0,0,0,.18); padding:2px 10px; border-radius:10px; }
+  .lc-banner{ background:linear-gradient(135deg,#B91C1C,#EA580C); color:#fff; border-radius:20px; padding:14px 16px; box-shadow:0 6px 18px rgba(220,38,38,.3); }
+  .lc-banner .lc-bt{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .lc-banner .lc-bt b{ font-size:20px; font-weight:900; letter-spacing:.3px; }
+  .lc-banner .lc-sub{ margin:2px 0 0; font-size:12px; font-weight:600; opacity:.92; }
+  .lc-banner .lc-cd{ color:#fff; font-size:26px; background:rgba(0,0,0,.22); padding:3px 12px; border-radius:12px; }
   .lc-banner .lc-cd.urgent{ background:#fff; color:#DC2626; }
-  .lc-card{ position:relative; margin-top:12px; background:#fff; border-radius:18px; overflow:hidden; border:1.5px solid #FCA5A5; box-shadow:0 3px 14px rgba(220,38,38,.14); }
-  .lc-card .lc-photo{ position:relative; height:190px; background:#f3f0e8; }
-  .lc-card .lc-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
-  .lc-card .lc-left{ font-size:13px; padding:4px 10px; left:10px; top:10px; }
-  .lc-card .lc-off{ position:absolute; right:10px; top:10px; background:#16A34A; color:#fff; font-weight:800; font-size:13px; padding:4px 10px; border-radius:8px; }
+  .lc-card{ position:relative; margin-top:12px; background:#fff; border-radius:20px; overflow:hidden; box-shadow:0 5px 18px rgba(220,38,38,.16); border:1.5px solid #FECACA; }
+  .lc-card .lc-photo{ position:relative; height:120px; background:linear-gradient(160deg,#FFF3E8,#FFD9C2); }
+  .lc-card .lc-photo img{ width:100%; height:100%; object-fit:contain; display:block; padding:8px; box-sizing:border-box; }
+  .lc-card .lc-left{ font-size:13px; padding:4px 12px; left:12px; top:12px; }
+  .lc-card .lc-off{ position:absolute; right:12px; top:12px; background:#16A34A; color:#fff; font-weight:800; font-size:13px; padding:4px 12px; border-radius:20px; }
   .lc-card .lc-body{ padding:12px 14px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
   .lc-card .lc-t{ margin:0; font-size:16px; font-weight:800; color:#2B2410; }
-  .lc-card .lc-p{ margin:3px 0 0; font-size:20px; font-weight:900; color:#DC2626; }
-  .lc-card .lc-only{ margin:3px 0 0; font-size:12px; font-weight:800; color:#DC2626; }
-  .lc-card .lc-tl{ margin:3px 0 0; font-size:12px; color:#6b6554; }
+  .lc-card .lc-p{ margin:4px 0 0; font-size:22px; font-weight:900; color:#DC2626; line-height:1.1; }
+  .lc-card .lc-only{ margin:5px 0 0; font-size:12px; font-weight:800; color:#DC2626; }
+  .lc-card .lc-tl{ margin:6px 0 0; }
+  .lc-card .lc-body2{ padding:12px 14px 14px; }
+  .lc-prow{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:10px; padding:10px 12px; background:#FFF6EE; border-radius:14px; }
+  .lc-pinfo b{ display:block; font-size:15px; font-weight:900; color:#2B2410; }
+  .lc-pinfo small{ font-size:11px; font-weight:700; color:#8a5a3c; }
+  .lc-pp{ flex:1; font-size:18px; font-weight:900; color:#DC2626; line-height:1.15; }
+  .lc-pp em{ display:block; font-style:normal; font-size:11px; font-weight:800; color:#16A34A; }
   #lc-all-ov{ position:fixed; inset:0; z-index:2600; background:#FFF8EE; display:none; flex-direction:column; }
   #lc-all-ov.on{ display:flex; }
-  #lc-all-ov .lc-ovh{ display:flex; align-items:center; gap:10px; padding:14px 16px; font-weight:900; font-size:18px; color:#2B2410; background:#fff; box-shadow:0 1px 6px rgba(0,0,0,.08); }
-  #lc-all-ov .lc-ovh button{ border:0; background:#f3f0e8; border-radius:10px; width:36px; height:36px; font-size:18px; }
-  #lc-all-list{ overflow-y:auto; padding:12px 16px 40px; flex:1; }
-  .lc-row{ display:flex; gap:12px; background:#fff; border-radius:14px; padding:10px; margin-bottom:10px; border:1.5px solid #FCA5A5; cursor:pointer; }
-  .lc-row img{ width:84px; height:84px; border-radius:10px; object-fit:cover; flex:none; background:#f3f0e8; }
+  #lc-all-ov .lc-ovh{ display:flex; align-items:center; gap:12px; padding:14px 16px; background:linear-gradient(135deg,#B91C1C,#EA580C); color:#fff; }
+  #lc-all-ov .lc-ovh b{ display:block; font-size:18px; font-weight:900; }
+  #lc-all-ov .lc-ovh span{ display:block; font-size:12px; opacity:.92; }
+  #lc-all-ov .lc-ovh button{ border:0; background:rgba(255,255,255,.22); color:#fff; border-radius:12px; width:38px; height:38px; font-size:20px; flex:none; }
+  #lc-all-list{ overflow-y:auto; padding:14px 16px 40px; flex:1; }
+  .lc-row{ display:flex; gap:12px; background:#fff; border-radius:18px; padding:10px; margin-bottom:12px; box-shadow:0 4px 14px rgba(220,38,38,.12); cursor:pointer; }
+  .lc-row img{ width:92px; height:92px; border-radius:14px; object-fit:contain; flex:none; background:linear-gradient(160deg,#FFF3E8,#FFD9C2); }
   .lc-row p{ margin:0; }
   .lc-toast{ position:fixed; left:50%; bottom:90px; transform:translateX(-50%); background:#2B2410; color:#fff; padding:10px 16px; border-radius:12px; font-size:13px; z-index:3000; max-width:86%; text-align:center; }
   /* ---- Food screen: "Offers on food" strip (discounted items / portions, built from the shops already loaded) ---- */
@@ -5441,13 +5549,14 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
       <span class="posters-count" id="posters-mart-count"></span>
       <div class="posters-dots" id="posters-mart-dots"></div>
     </div>
+    <div id="story-home-wrap" style="display:none;"><div id="story-home"></div></div>
     <div class="posters" id="posters-food" aria-label="Food offers">
       <div class="posters-track" id="posters-food-track"></div>
       <span class="posters-count" id="posters-food-count"></span>
       <div class="posters-dots" id="posters-food-dots"></div>
     </div>
     <div id="lc-home-wrap" style="display:none;">
-      <p class="mart-sec-title">⏰ Last Call – ഇപ്പോൾ വിലക്കുറവ്</p>
+      <div class="lc-head"><div class="lc-flame">🔥</div><div><b>ലാസ്റ്റ് കോൾ ഓഫർ</b><span>സമയം തീരുംമുമ്പ് കുറഞ്ഞ വിലയ്ക്ക് വാങ്ങൂ!</span></div></div>
       <div class="mart-hscroll" id="lc-home"></div>
     </div>
     <div id="food-offers-wrap" style="display:none;">
@@ -6201,10 +6310,12 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
     <button type="button" class="nb-btn" id="nb-trending" aria-label="Trending">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.2 1.2-6.5L2.5 9.5l6.6-.9L12 2.6z"/></svg><span>Trending</span>
     </button>
+    <button type="button" class="nb-btn" id="nb-reels" aria-label="Reels" style="display:none"><svg viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm5 5.2v7.6l6-3.8-6-3.8z"/></svg><span>Reels</span></button>
   </nav>
   <nav id="nesh-fnav" aria-label="Food">
     <button type="button" class="nb-btn active" id="fn-home" aria-label="Home"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.8 2.9 10.6c-.5.4-.2 1.2.4 1.2H5v8.2c0 .6.4 1 1 1h4v-5.5h4V21h4c.6 0 1-.4 1-1v-8.2h1.7c.6 0 .9-.8.4-1.2L12 2.8z"/></svg><span>Home</span></button>
     <button type="button" class="nb-btn" id="fn-offers" aria-label="Offers"><svg viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M21.4 11.6 12.4 2.6A2 2 0 0 0 11 2H4a2 2 0 0 0-2 2v7c0 .5.2 1 .6 1.4l9 9a2 2 0 0 0 2.8 0l7-7a2 2 0 0 0 0-2.8zM7.5 6a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg><span>Offers</span><i class="nb-dot" id="fn-offers-dot"></i></button>
+    <button type="button" class="nb-btn" id="fn-reels" aria-label="Reels" style="display:none"><svg viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm5 5.2v7.6l6-3.8-6-3.8z"/></svg><span>Reels</span></button>
     <button type="button" class="nb-btn" id="fn-refer" aria-label="Refer" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg><span>Refer</span></button>
   </nav>
   <div id="fo-ov" role="region" aria-label="Offers on food">
@@ -6875,6 +6986,31 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
                 obj.shopRate = Math.max(0, lcp - ((typeof commissionFor === 'function') ? commissionFor(m) : 0));
                 obj.lastCall = { price: lcp, qty: lcq, endsAt: lce, normPrice: normPrice, normMrp: normMrp, normRate: normRate };
               }
+            }
+          } catch (e) {}
+          // LAST CALL on a PORTION item: any portion (Quarter / Half / Full) can have its own Last Call price. ONE shared pool of pieces
+          // (lastCallQty); each portion uses lastCallUnits[portion] pieces (default Quarter 1, Half 2, Full 4).
+          try {
+            const lce2 = Number(m.lastCallEndsAt) || 0, lcq2 = Math.floor(Number(m.lastCallQty) || 0);
+            let lcPr = (m.lastCallPrices && typeof m.lastCallPrices === 'object') ? m.lastCallPrices : null;
+            if (!lcPr && m.lastCallSize && Number(m.lastCallPrice) > 0) { lcPr = {}; lcPr[m.lastCallSize] = Number(m.lastCallPrice); }   // older save: one portion only
+            if (businessType === 'hotel' && obj.sizePrices && lcPr && lce2 > (Date.now() + (Number(window.__neshSrvOff) || 0)) && lcq2 > 0) {
+              const defU = { Quarter: 1, Half: 2, Full: 4 }, uMap = (m.lastCallUnits && typeof m.lastCallUnits === 'object') ? m.lastCallUnits : {};
+              const sz = {}, normItemPrice = obj.price, normItemRate = obj.shopRate;
+              obj.sizes.forEach(name => {
+                const lp = Number(lcPr[name]) || 0, cur = obj.sizePrices[name];
+                if (!(lp > 0 && cur > 0 && lp < cur)) return;
+                const normMrp = obj.sizeMrp ? obj.sizeMrp[name] : undefined, normRate = obj.sizeShopRates ? obj.sizeShopRates[name] : undefined;
+                const mrp2 = (Number(normMrp) > cur) ? Number(normMrp) : cur;
+                if (!(lp < mrp2)) return;
+                const units = Math.max(1, Math.floor(Number(uMap[name]) || defU[name] || 1));
+                const raw2 = Number(m.sizePrices && m.sizePrices[name]) || 0;
+                const rate2 = Math.max(0, lp - ((typeof commissionFor === 'function') ? commissionFor(Object.assign({}, m, { price: raw2, customerPrice: 0 })) : 0));
+                obj.sizePrices[name] = lp; (obj.sizeMrp = obj.sizeMrp || {})[name] = mrp2; (obj.sizeShopRates = obj.sizeShopRates || {})[name] = rate2;
+                if (name === obj.sizes[0]) { obj.price = lp; obj.shopRate = rate2; }
+                sz[name] = { price: lp, units: units, normPrice: cur, normMrp: normMrp, normRate: normRate };
+              });
+              if (Object.keys(sz).length) obj.lastCall = { qty: lcq2, endsAt: lce2, sz: sz, normItemPrice: normItemPrice, normItemRate: normItemRate };
             }
           } catch (e) {}
           return obj;
@@ -8696,9 +8832,43 @@ function openCategory(cat, opts) {
 // Data comes from the shop menu already loaded from Oracle (/shops): lastCallPrice / lastCallQty / lastCallEndsAt (see neshWithOffer).
 // No Firebase listener is added. Countdown = ONE shared 1-second timer, phone only. The only network call is POST /lastcall/claim at checkout.
 const NESH_LC_URL = 'https://api.neshapp.in/lastcall/claim';
-function neshLcLive(it) { const l = it && it.lastCall; return !!(l && l.endsAt > (Date.now() + (Number(window.__neshSrvOff) || 0)) && l.qty > 0); }
+function neshLcMinUnits(l) { return l.sz ? Math.min.apply(null, Object.keys(l.sz).map(k => l.sz[k].units)) : 1; }
+function neshLcLive(it) { const l = it && it.lastCall; return !!(l && l.endsAt > (Date.now() + (Number(window.__neshSrvOff) || 0)) && l.qty >= neshLcMinUnits(l)); }
+function neshLcPm(it) {   // price / old price shown on the home card (portion item: its cheapest Last Call portion)
+  const l = it.lastCall;
+  if (l.sz) {
+    let best = null; Object.keys(l.sz).forEach(k => { if (best === null || l.sz[k].price < l.sz[best].price) best = k; });
+    return { p: l.sz[best].price, m: Number((it.sizeMrp || {})[best]) || l.sz[best].normPrice, size: best };
+  }
+  return { p: Number(it.price), m: Number(it.offerMrp) || Number(l.price), size: null };
+}
+function neshLcView(it) { const pm = neshLcPm(it); return Object.assign({}, it, { price: pm.p, offerMrp: pm.m, name: it.name + (pm.size ? ' (' + pm.size + ')' : '') }); }
+function neshLcPortionQty(it, size) { const e = neshPortions(it).find(x => x[0] === size); return e ? e[1] : 0; }
+function neshLcUnits(it) {   // Last Call pieces in the cart (portion item: sum of portions x pieces per portion)
+  if (!(Number(state.cart[it.id]) > 0)) return 0;
+  const l = it.lastCall;
+  if (l && l.sz && hasSizes(it)) return neshPortions(it).reduce((a, x) => a + (l.sz[x[0]] ? x[1] * l.sz[x[0]].units : 0), 0);
+  return Number(state.cart[it.id]) || 0;
+}
+function neshLcSyncSlots(itemId) {   // redraw the + / - controls inside this item's Last Call card
+  try {
+    const card = document.querySelector('#lc-shop-top .lc-card[data-item-id="' + String(itemId).replace(/"/g, '\\"') + '"]');
+    const it = card && state.selectedRestaurant && (state.selectedRestaurant.items || []).find(i => i.id === itemId);
+    if (!card || !it || !it.lastCall) return;
+    card.querySelectorAll('.qty-slot').forEach(sl => { const n = sl.dataset.size; renderQtyControl(sl, itemId, n ? neshLcPortionQty(it, n) : neshLcUnits(it), n || undefined); });
+  } catch (e) {}
+}
 function neshLcExpire(it) {   // offer over / sold out: back to the normal price, in place
   const l = it && it.lastCall; if (!l) return;
+  if (l.sz && it.sizePrices) {
+    Object.keys(l.sz).forEach(z => {
+      const d = l.sz[z]; it.sizePrices[z] = d.normPrice;
+      if (d.normMrp) (it.sizeMrp = it.sizeMrp || {})[z] = d.normMrp; else if (it.sizeMrp) { delete it.sizeMrp[z]; if (!Object.keys(it.sizeMrp).length) delete it.sizeMrp; }
+      if (d.normRate === undefined) { if (it.sizeShopRates) delete it.sizeShopRates[z]; } else (it.sizeShopRates = it.sizeShopRates || {})[z] = d.normRate;
+    });
+    it.price = l.normItemPrice; if (l.normItemRate === undefined) delete it.shopRate; else it.shopRate = l.normItemRate;
+    delete it.lastCall; return;
+  }
   it.price = l.normPrice;
   if (l.normMrp) it.offerMrp = l.normMrp; else delete it.offerMrp;
   if (l.normRate === undefined) delete it.shopRate; else it.shopRate = l.normRate;
@@ -8718,26 +8888,37 @@ function neshLcShopItems(r) {
   return ((r && r.items) || []).filter(it => it && neshLcLive(it) && !it.soldOut && !it.outOfStock && it.available !== false)
     .sort((a, b) => a.lastCall.endsAt - b.lastCall.endsAt);
 }
-// Shop screen: big banner + one large card per live Last Call item. Returns how many cards are shown.
+// Shop screen: big banner + one large card per live Last Call item (portion item: one row per Last Call portion).
 function neshRenderLcShop(r, hide) {
+  try { neshRenderStoryShop(r); } catch (e) {}
   const host = document.getElementById('lc-shop-top'); if (!host) return 0;
   const its = (!r || hide) ? [] : neshLcShopItems(r);
   if (!its.length) { host.style.display = 'none'; host.innerHTML = ''; return 0; }
-  const money = n => String(Math.round(n * 100) / 100);
+  const money = n => String(Math.round(n * 100) / 100), nowS = (Date.now() + (Number(window.__neshSrvOff) || 0));
   host.style.display = 'block';
-  host.innerHTML = '<div class="lc-banner"><span>🔥 LAST CALL</span><span class="lc-cd" data-end="' + its[0].lastCall.endsAt + '">' + neshLcFmt(its[0].lastCall.endsAt - (Date.now() + (Number(window.__neshSrvOff) || 0))) + '</span></div>';
-  its.forEach(it => {
-    const l = it.lastCall, mrp = Number(it.offerMrp) || l.price, off = Math.max(1, Math.round((1 - it.price / mrp) * 100));
-    const c = document.createElement('div'); c.className = 'lc-card'; c.dataset.itemId = it.id;
-    c.innerHTML = '<div class="lc-photo"><img src="' + escapeHtml(it.image || 'icon-192.png') + '" alt="" decoding="async" onerror="this.onerror=null;this.src=\'icon-192.png\';" />'
-      + '<span class="lc-left">' + l.qty + ' left</span><span class="lc-off">' + off + '% OFF</span></div>'
-      + '<div class="lc-body"><div><p class="lc-t">' + escapeHtml(it.name) + '</p>'
-      + '<p class="lc-p">₹' + money(it.price) + '<s>₹' + money(mrp) + '</s></p>'
-      + (l.qty < 3 ? '<p class="lc-only">Only ' + l.qty + ' left!</p>' : '')
-      + '<p class="lc-tl">⏱ <span class="lc-cd" data-end="' + l.endsAt + '">' + neshLcFmt(l.endsAt - (Date.now() + (Number(window.__neshSrvOff) || 0))) + '</span></p></div>'
-      + '<div class="qty-slot"></div></div>';
+  host.innerHTML = '<div class="lc-banner"><div class="lc-bt"><b>🔥 ലാസ്റ്റ് കോൾ</b><span class="lc-cd" data-end="' + its[0].lastCall.endsAt + '">' + neshLcFmt(its[0].lastCall.endsAt - nowS) + '</span></div><p class="lc-sub">ഓഫർ തീരാൻ ഇനി ഇത്രയും സമയം മാത്രം</p></div>';
+  its.forEach(it0 => {
+    const l = it0.lastCall, c = document.createElement('div'); c.className = 'lc-card'; c.dataset.itemId = it0.id;
+    const unitWord = l.sz ? ' പീസ്' : ' എണ്ണം';
+    const photo = '<div class="lc-photo"><img src="' + escapeHtml(it0.image || 'icon-192.png') + '" alt="" decoding="async" onerror="this.onerror=null;this.src=\'icon-192.png\';" /><span class="lc-left">ഇനി ' + l.qty + unitWord + '</span>';
+    const timer = '<p class="lc-tl"><span class="lc-pill">⏱ <span class="lc-cd" data-end="' + l.endsAt + '">' + neshLcFmt(l.endsAt - nowS) + '</span></span></p>';
+    const only = l.qty < 3 ? '<p class="lc-only">ഇനി ' + l.qty + unitWord + ' മാത്രം!</p>' : '';
+    if (l.sz) {
+      const names = (it0.sizes || []).filter(n => l.sz[n]);
+      const rows = names.map(n => {
+        const d = l.sz[n], mrp = Number((it0.sizeMrp || {})[n]) || d.normPrice, off = Math.max(1, Math.round((1 - d.price / mrp) * 100));
+        return '<div class="lc-prow"><div class="lc-pinfo"><b>' + escapeHtml(n) + '</b><small>' + d.units + ' പീസ്</small></div>'
+          + '<div class="lc-pp">₹' + money(d.price) + '<s>₹' + money(mrp) + '</s><em>' + off + '% OFF</em></div><div class="qty-slot" data-size="' + escapeHtml(n) + '"></div></div>';
+      }).join('');
+      c.innerHTML = photo + '</div><div class="lc-body2"><p class="lc-t">' + escapeHtml(it0.name) + '</p>' + only + rows + timer + '</div>';
+      c.querySelectorAll('.qty-slot').forEach(sl => renderQtyControl(sl, it0.id, neshLcPortionQty(it0, sl.dataset.size), sl.dataset.size));
+    } else {
+      const it = neshLcView(it0), mrp = Number(it.offerMrp) || l.price, off = Math.max(1, Math.round((1 - it.price / mrp) * 100));
+      c.innerHTML = photo + '<span class="lc-off">' + off + '% OFF</span></div>'
+        + '<div class="lc-body"><div><p class="lc-t">' + escapeHtml(it.name) + '</p><p class="lc-p">₹' + money(it.price) + '<s>₹' + money(mrp) + '</s></p>' + only + timer + '</div><div class="qty-slot"></div></div>';
+      renderQtyControl(c.querySelector('.qty-slot'), it0.id, neshLcUnits(it0));
+    }
     host.appendChild(c);
-    renderQtyControl(c.querySelector('.qty-slot'), it.id, state.cart[it.id] || 0);
   });
   return its.length;
 }
@@ -8748,7 +8929,7 @@ function neshLcList(shops) {
     if (!r || (r.businessType && r.businessType !== 'hotel') || r.id === 'NESH_STORE') return;
     try { if (r.shopUnavailable || getShopClosedInfo(r).closed) return; } catch (e) {}
     try { if (!shopAllowedAtPoint(r.id, state.customerPos)) return; } catch (e) {}
-    neshLcShopItems(r).forEach(it => out.push({ r, it }));
+    neshLcShopItems(r).forEach(it => out.push({ r, it: neshLcView(it) }));
   });
   out.sort((a, b) => a.it.lastCall.endsAt - b.it.lastCall.endsAt);   // stable sort: equal end times keep the shop list order
   return out;
@@ -8759,6 +8940,7 @@ function neshLcOpenShop(r) {
 }
 function neshRenderLcStrip(shops) {
   window.__lcShops = shops || null;
+  try { neshRenderStories(shops); } catch (e) {}
   const wrap = document.getElementById('lc-home-wrap'), el = document.getElementById('lc-home');
   if (!wrap || !el) return;
   const all = shops ? neshLcList(shops) : [];
@@ -8772,16 +8954,16 @@ function neshRenderLcStrip(shops) {
   picked.forEach(o => {
     const l = o.it.lastCall, img = o.it.image ? String(o.it.image).replace('/w_640/', '/w_300/') : 'icon-192.png';
     const c = document.createElement('div'); c.className = 'lc-hc';
-    c.innerHTML = '<div class="lc-img"><img src="' + escapeHtml(img) + '" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=\'icon-192.png\';" /><span class="lc-left">' + l.qty + ' left</span></div>'
+    c.innerHTML = '<div class="lc-img"><img src="' + escapeHtml(img) + '" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=\'icon-192.png\';" /><span class="lc-left">ഇനി ' + l.qty + '</span><span class="lc-offb">' + Math.max(1, Math.round((1 - o.it.price / o.it.offerMrp) * 100)) + '% OFF</span></div>'
       + '<div class="lc-info"><p class="lc-name">' + escapeHtml(o.it.name) + '</p>'
-      + '<p class="lc-price">₹' + money(o.it.price) + '<s>₹' + money(o.it.offerMrp) + '</s></p>'
       + '<p class="lc-shop">' + escapeHtml(o.r.name) + '</p>'
-      + '<p class="lc-shop">⏱ <span class="lc-cd" data-end="' + l.endsAt + '">' + neshLcFmt(l.endsAt - (Date.now() + (Number(window.__neshSrvOff) || 0))) + '</span></p></div>';
+      + '<p class="lc-price">₹' + money(o.it.price) + '<s>₹' + money(o.it.offerMrp) + '</s></p>'
+      + '<p class="lc-time"><span class="lc-pill">⏱ <span class="lc-cd" data-end="' + l.endsAt + '">' + neshLcFmt(l.endsAt - (Date.now() + (Number(window.__neshSrvOff) || 0))) + '</span></span></p></div>';
     c.addEventListener('click', () => neshLcOpenShop(o.r));
     el.appendChild(c);
   });
   if (picked.length) {
-    const a = document.createElement('div'); a.className = 'lc-all'; a.innerHTML = '<span style="font-size:22px">🔥</span><span>See all</span><span style="font-size:11px;font-weight:600">' + all.length + ' offers</span>';
+    const a = document.createElement('div'); a.className = 'lc-all'; a.innerHTML = '<i>🔥</i><span>എല്ലാം കാണൂ</span><small>' + all.length + ' ഓഫർ</small>';
     a.addEventListener('click', neshLcOpenAll);
     el.appendChild(a);
   }
@@ -8790,7 +8972,7 @@ function neshLcOpenAll() {
   let ov = document.getElementById('lc-all-ov');
   if (!ov) {
     ov = document.createElement('div'); ov.id = 'lc-all-ov';
-    ov.innerHTML = '<div class="lc-ovh"><button type="button" id="lc-all-back" aria-label="Back">←</button><span>🔥 Last Call</span></div><div id="lc-all-list"></div>';
+    ov.innerHTML = '<div class="lc-ovh"><button type="button" id="lc-all-back" aria-label="Back">←</button><div><b>🔥 ലാസ്റ്റ് കോൾ ഓഫർ</b><span>സമയം തീരുംമുമ്പ് കുറഞ്ഞ വിലയ്ക്ക് വാങ്ങൂ!</span></div></div><div id="lc-all-list"></div>';
     document.body.appendChild(ov);
     ov.querySelector('#lc-all-back').addEventListener('click', () => ov.classList.remove('on'));
   }
@@ -8800,19 +8982,20 @@ function neshLcRenderAll() {
   const ov = document.getElementById('lc-all-ov'), list = document.getElementById('lc-all-list'); if (!ov || !list) return;
   const all = window.__lcShops ? neshLcList(window.__lcShops) : [];
   const money = n => String(Math.round(n * 100) / 100);
-  list.innerHTML = all.length ? '' : '<p style="text-align:center;color:#6b6554;margin-top:40px">No Last Call offers right now.</p>';
+  list.innerHTML = all.length ? '' : '<p style="text-align:center;color:#6b6554;margin-top:40px">ഇപ്പോൾ ലാസ്റ്റ് കോൾ ഓഫറുകൾ ഒന്നുമില്ല.</p>';
   all.forEach(o => {
     const l = o.it.lastCall, row = document.createElement('div'); row.className = 'lc-row';
     row.innerHTML = '<img src="' + escapeHtml(o.it.image || 'icon-192.png') + '" alt="" loading="lazy" onerror="this.onerror=null;this.src=\'icon-192.png\';" />'
       + '<div><p style="font-weight:800;color:#2B2410">' + escapeHtml(o.it.name) + '</p><p style="font-size:12px;color:#6b6554">' + escapeHtml(o.r.name) + '</p>'
       + '<p style="font-weight:900;color:#DC2626">₹' + money(o.it.price) + '<s>₹' + money(o.it.offerMrp) + '</s></p>'
-      + '<p style="font-size:12px"><b style="color:#DC2626">' + l.qty + ' left</b> · ⏱ <span class="lc-cd" data-end="' + l.endsAt + '">' + neshLcFmt(l.endsAt - (Date.now() + (Number(window.__neshSrvOff) || 0))) + '</span></p></div>';
+      + '<p style="font-size:12px;margin-top:6px"><b style="color:#DC2626">ഇനി ' + l.qty + ' എണ്ണം</b> · <span class="lc-pill">⏱ <span class="lc-cd" data-end="' + l.endsAt + '">' + neshLcFmt(l.endsAt - (Date.now() + (Number(window.__neshSrvOff) || 0))) + '</span></span></p></div>';
     row.addEventListener('click', () => neshLcOpenShop(o.r));
     list.appendChild(row);
   });
 }
 // Something changed (an offer ended / sold out): redraw what is on screen.
 function neshLcRefreshUI() {
+  try { neshStCtaRefresh(); } catch (e) {}
   try { neshRenderLcStrip(window.__lcShops || null); } catch (e) {}
   try { const ov = document.getElementById('lc-all-ov'); if (ov && ov.classList.contains('on')) neshLcRenderAll(); } catch (e) {}
   try { const a = document.querySelector('.screen.active'); if (a && a.id === 'screen-menu' && state.selectedRestaurant) renderMenu(); } catch (e) {}
@@ -8838,10 +9021,440 @@ setInterval(() => {
     }
   } catch (e) {}
 }, 1000);
+// ================= STORIES (Stage 2): photo, 24 h, served from Oracle (GET /stories, ETag/304). No Firebase listener. =================
+const NESH_ST_URL = 'https://api.neshapp.in/stories';
+let __stList = [], __stBusy = false, __stLoadedAt = 0, __stSeen = {};
+try { __stSeen = JSON.parse(localStorage.getItem('nesh_st_seen') || '{}') || {}; } catch (e) { __stSeen = {}; }
+function neshStMarkSeen(id) {
+  __stSeen[id] = Date.now();
+  try {
+    const cut = Date.now() - 3 * 86400000; Object.keys(__stSeen).forEach(k => { if (__stSeen[k] < cut) delete __stSeen[k]; });
+    localStorage.setItem('nesh_st_seen', JSON.stringify(__stSeen));
+  } catch (e) {}
+}
+async function neshStLoad() {
+  if (__stBusy) return; __stBusy = true;
+  try {
+    const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 10000);
+    const r = await fetch(NESH_ST_URL, { cache: 'no-cache', signal: ctl.signal }); clearTimeout(tm);   // no-cache = ETag check, tiny 304 when nothing changed
+    if (!r.ok) throw new Error('http ' + r.status);
+    const j = await r.json(); const now = Date.now() + (Number(window.__neshSrvOff) || 0);
+    const list = ((j && j.list) || []).filter(x => x && x.exp > now);
+    const sig = list.map(x => x.id).join(',');
+    __stLoadedAt = Date.now();
+    if (sig !== __stList.map(x => x.id).join(',')) { __stList = list; neshStRefreshUI(); }
+  } catch (e) { /* keep what we have */ } finally { __stBusy = false; }
+}
+function neshStShops(shops) {   // shop objects that may be shown to this customer (same filters as the Last Call strip)
+  const byId = {}; (window.RESTAURANTS || []).forEach(r => { if (r) byId[r.id] = r; });
+  const allowed = shops ? {} : null; (shops || []).forEach(r => { if (r) allowed[r.id] = 1; });
+  const groups = {}, now = Date.now() + (Number(window.__neshSrvOff) || 0);
+  __stList.forEach(x => {
+    if (x.exp <= now) return;
+    const r = byId[x.shopId]; if (!r || (r.businessType && r.businessType !== 'hotel') || r.id === 'NESH_STORE') return;
+    if (allowed && !allowed[r.id]) return;
+    try { if (r.shopUnavailable || getShopClosedInfo(r).closed) return; } catch (e) {}
+    try { if (!shopAllowedAtPoint(r.id, state.customerPos)) return; } catch (e) {}
+    (groups[r.id] = groups[r.id] || { r, list: [] }).list.push(x);
+  });
+  return Object.keys(groups).map(k => { const g = groups[k]; g.list.sort((a, b) => a.at - b.at); g.newest = g.list[g.list.length - 1].at; return g; }).sort((a, b) => b.newest - a.newest);
+}
+function neshStUnseen(g) { return g.list.some(x => !__stSeen[x.id]); }
+function neshStGroup(shopId) { return neshStShops(null).find(x => x.r.id === shopId) || null; }
+// Home shop card: small story ring under the category tag (no extra space on the screen).
+function neshStDecorateCard(card, g) {
+  const old = card.querySelector('.st-cardring'); if (old) old.remove();
+  if (!g) return;
+  const last = g.list[g.list.length - 1], d = document.createElement('div');
+  d.className = 'st-cardring';
+  d.innerHTML = '<div class="st-ring' + (neshStUnseen(g) ? '' : ' seen') + '"><img src="' + escapeHtml(last.thumb) + '" alt="" decoding="async" onerror="this.onerror=null;this.src=\'icon-192.png\';"></div><small>സ്റ്റോറി</small>';
+  d.addEventListener('click', ev => { ev.stopPropagation(); ev.preventDefault(); neshStOpen(g.r.id); });
+  card.appendChild(d);
+}
+function neshStDecorateCards() {
+  const cards = document.querySelectorAll('.food-card[data-shop-id]'); if (!cards.length) return;
+  const map = {}; neshStShops(null).forEach(g => { map[g.r.id] = g; });
+  cards.forEach(c => { try { neshStDecorateCard(c, map[c.dataset.shopId] || null); } catch (e) {} });
+}
+function neshRenderStories(shops) {
+  if (!__stLoadedAt) neshStLoad();
+  neshStDecorateCards();
+  const wrap = document.getElementById('story-home-wrap'), el = document.getElementById('story-home');
+  if (!wrap || !el) return;
+  if (shops === undefined) shops = window.__lcShops || null;
+  if (!shops) { wrap.style.display = 'none'; return; }
+  const gs = neshStShops(shops);
+  gs.sort((a, b) => (neshStUnseen(b) ? 1 : 0) - (neshStUnseen(a) ? 1 : 0) || b.newest - a.newest);   // new stories first, like Instagram
+  wrap.style.display = gs.length ? 'block' : 'none';   // no story = no gap
+  const sig = gs.map(g => g.r.id + ':' + g.list.map(x => x.id + (__stSeen[x.id] ? 's' : 'n')).join('')).join('|');
+  if (el.dataset.sig === sig) return;
+  el.dataset.sig = sig; el.innerHTML = '';
+  gs.forEach(g => {
+    const c = document.createElement('div'); c.className = 'st-chip'; c.dataset.shopId = g.r.id;
+    const last = g.list[g.list.length - 1], logo = g.r.logo || g.r.image || last.thumb;
+    c.innerHTML = '<div class="st-ring' + (neshStUnseen(g) ? '' : ' seen') + '"><img src="' + escapeHtml(logo) + '" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=\'' + escapeHtml(last.thumb) + '\';"></div><small>' + escapeHtml(g.r.name || '') + '</small>';
+    c.addEventListener('click', () => neshStOpen(g.r.id));
+    el.appendChild(c);
+  });
+}
+// Shop page: the shop logo gets the story ring; tap the logo = open the story.
+function neshRenderStoryShop(r) {
+  const lg = document.getElementById('menu-rest-logo'); if (!lg) return;
+  const g = r ? neshStGroup(r.id) : null;
+  lg.classList.toggle('has-story', !!g); lg.classList.toggle('seen', !!g && !neshStUnseen(g));
+  lg.onclick = g ? ev => { ev.stopPropagation(); neshStOpen(r.id, true); } : null;
+}
+function neshStRefreshUI() {
+  try { neshRenderStories(); } catch (e) {}
+  try { const a = document.querySelector('.screen.active'); if (state.selectedRestaurant && a && a.id === 'screen-menu') neshRenderStoryShop(state.selectedRestaurant); } catch (e) {}
+}
+// ---- viewer ----
+let __stV = null;   // { g, i, t0, dur, raf }
+function neshStEnsureOv() {
+  let ov = document.getElementById('st-ov'); if (ov) return ov;
+  ov = document.createElement('div'); ov.id = 'st-ov';
+  ov.innerHTML = '<div id="st-bars"></div><div id="st-head"><img id="st-av" alt=""><div id="st-hn"><b id="st-sh"></b><small id="st-ago"></small></div><button id="st-x" type="button" aria-label="Close">×</button></div>'
+    + '<div id="st-stage"><img id="st-im" alt=""><video id="st-vd" playsinline webkit-playsinline muted></video><div id="st-text"></div><div id="st-tl"></div><div id="st-tr"></div><button id="st-snd" type="button" aria-label="Sound">🔇</button></div><div id="st-cta"></div>';
+  document.body.appendChild(ov);
+  ov.querySelector('#st-x').addEventListener('click', neshStClose);
+  const _hd = () => { if (__stV) neshStGo(__stV.g.r.id, null); };   // tap shop logo / name = open the shop (like an Instagram profile)
+  ov.querySelector('#st-av').addEventListener('click', _hd); ov.querySelector('#st-hn').addEventListener('click', _hd);
+  ov.querySelector('#st-tl').addEventListener('click', () => neshStStep(-1));
+  ov.querySelector('#st-tr').addEventListener('click', () => neshStStep(1));
+  const _vd = ov.querySelector('#st-vd'), _stage = ov.querySelector('#st-stage');   // video stories only: hold the finger = pause
+  const _hold = () => { if (__stV && __stV.vid && !__stV.vfail && !_vd.paused) { _vd.pause(); __stV.held = true; } };
+  const _rel = () => { if (__stV && __stV.held) { __stV.held = false; _vd.play().catch(() => {}); } };
+  _stage.addEventListener('touchstart', _hold, { passive: true }); _stage.addEventListener('touchend', _rel); _stage.addEventListener('touchcancel', _rel);
+  _stage.addEventListener('mousedown', _hold); _stage.addEventListener('mouseup', _rel); _stage.addEventListener('mouseleave', _rel);
+  ov.querySelector('#st-snd').addEventListener('click', ev => { ev.stopPropagation(); window.__stSound = !window.__stSound; _vd.muted = !window.__stSound; neshStSndIcon(); if (_vd.paused && __stV && !__stV.held) _vd.play().catch(() => {}); });
+  let tx = 0, ty = 0;
+  ov.addEventListener('touchstart', e => { const t = e.touches[0]; tx = t.clientX; ty = t.clientY; }, { passive: true });
+  ov.addEventListener('touchend', e => {
+    const t = e.changedTouches[0], dx = t.clientX - tx, dy = t.clientY - ty;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) neshStGroupStep(dx < 0 ? 1 : -1);
+    else if (dy > 90 && dy > Math.abs(dx)) neshStClose();
+  }, { passive: true });
+  return ov;
+}
+function neshStOpen(shopId, single) {
+  let gs = neshStShops(null); if (!gs.length) return;
+  if (single) gs = gs.filter(x => x.r.id === shopId);   // opened from the shop menu: only that shop
+  else {   // opened from the Food home: this shop, then the next shops in the order of the cards on screen
+    let order = Array.prototype.map.call(document.querySelectorAll('#story-home .st-chip'), c => c.dataset.shopId);
+    if (!order.length) order = Array.prototype.map.call(document.querySelectorAll('.food-card[data-shop-id]'), c => c.dataset.shopId);
+    const pos = id => { const k = order.indexOf(id); return k < 0 ? 9999 : k; };
+    gs = gs.slice().sort((a, b) => pos(a.r.id) - pos(b.r.id));
+  }
+  const gi = gs.findIndex(x => x.r.id === shopId); if (gi < 0) return;
+  const g = gs[gi]; let i = g.list.findIndex(x => !__stSeen[x.id]); if (i < 0) i = 0;
+  __stV = { gs, gi, g, i, t0: 0, dur: 5000, raf: 0 };
+  neshStEnsureOv().classList.add('on');
+  neshStShow();
+}
+function neshStClose() {
+  if (__stV && __stV.raf) cancelAnimationFrame(__stV.raf);
+  __stV = null;
+  const ov = document.getElementById('st-ov'); if (ov) { ov.classList.remove('on'); ov.classList.remove('vid'); }
+  try { const vd = document.getElementById('st-vd'); if (vd) { vd.pause(); vd.removeAttribute('src'); vd.load(); } const pv = document.getElementById('st-pre'); if (pv) { pv.removeAttribute('src'); pv.load(); } } catch (e) {}
+  neshStRefreshUI();
+}
+function neshStStep(d) {
+  const v = __stV; if (!v) return;
+  const n = v.i + d;
+  if (n >= 0 && n < v.g.list.length) { v.i = n; neshStShow(); return; }
+  neshStGroupStep(d);
+}
+function neshStGroupStep(d) {   // d = 1 next shop's stories, d = -1 previous shop's stories (like Instagram)
+  const v = __stV; if (!v) return;
+  const ng = v.gi + d;
+  if (ng < 0) { v.i = 0; neshStShow(); return; }
+  if (ng >= v.gs.length) { neshStClose(); return; }
+  v.gi = ng; v.g = v.gs[ng];
+  if (d > 0) { const k = v.g.list.findIndex(x => !__stSeen[x.id]); v.i = k < 0 ? 0 : k; } else v.i = v.g.list.length - 1;
+  neshStShow();
+}
+function neshStShow() {
+  const v = __stV; if (!v) return;
+  if (v.raf) cancelAnimationFrame(v.raf);
+  const s = v.g.list[v.i], ov = neshStEnsureOv(), r = v.g.r;
+  neshStMarkSeen(s.id);
+  ov.querySelector('#st-bars').innerHTML = v.g.list.map((x, k) => '<i><b style="width:' + (k < v.i ? 100 : 0) + '%"></b></i>').join('');
+  const av = ov.querySelector('#st-av'); av.onerror = () => { av.onerror = null; av.src = s.thumb; }; av.src = r.logo || r.image || s.thumb;
+  ov.querySelector('#st-sh').textContent = r.name || '';
+  const mins = Math.max(0, Math.floor((Date.now() + (Number(window.__neshSrvOff) || 0) - s.at) / 60000));
+  ov.querySelector('#st-ago').textContent = mins < 1 ? 'ഇപ്പോൾ' : mins < 60 ? mins + 'm' : Math.floor(mins / 60) + 'h';
+  neshStMedia(ov, s, v); ov.querySelector('#st-text').textContent = s.text || '';
+  neshStCtaRefresh();
+  const bar = ov.querySelectorAll('#st-bars i b')[v.i];
+  v.t0 = performance.now(); v.dur = 5000;
+  const tick = now => {
+    if (!__stV || __stV !== v) return;
+    let f;
+    if (v.vid && !v.vfail) { const vd = document.getElementById('st-vd'); f = (vd && vd.duration > 0 && isFinite(vd.duration)) ? Math.min(1, vd.currentTime / vd.duration) : 0; if (vd && vd.ended) f = 1; }   // video story: the bar follows the video itself
+    else f = Math.min(1, (now - v.t0) / v.dur);   // photo: 5 s, exactly as before
+    if (bar) bar.style.width = (f * 100) + '%';
+    if (f >= 1) { neshStStep(1); return; }
+    v.raf = requestAnimationFrame(tick);
+  };
+  v.raf = requestAnimationFrame(tick);
+}
+function neshStSndIcon() { const b = document.getElementById('st-snd'); if (b) b.textContent = window.__stSound ? '🔊' : '🔇'; }
+function neshStMedia(ov, s, v) {   // photo: same as before. video: <video> with the poster, starts muted, bar length = video length
+  const im = ov.querySelector('#st-im'), vd = ov.querySelector('#st-vd');
+  v.vid = s.type === 'video' && !!s.video; v.vfail = false; v.held = false;
+  im.src = s.img;
+  if (!v.vid) {
+    ov.classList.remove('vid');
+    try { vd.pause(); if (vd.getAttribute('src')) { vd.removeAttribute('src'); vd.load(); } } catch (e) {}
+  } else {
+    ov.classList.add('vid');
+    vd.poster = s.img; vd.muted = !window.__stSound; neshStSndIcon();
+    vd.onerror = () => { if (__stV === v && v.vid) { v.vfail = true; v.t0 = performance.now(); ov.classList.remove('vid'); } };   // broken video: show the poster for 5 s, then go on
+    vd.src = s.video;
+    const p = vd.play();
+    if (p && p.catch) p.catch(() => { if (!vd.muted) { vd.muted = true; window.__stSound = false; neshStSndIcon(); vd.play().catch(() => {}); } });
+  }
+  neshStPreload(v);
+}
+function neshStPreload(v) {   // next video in line (same shop, else the next shop) is fetched ahead; nothing else is
+  let pv = document.getElementById('st-pre');
+  const nx = v.g.list[v.i + 1] || (v.gs[v.gi + 1] && v.gs[v.gi + 1].list[0]) || null;
+  if (!nx || nx.type !== 'video' || !nx.video) { if (pv && pv.getAttribute('src')) { pv.removeAttribute('src'); pv.load(); } return; }
+  if (!pv) { pv = document.createElement('video'); pv.id = 'st-pre'; pv.muted = true; pv.preload = 'auto'; pv.style.cssText = 'display:none'; document.body.appendChild(pv); }
+  if (pv.getAttribute('src') !== nx.video) pv.src = nx.video;
+}
+// Bottom of the viewer: live Last Call price + countdown (shared 1-second timer ticks .lc-cd) + button to the shop.
+function neshStCtaRefresh() {
+  const v = __stV, host = document.getElementById('st-cta'); if (!v || !host) return;
+  const s = v.g.list[v.i], r = v.g.r, money = n => String(Math.round(n * 100) / 100);
+  const it = s.item ? (r.items || []).find(x => x && String(x.id) === String(s.item)) : null;
+  const sig = (s.id) + '|' + (it && neshLcLive(it) ? 'L' : 'N');
+  if (host.dataset.sig === sig) return;
+  host.dataset.sig = sig;
+  if (it && neshLcLive(it) && !it.soldOut && !it.outOfStock && it.available !== false) {
+    const w = neshLcView(it), l = it.lastCall;
+    host.innerHTML = '<div class="st-card"><div><b>🔥 ' + escapeHtml(it.name) + '</b><span class="st-pr">₹' + money(w.price) + '<s>₹' + money(w.offerMrp) + '</s></span> <span class="lc-pill">⏱ <span class="lc-cd" data-end="' + l.endsAt + '">' + neshLcFmt(l.endsAt - (Date.now() + (Number(window.__neshSrvOff) || 0))) + '</span></span></div><button type="button" id="st-go">ഓർഡർ ചെയ്യൂ</button></div>';
+    host.querySelector('#st-go').addEventListener('click', () => neshStGo(r.id, it.id));
+  } else {
+    host.innerHTML = '<button type="button" class="st-shopbtn" id="st-go">' + escapeHtml(r.name || 'ഷോപ്പ്') + ' തുറക്കൂ</button>';
+    host.querySelector('#st-go').addEventListener('click', () => neshStGo(r.id, null));
+  }
+}
+function neshStGo(shopId, itemId) {
+  neshStClose();
+  const go = () => { state.category = 'hotel'; if (itemId) openRestaurantAtItem(shopId, itemId); else openRestaurant(shopId); };
+  if (typeof requireLocationThen === 'function') requireLocationThen(go); else go();
+}
+setTimeout(neshStLoad, 2500);
+setInterval(() => { try { if (!document.hidden && Date.now() - __stLoadedAt > 80000) neshStLoad(); } catch (e) {} }, 30000);
+
+// ================= REELS (customer): vertical feed, served from Oracle (GET /videos/reels) + R2. No Firebase listener, no Firebase read. =================
+const NESH_RL_URL = 'https://api.neshapp.in/videos/reels';
+const NESH_OFFICIAL_SHOP = { id: 'NESH_OFFICIAL', name: 'NESH', logo: 'icon-192.png', official: true, items: [] };   // reels posted from the Operator Panel
+const NESH_TICK = '<svg viewBox="0 0 24 24" width="16" height="16" style="margin-left:4px;vertical-align:-3px" aria-label="Verified"><path fill="#1D9BF0" d="M12 1.8l2.5 1.9 3.1-.2 1.1 2.9 2.7 1.6-.9 3 .9 3-2.7 1.6-1.1 2.9-3.1-.2L12 22.2l-2.5-1.9-3.1.2-1.1-2.9-2.7-1.6.9-3-.9-3 2.7-1.6 1.1-2.9 3.1.2z"/><path d="M7.8 12.2l3 3 5.6-6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function neshRl() { return window.__rl || (window.__rl = { list: [], next: 0, loadedAt: 0, busy: false, muted: true, has: false, items: [], cur: -1, io: null }); }
+function neshRlShops(scope) {   // scope 'hotel' = Food reels only (Food screen), 'ab' = Pravasi shops (customer abroad), anything else = every reel
+  const L = neshRl().list; if (!L.length) return [];
+  const byId = {}; (window.RESTAURANTS || []).forEach(r => { if (r) byId[r.id] = r; });
+  const out = [];
+  L.forEach(x => {
+    if (x.shopId === 'NESH_OFFICIAL') { out.push({ x, r: NESH_OFFICIAL_SHOP }); return; }
+    const r = byId[x.shopId]; if (!r) return;
+    if (scope === 'hotel' && ((r.businessType && r.businessType !== 'hotel') || r.id === 'NESH_STORE')) return;
+    if (scope === 'ab') { let pv = false; try { pv = isPravasiShop(r); } catch (e) {} if (!pv) return; }
+    try { if (r.shopUnavailable) return; } catch (e) {}
+    try { if (!shopAllowedAtPoint(r.id, state.customerPos)) return; } catch (e) {}
+    out.push({ x, r });
+  });
+  return out;
+}
+function neshRlHas(scope) { try { return neshRlShops(scope).length > 0; } catch (e) { return false; } }
+function neshRlSig() { return (neshRlHas('all') ? 'a' : '') + (neshRlHas('hotel') ? 'f' : '') + (neshRlHas('ab') ? 'b' : ''); }
+function neshRlSyncUi() {
+  const R = neshRl(); R.has = neshRlSig();
+  try { neshSyncBottomNav(); } catch (e) {}
+  try { neshSyncFoodNav(); } catch (e) {}
+  try { const ab = document.getElementById('ab-reels'); if (ab) { const on = neshRlHas('ab'); ab.style.display = on ? '' : 'none'; const nv = document.getElementById('ab-nav'); if (nv) nv.classList.toggle('has-reels', on); } } catch (e) {}
+}
+function neshRlOpenNow() { const ov = document.getElementById('rl-ov'); return !!(ov && ov.classList.contains('on')); }
+async function neshRlLoad(more) {
+  const R = neshRl(); if (R.busy) return;
+  if (more && !R.next) return;
+  if (!more && neshRlOpenNow()) return;   // never swap the list under a feed that is open
+  R.busy = true;
+  try {
+    const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 10000);
+    const r = await fetch(NESH_RL_URL + '?limit=20' + (more ? '&before=' + R.next : ''), { cache: 'no-cache', signal: ctl.signal }); clearTimeout(tm);
+    if (!r.ok) throw new Error('http ' + r.status);
+    const j = await r.json(), list = (j && j.list) || [];
+    R.loadedAt = Date.now();
+    if (more) {
+      const have = {}; R.list.forEach(x => { have[x.id] = 1; });
+      list.forEach(x => { if (x && x.id && !have[x.id]) R.list.push(x); });
+      R.next = Number(j.next) || 0;
+      if (neshRlOpenNow()) neshRlAppend();
+    } else {
+      if (!neshRlOpenNow()) { R.list = list.filter(x => x && x.id && x.video); R.next = Number(j.next) || 0; }
+    }
+    if (neshRlSig() !== R.has) neshRlSyncUi();
+  } catch (e) { /* keep what we have */ } finally { R.busy = false; }
+}
+function neshRlSndIcon() { const ov = document.getElementById('rl-ov'); if (ov) ov.classList.toggle('rl-muted', !!neshRl().muted); }
+function neshRlHud(it) { if (!it) return; it.classList.add('rl-hud'); clearTimeout(it._hud); it._hud = setTimeout(() => it.classList.remove('rl-hud'), 2200); }   // speaker icon shows for a moment after a tap
+function neshRlEnsureOv() {
+  let ov = document.getElementById('rl-ov'); if (ov) return ov;
+  ov = document.createElement('div'); ov.id = 'rl-ov';
+  ov.innerHTML = '<div id="rl-feed"></div><button id="rl-x" type="button" aria-label="Close">×</button><div id="rl-title">Reels</div>';
+  document.body.appendChild(ov);
+  const R = neshRl(), feed = ov.querySelector('#rl-feed');
+  ov.querySelector('#rl-x').addEventListener('click', neshRlClose);
+  feed.addEventListener('click', e => {
+    const it = e.target.closest('.rl-item'); if (!it) return;
+    const o = R.items[+it.dataset.k]; if (!o) return;
+    if (e.target.closest('.rl-spk')) {   // speaker circle: sound on / off for all reels
+      R.muted = !R.muted; neshRlSndIcon();
+      feed.querySelectorAll('video').forEach(vv => { vv.muted = R.muted; });
+      neshRlHud(it);
+      const sv = it.querySelector('video'); if (sv && sv.getAttribute('src') && sv.paused && !it.classList.contains('rl-paused')) sv.play().catch(() => {});
+      return;
+    }
+    const go = e.target.closest('.rl-go');
+    if (go) { neshRlGo(o, go.dataset.item || null); return; }
+    if (e.target.closest('.rl-shop') || e.target.closest('.rl-open') || e.target.closest('.rl-shopbtn2')) { neshRlGo(o, null); return; }
+    if (e.target.closest('.rl-sharebtn')) { neshRlShare(o); return; }
+    const tx = e.target.closest('.rl-txt'); if (tx) { tx.classList.toggle('open'); return; }
+    if (e.target.closest('.rl-info')) return;
+    const v = it.querySelector('video'); if (!v || !v.getAttribute('src')) return;
+    if (v.paused) { it.classList.remove('rl-paused'); v.play().catch(() => {}); } else { it.classList.add('rl-paused'); v.pause(); }
+    neshRlHud(it);
+  });
+  return ov;
+}
+function neshRlMake(o, k) {
+  const R = neshRl(), r = o.r, d = document.createElement('div');
+  d.className = 'rl-item' + (r.official ? ' rl-off' : ''); d.dataset.k = k; d.dataset.id = o.x.id;
+  const logo = r.logo || r.image || o.x.poster || 'icon-192.png';
+  const svgShare = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"><path d="M21.5 3 2.8 10.2l7.2 3.1 3.1 7.2L21.5 3z"/><path d="M10 13.3 21.5 3"/></svg>';
+  const svgShop = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"><path d="M3.5 9.5 5 4h14l1.5 5.5"/><path d="M3.5 9.5a2.8 2.8 0 0 0 5.5 0 2.8 2.8 0 0 0 6 0 2.8 2.8 0 0 0 5.5 0"/><path d="M5 12.5V20h14v-7.5"/><path d="M10 20v-4.5h4V20"/></svg>';
+  d.innerHTML = '<video playsinline webkit-playsinline loop muted preload="none" poster="' + escapeHtml(o.x.poster || '') + '"></video><div class="rl-ctr"><div class="rl-spk" aria-label="Sound"><svg class="sp-on" viewBox="0 0 24 24" width="26" height="26"><path d="M3 9.5v5h3.6L12 19V5L6.6 9.5H3z" fill="#fff"/><path d="M15 8.5a5 5 0 0 1 0 7M17.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg><svg class="sp-off" viewBox="0 0 24 24" width="26" height="26"><path d="M3 9.5v5h3.6L12 19V5L6.6 9.5H3z" fill="#fff"/><path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></div><div class="rl-pz"><svg viewBox="0 0 24 24" width="46" height="46"><path d="M8 5.2v13.6a1 1 0 0 0 1.5.86l11-6.8a1 1 0 0 0 0-1.72l-11-6.8A1 1 0 0 0 8 5.2z" fill="#fff"/></svg></div></div><div class="rl-bar"><b></b></div>'
+    + '<div class="rl-side"><button type="button" class="rl-sharebtn" aria-label="Share">' + svgShare + '<span>Share</span></button><button type="button" class="rl-shopbtn2" aria-label="Shop">' + svgShop + '<span>Shop</span></button></div>'
+    + '<div class="rl-info"><div class="rl-shoprow"><div class="rl-shop"><div class="rl-ring"><img src="' + escapeHtml(logo) + '" alt="" decoding="async" onerror="this.onerror=null;this.src=\'icon-192.png\';"></div><b>' + escapeHtml(r.name || '') + (r.official ? NESH_TICK : '') + '</b></div><button type="button" class="rl-open">ഷോപ്പ് തുറക്കൂ</button></div>'
+    + '<p class="rl-txt">' + escapeHtml(o.x.text || '') + '</p><div class="rl-cta"></div></div>';
+  const v = d.querySelector('video'), bar = d.querySelector('.rl-bar b');
+  v.addEventListener('loadedmetadata', () => { try { d.classList.toggle('rl-wide', v.videoWidth > v.videoHeight); } catch (e) {} });
+  v.addEventListener('timeupdate', () => { if (v.duration > 0 && isFinite(v.duration)) bar.style.width = (v.currentTime / v.duration * 100) + '%'; });
+  neshRlCta(d, o);
+  return d;
+}
+function neshRlCta(it, o) {   // Last Call tag: live price + countdown (the shared 1 s timer ticks .lc-cd), else a plain "open shop" button
+  const host = it.querySelector('.rl-cta'); if (!host) return;
+  const r = o.r, s = o.x, money = n => String(Math.round(n * 100) / 100);
+  let lc = null; try { lc = s.item ? (r.items || []).find(x => x && String(x.id) === String(s.item)) : null; } catch (e) {}
+  let live = false; try { live = !!(lc && neshLcLive(lc) && !lc.soldOut && !lc.outOfStock && lc.available !== false); } catch (e) {}
+  const sig = live ? 'L' + lc.id : 'N';
+  if (host.dataset.sig === sig) return; host.dataset.sig = sig;
+  if (live) {
+    const w = neshLcView(lc), l = lc.lastCall;
+    host.innerHTML = '<div class="rl-card"><div><b>🔥 ' + escapeHtml(lc.name) + '</b><span class="st-pr">₹' + money(w.price) + '<s>₹' + money(w.offerMrp) + '</s></span> <span class="lc-pill">⏱ <span class="lc-cd" data-end="' + l.endsAt + '">' + neshLcFmt(l.endsAt - (Date.now() + (Number(window.__neshSrvOff) || 0))) + '</span></span></div><button type="button" class="rl-go" data-item="' + escapeHtml(String(lc.id)) + '">ഓർഡർ ചെയ്യൂ</button></div>';
+  } else {
+    host.innerHTML = '';
+  }
+}
+function neshRlSet(it, on, play) {   // load / unload the file of one reel (only the one on screen and the next one hold a video file)
+  const R = neshRl(), v = it.querySelector('video'), o = R.items[+it.dataset.k]; if (!v || !o) return;
+  if (on) {
+    if (v.getAttribute('src') !== o.x.video) { v.preload = 'auto'; v.src = o.x.video; }
+    if (play) {
+      v.muted = R.muted;
+      const p = v.play();
+      if (p && p.catch) p.catch(() => { if (!v.muted) { v.muted = true; R.muted = true; neshRlSndIcon(); v.play().catch(() => {}); } });
+    } else { try { v.pause(); } catch (e) {} }
+  } else if (v.getAttribute('src')) {
+    try { v.pause(); } catch (e) {}
+    v.removeAttribute('src'); v.load();
+    const b = it.querySelector('.rl-bar b'); if (b) b.style.width = '0';
+  }
+}
+function neshRlActivate(k) {
+  const R = neshRl(), feed = document.getElementById('rl-feed'); if (!feed) return;
+  R.cur = k;
+  const its = feed.querySelectorAll('.rl-item');
+  its.forEach((it, i) => {
+    if (i === k) { it.classList.remove('rl-paused'); if (R.muted) neshRlHud(it); neshRlSet(it, true, true); try { neshRlCta(it, R.items[i]); } catch (e) {} }
+    else if (i === k + 1) neshRlSet(it, true, false);
+    else neshRlSet(it, false, false);
+  });
+  if (k >= its.length - 3 && R.next) neshRlLoad(true);
+}
+function neshRlAppend() {   // a next page arrived while the feed is open: add the new reels at the end
+  const R = neshRl(), feed = document.getElementById('rl-feed'); if (!feed) return;
+  const have = {}; R.items.forEach(o => { have[o.x.id] = 1; });
+  neshRlShops(R.scope).forEach(o => {
+    if (have[o.x.id]) return;
+    R.items.push(o); const d = neshRlMake(o, R.items.length - 1); feed.appendChild(d); if (R.io) R.io.observe(d);
+  });
+}
+function neshRlShare(o) {
+  const url = o.x.video, title = (o.r && o.r.name) || 'NESH', text = o.x.text || title;
+  try { if (navigator.share) { navigator.share({ title, text, url }).catch(() => {}); return; } } catch (e) {}
+  try { navigator.clipboard.writeText(url).then(() => { try { showInfoModal('Link copied', 'Reel link copied.'); } catch (e) {} }).catch(() => {}); } catch (e) {}
+}
+function neshRlOpen(scope) {
+  const R = neshRl(), items = neshRlShops(scope); R.scope = scope || 'all'; if (!items.length) return;
+  const ov = neshRlEnsureOv(), feed = ov.querySelector('#rl-feed');
+  R.items = items; R.cur = -1; feed.innerHTML = '';
+  if (R.io) { try { R.io.disconnect(); } catch (e) {} }
+  R.io = ('IntersectionObserver' in window) ? new IntersectionObserver(es => {
+    es.forEach(en => { if (en.isIntersecting && en.intersectionRatio >= 0.6) { const k = +en.target.dataset.k; if (k !== R.cur) neshRlActivate(k); } });
+  }, { root: feed, threshold: [0.6] }) : null;
+  items.forEach((o, k) => { const d = neshRlMake(o, k); feed.appendChild(d); if (R.io) R.io.observe(d); });
+  feed.scrollTop = 0; neshRlSndIcon();
+  ov.classList.add('on');
+  if (!R.io) neshRlActivate(0);   // very old WebView: no observer, play the first reel only
+  if (!R.loadedAt || Date.now() - R.loadedAt > 120000) setTimeout(() => neshRlLoad(false), 0);   // refreshed list is used next time the feed opens
+}
+function neshRlClose() {
+  const R = neshRl(), ov = document.getElementById('rl-ov'); if (!ov) return;
+  if (R.io) { try { R.io.disconnect(); } catch (e) {} R.io = null; }
+  ov.querySelectorAll('.rl-item').forEach(it => neshRlSet(it, false, false));
+  ov.classList.remove('on'); R.cur = -1;
+}
+function neshRlGo(o, itemId) {
+  if (o && o.r && o.r.official) return;   // NESH's own reel: no shop to open
+  neshRlClose();
+  const go = () => { try { state.category = o.r.businessType || 'hotel'; } catch (e) {} if (itemId) openRestaurantAtItem(o.r.id, itemId); else openRestaurant(o.r.id); };
+  let ab = false; try { ab = !!neshAbroadActive(); } catch (e) {}
+  if (!ab && typeof requireLocationThen === 'function') requireLocationThen(go); else go();   // customer abroad: no location step (same as the abroad home)
+}
+// Reels buttons (main home bar next to Trending, Food home bar) + background refresh
+document.getElementById('nb-reels').addEventListener('click', () => { neshRlOpen('all'); });   // main home: every reel (Food, Groceries, NESH Mart, Pravasi ...)
+document.getElementById('fn-reels').addEventListener('click', () => { neshRlOpen('hotel'); });   // Food screen: Food reels only
+document.addEventListener('click', e => { const b = e.target && e.target.closest && e.target.closest('#ab-reels'); if (b) { e.stopPropagation(); neshRlOpen('ab'); } }, true);   // customer abroad (the nav is below this script, so delegated)
+document.addEventListener('visibilitychange', () => {   // app in background: stop every video
+  try {
+    if (document.hidden) {
+      document.querySelectorAll('#rl-feed video, #st-vd').forEach(v => { try { v.pause(); } catch (e) {} });
+    } else {
+      const R = neshRl();
+      if (neshRlOpenNow()) { const it = document.querySelectorAll('#rl-feed .rl-item')[R.cur]; const v = it && it.querySelector('video'); if (v && v.getAttribute('src') && !it.classList.contains('rl-paused')) v.play().catch(() => {}); }
+      const sv = document.getElementById('st-vd'); if (sv && __stV && __stV.vid && !__stV.vfail && sv.getAttribute('src')) sv.play().catch(() => {});
+    }
+  } catch (e) {}
+});
+setTimeout(() => neshRlLoad(false), 3000);
+setInterval(() => {
+  try {
+    if (document.hidden) return;
+    const R = neshRl();
+    if (!neshRlOpenNow() && Date.now() - R.loadedAt > 300000) neshRlLoad(false);
+    if (neshRlSig() !== R.has) neshRlSyncUi();   // the shop list arrived after the reels, or the customer moved
+  } catch (e) {}
+}, 30000);
 // Checkout: take the pieces on the server BEFORE the order is written. Returns null = go on, {stop:true} = do not place the order.
 async function neshLcClaim(r, lcItems) {
-  if (!lcItems || !lcItems.length) return null;
-  const payload = lcItems.map(it => ({ id: it.id, qty: Math.max(1, Math.min(50, Math.floor(Number(state.cart[it.id]) || 1))) }));
+  lcItems = (lcItems || []).filter(it => neshLcUnits(it) > 0);
+  if (!lcItems.length) return null;
+  const payload = lcItems.map(it => ({ id: it.id, qty: Math.max(1, Math.min(50, neshLcUnits(it))) }));
   const sig = r.id + '|' + payload.map(p => p.id + ':' + p.qty).join(',');
   const d = window.__lcDone;
   if (d && d.sig === sig && (Date.now() + (Number(window.__neshSrvOff) || 0)) - d.t < 120000) return null;   // already taken for this same cart (order write failed, customer tapped again): do not take twice
@@ -8852,7 +9465,7 @@ async function neshLcClaim(r, lcItems) {
     j = await resp.json();
   } catch (e) { j = null; } finally { clearTimeout(tm); }
   if (!j || (j.ok !== true && j.error !== 'soldout')) {
-    showInfoModal('Check your connection', 'We could not confirm your Last Call pieces. Please try again. / ഒന്നുകൂടി ശ്രമിക്കൂ.');
+    showInfoModal('കണക്ഷൻ നോക്കൂ', 'ലാസ്റ്റ് കോൾ ഓഫർ ഉറപ്പിക്കാൻ കഴിഞ്ഞില്ല. ഇന്റർനെറ്റ് നോക്കി ഒന്നുകൂടി ശ്രമിക്കൂ.');
     return { stop: true };
   }
   if (j.ok === true) {
@@ -8864,10 +9477,16 @@ async function neshLcClaim(r, lcItems) {
   const bad = lcItems.find(it => it.id === j.id) || lcItems[0];
   let n = (typeof j.left === 'number') ? j.left : (j.left && typeof j.left === 'object' ? j.left[bad.id] : 0);
   n = Math.max(0, Number(n) || 0);
-  if (bad.lastCall) { bad.lastCall.qty = n; if (n <= 0) neshLcExpire(bad); }
-  if (n > 0 && state.cart[bad.id] > n) state.cart[bad.id] = n; else if (n <= 0) delete state.cart[bad.id];
+  const _l0 = bad.lastCall;
+  if (_l0 && _l0.sz && hasSizes(bad)) {   // portion item: take Last Call portions out of the cart (biggest first) until it fits the pieces left
+    const names = Object.keys(_l0.sz).sort((x, y) => _l0.sz[y].units - _l0.sz[x].units);
+    let guard = 0;
+    while (neshLcUnits(bad) > n && guard++ < 200) { const nm = names.find(x => neshLcPortionQty(bad, x) > 0); if (!nm) break; state.cart[bad.id] = neshAdjustPortion(bad, -1, nm) || 0; }
+    if (!state.cart[bad.id]) delete state.cart[bad.id];
+  } else if (n > 0 && state.cart[bad.id] > n) state.cart[bad.id] = n; else if (n <= 0) delete state.cart[bad.id];
+  if (bad.lastCall) { bad.lastCall.qty = n; if (!neshLcLive(bad)) neshLcExpire(bad); }
   try { persistCart(); } catch (e) {}
-  showInfoModal('Sold out', 'Sold out - only ' + n + ' left. / വിറ്റുതീർന്നു - ' + n + ' എണ്ണം മാത്രം ബാക്കി. Prices refreshed, please check your cart.');
+  showInfoModal('വിറ്റുതീർന്നു', 'വിറ്റുതീർന്നു - ഇനി ' + n + ' എണ്ണം മാത്രം ബാക്കി. വില പുതുക്കി, കാർട്ട് ഒന്നുകൂടി നോക്കൂ. (Sold out - only ' + n + ' left)');
   try { closePaymentConfirm(); } catch (e) {}
   neshLcRefreshUI();
   return { stop: true };
@@ -9054,10 +9673,11 @@ function neshSyncBottomNav() {
   if (!nav) return;
   const act = document.querySelector('.screen.active');
   const id = act ? act.id : '';
-  const has = neshHasOffers();
+  const has = neshHasOffers(), rl = neshRlHas('all');
   // Trending screen with no offers left (e.g. the last offer ended) -> back to the main screen
   if (id === 'screen-trending' && !has) { goToCategoryScreen(); return; }
-  const show = has && (id === 'screen-category' || id === 'screen-trending') && !neshAbroadActive();
+  const show = (has || rl) && (id === 'screen-category' || id === 'screen-trending') && !neshAbroadActive();
+  { const tb = document.getElementById('nb-trending'), rb = document.getElementById('nb-reels'); if (tb) tb.style.display = has ? '' : 'none'; if (rb) rb.style.display = rl ? '' : 'none'; }
   nav.classList.toggle('on', show);
   nav.classList.remove('nb-hide');
   document.body.classList.toggle('has-bnav', show);
@@ -9102,6 +9722,7 @@ function neshSyncFoodNav() {
   nav.classList.toggle('on', show);
   document.body.classList.toggle('has-fnav', show);
   if (!show) { neshCloseFoodOffers(); return; }
+  try { const rb = document.getElementById('fn-reels'); if (rb) rb.style.display = neshRlHas('hotel') ? '' : 'none'; } catch (e) {}
   try { const h = nav.offsetHeight; if (h > 0) document.documentElement.style.setProperty('--fn-h', h + 'px'); } catch (e) {}
   let refOn = false; try { refOn = referralOn(); } catch (e) {}
   document.getElementById('fn-refer').style.display = '';   // always visible; the sheet itself says if Refer & Earn is off
@@ -15805,6 +16426,7 @@ function renderFoodList(list) {
   rows.forEach(({ r, km, closed }, idx) => {
     const card = document.createElement('div');
     card.className = 'food-card' + (closed.closed ? ' closed' : '');
+    card.dataset.shopId = r.id;
     const rating = Number(r.rating) ? Number(r.rating).toFixed(1) : '';
     card.innerHTML = `
       <img class="food-card-photo" src="${escapeHtml(r.bannerImage || r.image || '')}" alt="${escapeHtml(r.name)}" loading="lazy" decoding="async" onerror="this.onerror=null;${r.bannerImage && r.image ? "this.src='" + escapeHtml(r.image) + "';" : "this.style.background='" + r.color + "';this.src='';"}" />
@@ -15823,6 +16445,7 @@ function renderFoodList(list) {
         </div>
         ${closed.closed && closed.message ? `<p class="food-closed-msg">${escapeHtml(closed.message)}</p>` : ''}
       </div>`;
+    try { const _sg = neshStGroup(r.id); if (_sg) neshStDecorateCard(card, _sg); } catch (e) {}
     card.addEventListener('click', () => openRestaurant(r.id));
     restListEl.appendChild(card);
     // After the 1st shop (which stays on top), show one item from each shop
@@ -16625,7 +17248,7 @@ function renderMenu() {
   // Trending (offer) products go to the top of the shop's menu; everything else keeps its order.
   const neshIsOffer = it => (Number(it.offerMrp) > Number(it.price) && Number(it.price) > 0) || !!it.sizeMrp;
   window.__lcShown = neshRenderLcShop(r, !!(query || mpOn));   // LAST CALL banner + cards at the very top
-  const items = ((query || mpOn) ? itemsRaw : itemsRaw.filter(it => !neshLcLive(it))).map((it, i) => ({ it, i }))
+  const items = ((query || mpOn) ? itemsRaw : itemsRaw.filter(it => !(neshLcLive(it) && !it.lastCall.sz))).map((it, i) => ({ it, i }))
     .sort((a, b) => (neshIsOffer(b.it) - neshIsOffer(a.it)) || (a.i - b.i))
     .map(x => x.it);
   // Swiggy-style sections: only when nothing narrows the list (no search / price filter / chosen category)
@@ -16997,10 +17620,15 @@ function changeQty(itemId, delta, size) {
   const current = state.cart[itemId] || 0;
   let next = Math.max(0, current + delta);
   { const _r0 = state.selectedRestaurant, _i0 = _r0 && (_r0.items || []).find(i => i.id === itemId);
-    if (delta > 0 && _i0 && neshLcLive(_i0) && next > _i0.lastCall.qty) {   // Last Call: never more than the pieces left
-      neshLcToast('Only ' + _i0.lastCall.qty + ' left at this price / ' + _i0.lastCall.qty + ' എണ്ണം മാത്രം');
-      next = Math.min(current, _i0.lastCall.qty);
-      if (next === current) { try { const c0 = document.querySelector('#lc-shop-top .lc-card[data-item-id="' + String(itemId).replace(/"/g, '\\"') + '"] .qty-slot'); if (c0) renderQtyControl(c0, itemId, current); } catch (e) {} return; }
+    if (delta > 0 && _i0 && neshLcLive(_i0)) {   // Last Call: never more pieces than are left
+      const _l = _i0.lastCall; let want = null;
+      if (_l.sz && hasSizes(_i0)) { const sz0 = size || getSelectedSize(_i0); if (_l.sz[sz0]) want = neshLcUnits(_i0) + delta * _l.sz[sz0].units; }
+      else want = next;
+      if (want !== null && want > _l.qty) {
+        neshLcToast('ഈ വിലയ്ക്ക് ഇനി ' + _l.qty + (_l.sz ? ' പീസ്' : ' എണ്ണം') + ' മാത്രം');
+        neshLcSyncSlots(itemId);
+        return;
+      }
     } }
   { const _r = state.selectedRestaurant, _it = _r && (_r.items || []).find(i => i.id === itemId);
     if (_it && hasSizes(_it) && !isWeightUnit(_it.unit)) next = neshAdjustPortion(_it, delta, size); }
@@ -17013,6 +17641,7 @@ function changeQty(itemId, delta, size) {
   const slot = card && card.querySelector('.qty-slot');
   if (slot) { renderQtyControl(slot, itemId, next); updateCartBar(); if (card._it) neshSyncSizedCard(card); }
   else renderMenu();
+  neshLcSyncSlots(itemId);
   if (state.selectedItem === itemId) renderItemDetail();
   if (orderSummaryOverlay.classList.contains('show')) {
     const _rr = state.selectedRestaurant;
@@ -21893,7 +22522,7 @@ payConfirmBtn.addEventListener('click', async () => {
   const orderNumber = (r.businessType === 'hotel' || !r.businessType)
     ? "KOT-" + Math.floor(1000 + Math.random() * 9000)
     : "ORD-" + Math.floor(1000 + Math.random() * 9000);
-  const _lcItems = (r.items || []).filter(it => state.cart[it.id] > 0 && neshLcLive(it));   // Last Call items in this cart (read BEFORE prices are copied)
+  const _lcItems = (r.items || []).filter(it => neshLcLive(it) && neshLcUnits(it) > 0);   // Last Call items in this cart (read BEFORE prices are copied)
   const orderItems = r.items
     .filter(it => state.cart[it.id])
     .flatMap(it => {
@@ -26095,11 +26724,13 @@ html[data-theme="dark"] #nd-top .nd-loc{ background:#2b2619; border-color:#534B3
   #screen-home[data-cat="hotel"] .search-wrap .field{ padding-left:32px !important; padding-right:32px !important; }
 }
 html[data-theme="dark"] .order-summary-overlay{ background:#1D1910; }
+#ab-nav.has-reels button{ padding:2px 16px; }
 </style>
 <nav id="ab-nav" aria-label="Main">
   <button type="button" data-nav="home" class="on"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span>Home</span></button>
   <button type="button" data-nav="orders"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12l2 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7z"/><path d="M4 7h16"/><path d="M9 11h6"/></svg><span>Orders</span></button>
   <button type="button" data-nav="chat"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg><span>Chat</span></button>
+  <button type="button" id="ab-reels" data-reels="1" style="display:none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M10 8.5v7l5.5-3.5-5.5-3.5z"/></svg><span>Reels</span></button>
 </nav>
 <style id="nesh-nav-v2">
 /* ===== Bottom nav: floating pill look (Home page + Food page) ===== */
