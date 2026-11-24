@@ -464,6 +464,21 @@ html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
   .rl-off .rl-open, .rl-off .rl-shopbtn2{ display:none !important; }
   .rl-ring img{ width:100%; height:100%; border-radius:50%; object-fit:cover; background:#222; border:2px solid #000; box-sizing:border-box; display:block; }
   .rl-shop b{ font-size:16px; font-weight:800; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-shadow:0 1px 6px rgba(0,0,0,.7); }
+  /* follow: login-needed sheet (over the reel) */
+  #fl-sheet{ position:fixed; inset:0; z-index:100003; display:none; align-items:flex-end; justify-content:center; background:rgba(10,8,2,.55); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px); }
+  #fl-sheet.show{ display:flex; animation:flFade .18s ease-out; }
+  #fl-sheet .fl-card{ width:100%; max-width:480px; background:#fff; color:#2B2410; border-radius:26px 26px 0 0; padding:10px 22px calc(22px + env(safe-area-inset-bottom)); text-align:center; font-family:'Poppins','Inter',sans-serif; box-shadow:0 -10px 40px rgba(0,0,0,.35); animation:flUp .26s cubic-bezier(.2,.9,.3,1); }
+  #fl-sheet .fl-grab{ width:42px; height:5px; border-radius:3px; background:#E6D9B8; margin:0 auto 18px; }
+  #fl-sheet .fl-ico{ width:76px; height:76px; border-radius:50%; margin:0 auto 14px; display:flex; align-items:center; justify-content:center; font-size:36px; background:radial-gradient(circle at 30% 25%,#FFE27A,#F2B705 70%); box-shadow:0 8px 22px rgba(242,183,5,.45); }
+  #fl-sheet .fl-t{ font-weight:800; font-size:21px; margin:0 0 6px; letter-spacing:-.2px; }
+  #fl-sheet .fl-s{ font-size:14px; line-height:1.5; color:#7A6B3A; margin:0 6px 20px; }
+  #fl-sheet .fl-go{ width:100%; border:0; border-radius:16px; padding:15px; font-family:inherit; font-weight:800; font-size:16px; color:#2B2410; background:linear-gradient(180deg,#FFD23F,#F2B705); box-shadow:0 6px 16px rgba(242,183,5,.45); cursor:pointer; }
+  #fl-sheet .fl-go:active{ transform:scale(.98); }
+  #fl-sheet .fl-no{ width:100%; border:0; background:transparent; font-family:inherit; font-weight:700; font-size:14.5px; color:#9A8B5A; padding:14px 0 2px; cursor:pointer; }
+  @keyframes flUp{ from{ transform:translateY(60px); opacity:.4; } to{ transform:none; opacity:1; } }
+  @keyframes flFade{ from{ opacity:0; } to{ opacity:1; } }
+  .rl-fol{ flex:none; background:#2F80ED; color:#fff; border:1.5px solid #2F80ED; font-weight:800; font-size:13.5px; padding:7px 14px; border-radius:10px; }
+  .rl-fol.on{ background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.85); }
   .rl-open{ flex:none; background:rgba(255,255,255,.08); color:#fff; border:1.5px solid rgba(255,255,255,.85); font-weight:800; font-size:13.5px; padding:7px 14px; border-radius:10px; -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); }
   .rl-txt{ margin:10px 0 0; font-size:14.5px; line-height:1.35; font-weight:500; text-shadow:0 1px 6px rgba(0,0,0,.85); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   .rl-txt.open{ -webkit-line-clamp:unset; display:block; max-height:34vh; overflow:auto; }
@@ -4958,6 +4973,7 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
     <div class="loc-sheet" style="border-radius:20px; max-width:340px; animation:locUp .2s ease-out; padding:20px;">
       <p class="loc-title" style="margin:0 0 12px; font-size:18px;">Notifications</p>
       <div id="notif-panel-list" style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px;"></div>
+      <label id="notif-pref-row" style="display:none; align-items:center; gap:10px; margin:0 0 12px; font-size:14px; color:var(--ink); cursor:pointer;"><input type="checkbox" id="notif-pref-cb" checked style="width:18px; height:18px;"> Offers &amp; reminders</label>
       <button type="button" class="loc-gps-btn" id="notif-panel-enable-btn" style="display:none; background:var(--field-bg); color:var(--ink); border:1.5px solid var(--field-border); margin-bottom:10px;">🔔 Turn on notifications</button>
       <button type="button" class="loc-gps-btn" id="notif-panel-close-btn" style="background:var(--marigold); margin-bottom:0;">Close</button>
     </div>
@@ -7137,6 +7153,7 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
           // Every groceries shop is always in Go Series (Operator Panel → Go
           // Series) — no shop-set delivery charge for groceries any more.
           goSeries: !!v.goSeries || businessType === 'groceries',
+          verified: !!v.verified,   // blue tick, given only by the Operator Panel
           discountAmount: Number(v.discountAmount) || 0,
           discountEndsAt: Number(v.discountEndsAt) || 0,
           discountCardImage: v.discountCardImage || null,
@@ -7363,7 +7380,7 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
     // forever and was downloaded in full by every customer on every app open — only to be thrown away.
     // So we listen only to the fields the customer app actually uses, never to `orders`.
     const SHOP_FIELDS = ['address', 'businessType', 'closeTime', 'deliveryCharges', 'deliveryZone', 'discountAmount', 'discountEndsAt',
-      'discountCardImage', 'goSeries', 'gpayNumber', 'hoursEnabled', 'itemCategories', 'location', 'menu',
+      'discountCardImage', 'goSeries', 'verified', 'gpayNumber', 'hoursEnabled', 'itemCategories', 'location', 'menu',
       'minOrderAmount', 'opCategory', 'openTime', 'photo', 'popularItems', 'ratingCount', 'ratingSum', 'suggestItems',
       'restaurantName', 'shopUnavailable', 'shopUnavailableMessage', 'status', 'deliveryTimeMins', 'opDeliveryTimeMins',
       'martRanges', 'priceMarkup',   // operator-set price ranges / markup: without these the customer would see the shop's own price
@@ -7995,6 +8012,7 @@ function neshOpenAppLink(url) {
     _lastAppLink = { url, t: now };
     const q = new URL(url).searchParams;
     if (q.get('pay') && window.neshOpenPay) { window.neshOpenPay(q.get('pay')); return; }
+    if (q.get('reel') && window.neshOpenReelLink) { window.neshOpenReelLink(q.get('reel')); return; }
     const shop = q.get('shop');
     if (!shop) return;
     pendingShopLinkId = shop;
@@ -9251,7 +9269,8 @@ setInterval(() => { try { if (!document.hidden && Date.now() - __stLoadedAt > 80
 // ================= REELS (customer): vertical feed, served from Oracle (GET /videos/reels) + R2. No Firebase listener, no Firebase read. =================
 const NESH_RL_URL = 'https://api.neshapp.in/videos/reels';
 const NESH_OFFICIAL_SHOP = { id: 'NESH_OFFICIAL', name: 'NESH', logo: 'icon-192.png', official: true, items: [] };   // reels posted from the Operator Panel
-const NESH_TICK = '<svg viewBox="0 0 24 24" width="16" height="16" style="margin-left:4px;vertical-align:-3px" aria-label="Verified"><path fill="#1D9BF0" d="M12 1.8l2.5 1.9 3.1-.2 1.1 2.9 2.7 1.6-.9 3 .9 3-2.7 1.6-1.1 2.9-3.1-.2L12 22.2l-2.5-1.9-3.1.2-1.1-2.9-2.7-1.6.9-3-.9-3 2.7-1.6 1.1-2.9 3.1.2z"/><path d="M7.8 12.2l3 3 5.6-6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const NESH_TICK = '<svg viewBox="0 0 24 24" width="20" height="20" style="width:1.2em;height:1.2em;min-width:1.2em;margin-left:5px;vertical-align:-0.22em;flex-shrink:0;filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))" aria-label="Verified"><path fill="#1D9BF0" d="M12 1.8l2.5 1.9 3.1-.2 1.1 2.9 2.7 1.6-.9 3 .9 3-2.7 1.6-1.1 2.9-3.1-.2L12 22.2l-2.5-1.9-3.1.2-1.1-2.9-2.7-1.6.9-3-.9-3 2.7-1.6 1.1-2.9 3.1.2z"/><path d="M7.8 12.2l3 3 5.6-6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+window.NESH_TICK_HTML = NESH_TICK;
 function neshRl() { return window.__rl || (window.__rl = { list: [], next: 0, loadedAt: 0, busy: false, muted: true, has: false, items: [], cur: -1, io: null }); }
 function neshRlShops(scope) {   // scope 'hotel' = Food reels only (Food screen), 'ab' = Pravasi shops (customer abroad), anything else = every reel
   const L = neshRl().list; if (!L.length) return [];
@@ -9320,6 +9339,7 @@ function neshRlEnsureOv() {
     }
     const go = e.target.closest('.rl-go');
     if (go) { neshRlGo(o, go.dataset.item || null); return; }
+    if (e.target.closest('.rl-fol')) { neshFollowToggle(o); return; }
     if (e.target.closest('.rl-shop') || e.target.closest('.rl-open') || e.target.closest('.rl-shopbtn2')) { neshRlGo(o, null); return; }
     if (e.target.closest('.rl-sharebtn')) { neshRlShare(o); return; }
     const tx = e.target.closest('.rl-txt'); if (tx) { tx.classList.toggle('open'); return; }
@@ -9338,12 +9358,13 @@ function neshRlMake(o, k) {
   const svgShop = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"><path d="M3.5 9.5 5 4h14l1.5 5.5"/><path d="M3.5 9.5a2.8 2.8 0 0 0 5.5 0 2.8 2.8 0 0 0 6 0 2.8 2.8 0 0 0 5.5 0"/><path d="M5 12.5V20h14v-7.5"/><path d="M10 20v-4.5h4V20"/></svg>';
   d.innerHTML = '<video playsinline webkit-playsinline loop muted preload="none" poster="' + escapeHtml(o.x.poster || '') + '"></video><div class="rl-ctr"><div class="rl-spk" aria-label="Sound"><svg class="sp-on" viewBox="0 0 24 24" width="26" height="26"><path d="M3 9.5v5h3.6L12 19V5L6.6 9.5H3z" fill="#fff"/><path d="M15 8.5a5 5 0 0 1 0 7M17.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg><svg class="sp-off" viewBox="0 0 24 24" width="26" height="26"><path d="M3 9.5v5h3.6L12 19V5L6.6 9.5H3z" fill="#fff"/><path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></div><div class="rl-pz"><svg viewBox="0 0 24 24" width="46" height="46"><path d="M8 5.2v13.6a1 1 0 0 0 1.5.86l11-6.8a1 1 0 0 0 0-1.72l-11-6.8A1 1 0 0 0 8 5.2z" fill="#fff"/></svg></div></div><div class="rl-bar"><b></b></div>'
     + '<div class="rl-side"><button type="button" class="rl-sharebtn" aria-label="Share">' + svgShare + '<span>Share</span></button><button type="button" class="rl-shopbtn2" aria-label="Shop">' + svgShop + '<span>Shop</span></button></div>'
-    + '<div class="rl-info"><div class="rl-shoprow"><div class="rl-shop"><div class="rl-ring"><img src="' + escapeHtml(logo) + '" alt="" decoding="async" onerror="this.onerror=null;this.src=\'icon-192.png\';"></div><b>' + escapeHtml(r.name || '') + (r.official ? NESH_TICK : '') + '</b></div><button type="button" class="rl-open">ഷോപ്പ് തുറക്കൂ</button></div>'
+    + '<div class="rl-info"><div class="rl-shoprow"><div class="rl-shop"><div class="rl-ring"><img src="' + escapeHtml(logo) + '" alt="" decoding="async" onerror="this.onerror=null;this.src=\'icon-192.png\';"></div><b>' + escapeHtml(r.name || '') + ((r.official || r.verified) ? NESH_TICK : '') + '</b></div><button type="button" class="rl-fol" data-shop="' + escapeHtml(String(r.id || '')) + '">Follow</button><button type="button" class="rl-open">ഷോപ്പ് തുറക്കൂ</button></div>'
     + '<p class="rl-txt">' + escapeHtml(o.x.text || '') + '</p><div class="rl-cta"></div></div>';
   const v = d.querySelector('video'), bar = d.querySelector('.rl-bar b');
   v.addEventListener('loadedmetadata', () => { try { d.classList.toggle('rl-wide', v.videoWidth > v.videoHeight); } catch (e) {} });
   v.addEventListener('timeupdate', () => { if (v.duration > 0 && isFinite(v.duration)) bar.style.width = (v.currentTime / v.duration * 100) + '%'; });
   neshRlCta(d, o);
+  try { neshFollowPaint(d); } catch (e) {}
   return d;
 }
 function neshRlCta(it, o) {   // Last Call tag: live price + countdown (the shared 1 s timer ticks .lc-cd), else a plain "open shop" button
@@ -9394,13 +9415,44 @@ function neshRlAppend() {   // a next page arrived while the feed is open: add t
     R.items.push(o); const d = neshRlMake(o, R.items.length - 1); feed.appendChild(d); if (R.io) R.io.observe(d);
   });
 }
-function neshRlShare(o) {
-  const url = o.x.video, title = (o.r && o.r.name) || 'NESH', text = o.x.text || title;
-  try { if (navigator.share) { navigator.share({ title, text, url }).catch(() => {}); return; } } catch (e) {}
-  try { navigator.clipboard.writeText(url).then(() => { try { showInfoModal('Link copied', 'Reel link copied.'); } catch (e) {} }).catch(() => {}); } catch (e) {}
+async function neshRlShare(o) {
+  const name = (o.r && o.r.name) || 'NESH';
+  const url = 'https://api.neshapp.in/videos/s/' + encodeURIComponent(o.x.id);   // preview card page (poster + title) -> opens this reel in NESH
+  const title = name + ' on NESH';
+  const text = (o.x.text ? o.x.text + '\n\n' : '') + '\uD83C\uDFAC ' + name + ' on NESH - watch & order:\n' + url;
+  try {
+    const cap = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Share;
+    if (cap && cap.share) { await cap.share({ title, text, dialogTitle: 'Share reel' }); return; }
+    if (navigator.share) { await navigator.share({ title, text }); return; }
+  } catch (e) { return; }   // person closed the share sheet
+  try { window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank'); return; } catch (e) {}
+  try { await navigator.clipboard.writeText(url); showInfoModal('Link copied', 'Reel link copied. Paste it in WhatsApp to share.'); } catch (e) {}
 }
-function neshRlOpen(scope) {
-  const R = neshRl(), items = neshRlShops(scope); R.scope = scope || 'all'; if (!items.length) return;
+// Opens ONE shared reel first (link .../?reel=<id>), then the normal feed after it.
+async function neshOpenReelLink(id) {
+  try {
+    if (!/^[a-f0-9]{16}$/.test(id || '')) return;
+    const resp = await fetch('https://api.neshapp.in/videos/one/' + id, { cache: 'no-store' });
+    const j = await resp.json();
+    if (!j || !j.ok || !j.reel) { try { showInfoModal('Reel not available', 'This reel is no longer available.'); } catch (e) {} return; }
+    const x = j.reel; let tries = 0;
+    const go = () => {
+      const r = x.shopId === 'NESH_OFFICIAL' ? NESH_OFFICIAL_SHOP : (window.RESTAURANTS || []).find(s => s && s.id === x.shopId);
+      if (!r) {
+        if (tries === 0) { try { extraShopIds.add(x.shopId); syncShopLoading(); } catch (e) {} }
+        if (++tries < 40) setTimeout(go, 500);   // wait up to 20 s for the shop data
+        return;
+      }
+      let rest = []; try { rest = neshRlShops('all').filter(it => it.x.id !== x.id); } catch (e) {}
+      neshRlOpen('all', [{ x, r }].concat(rest));
+    };
+    go();
+  } catch (e) {}
+}
+window.neshOpenReelLink = neshOpenReelLink;
+try { const _rid = new URLSearchParams(window.location.search).get('reel'); if (_rid) setTimeout(() => neshOpenReelLink(_rid), 2500); } catch (e) {}
+function neshRlOpen(scope, pre) {
+  const R = neshRl(), items = pre || neshRlShops(scope); R.scope = scope || 'all'; if (!items.length) return;
   const ov = neshRlEnsureOv(), feed = ov.querySelector('#rl-feed');
   R.items = items; R.cur = -1; feed.innerHTML = '';
   if (R.io) { try { R.io.disconnect(); } catch (e) {} }
@@ -9426,6 +9478,59 @@ function neshRlGo(o, itemId) {
   let ab = false; try { ab = !!neshAbroadActive(); } catch (e) {}
   if (!ab && typeof requireLocationThen === 'function') requireLocationThen(go); else go();   // customer abroad: no location step (same as the abroad home)
 }
+// ---------- FOLLOW a shop from its reel: followers get a push (title + thumbnail) when the shop posts a new reel ----------
+function neshFollowSet() { try { return new Set(JSON.parse(localStorage.getItem('nesh_following') || '[]')); } catch (e) { return new Set(); } }
+function neshFollowSave(s) { try { localStorage.setItem('nesh_following', JSON.stringify(Array.from(s).slice(0, 200))); } catch (e) {} }
+function neshFollowPaint(root) {
+  const s = neshFollowSet();
+  (root || document).querySelectorAll('.rl-fol').forEach(b => { const on = s.has(b.dataset.shop); b.classList.toggle('on', on); b.textContent = on ? 'Following' : 'Follow'; });
+}
+function neshFollowLoginSheet(o) {   // not logged in: nice sheet over the reel -> Login or Not now (stay in the reel)
+  let el = document.getElementById('fl-sheet');
+  if (!el) {
+    el = document.createElement('div'); el.id = 'fl-sheet';
+    el.innerHTML = '<div class="fl-card"><div class="fl-grab"></div><div class="fl-ico">\uD83D\uDD14</div>'
+      + '<h3 class="fl-t">Login needed</h3>'
+      + '<p class="fl-s" id="fl-sub"></p>'
+      + '<button class="fl-go" id="fl-go">Login</button><button class="fl-no" id="fl-no">Not now</button></div>';
+    document.body.appendChild(el);
+    const hide = () => el.classList.remove('show');
+    el.addEventListener('click', (e) => { if (e.target === el) hide(); });
+    document.getElementById('fl-no').addEventListener('click', hide);
+    document.getElementById('fl-go').addEventListener('click', () => {
+      hide();
+      try { neshRlClose(); } catch (e) {}
+      try { showScreen('login'); } catch (e) {}
+    });
+  }
+  const nm = (o && o.r && o.r.name) ? String(o.r.name) : 'this shop';
+  document.getElementById('fl-sub').textContent = 'Login to follow ' + nm + ' and get its new videos as notifications.';
+  el.classList.add('show');
+}
+async function neshFollowToggle(o) {
+  const id = o && o.r && o.r.id; if (!id) return;
+  if (!(state.user && state.user.number)) { neshFollowLoginSheet(o); return; }
+  const s = neshFollowSet(), was = s.has(id);
+  if (was) s.delete(id); else s.add(id);
+  neshFollowSave(s); neshFollowPaint();
+  const ok = await neshPushCall(was ? '/unfollow' : '/follow', { shopId: String(id) });
+  if (!ok) {   // not saved on the server: put it back
+    const s2 = neshFollowSet(); if (was) s2.add(id); else s2.delete(id);
+    neshFollowSave(s2); neshFollowPaint();
+    try { showToast('Could not save. Check the network and try again.'); } catch (e) {}
+  } else if (!was) { try { showToast('Following ' + (o.r.name || 'shop')); } catch (e) {} }
+}
+async function neshFollowPull() {   // after login / app start: take the server's list (other phone, reinstall)
+  try {
+    if (!state.user || !state.user.number) return;
+    const t = await neshPushIdToken(); if (!t) return;
+    const r = await fetch(NESH_PUSH_API + '/following', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + t }, body: '{}' });
+    if (!r.ok) return; const j = await r.json();
+    if (j && j.ok && Array.isArray(j.shops)) { neshFollowSave(new Set(j.shops.map(String))); neshFollowPaint(); }
+  } catch (e) {}
+}
+window.neshFollowPull = neshFollowPull;
+
 // Reels buttons (main home bar next to Trending, Food home bar) + background refresh
 document.getElementById('nb-reels').addEventListener('click', () => { neshRlOpen('all'); });   // main home: every reel (Food, Groceries, NESH Mart, Pravasi ...)
 document.getElementById('fn-reels').addEventListener('click', () => { neshRlOpen('hotel'); });   // Food screen: Food reels only
@@ -14442,6 +14547,8 @@ if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Pus
       const n = action && action.notification;
       if (!n) return;
       addNotifHistory(n.title || (n.data && n.data.title), n.body || (n.data && n.data.body), n.id);
+      const rid = n.data && n.data.reel;   // a followed shop's new reel
+      if (rid) setTimeout(() => { try { if (window.neshOpenReelLink) window.neshOpenReelLink(String(rid)); } catch (e) {} }, 800);
     } catch (e) {}
   });
 }
@@ -14501,6 +14608,101 @@ async function subscribeToBroadcastTopic(token, attempt) {
     else console.warn('subscribe_topic failed after retries', e);
   }
 }
+// ---------- Oracle push scheduler sync (api.neshapp.in/customer -> Postgres) ----------
+// Sends this customer's FCM token + first name + current zone ids, the moment an order is placed, the
+// offers/reminders switch and logout to the Oracle server, so usual-time / re-engage / timed pushes work.
+// Everything here is fire-and-forget: a failure never affects login, ordering or the existing Firebase flow.
+// Needs a live Firebase phone-auth session (ID token). With no session (e.g. OTP switched off) it quietly does nothing.
+// Android notification channel for offers / usual-time / re-engage / timed pushes: HIGH importance = heads-up
+// banner on top of the screen (like Zepto). Created ONCE per install (flag below) - Android keeps a channel
+// for good and ignores re-creation, and its importance cannot be changed later (use a new id to change it).
+async function neshEnsureOfferChannel() {
+  try {
+    if (localStorage.getItem('nesh_offer_channel_v1') === '1') return;
+    const P = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications;
+    if (!P || !P.createChannel) return;
+    await P.createChannel({ id: 'nesh_offers', name: 'Offers & reminders', description: 'Offers, usual-time reminders and announcements', importance: 5, visibility: 1, vibration: true, lights: true });
+    localStorage.setItem('nesh_offer_channel_v1', '1');
+  } catch (e) {}
+}
+const NESH_PUSH_API = 'https://api.neshapp.in/customer';
+async function neshPushIdToken() {
+  try {
+    const na = nativeAuth();
+    if (na && na.getIdToken) { const r = await na.getIdToken(); return (r && r.token) || ''; }
+    const u = window.fbAuth && window.fbAuth.auth && window.fbAuth.auth.currentUser;
+    return u ? await u.getIdToken() : '';
+  } catch (e) { return ''; }
+}
+async function neshPushCall(path, body, idTok) {
+  const t = idTok || await neshPushIdToken();
+  if (!t) return false;
+  const ctl = new AbortController();
+  const to = setTimeout(() => ctl.abort(), 10000);
+  try {
+    const r = await fetch(NESH_PUSH_API + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + t },
+      body: JSON.stringify(body || {}),
+      signal: ctl.signal
+    });
+    return r.ok;
+  } catch (e) { return false; } finally { clearTimeout(to); }
+}
+let _neshPushT = null, _neshPushTries = 0;
+function neshPushSyncSoon() { _neshPushTries = 0; clearTimeout(_neshPushT); _neshPushT = setTimeout(neshPushSync, 3000); }
+async function neshPushSync() {
+  try {
+    if (!state.user || !state.user.number) return;
+    // offers/reminders switch changed while offline / before login -> send it first
+    const pp = localStorage.getItem('nesh_push_pref_pending');
+    if (pp !== null) { if (await neshPushCall('/pref', { on: pp === '1' })) localStorage.removeItem('nesh_push_pref_pending'); }
+    const token = localStorage.getItem('nesh_fcm_token') || '';
+    if (token.length < 20) return;
+    let zones = null;
+    const pt = state.customerPos;
+    if (pt && typeof pt.lat === 'number' && typeof pt.lng === 'number' && Array.isArray(window.SHOP_ZONES)) {
+      zones = zonesAtPoint(pt).map(z => String(z.id));
+    }
+    const name = String(state.user.name || '').trim();
+    const key = [state.user.number, token, name, zones ? zones.slice().sort().join(',') : '-'].join('|');
+    if (localStorage.getItem('nesh_push_sync') === key) return;       // nothing changed -> no network call
+    const body = { token };
+    if (name) body.name = name;
+    if (zones) body.zones = zones;
+    if (await neshPushCall('/token', body)) { localStorage.setItem('nesh_push_sync', key); try { neshFollowPull(); } catch (e) {} return; }
+    // not saved (no auth session yet / offline): retry a few times
+    if (++_neshPushTries < 4) { clearTimeout(_neshPushT); _neshPushT = setTimeout(neshPushSync, 20000); }
+  } catch (e) {}
+}
+async function neshPushOrder() {
+  try {
+    if (!state.user || !state.user.number) return;
+    if (!(await neshPushCall('/order', {}))) setTimeout(() => { neshPushCall('/order', {}); }, 8000);
+  } catch (e) {}
+}
+async function neshPushLogout(tokP) {
+  try {
+    const t = await tokP;
+    const tok = localStorage.getItem('nesh_fcm_token') || '';
+    if (t) await neshPushCall('/logout', tok ? { token: tok } : {}, t);
+    localStorage.removeItem('nesh_push_sync'); localStorage.removeItem('nesh_following');
+  } catch (e) {}
+}
+// Offers & reminders switch (bell panel). Default ON. Saved on the server so usual-time / re-engage / timed pushes obey it.
+function neshPrefUi() {
+  const row = document.getElementById('notif-pref-row'), cb = document.getElementById('notif-pref-cb');
+  if (!row || !cb) return;
+  row.style.display = (state.user && state.user.number) ? 'flex' : 'none';
+  cb.checked = localStorage.getItem('nesh_push_pref') !== '0';
+}
+document.addEventListener('change', async (e) => {
+  if (!e.target || e.target.id !== 'notif-pref-cb') return;
+  const on = !!e.target.checked;
+  try { localStorage.setItem('nesh_push_pref', on ? '1' : '0'); localStorage.setItem('nesh_push_pref_pending', on ? '1' : '0'); } catch (_) {}
+  if (await neshPushCall('/pref', { on })) { try { localStorage.removeItem('nesh_push_pref_pending'); } catch (_) {} }
+});
+
 // ---------- Zone-wise notifications ----------
 // The device joins an FCM topic "zone_<zoneId>" for every Shop Zone its LAST known
 // location (state.customerPos) is inside, and leaves the topic when the customer moves
@@ -14521,6 +14723,7 @@ async function neshSyncZoneTopics() {
   if (!pt || typeof pt.lat !== 'number' || typeof pt.lng !== 'number') return;
   if (!Array.isArray(window.SHOP_ZONES)) return;               // zones not loaded yet -> don't touch anything
   const want = zonesAtPoint(pt).map(z => 'zone_' + z.id).sort();
+  try { neshPushSyncSoon(); } catch (e) {}
   let have = [], haveTok = '';
   try {
     have = JSON.parse(localStorage.getItem('nesh_zone_topics') || '[]');
@@ -14559,6 +14762,7 @@ async function handlePushToken(token) {
       await update(ref(db, 'customers/' + phone), { fcmToken: token });
     } catch (e) {}
   }
+  try { neshPushSyncSoon(); } catch (e) {}
 }
 // ask=true may show the browser permission popup (only call from a tap).
 // ask=false only refreshes the token if permission was already granted.
@@ -14613,6 +14817,8 @@ setTimeout(syncWebPushIfGranted, 3000);
 // reaching this device. If permission hasn't been decided yet or was
 // denied, this does nothing and stays silent.
 async function registerCustomerPush(phone) {
+  try { neshPushSyncSoon(); } catch (e) {}
+  try { neshEnsureOfferChannel(); } catch (e) {}
   if (!hasNativePush()) { await registerWebPush(false); updateNotifBellStatus(); return; }
   try {
     const { PushNotifications } = window.Capacitor.Plugins;
@@ -14753,6 +14959,7 @@ async function renderNotifPanel() {
 async function openNotifPanel() {
   await syncDeliveredNotifications();
   await renderNotifPanel();
+  try { neshPrefUi(); } catch (e) {}
   document.getElementById('notif-panel-overlay').classList.add('show');
 }
 function closeNotifPanel() {
@@ -14800,6 +15007,7 @@ if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Pus
     const token = tokenResult && tokenResult.value;
     if (!token) return;
     subscribeToBroadcastTopic(token);   // guests too — not tied to login
+    try { neshEnsureOfferChannel(); } catch (e) {}
     const phone = state.user && state.user.number;
     try { localStorage.setItem('nesh_fcm_token', token); } catch (e) {}
     if (phone) {
@@ -14808,6 +15016,7 @@ if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Pus
         await update(ref(db, 'customers/' + phone), { fcmToken: token });
       } catch (e) {}
     }
+    try { neshPushSyncSoon(); } catch (e) {}
   });
 }
 
@@ -15771,7 +15980,7 @@ function martCardEl(x) {
     </div>
     <div class="mart-card-info">
       <span class="mart-shop-tag">🏪 SHOP</span>
-      <p class="mart-card-name">${escapeHtml(r.name)}</p>
+      <p class="mart-card-name">${escapeHtml(r.name)}${r.verified && window.NESH_TICK_HTML ? window.NESH_TICK_HTML : ''}</p>
       <div class="mart-card-meta">
         <span class="mart-card-rating">★ ${escapeHtml(String(r.rating))} (${escapeHtml(String(r.ratingCount))})</span>
         ${x.dist !== null ? `<span>${x.dist.toFixed(1)} km</span>` : ''}
@@ -16435,7 +16644,7 @@ function renderFoodList(list) {
         ${rating ? `<span class="food-rate">★ ${rating}</span>` : ''}
       </div>
       <div class="food-card-bottom">
-        <p class="food-name">${escapeHtml(r.name)}</p>
+        <p class="food-name">${escapeHtml(r.name)}${r.verified && window.NESH_TICK_HTML ? window.NESH_TICK_HTML : ''}</p>
         <p class="food-sub">${escapeHtml(r.cuisine || '')}</p>
         <div class="food-pills">
           ${shopDeliveryLabel(r) ? `<span class="food-pill">${shopDeliveryLabel(r)}</span>` : ''}
@@ -17200,7 +17409,7 @@ function renderMenu() {
   const r = state.selectedRestaurant;
   try { if (r && neshAbroadActive()) neshAbSetZone(r.id === 'NESH_STORE' || !isPravasiShop(r)); } catch (e) {}
   try { document.getElementById('screen-menu').dataset.store = (r && r.id === 'NESH_STORE') ? '1' : '0'; } catch (e) {}
-  menuRestName.textContent = r.name;
+  menuRestName.innerHTML = escapeHtml(r.name) + (r.verified && window.NESH_TICK_HTML ? window.NESH_TICK_HTML : '');
   menuRestMeta.textContent = [r.cuisine, shopDeliveryLabel(r)].filter(Boolean).join(' · ');
   document.getElementById('menu-howto-btn').style.display = 'none'; // "How to use" button removed
   try { pvcMenuSync(r); } catch (e) {}
@@ -22710,6 +22919,7 @@ payConfirmBtn.addEventListener('click', async () => {
         await set(ref(db, 'customers/' + orderPayload.customerAccount + '/orderIndex/' + orderRef.key), { restId: r.id, createdAt: orderPayload.createdAt });
       }
     } catch (e) {}
+    try { neshPushOrder(); } catch (e) {}   // usual-time stats on the Oracle server
 
     // The shop-alert push only fires once there IS a shop — for NESH
     // Store that happens later, from the operator panel at assignment
@@ -23626,8 +23836,10 @@ async function neshDetachPushToken(number) {
   } catch (e) {}
 }
 function logoutUser() {
+  let _neshPushTokP = null; try { _neshPushTokP = neshPushIdToken(); } catch (e) {}
   try { const _na = nativeAuth(); if (_na) _na.signOut(); } catch (e) {}
   try { neshDetachPushToken(state.user && state.user.number); } catch (e) {}
+  try { neshPushLogout(_neshPushTokP); } catch (e) {}
   state.user = null;
   updateVerifiedBadges();
   try { neshClearSavedCart(); } catch (e) {}
