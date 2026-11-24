@@ -208,7 +208,7 @@ jobs:
       #    (blank screen / crash on start), the updater rolls back to the previous bundle by itself.
       #  - inside the app the service worker is switched off + old registrations removed, so a cached
       #    index.html can never hide a freshly downloaded bundle.
-      #  - hidden diagnostic: touch the screen with 4 fingers -> shows the bundle version + this phone's
+      #  - hidden diagnostic: tap the App version text in Settings 6 times -> shows the bundle version + this phone's
       #    Device ID (needed once, to put your own phone on the TEST channel).
       - name: App-only live update support (ready signal, no service worker, info gesture)
         run: |
@@ -233,15 +233,25 @@ jobs:
                 else if (Date.now() - t0 > 18000) clearInterval(iv);
               } catch (e) {}
             }, 400);
-            document.addEventListener('touchstart', function (e) {
+            function showInfo() {
               try {
-                if (!e.touches || e.touches.length < 4) return;
                 var P = U(); if (!P) return;
                 Promise.all([P.getDeviceId(), P.current()]).then(function (r) {
                   var id = r[0].deviceId, v = (r[1].bundle && r[1].bundle.version) || 'builtin';
                   try { navigator.clipboard.writeText(id); } catch (x) {}
                   alert('Live update info\nBundle: ' + v + '\nDevice ID: ' + id);
                 });
+              } catch (x) {}
+            }
+            var taps = 0, lastTap = 0;
+            document.addEventListener('click', function (e) {
+              try {
+                var el = e.target && e.target.closest ? e.target.closest('#npf-ver') : null;
+                if (!el) return;
+                var now = Date.now();
+                taps = (now - lastTap < 1500) ? taps + 1 : 1;
+                lastTap = now;
+                if (taps >= 6) { taps = 0; showInfo(); }
               } catch (x) {}
             }, true);
           })();
