@@ -7333,7 +7333,7 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
   oracleStart();
   window.neshOracleInfo = () => ({ on: oracleOn(), state: oracleState, ver: oracleData && oracleData.ver, shops: oracleData ? Object.keys(oracleData.shops).length : 0 });
 
-  window.setShopLoading = function (mode, ids) {
+  window.setShopLoadingX = function (mode, ids) {
     const _prevKey = lastShopArgs ? lastShopArgs[0] + ':' + (lastShopArgs[1] || []).join(',') : null;
     lastShopArgs = [mode, ids];
     if (mode === 'ids' && _prevKey !== mode + ':' + (ids || []).join(',')) window._neshShopLoadAt = Date.now();
