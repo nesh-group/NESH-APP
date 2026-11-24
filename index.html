@@ -7333,7 +7333,7 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
   oracleStart();
   window.neshOracleInfo = () => ({ on: oracleOn(), state: oracleState, ver: oracleData && oracleData.ver, shops: oracleData ? Object.keys(oracleData.shops).length : 0 });
 
-  window.setShopLoadingX = function (mode, ids) {
+  window.setShopLoading = function (mode, ids) {
     const _prevKey = lastShopArgs ? lastShopArgs[0] + ':' + (lastShopArgs[1] || []).join(',') : null;
     lastShopArgs = [mode, ids];
     if (mode === 'ids' && _prevKey !== mode + ':' + (ids || []).join(',')) window._neshShopLoadAt = Date.now();
@@ -9271,7 +9271,7 @@ const NESH_RL_URL = 'https://api.neshapp.in/videos/reels';
 const NESH_OFFICIAL_SHOP = { id: 'NESH_OFFICIAL', name: 'NESH', logo: 'icon-192.png', official: true, items: [] };   // reels posted from the Operator Panel
 const NESH_TICK = '<svg viewBox="0 0 24 24" width="20" height="20" style="width:1.2em;height:1.2em;min-width:1.2em;margin-left:5px;vertical-align:-0.22em;flex-shrink:0;filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))" aria-label="Verified"><path fill="#1D9BF0" d="M12 1.8l2.5 1.9 3.1-.2 1.1 2.9 2.7 1.6-.9 3 .9 3-2.7 1.6-1.1 2.9-3.1-.2L12 22.2l-2.5-1.9-3.1.2-1.1-2.9-2.7-1.6.9-3-.9-3 2.7-1.6 1.1-2.9 3.1.2z"/><path d="M7.8 12.2l3 3 5.6-6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 window.NESH_TICK_HTML = NESH_TICK;
-function neshRl() { return window.__rl || (window.__rl = { list: [], next: 0, loadedAt: 0, busy: false, muted: true, has: false, items: [], cur: -1, io: null }); }
+function neshRl() { return window.__rl || (window.__rl = { list: [], next: 0, loadedAt: 0, busy: false, muted: false, has: false, items: [], cur: -1, io: null }); }
 function neshRlShops(scope) {   // scope 'hotel' = Food reels only (Food screen), 'ab' = Pravasi shops (customer abroad), anything else = every reel
   const L = neshRl().list; if (!L.length) return [];
   const byId = {}; (window.RESTAURANTS || []).forEach(r => { if (r) byId[r.id] = r; });
@@ -9362,6 +9362,8 @@ function neshRlMake(o, k) {
     + '<p class="rl-txt">' + escapeHtml(o.x.text || '') + '</p><div class="rl-cta"></div></div>';
   const v = d.querySelector('video'), bar = d.querySelector('.rl-bar b');
   v.addEventListener('loadedmetadata', () => { try { d.classList.toggle('rl-wide', v.videoWidth > v.videoHeight); } catch (e) {} });
+  v.addEventListener('playing', () => { d.classList.remove('rl-paused'); });
+  v.addEventListener('pause', () => { if (+d.dataset.k === R.cur && v.getAttribute('src')) d.classList.add('rl-paused'); });
   v.addEventListener('timeupdate', () => { if (v.duration > 0 && isFinite(v.duration)) bar.style.width = (v.currentTime / v.duration * 100) + '%'; });
   neshRlCta(d, o);
   try { neshFollowPaint(d); } catch (e) {}
@@ -28021,6 +28023,50 @@ body.has-fnav.fn-kb #screen-home{ padding-bottom:20px !important; }
     setInterval(function () { last = ''; apply(); }, 1500);   // safety net: re-send the colour so the bar can never stay stuck on a wrong one
     window.neshStatusBarSync = apply;
   } catch (e) {}
+})();
+</script>
+
+<script id="nesh-ota-info-ui">
+/* Nicer "Live update info" card (the 4-finger gesture). Only that one message is restyled; every other alert() is untouched. */
+(function () {
+  var _alert = window.alert ? window.alert.bind(window) : function () {};
+  function show(bundle, id) {
+    var old = document.getElementById('nesh-ota-card'); if (old) old.remove();
+    var ov = document.createElement('div'); ov.id = 'nesh-ota-card';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:100020;background:rgba(10,8,2,.55);display:flex;align-items:flex-end;justify-content:center;font-family:Inter,Poppins,sans-serif;';
+    var c = document.createElement('div');
+    c.style.cssText = 'width:100%;max-width:420px;background:#fff;color:#2B2410;border-radius:26px 26px 0 0;padding:14px 22px calc(22px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 40px rgba(0,0,0,.35);text-align:center;';
+    var grab = document.createElement('div'); grab.style.cssText = 'width:42px;height:4px;border-radius:4px;background:#E3DFD8;margin:0 auto 14px;';
+    var badge = document.createElement('div'); badge.textContent = 'NESH'; badge.style.cssText = 'display:inline-block;background:#F2B705;color:#2B2410;font-weight:900;letter-spacing:.12em;font-size:13px;padding:6px 16px;border-radius:999px;';
+    var t = document.createElement('div'); t.textContent = 'Live update'; t.style.cssText = 'font-size:20px;font-weight:800;margin:12px 0 2px;';
+    var s = document.createElement('div'); s.textContent = 'App content version on this phone'; s.style.cssText = 'font-size:12.5px;color:#6B5E3D;margin-bottom:14px;';
+    var b = document.createElement('div'); b.textContent = bundle; b.style.cssText = 'font-size:28px;font-weight:900;color:#2B2410;background:#FFF6D6;border:2px solid #F2B705;border-radius:16px;padding:10px 0;';
+    var l = document.createElement('div'); l.textContent = 'DEVICE ID'; l.style.cssText = 'font-size:11px;font-weight:700;letter-spacing:.1em;color:#6B5E3D;margin:16px 0 6px;';
+    var d = document.createElement('div'); d.textContent = id; d.style.cssText = 'font-family:"IBM Plex Mono",monospace;font-size:12.5px;word-break:break-all;background:#F6F4EF;border-radius:12px;padding:10px 12px;';
+    var cp = document.createElement('button'); cp.type = 'button'; cp.textContent = 'Copy Device ID';
+    cp.style.cssText = 'margin-top:14px;width:100%;border:0;border-radius:14px;background:#F2B705;color:#2B2410;font-weight:800;font-size:15px;padding:13px 0;';
+    cp.addEventListener('click', function () {
+      var ok = function () { cp.textContent = 'Copied \u2713'; };
+      try { navigator.clipboard.writeText(id).then(ok, ok); } catch (e) { ok(); }
+    });
+    var x = document.createElement('button'); x.type = 'button'; x.textContent = 'Close';
+    x.style.cssText = 'margin-top:8px;width:100%;border:0;background:transparent;color:#6B5E3D;font-weight:700;font-size:14px;padding:10px 0;';
+    x.addEventListener('click', function () { ov.remove(); });
+    ov.addEventListener('click', function (e) { if (e.target === ov) ov.remove(); });
+    [grab, badge, t, s, b, l, d, cp, x].forEach(function (n) { c.appendChild(n); });
+    ov.appendChild(c); document.body.appendChild(ov);
+  }
+  window.alert = function (msg) {
+    try {
+      var m = String(msg);
+      if (m.indexOf('Live update info') === 0) {
+        var bm = /Bundle:\s*(.+)/.exec(m), im = /Device ID:\s*(.+)/.exec(m);
+        show(bm ? bm[1].trim() : '-', im ? im[1].trim() : '-');
+        return;
+      }
+    } catch (e) {}
+    return _alert(msg);
+  };
 })();
 </script>
 </body>
