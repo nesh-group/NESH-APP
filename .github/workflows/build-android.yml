@@ -359,6 +359,21 @@ jobs:
               ctx.route("https://api.country.is/**", lambda r: r.fulfill(status=200, content_type="application/json", headers={"access-control-allow-origin": "*"}, body='{"country":"IN"}'))
               ctx.route("https://ipapi.co/**", lambda r: r.fulfill(status=200, content_type="text/plain", headers={"access-control-allow-origin": "*"}, body="IN"))
               ctx.add_init_script("try{localStorage.setItem('nesh_ip_cc',JSON.stringify({cc:'IN',t:Date.now()}))}catch(e){}")
+              # The shop list now comes from https://api.neshapp.in (Oracle). The test page runs on http://localhost:8765,
+              # an origin the API does not allow (CORS), so the browser blocks the call (net::ERR_FAILED) although the real app is fine.
+              # Fetch the REAL answer from the API and only add the CORS headers, so the real data path is still tested.
+              def _oracle(route):
+                  h = {"access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "GET,POST,OPTIONS"}
+                  if route.request.method == "OPTIONS":
+                      return route.fulfill(status=204, headers=h)
+                  try:
+                      r = route.fetch()
+                      hh = dict(r.headers); hh.update(h)
+                      route.fulfill(response=r, headers=hh)
+                  except Exception as e:
+                      warnings.append("api.neshapp.in not reachable from the runner: " + str(e)[:150])
+                      route.abort()
+              ctx.route("https://api.neshapp.in/**", _oracle)
               page = ctx.new_page()
               cons = []
               wsb = [0]
