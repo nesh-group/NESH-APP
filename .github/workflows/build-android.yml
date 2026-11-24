@@ -1275,12 +1275,17 @@ jobs:
           grep -E 'uses-permission|uses-feature' "$M" | sed -E 's/^ +//' || true
 
       # Zips the exact www/ folder that went into the app and publishes it to the TEST channel
-      # (GitHub Release "ota-test"). Only your own phone gets it until you run "Promote OTA to production".
-      - name: Build OTA bundle and publish to TEST channel
+      # on Cloudflare R2 (bucket nesh-ota, folder test/). Only your own phone gets it until you run "Promote OTA to production".
+      - name: Build OTA bundle and publish to TEST channel (R2)
         if: ${{ vars.OTA_UPDATE_URL != '' && inputs.skip_ota != true }}
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.OTA_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.OTA_R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+          R2_ENDPOINT: https://${{ secrets.OTA_R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          R2_BUCKET: ${{ secrets.OTA_R2_BUCKET }}
         run: |
           set -e
           VC=$(grep -oE 'versionCode [0-9]+' android/app/build.gradle | head -1 | grep -oE '[0-9]+')
@@ -1294,16 +1299,16 @@ jobs:
           {"version":"${VER}","zip":"${ZIP}","checksum":"${SUM}","native_build":${VC},"native_name":"${VN}"}
           EOF
           cat manifest.json
-          TAG=ota-test
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "OTA test channel" --notes "Written by the build workflow. Do not edit by hand." --prerelease
-          gh release upload "$TAG" "$ZIP" --clobber
-          gh release upload "$TAG" manifest.json --clobber
-          for A in $(gh release view "$TAG" --json assets -q '.assets[].name'); do
-            case "$A" in
-              nesh-bundle-*.zip) [ "$A" = "$ZIP" ] || gh release delete-asset "$TAG" "$A" -y ;;
-            esac
+          # zip first, manifest last: phones never see a manifest whose zip is not there yet
+          aws s3 cp "$ZIP" "s3://${R2_BUCKET}/test/${ZIP}" --endpoint-url "$R2_ENDPOINT" --content-type application/zip --cache-control "public, max-age=31536000, immutable"
+          aws s3 cp manifest.json "s3://${R2_BUCKET}/test/manifest.json" --endpoint-url "$R2_ENDPOINT" --content-type application/json --cache-control "no-cache"
+          # keep only the newest zip in test/
+          for A in $(aws s3 ls "s3://${R2_BUCKET}/test/" --endpoint-url "$R2_ENDPOINT" | awk '{print $4}' | grep -E '^nesh-bundle-.*\.zip$'); do
+            [ "$A" = "$ZIP" ] || aws s3 rm "s3://${R2_BUCKET}/test/$A" --endpoint-url "$R2_ENDPOINT"
           done
-          echo "OTA bundle $VER published to the TEST channel"
+          # the public address must serve the new zip
+          curl -fsI --retry 3 --retry-delay 3 "https://ota.neshapp.in/test/${ZIP}" >/dev/null && echo "public URL ok" || echo "::warning::https://ota.neshapp.in/test/${ZIP} is not reachable - check the custom domain"
+          echo "OTA bundle $VER published to the TEST channel (R2)"
 
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4

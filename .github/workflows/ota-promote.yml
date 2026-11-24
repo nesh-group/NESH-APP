@@ -1,36 +1,39 @@
 name: Promote OTA test bundle to production (all users)
 
 # Run this ONLY after the bundle works on your own phone (TEST channel).
-# It copies the exact tested bundle - nothing is rebuilt.
+# It copies the exact tested bundle inside R2 (test/ -> production/) - nothing is rebuilt.
 on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   promote:
     runs-on: ubuntu-latest
     steps:
-      - name: Copy ota-test -> ota-production
+      - name: Copy test/ -> production/ in R2
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.OTA_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.OTA_R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+          R2_ENDPOINT: https://${{ secrets.OTA_R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          R2_BUCKET: ${{ secrets.OTA_R2_BUCKET }}
         run: |
           set -e
           mkdir ota && cd ota
-          gh release download ota-test -p manifest.json
+          aws s3 cp "s3://${R2_BUCKET}/test/manifest.json" manifest.json --endpoint-url "$R2_ENDPOINT"
           ZIP=$(python3 -c "import json;print(json.load(open('manifest.json'))['zip'])")
           SUM=$(python3 -c "import json;print(json.load(open('manifest.json'))['checksum'])")
-          gh release download ota-test -p "$ZIP"
+          aws s3 cp "s3://${R2_BUCKET}/test/${ZIP}" "$ZIP" --endpoint-url "$R2_ENDPOINT"
           [ "$(sha256sum "$ZIP" | cut -d' ' -f1)" = "$SUM" ] || { echo "::error::checksum mismatch - not promoted"; exit 1; }
-          TAG=ota-production
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "OTA production channel" --notes "Written by the promote workflow. Do not edit by hand." --prerelease
-          gh release upload "$TAG" "$ZIP" --clobber
-          gh release upload "$TAG" manifest.json --clobber
-          for A in $(gh release view "$TAG" --json assets -q '.assets[].name'); do
-            case "$A" in
-              nesh-bundle-*.zip) [ "$A" = "$ZIP" ] || gh release delete-asset "$TAG" "$A" -y ;;
-            esac
+          # zip first, manifest last
+          aws s3 cp "$ZIP" "s3://${R2_BUCKET}/production/${ZIP}" --endpoint-url "$R2_ENDPOINT" --content-type application/zip --cache-control "public, max-age=31536000, immutable"
+          aws s3 cp manifest.json "s3://${R2_BUCKET}/production/manifest.json" --endpoint-url "$R2_ENDPOINT" --content-type application/json --cache-control "no-cache"
+          for A in $(aws s3 ls "s3://${R2_BUCKET}/production/" --endpoint-url "$R2_ENDPOINT" | awk '{print $4}' | grep -E '^nesh-bundle-.*\.zip$'); do
+            [ "$A" = "$ZIP" ] || aws s3 rm "s3://${R2_BUCKET}/production/$A" --endpoint-url "$R2_ENDPOINT"
           done
+          curl -fsI --retry 3 --retry-delay 3 "https://ota.neshapp.in/production/${ZIP}" >/dev/null && echo "public URL ok" || echo "::warning::production URL not reachable - check the custom domain"
           echo "Promoted $ZIP to production"
