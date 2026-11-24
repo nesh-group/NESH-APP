@@ -9546,7 +9546,23 @@ document.addEventListener('visibilitychange', () => {   // app in background: st
     }
   } catch (e) {}
 });
-setTimeout(() => neshRlLoad(false), 3000);
+// Reels button: load the list at once (was 3 s late), retry quickly when the first load fails, and re-check the button every second
+// for the first 90 s while the shop list is still arriving (the button needs the reel AND its shop; before, it waited for the 30 s timer below).
+(function () {
+  let n = 0, k = 0;
+  const go = () => {
+    neshRlLoad(false).then(() => {
+      if (!neshRl().loadedAt && n < 8) { n++; setTimeout(go, Math.min(1500 * n, 8000)); }
+    }).catch(() => {});
+  };
+  setTimeout(go, 300);
+  const t = setInterval(() => {
+    try {
+      if (++k > 90) { clearInterval(t); return; }
+      if (neshRlSig() !== neshRl().has) neshRlSyncUi();
+    } catch (e) {}
+  }, 1000);
+})();
 setInterval(() => {
   try {
     if (document.hidden) return;
