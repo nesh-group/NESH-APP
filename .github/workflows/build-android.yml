@@ -1087,6 +1087,19 @@ jobs:
           open(p, "w").write(s)
           PYEOF
 
+      # Chat voice messages: microphone. Asked at runtime only when the person taps record.
+      # Microphone hardware stays optional so Play does not hide the app from any device.
+      - name: Add microphone permission (chat voice messages)
+        run: |
+          python3 - << 'PYEOF'
+          p = "android/app/src/main/AndroidManifest.xml"
+          s = open(p).read()
+          a = '<uses-permission android:name="android.permission.INTERNET" />'
+          assert a in s, "INTERNET permission line not found"
+          s = s.replace(a, a + '\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-feature android:name="android.hardware.microphone" android:required="false" />', 1)
+          open(p, "w").write(s)
+          PYEOF
+
       # Android 11+ hides other apps unless declared: this lets the app list the
       # phone's UPI apps (Google Pay, PhonePe, Paytm...) for the "Pay Online" button.
       - name: Allow the app to see UPI apps (queries)
