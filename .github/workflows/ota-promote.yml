@@ -1,0 +1,36 @@
+name: Promote OTA test bundle to production (all users)
+
+# Run this ONLY after the bundle works on your own phone (TEST channel).
+# It copies the exact tested bundle - nothing is rebuilt.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Copy ota-test -> ota-production
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -e
+          mkdir ota && cd ota
+          gh release download ota-test -p manifest.json
+          ZIP=$(python3 -c "import json;print(json.load(open('manifest.json'))['zip'])")
+          SUM=$(python3 -c "import json;print(json.load(open('manifest.json'))['checksum'])")
+          gh release download ota-test -p "$ZIP"
+          [ "$(sha256sum "$ZIP" | cut -d' ' -f1)" = "$SUM" ] || { echo "::error::checksum mismatch - not promoted"; exit 1; }
+          TAG=ota-production
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "OTA production channel" --notes "Written by the promote workflow. Do not edit by hand." --prerelease
+          gh release upload "$TAG" "$ZIP" --clobber
+          gh release upload "$TAG" manifest.json --clobber
+          for A in $(gh release view "$TAG" --json assets -q '.assets[].name'); do
+            case "$A" in
+              nesh-bundle-*.zip) [ "$A" = "$ZIP" ] || gh release delete-asset "$TAG" "$A" -y ;;
+            esac
+          done
+          echo "Promoted $ZIP to production"

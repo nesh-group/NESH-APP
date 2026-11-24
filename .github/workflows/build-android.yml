@@ -11,6 +11,10 @@ on:
         description: 'Skip the app-only minify step (tick only if the app misbehaves after minify)'
         type: boolean
         default: false
+      skip_ota:
+        description: 'Do not publish the live-update (OTA) bundle to the TEST channel'
+        type: boolean
+        default: false
   push:
     branches: [ main ]
     paths:
@@ -26,6 +30,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to publish the OTA bundle as a GitHub Release asset
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -195,6 +201,56 @@ jobs:
           h = h.replace("</head>", inject + "</head>", 1)
           open(p, "w", encoding="utf-8").write(h)
           print("app-feel injected")
+          PYEOF
+
+      # LIVE UPDATE (OTA) support, injected into the www/ copy only (the website index.html is not touched):
+      #  - calls notifyAppReady() once the app's own scripts are alive. If a new bundle never gets there
+      #    (blank screen / crash on start), the updater rolls back to the previous bundle by itself.
+      #  - inside the app the service worker is switched off + old registrations removed, so a cached
+      #    index.html can never hide a freshly downloaded bundle.
+      #  - hidden diagnostic: touch the screen with 4 fingers -> shows the bundle version + this phone's
+      #    Device ID (needed once, to put your own phone on the TEST channel).
+      - name: App-only live update support (ready signal, no service worker, info gesture)
+        run: |
+          python3 - << 'PYEOF'
+          p = "www/index.html"
+          h = open(p, encoding="utf-8").read()
+          inject = r"""<script id="nesh-ota">
+          (function () {
+            function isNative() { try { return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (e) { return false; } }
+            function U() { try { return window.Capacitor.Plugins.CapacitorUpdater; } catch (e) { return null; } }
+            if (isNative() && 'serviceWorker' in navigator) {
+              try {
+                navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); }).catch(function () {});
+                navigator.serviceWorker.register = function () { return Promise.reject(new Error('service worker is off inside the app')); };
+              } catch (e) {}
+            }
+            var t0 = Date.now();
+            var iv = setInterval(function () {
+              try {
+                var P = U();
+                if (typeof window.setShopLoading === 'function' && P && P.notifyAppReady) { P.notifyAppReady(); clearInterval(iv); }
+                else if (Date.now() - t0 > 18000) clearInterval(iv);
+              } catch (e) {}
+            }, 400);
+            document.addEventListener('touchstart', function (e) {
+              try {
+                if (!e.touches || e.touches.length < 4) return;
+                var P = U(); if (!P) return;
+                Promise.all([P.getDeviceId(), P.current()]).then(function (r) {
+                  var id = r[0].deviceId, v = (r[1].bundle && r[1].bundle.version) || 'builtin';
+                  try { navigator.clipboard.writeText(id); } catch (x) {}
+                  alert('Live update info\nBundle: ' + v + '\nDevice ID: ' + id);
+                });
+              } catch (x) {}
+            }, true);
+          })();
+          </script>
+          """
+          assert "</head>" in h, "no </head> found"
+          h = h.replace("</head>", inject + "</head>", 1)
+          open(p, "w", encoding="utf-8").write(h)
+          print("ota support injected")
           PYEOF
 
       # App-only MINIFY (smaller / faster to parse index.html -> the app opens quicker). Only the www/ copy is changed,
@@ -446,6 +502,11 @@ jobs:
           npm install @capacitor/haptics
           npm install @capacitor-firebase/authentication firebase
           npm install @capawesome/capacitor-app-update
+          npm install @capacitor/camera @capacitor/browser @capacitor/network @capacitor/device @capacitor/clipboard
+          # Live Update plugin: its major version must match Capacitor's major version
+          CAP_MAJOR=$(node -p "require('./node_modules/@capacitor/core/package.json').version.split('.')[0]")
+          echo "Capacitor major: $CAP_MAJOR"
+          npm install "@capgo/capacitor-updater@${CAP_MAJOR}"
           npm install @capacitor/assets --save-dev
 
       # Debug aid: shows exactly which Capacitor / Firebase plugin versions this build got.
@@ -456,32 +517,43 @@ jobs:
       # already live on Play Store (com.neshgroup.nesh), otherwise Play
       # Console will treat this as a brand-new app instead of an update.
       - name: Create capacitor.config.json
+        env:
+          OTA_UPDATE_URL: ${{ vars.OTA_UPDATE_URL }}
         run: |
-          cat > capacitor.config.json << 'EOF'
-          {
-            "appId": "com.neshgroup.nesh",
-            "appName": "NESH",
-            "webDir": "www",
-            "backgroundColor": "#F2B705",
-            "android": {
-              "adjustMarginsForEdgeToEdge": "disable"
-            },
-            "plugins": {
-              "SystemBars": {
-                "insetsHandling": "disable"
-              },
-              "SplashScreen": {
-                "launchShowDuration": 0,
-                "launchAutoHide": true,
-                "backgroundColor": "#F2B705",
-                "showSpinner": false
-              },
-              "FirebaseAuthentication": {
-                "providers": ["phone"]
+          python3 - << 'PYEOF'
+          import json, os
+          cfg = {
+              "appId": "com.neshgroup.nesh",
+              "appName": "NESH",
+              "webDir": "www",
+              "backgroundColor": "#F2B705",
+              "android": {"adjustMarginsForEdgeToEdge": "disable"},
+              "plugins": {
+                  "SystemBars": {"insetsHandling": "disable"},
+                  "SplashScreen": {"launchShowDuration": 0, "launchAutoHide": True, "backgroundColor": "#F2B705", "showSpinner": False},
+                  "FirebaseAuthentication": {"providers": ["phone"]}
               }
-            }
           }
-          EOF
+          url = os.environ.get("OTA_UPDATE_URL", "").strip()
+          if url:
+              # Live Update: checks our own server (never Capgo's cloud: statsUrl/channelUrl are empty).
+              # A new bundle downloads in the background and starts at the next app launch.
+              cfg["plugins"]["CapacitorUpdater"] = {
+                  "autoUpdate": True,
+                  "updateUrl": url,
+                  "statsUrl": "",
+                  "channelUrl": "",
+                  "appReadyTimeout": 20000,
+                  "resetWhenUpdate": True,
+                  "autoDeleteFailed": True,
+                  "autoDeletePrevious": True
+              }
+              print("Live Update is ON ->", url)
+          else:
+              print("::warning::repo variable OTA_UPDATE_URL is not set - Live Update is OFF in this build")
+          json.dump(cfg, open("capacitor.config.json", "w"), indent=2)
+          print(open("capacitor.config.json").read())
+          PYEOF
 
       - name: Add Android platform
         run: npx cap add android
@@ -1002,6 +1074,19 @@ jobs:
         run: |
           sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />#' android/app/src/main/AndroidManifest.xml
 
+      # Chat photos: camera + photo picker. The system photo picker needs NO storage permission
+      # (so no READ_MEDIA_IMAGES, which Play restricts). Camera hardware stays optional.
+      - name: Add camera permission (chat photos)
+        run: |
+          python3 - << 'PYEOF'
+          p = "android/app/src/main/AndroidManifest.xml"
+          s = open(p).read()
+          a = '<uses-permission android:name="android.permission.INTERNET" />'
+          assert a in s, "INTERNET permission line not found"
+          s = s.replace(a, a + '\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />', 1)
+          open(p, "w").write(s)
+          PYEOF
+
       # Android 11+ hides other apps unless declared: this lets the app list the
       # phone's UPI apps (Google Pay, PhonePe, Paytm...) for the "Pay Online" button.
       - name: Allow the app to see UPI apps (queries)
@@ -1065,10 +1150,11 @@ jobs:
       # versionCode 13 (1.0.12) may already be uploaded to Play Console, and every
       # new upload must have a strictly higher versionCode, so this build
       # uses 14. versionName is only the label users see (1.0.13).
+      # This build: versionCode 16 / 1.0.15 (previous upload used 15). Raise both again for every Play upload.
       - name: Set version code and name
         run: |
-          sed -i "s/versionCode 1/versionCode 15/" android/app/build.gradle
-          sed -i 's/versionName "1.0"/versionName "1.0.14"/' android/app/build.gradle
+          sed -i "s/versionCode 1/versionCode 16/" android/app/build.gradle
+          sed -i 's/versionName "1.0"/versionName "1.0.15"/' android/app/build.gradle
           grep -E "versionCode|versionName" android/app/build.gradle
 
       - name: Fix Kotlin stdlib duplicate class conflict
@@ -1180,6 +1266,44 @@ jobs:
           KEY_ALIAS: ${{ secrets.NESH_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.NESH_KEY_PASSWORD }}
         run: ./gradlew bundleRelease assembleRelease
+
+      # Prints every permission the final app declares (names only). Check this BEFORE uploading to Play.
+      - name: Show merged permissions
+        run: |
+          M=$(find android/app/build -name AndroidManifest.xml -path '*merged_manifests*' | head -1)
+          echo "file: $M"
+          grep -E 'uses-permission|uses-feature' "$M" | sed -E 's/^ +//' || true
+
+      # Zips the exact www/ folder that went into the app and publishes it to the TEST channel
+      # (GitHub Release "ota-test"). Only your own phone gets it until you run "Promote OTA to production".
+      - name: Build OTA bundle and publish to TEST channel
+        if: ${{ vars.OTA_UPDATE_URL != '' && inputs.skip_ota != true }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -e
+          VC=$(grep -oE 'versionCode [0-9]+' android/app/build.gradle | head -1 | grep -oE '[0-9]+')
+          VN=$(grep -oE 'versionName "[^"]+"' android/app/build.gradle | head -1 | cut -d'"' -f2)
+          VER="1.${VC}.${{ github.run_number }}"
+          ZIP="nesh-bundle-${VER}.zip"
+          (cd www && zip -qr "../${ZIP}" .)
+          SUM=$(sha256sum "$ZIP" | cut -d' ' -f1)
+          ls -l "$ZIP"
+          cat > manifest.json << EOF
+          {"version":"${VER}","zip":"${ZIP}","checksum":"${SUM}","native_build":${VC},"native_name":"${VN}"}
+          EOF
+          cat manifest.json
+          TAG=ota-test
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "OTA test channel" --notes "Written by the build workflow. Do not edit by hand." --prerelease
+          gh release upload "$TAG" "$ZIP" --clobber
+          gh release upload "$TAG" manifest.json --clobber
+          for A in $(gh release view "$TAG" --json assets -q '.assets[].name'); do
+            case "$A" in
+              nesh-bundle-*.zip) [ "$A" = "$ZIP" ] || gh release delete-asset "$TAG" "$A" -y ;;
+            esac
+          done
+          echo "OTA bundle $VER published to the TEST channel"
 
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
