@@ -177,11 +177,18 @@ jobs:
           html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
           input,textarea,[contenteditable="true"]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default;}
           img{-webkit-user-drag:none;-webkit-touch-callout:none;}
-          @keyframes neshScreenIn{from{opacity:0;transform:translateX(16px);}to{opacity:1;transform:none;}}
-          .screen.active{animation:neshScreenIn .2s ease-out;}
+          @keyframes neshScreenIn{from{opacity:.85;transform:translateX(20px);}to{opacity:1;transform:none;}}
+          .screen.active{animation:neshScreenIn .2s cubic-bezier(.22,.8,.3,1);}
           @media (prefers-reduced-motion:reduce){.screen.active{animation:none;}}
+          html.nesh-lite .screen.active{animation:none;}
           </style>
           <script>
+          // Weak phones (3 GB RAM or less, or 4 cores or less) get "lite" mode: no screen animation, cheaper card shadows.
+          // Stronger phones keep the full look.
+          try {
+            var _m = navigator.deviceMemory, _c = navigator.hardwareConcurrency;
+            if ((_m && _m <= 3) || (_c && _c <= 4)) document.documentElement.classList.add('nesh-lite');
+          } catch (e) {}
           document.addEventListener('contextmenu', function (e) {
             var t = e.target;
             if (t && t.tagName !== 'INPUT' && t.tagName !== 'TEXTAREA') e.preventDefault();
@@ -201,6 +208,115 @@ jobs:
           h = h.replace("</head>", inject + "</head>", 1)
           open(p, "w", encoding="utf-8").write(h)
           print("app-feel injected")
+          PYEOF
+
+      # App-only scroll smoothness for Food / Grocery lists (www/ copy only, website untouched).
+      #  - cheaper shadows on the repeated list cards, ONLY on weak phones (html.nesh-lite); strong phones keep the full look
+      #  - soft placeholder colour behind list images so a not-yet-loaded image is not a white hole
+      #  - decoding="async" on list images that lacked it (decode off the main thread)
+      # Every text patch is optional: if the app text changed, it prints a warning and the build goes on.
+      - name: App-only scroll smoothness (Food / Grocery lists)
+        run: |
+          python3 - << 'PYEOF'
+          p = "www/index.html"
+          h = open(p, encoding="utf-8").read()
+          css = """<style id="nesh-scroll-smooth">
+          html.nesh-lite .rest-card2{ box-shadow:0 3px 10px rgba(43,36,16,.10) !important; }
+          html.nesh-lite .item-card2{ box-shadow:0 2px 8px rgba(43,36,16,.08) !important; }
+          img.rest-img, img.item-img, img.food-card-photo, img.food-item-img{ background-color:#F4EDD6; }
+          </style>
+          """
+          assert "</head>" in h, "no </head> found"
+          h = h.replace("</head>", css + "</head>", 1)
+          for a, b in [
+              ('<img class="rest-img" src="${r.bannerImage || r.image}" alt="${r.name}" loading="lazy"',
+               '<img class="rest-img" src="${r.bannerImage || r.image}" alt="${r.name}" loading="lazy" decoding="async"'),
+              ('<img class="item-img" src="${it.image || \'\'}" alt="${escapeHtml(it.name)}" loading="lazy" onerror',
+               '<img class="item-img" src="${it.image || \'\'}" alt="${escapeHtml(it.name)}" loading="lazy" decoding="async" onerror'),
+          ]:
+              if h.count(a) >= 1:
+                  h = h.replace(a, b)
+                  print("patched:", a[:40])
+              else:
+                  print("::warning::smoothness patch text not found:", a[:40])
+          open(p, "w", encoding="utf-8").write(h)
+          print("scroll smoothness injected")
+          PYEOF
+
+      # App-only NESH splash look (www/ copy only): service chips orbit the logo, rising growth arrows, logo-colour loader.
+      # Only decoration: the splash logic (when it lifts) is not touched. If the splash markup changed, it warns and goes on.
+      - name: App-only NESH splash look
+        run: |
+          python3 - << 'PYEOF'
+          import re
+          p = "www/index.html"
+          h = open(p, encoding="utf-8").read()
+          css = """
+          <style id="nesh-splash-brand">
+          /* NESH brand splash: service chips orbiting the logo, rising growth arrows, logo-colour loader, staged tagline */
+          #nesh-splash .sp-deco{ background-image:radial-gradient(rgba(255,255,255,.2) 1.3px, transparent 1.5px); background-size:24px 24px; }
+          #nesh-splash .sp-ring{ display:none; }
+          #nesh-splash .sp-orbit{
+            --r:min(41vw,162px); position:absolute; left:50%; top:46%; width:calc(var(--r)*2); height:calc(var(--r)*2);
+            margin:calc(var(--r)*-1) 0 0 calc(var(--r)*-1); border:1.5px dashed rgba(43,36,16,.22); border-radius:50%;
+            animation:spOrb 24s linear infinite;
+          }
+          #nesh-splash .sp-orbit .o{
+            position:absolute; left:50%; top:50%; width:46px; height:46px; margin:-23px 0 0 -23px;
+            transform:rotate(var(--a)) translateY(calc(var(--r)*-1)) rotate(calc(var(--a)*-1));
+            animation:spOrbFade .6s ease var(--d,.4s) both;
+          }
+          #nesh-splash .sp-orbit .o i{
+            display:flex; align-items:center; justify-content:center; width:46px; height:46px; border-radius:50%;
+            background:#FFF8DF; box-shadow:0 6px 14px rgba(43,36,16,.22); font-style:normal; font-size:24px; line-height:1;
+            animation:spOrbBack 24s linear infinite;
+          }
+          #nesh-splash .sp-up{
+            position:absolute; bottom:-8%; width:var(--s,24px); height:var(--s,24px); color:rgba(255,255,255,.6); opacity:0;
+            animation:spRise var(--t,6s) ease-in var(--d,0s) infinite;
+          }
+          #nesh-splash .sp-tag, #nesh-splash.no-loc .sp-tag{
+            top:calc(46% + min(41vw,162px) + 37px); opacity:1; animation:none; font-weight:700; letter-spacing:.2em; color:#2B2410;
+          }
+          #nesh-splash .sp-tag span{ animation:spWord .55s cubic-bezier(.2,.8,.2,1) both; }
+          #nesh-splash .sp-tag span:nth-of-type(1){ animation-delay:.45s; }
+          #nesh-splash .sp-tag span:nth-of-type(2){ animation-delay:.6s; }
+          #nesh-splash .sp-tag span:nth-of-type(3){ animation-delay:.75s; }
+          #nesh-splash .sp-tag span:nth-of-type(4){ animation-delay:.9s; }
+          #nesh-splash .sp-tag b{ width:5px; height:5px; opacity:1; background:linear-gradient(135deg,#1E6BFF,#FF2D6F); animation:spWord .4s ease .7s both; }
+          #nesh-splash::after{ width:96px; margin-left:-48px; height:5px; border-radius:5px; background:rgba(43,36,16,.14); }
+          #nesh-splash::before{ width:36px; margin-left:-48px; height:5px; border-radius:5px; background:linear-gradient(90deg,#1E6BFF,#FF2D6F); animation:spBar3 1.2s ease-in-out infinite; }
+          @keyframes spOrb{ to{ transform:rotate(360deg); } }
+          @keyframes spOrbBack{ to{ transform:rotate(-360deg); } }
+          @keyframes spOrbFade{ from{ opacity:0; } }
+          @keyframes spRise{ 0%{ transform:translateY(0); opacity:0; } 15%{ opacity:.8; } 100%{ transform:translateY(-95vh); opacity:0; } }
+          @keyframes spWord{ from{ opacity:0; transform:translateY(8px); } }
+          @keyframes spBar3{ 0%,100%{ transform:translateX(0); } 50%{ transform:translateX(60px); } }
+          /* weak phones: same look, standing still */
+          html.nesh-lite #nesh-splash .sp-orbit, html.nesh-lite #nesh-splash .sp-orbit .o i, html.nesh-lite #nesh-splash .sp-glow{ animation:none; }
+          html.nesh-lite #nesh-splash .sp-up{ display:none; }
+          </style>
+          """.replace("\n          ", "\n")
+          deco = """
+          <div class="sp-deco" aria-hidden="true">
+            <i class="sp-glow"></i>
+            <div class="sp-orbit"><span class="o" style="--a:0deg;--d:0.4s"><i>🍔</i></span><span class="o" style="--a:90deg;--d:0.55s"><i>🛒</i></span><span class="o" style="--a:180deg;--d:0.7s"><i>🚕</i></span><span class="o" style="--a:270deg;--d:0.85s"><i>🛍️</i></span></div>
+            <svg class="sp-up" style="left:7%;--s:20px;--t:6.5s;--d:0s" viewBox="0 0 24 24"><path d="M6 18 18 6M9 6h9v9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="sp-up" style="left:24%;--s:28px;--t:7.5s;--d:1.8s" viewBox="0 0 24 24"><path d="M6 18 18 6M9 6h9v9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="sp-up" style="left:42%;--s:18px;--t:6s;--d:3.2s" viewBox="0 0 24 24"><path d="M6 18 18 6M9 6h9v9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="sp-up" style="left:60%;--s:26px;--t:7s;--d:.9s" viewBox="0 0 24 24"><path d="M6 18 18 6M9 6h9v9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="sp-up" style="left:77%;--s:20px;--t:6.8s;--d:2.6s" viewBox="0 0 24 24"><path d="M6 18 18 6M9 6h9v9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="sp-up" style="left:90%;--s:24px;--t:7.2s;--d:4s" viewBox="0 0 24 24"><path d="M6 18 18 6M9 6h9v9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          """.replace("\n          ", "\n").strip() + "\n  "
+          h2, n = re.subn(r'<div class="sp-deco" aria-hidden="true">.*?</div>\s*(?=<div class="sp-top">)', lambda m: deco, h, count=1, flags=re.S)
+          if n != 1:
+              print("::warning::splash markup not found - NESH splash look skipped")
+          else:
+              assert "</head>" in h2, "no </head> found"
+              h2 = h2.replace("</head>", css + "\n</head>", 1)
+              open(p, "w", encoding="utf-8").write(h2)
+              print("NESH splash look injected")
           PYEOF
 
       # LIVE UPDATE (OTA) support, injected into the www/ copy only (the website index.html is not touched):
@@ -233,6 +349,17 @@ jobs:
                 else if (Date.now() - t0 > 18000) clearInterval(iv);
               } catch (e) {}
             }, 400);
+            // Safety net: launchAutoHide is OFF (instant update), so the plain yellow native splash must never stay stuck.
+            // Hide it 5 s after load, and again every time the app comes back from the background.
+            function hideSplash() {
+              try { var S = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SplashScreen; if (S && S.hide) S.hide({ fadeOutDuration: 150 }); } catch (e) {}
+            }
+            if (isNative()) {
+              setTimeout(hideSplash, 5000);
+              document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'visible') { setTimeout(hideSplash, 600); setTimeout(hideSplash, 3000); }
+              });
+            }
             function showInfo() {
               try {
                 var P = U(); if (!P) return;
