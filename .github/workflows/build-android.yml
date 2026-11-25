@@ -737,8 +737,8 @@ jobs:
                   "statsUrl": "",
                   "channelUrl": "",
                   "appReadyTimeout": 20000,
-                  "directUpdate": False,
-                  "autoSplashscreen": False,
+                  "directUpdate": "onLaunch",
+                  "autoSplashscreen": True,
                   "autoSplashscreenTimeout": 2500,
                   "resetWhenUpdate": True,
                   "autoDeleteFailed": True,
@@ -1625,7 +1625,29 @@ jobs:
           cat > manifest.json << EOF
           {"version":"${VER}","zip":"${ZIP}","checksum":"${SUM}","native_build":${VC},"native_name":"${VN}"}
           EOF
-          cat manifest.json
+          # --- delta update: one object per file in www/, named by its SHA-256 (same content = same object, uploaded once) ---
+          python3 - << 'PYEOF'
+          import hashlib, json, os
+          files = []
+          for root, _, names in os.walk("www"):
+              for n in sorted(names):
+                  fp = os.path.join(root, n)
+                  rel = os.path.relpath(fp, "www").replace(os.sep, "/")
+                  files.append({"file_name": rel, "file_hash": hashlib.sha256(open(fp, "rb").read()).hexdigest(), "file_size": os.path.getsize(fp)})
+          m = json.load(open("manifest.json"))
+          m["files"] = files
+          json.dump(m, open("manifest.json", "w"), separators=(",", ":"))
+          json.dump(files, open("files.json", "w"))
+          print("delta files:", len(files))
+          PYEOF
+          cat manifest.json | head -c 600; echo
+          have=$(aws s3 ls "s3://${R2_BUCKET}/test/files/" --endpoint-url "$R2_ENDPOINT" | awk '{print $4}' | sort -u || true)
+          python3 -c "import json;[print(f['file_hash'], f['file_name']) for f in json.load(open('files.json'))]" | sort -u -k1,1 | while read H NAME; do
+            echo "$have" | grep -qx "$H" && continue
+            case "$NAME" in *.html) CT=text/html;; *.js) CT=application/javascript;; *.css) CT=text/css;; *.json) CT=application/json;; *.svg) CT=image/svg+xml;; *) CT=application/octet-stream;; esac
+            aws s3 cp "www/$NAME" "s3://${R2_BUCKET}/test/files/$H" --endpoint-url "$R2_ENDPOINT" --content-type "$CT" --cache-control "public, max-age=31536000, immutable" --only-show-errors
+          done
+          echo "delta files uploaded"
           # zip first, manifest last: phones never see a manifest whose zip is not there yet
           aws s3 cp "$ZIP" "s3://${R2_BUCKET}/test/${ZIP}" --endpoint-url "$R2_ENDPOINT" --content-type application/zip --cache-control "public, max-age=31536000, immutable"
           aws s3 cp manifest.json "s3://${R2_BUCKET}/test/manifest.json" --endpoint-url "$R2_ENDPOINT" --content-type application/json --cache-control "no-cache"
