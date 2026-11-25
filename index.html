@@ -4689,13 +4689,13 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
   var skipSplash = false;
   try { if (sessionStorage.getItem('nesh_ptr') === '1') { skipSplash = true; sessionStorage.removeItem('nesh_ptr'); } } catch (e) {}
   if (skipSplash) { el.style.transition = 'none'; el.classList.remove('show'); }
-  var MIN_SHOW = 400;      // never flash away faster than this
-  var MAX_SHOW = 6000;     // safety: leave splash after this (+4 s only while location is still pending => hard cap 10 s total)
+  var MIN_SHOW = 900;      // never flash away faster than this (a 0.4 s splash looked like a flicker)
+  var MAX_SHOW = 8000;     // safety: leave splash after this (+4 s only while location is still pending => hard cap 10 s total)
   var shownAt = Date.now(), hideT = null, maxT = null;
   // Always wait for: location, category-card order, Bus card switch.
   // Shop list/order/zones are only awaited if the app must reopen on a
   // screen that needs them (a shop menu etc.); the category screen doesn't.
-  var pending = { loc: 1, cat: 1, bus: 1, posters: 1 };   // posters = offer images downloaded + decoded (see nesh-posters-js)
+  var pending = { loc: 1, cat: 1, bus: 1, posters: 1, paint: 1 };   // paint = app scripts have run + fonts ready + one real frame drawn (see bottom of this script)   // posters = offer images downloaded + decoded (see nesh-posters-js)
   try {
     var sv = JSON.parse(localStorage.getItem('asfood_screen') || 'null');
     if (sv && sv.id && sv.id !== 'category') { pending.rest = 1; pending.shop = 1; pending.zones = 1; }
@@ -4818,7 +4818,14 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
   function hide() {
     clearTimeout(maxT); clearTimeout(hideT);
     var wait = Math.max(0, MIN_SHOW - (Date.now() - shownAt));
-    hideT = setTimeout(function () { el.classList.remove('show'); }, wait);
+    var g = gen;
+    hideT = setTimeout(function () {
+      // two real frames first: the screen underneath is drawn BEFORE the splash fades, so Home never shows half-built
+      requestAnimationFrame(function () { requestAnimationFrame(function () {
+        if (g !== gen || Object.keys(pending).length) return;   // splash was shown again / something is pending again: stay
+        el.classList.remove('show');
+      }); });
+    }, wait);
   }
   function done(k) {
     if (!pending[k]) return;
@@ -4831,6 +4838,20 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
   window.neshSplash = { noLoc: function () { el.classList.add('no-loc'); }, show: show, hide: hide, done: done, isActive: isActive, setPlace: setPlace, age: function () { return Date.now() - shownAt; }, gen: function () { return gen; } };
   arm();
   if (!skipSplash) neshShh();
+  // 'paint' step: wait until the app scripts have run (DOMContentLoaded) and the fonts are ready, then one more frame.
+  (function () {
+    var fin = false;
+    function ok() { if (fin) return; fin = true; requestAnimationFrame(function () { requestAnimationFrame(function () { done('paint'); }); }); }
+    function go() {
+      try {
+        var f = document.fonts && document.fonts.ready;
+        if (f) Promise.race([f, new Promise(function (r) { setTimeout(r, 1500); })]).then(ok, ok); else ok();
+      } catch (e) { ok(); }
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go, { once: true }); else go();
+  })();
+  // Native (yellow + logo) splash is held by the app until THIS splash is really on screen -> no blank yellow gap, no "hang".
+  requestAnimationFrame(function () { requestAnimationFrame(function () { try { window.neshNativeSplashHide && window.neshNativeSplashHide(); } catch (e) {} }); });
 })();
 </script>
 <div id="app">
