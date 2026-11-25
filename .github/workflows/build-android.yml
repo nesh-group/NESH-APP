@@ -738,6 +738,7 @@ jobs:
                   "channelUrl": "",
                   "appReadyTimeout": 20000,
                   "directUpdate": "onLaunch",
+                  "persistCustomId": True,
                   "autoSplashscreen": True,
                   "autoSplashscreenTimeout": 2500,
                   "resetWhenUpdate": True,
