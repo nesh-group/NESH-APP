@@ -25058,29 +25058,33 @@ if ('serviceWorker' in navigator) {
 <script>
 /* Safety net: if anything ever pushes the page sideways, snap it back to x=0 */
 (function(){
-  function fix(){
+function thr(fn,ms){var t=0;return function(){if(t)return;t=setTimeout(function(){t=0;fn();},ms);};}
+  function fix0(){
     var d=document.documentElement,b=document.body;
     if(window.scrollX||d.scrollLeft||(b&&b.scrollLeft)){ window.scrollTo(0,window.scrollY||0); d.scrollLeft=0; if(b) b.scrollLeft=0; }
   }
+  var fix=thr(fix0,250);
   window.addEventListener('scroll',fix,{passive:true});
   window.addEventListener('resize',fix);
-  document.addEventListener('focusin',function(){ setTimeout(fix,0); setTimeout(fix,300); });
-  document.addEventListener('touchend',function(){ setTimeout(fix,50); },{passive:true});
+  document.addEventListener('focusin',function(){ fix(); });
+  document.addEventListener('touchend',function(){ fix(); },{passive:true});
 })();
 </script>
 <script>
 // Safety net: if anything ever pushes the page sideways (left part cut off + yellow strip on the right),
 // snap straight back to the left edge. The CSS above stops the cause; this fixes it even on odd WebViews.
 (function () {
-  function snap() {
+function thr(fn,ms){var t=0;return function(){if(t)return;t=setTimeout(function(){t=0;fn();},ms);};}
+  function snap0() {
     var de = document.documentElement, b = document.body;
     if ((window.pageXOffset || de.scrollLeft || (b && b.scrollLeft)) > 0) {
       window.scrollTo(0, window.pageYOffset || de.scrollTop || 0);
       de.scrollLeft = 0; if (b) b.scrollLeft = 0;
     }
   }
+  var snap = thr(snap0, 250);
   ['scroll', 'resize', 'orientationchange', 'focusin', 'touchend', 'pageshow'].forEach(function (e) { window.addEventListener(e, snap, { passive: true }); });
-  setInterval(function () { if (document.hidden) return; snap(); }, 1500);
+  setInterval(function () { if (document.hidden) return; snap0(); }, 4000);
 })();
 </script>
 <script>
@@ -25107,6 +25111,7 @@ if ('serviceWorker' in navigator) {
    Focus, scrollIntoView or a stray drag can slide them sideways (left part cut off + yellow strip on the right) and the
    window/body snap above never reset them. Reset them straight away (scroll events don't bubble, so listen in capture). */
 (function () {
+function thr(fn,ms){var t=0;return function(){if(t)return;t=setTimeout(function(){t=0;fn();},ms);};}
   function guards() {
     var a = [document.documentElement, document.body, document.getElementById('app')];
     return a.concat([].slice.call(document.querySelectorAll('.cat-wrap, .screen.active')));
@@ -25115,15 +25120,16 @@ if ('serviceWorker' in navigator) {
     guards().forEach(function (el) { if (el && el.scrollLeft > 0) el.scrollLeft = 0; });
     if (window.scrollX) window.scrollTo(0, window.scrollY || 0);
   }
+  var resetT = thr(reset, 250);
   window.addEventListener('scroll', function (e) {
     var t = e.target;
     if (t === document || t === document.documentElement || t === document.body || (t && t.id === 'app') ||
-        (t && t.classList && (t.classList.contains('cat-wrap') || t.classList.contains('screen')))) reset();
+        (t && t.classList && (t.classList.contains('cat-wrap') || t.classList.contains('screen')))) resetT();
   }, true);
   ['focusin', 'touchend', 'resize', 'orientationchange', 'pageshow'].forEach(function (ev) {
-    window.addEventListener(ev, function () { setTimeout(reset, 0); setTimeout(reset, 300); }, { passive: true });
+    window.addEventListener(ev, function () { resetT(); }, { passive: true });
   });
-  setInterval(function () { if (document.hidden) return; reset(); }, 1000);
+  setInterval(function () { if (document.hidden) return; reset(); }, 4000);
 })();
 </script>
 <script id="nesh-store-poster-js">
@@ -28110,22 +28116,10 @@ button,a,[role="button"],.food-card,.cat-card,.item-card2,.ff-chip,.food-chip,.n
 button:active,[role="button"]:active,.cat-card:active,.item-card2:active,.np-card:active,.lc-hc:active{ opacity:.82; }
 .food-card:active{ transform:scale(.985); transition:transform .08s; }
 /* smooth, flicker-free screen switch (opacity only) */
-.screen.active{ animation:neshScrIn .12s ease-out both; }
-@keyframes neshScrIn{ from{ opacity:.0 } to{ opacity:1 } }
 /* images fade in instead of popping (no layout shift: boxes already have fixed size) */
 .food-card-photo{ background:#e9e2cf; }
 @media (hover:none){ .cat-card:hover,.food-card:hover,.rest-card2:hover,.mart-card:hover,.item-card2:hover{ transform:none !important; } }
-@media (prefers-reduced-motion:reduce){ .screen.active{ animation:none; } }
 
-/* ---- native-style page transitions for the shop flow (Home -> Shop -> Item): slide in like iOS/Android apps ---- */
-.screen.active.nv-fwd{ position:relative; animation:nvF .24s cubic-bezier(.22,.8,.24,1) both; }
-.screen.active.nv-back{ position:relative; animation:nvB .22s cubic-bezier(.22,.8,.24,1) both; }
-@keyframes nvF{ from{ left:34px; opacity:.35 } to{ left:0; opacity:1 } }
-@keyframes nvB{ from{ left:-22px; opacity:.5 } to{ left:0; opacity:1 } }
-@media (prefers-reduced-motion:reduce){ .screen.active.nv-fwd,.screen.active.nv-back{ animation:none; } }
-/* shop photos fade in softly instead of popping (safety: revealed by JS on load/error, and always after 3s) */
-.food-card-photo:not(.nl){ opacity:0; }
-.food-card-photo{ transition:opacity .28s ease-out; }
 </style>
 <script id="nesh-native-feel-js">
 (function(){
@@ -28161,7 +28155,7 @@ button:active,[role="button"]:active,.cat-card:active,.item-card2:active,.np-car
     w.__nv=true;
     try{ window.showScreen=w; showScreen=w; }catch(e){}
   }
-  wrapShow();
+  /* screens switch instantly (no sliding / fading) - nothing moves while the page changes */
 
   /* ===== B) swipe from the left edge = Back (same as the phone's back button) ===== */
   var sx=0,sy=0,st=0,tracking=false;
