@@ -1182,7 +1182,7 @@ jobs:
           s = s.replace("</application>", svc + "</application>", 1)
           open(M, "w").write(s)
           PYEOF
-          printf '\ndependencies {\n    implementation "com.google.firebase:firebase-messaging:25.0.1"\n}\n' >> android/app/build.gradle
+          printf '\ndependencies {\n    implementation "com.google.firebase:firebase-messaging:25.0.1"\n    implementation "androidx.work:work-runtime:2.9.1"\n}\n' >> android/app/build.gradle
           cat android/app/src/main/java/com/neshgroup/nesh/NeshMessagingService.java
           grep -n -B1 -A3 "NeshMessagingService\|pushnotifications" android/app/src/main/AndroidManifest.xml
 
