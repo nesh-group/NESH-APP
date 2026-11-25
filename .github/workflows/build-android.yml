@@ -688,24 +688,25 @@ jobs:
           url = os.environ.get("OTA_UPDATE_URL", "").strip()
           if url:
               # Live Update: checks our own server (never Capgo's cloud: statsUrl/channelUrl are empty).
-              # directUpdate=always: on EVERY launch the newest production bundle is downloaded and applied right away
-              # (splash stays up to 4 s; if slower, the old bundle opens and the download finishes for next launch).
+              # directUpdate=false: the app opens at once (no waiting on the first screen for the update check, which looked like a hang).
+              # The newest production bundle is downloaded quietly in the background and used from the NEXT launch.
+              # (To get the old behaviour back - wait up to 2.5 s and apply the update immediately - set directUpdate to "always",
+              #  autoSplashscreen to True and uncomment the launchAutoHide line below.)
               cfg["plugins"]["CapacitorUpdater"] = {
                   "autoUpdate": True,
                   "updateUrl": url,
                   "statsUrl": "",
                   "channelUrl": "",
                   "appReadyTimeout": 20000,
-                  "directUpdate": "always",
-                  "autoSplashscreen": True,
-                  "autoSplashscreenTimeout": 4000,
+                  "directUpdate": False,
+                  "autoSplashscreen": False,
+                  "autoSplashscreenTimeout": 2500,
                   "resetWhenUpdate": True,
                   "autoDeleteFailed": True,
                   "autoDeletePrevious": True
               }
-              # autoSplashscreen needs the native splash NOT to auto-hide: the updater hides it after the update check/apply,
-              # or after autoSplashscreenTimeout (4 s) at the latest.
-              cfg["plugins"]["SplashScreen"]["launchAutoHide"] = False
+              # (only needed with autoSplashscreen=True: the native splash must then NOT auto-hide)
+              # cfg["plugins"]["SplashScreen"]["launchAutoHide"] = False
               print("Live Update is ON ->", url)
           else:
               print("::warning::repo variable OTA_UPDATE_URL is not set - Live Update is OFF in this build")
@@ -780,10 +781,35 @@ jobs:
 
       # Android 12+ ignores splash.png and draws its own splash (app icon on
       # a dark/theme background). Force that one to yellow with no icon too.
-      - name: Make Android 12+ system splash yellow (no icon)
+      # Now the NESH logo is shown on that first yellow screen (the same logo as the in-app splash), so the customer
+      # never sees an empty yellow screen while the app starts. The logo is taken from the in-app splash itself
+      # (index.html), so both always match. If anything fails, it falls back to the plain yellow splash.
+      - name: Make Android 12+ system splash yellow (with NESH logo)
         run: |
           python3 - << 'PYEOF'
-          import re
+          import re, base64, io, os
+          icon_ref = "@android:color/transparent"
+          try:
+              from PIL import Image
+              html = open("index.html", encoding="utf-8").read()
+              m = re.search(r'<div class="sp-logo">\s*<img[^>]*src="data:image/(?:webp|png);base64,([^"]+)"', html)
+              assert m, "splash logo not found in index.html"
+              logo = Image.open(io.BytesIO(base64.b64decode(m.group(1)))).convert("RGBA")
+              bb = logo.getchannel("A").point(lambda a: 255 if a > 20 else 0).getbbox()
+              if bb: logo = logo.crop(bb)
+              # Android draws this icon inside a circle (2/3 of a 288dp square) -> keep the logo well inside it
+              S = 1152
+              side = int(S * 0.47)
+              logo.thumbnail((side, side), Image.LANCZOS)
+              canvas = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+              canvas.paste(logo, ((S - logo.width) // 2, (S - logo.height) // 2), logo)
+              d = "android/app/src/main/res/drawable-nodpi"
+              os.makedirs(d, exist_ok=True)
+              canvas.save(d + "/nesh_splash_logo.png")
+              icon_ref = "@drawable/nesh_splash_logo"
+              print("native splash logo generated", logo.size)
+          except Exception as e:
+              print("::warning::native splash logo skipped (plain yellow splash kept):", e)
           path = "android/app/src/main/res/values/styles.xml"
           s = open(path).read()
           m = re.search(r'<style name="AppTheme\.NoActionBarLaunch"[^>]*>.*?</style>', s, re.S)
@@ -792,7 +818,7 @@ jobs:
           if 'Theme.SplashScreen' in block:
               extra = (
                   '\n        <item name="windowSplashScreenBackground">#F2B705</item>'
-                  '\n        <item name="windowSplashScreenAnimatedIcon">@android:color/transparent</item>'
+                  '\n        <item name="windowSplashScreenAnimatedIcon">' + icon_ref + '</item>'
                   '\n    </style>'
               )
               s = s.replace(block, block.replace('</style>', extra))
