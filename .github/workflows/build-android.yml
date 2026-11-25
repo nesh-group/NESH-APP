@@ -528,6 +528,8 @@ jobs:
           npm install @capacitor-firebase/authentication firebase
           npm install @capawesome/capacitor-app-update
           npm install @capacitor/camera @capacitor/browser @capacitor/network @capacitor/device @capacitor/clipboard
+          # needed by the updater's instant-apply modes (autoSplashscreen)
+          npm install @capacitor/splash-screen
           # Live Update plugin: its major version must match Capacitor's major version
           CAP_MAJOR=$(node -p "require('./node_modules/@capacitor/core/package.json').version.split('.')[0]")
           echo "Capacitor major: $CAP_MAJOR"
@@ -562,17 +564,24 @@ jobs:
           url = os.environ.get("OTA_UPDATE_URL", "").strip()
           if url:
               # Live Update: checks our own server (never Capgo's cloud: statsUrl/channelUrl are empty).
-              # A new bundle downloads in the background and starts at the next app launch.
+              # directUpdate=always: on EVERY launch the newest production bundle is downloaded and applied right away
+              # (splash stays up to 4 s; if slower, the old bundle opens and the download finishes for next launch).
               cfg["plugins"]["CapacitorUpdater"] = {
                   "autoUpdate": True,
                   "updateUrl": url,
                   "statsUrl": "",
                   "channelUrl": "",
                   "appReadyTimeout": 20000,
+                  "directUpdate": "always",
+                  "autoSplashscreen": True,
+                  "autoSplashscreenTimeout": 4000,
                   "resetWhenUpdate": True,
                   "autoDeleteFailed": True,
                   "autoDeletePrevious": True
               }
+              # autoSplashscreen needs the native splash NOT to auto-hide: the updater hides it after the update check/apply,
+              # or after autoSplashscreenTimeout (4 s) at the latest.
+              cfg["plugins"]["SplashScreen"]["launchAutoHide"] = False
               print("Live Update is ON ->", url)
           else:
               print("::warning::repo variable OTA_UPDATE_URL is not set - Live Update is OFF in this build")
@@ -1124,6 +1133,58 @@ jobs:
           s = s.replace(a, a + '\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-feature android:name="android.hardware.microphone" android:required="false" />', 1)
           open(p, "w").write(s)
           PYEOF
+
+      # Silent OTA push: the server sends a data-only FCM message {"nesh_ota":"1"}. This service wakes even when the
+      # app is closed and asks the updater's own HeadlessUpdateWorker to download the newest bundle, so the next open is
+      # already on the new version. Normal pushes still go to the Capacitor push plugin (we extend its service and
+      # remove the original one from the manifest so only one service receives FCM messages).
+      - name: Silent OTA push receiver (native)
+        run: |
+          python3 - << 'PYEOF'
+          import glob, os
+          M = "android/app/src/main/AndroidManifest.xml"
+          F = glob.glob("android/app/src/main/java/**/MainActivity.java", recursive=True)[0]
+          D = os.path.dirname(F)
+          pkg = [l for l in open(F) if l.startswith("package ")][0].strip()
+          pkgname = pkg.replace("package ", "").replace(";", "").strip()
+          open(D + "/NeshMessagingService.java", "w").write(pkg + """
+
+          import com.capacitorjs.plugins.pushnotifications.MessagingService;
+          import com.google.firebase.messaging.RemoteMessage;
+          import ee.forgr.capacitor_updater.HeadlessUpdateWorker;
+
+          public class NeshMessagingService extends MessagingService {
+              @Override
+              public void onMessageReceived(RemoteMessage message) {
+                  try {
+                      if ("1".equals(message.getData().get("nesh_ota"))) {
+                          // silent update check: never shown to the user, never passed to the web app
+                          HeadlessUpdateWorker.enqueue(getApplicationContext());
+                          return;
+                      }
+                  } catch (Throwable t) {
+                      // an update problem must never break normal pushes
+                  }
+                  super.onMessageReceived(message);
+              }
+          }
+          """.replace("\n          ", "\n"))
+          s = open(M).read()
+          if "xmlns:tools=" not in s:
+              s = s.replace("<manifest ", '<manifest xmlns:tools="http://schemas.android.com/tools" ', 1)
+          svc = (
+              '    <service android:name="com.capacitorjs.plugins.pushnotifications.MessagingService" tools:node="remove" />\n'
+              '    <service android:name="' + pkgname + '.NeshMessagingService" android:exported="false">\n'
+              '        <intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT" /></intent-filter>\n'
+              '    </service>\n'
+          )
+          assert "</application>" in s, "application end tag not found"
+          s = s.replace("</application>", svc + "</application>", 1)
+          open(M, "w").write(s)
+          PYEOF
+          printf '\ndependencies {\n    implementation "com.google.firebase:firebase-messaging:25.0.1"\n}\n' >> android/app/build.gradle
+          cat android/app/src/main/java/com/neshgroup/nesh/NeshMessagingService.java
+          grep -n -B1 -A3 "NeshMessagingService\|pushnotifications" android/app/src/main/AndroidManifest.xml
 
       # Android 11+ hides other apps unless declared: this lets the app list the
       # phone's UPI apps (Google Pay, PhonePe, Paytm...) for the "Pay Online" button.

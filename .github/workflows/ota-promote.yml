@@ -4,6 +4,15 @@ name: Promote OTA test bundle to production (all users)
 # It copies the exact tested bundle inside R2 (test/ -> production/) - nothing is rebuilt.
 on:
   workflow_dispatch:
+    inputs:
+      send_push:
+        description: "Send silent OTA push after promote (needs server secrets)"
+        type: boolean
+        default: false
+      push_target:
+        description: "Only if send_push: topic name (e.g. the zone topic)"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -37,3 +46,23 @@ jobs:
           done
           curl -fsI --retry 3 --retry-delay 3 "https://ota.neshapp.in/production/${ZIP}" >/dev/null && echo "public URL ok" || echo "::warning::production URL not reachable - check the custom domain"
           echo "Promoted $ZIP to production"
+
+      - name: Silent OTA push (optional, off by default)
+        if: ${{ inputs.send_push }}
+        env:
+          SSH_KEY: ${{ secrets.NESH_PUSH_SSH_KEY }}
+          SSH_HOST: ${{ secrets.NESH_PUSH_SSH_HOST }}
+          SSH_USER: ${{ secrets.NESH_PUSH_SSH_USER }}
+          SSH_KNOWN_HOSTS: ${{ secrets.NESH_PUSH_KNOWN_HOSTS }}
+          PUSH_TARGET: ${{ inputs.push_target }}
+        run: |
+          set -e
+          [ -n "$PUSH_TARGET" ] || { echo "::error::push_target is empty"; exit 1; }
+          case "$PUSH_TARGET" in *[!A-Za-z0-9_-]*) echo "::error::bad topic name"; exit 1;; esac
+          # manifest is cached 60 s on the server - wait before the push
+          sleep 90
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_push && chmod 600 ~/.ssh/id_push
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # server-side authorized_keys must force: command="/opt/nesh-api/ota-push-wrapper.sh"
+          ssh -i ~/.ssh/id_push -o StrictHostKeyChecking=yes "$SSH_USER@$SSH_HOST" "topic $PUSH_TARGET"
