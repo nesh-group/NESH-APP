@@ -167,8 +167,8 @@ jobs:
       # the APK/AAB), so the website (repo index.html) is not changed:
       #  - no text selection / long-press highlight (inputs still work normally)
       #  - no "save image" long-press menu on photos
-      #  - short slide+fade when moving between screens, like a native app
-      - name: App-only native feel (no text select, no image menu, screen transition)
+      #  - (no screen slide/fade any more: screens switch instantly, no white flicker)
+      - name: App-only native feel (no text select, no image menu)
         run: |
           python3 - << 'PYEOF'
           p = "www/index.html"
@@ -177,13 +177,10 @@ jobs:
           html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
           input,textarea,[contenteditable="true"]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default;}
           img{-webkit-user-drag:none;-webkit-touch-callout:none;}
-          @keyframes neshScreenIn{from{opacity:.85;transform:translateX(20px);}to{opacity:1;transform:none;}}
-          .screen.active{animation:neshScreenIn .2s cubic-bezier(.22,.8,.3,1);}
-          @media (prefers-reduced-motion:reduce){.screen.active{animation:none;}}
-          html.nesh-lite .screen.active{animation:none;}
+          /* No screen fade/slide: it showed the white page behind for a moment (looked like a flicker/hang) and moved the layout. Screens switch instantly. */
           </style>
           <script>
-          // Weak phones (3 GB RAM or less, or 4 cores or less) get "lite" mode: no screen animation, cheaper card shadows.
+          // Weak phones (3 GB RAM or less, or 4 cores or less) get "lite" mode: cheaper card shadows.
           // Stronger phones keep the full look.
           try {
             var _m = navigator.deviceMemory, _c = navigator.hardwareConcurrency;
@@ -849,10 +846,25 @@ jobs:
           import androidx.core.graphics.Insets;
           import androidx.core.view.ViewCompat;
           import androidx.core.view.WindowCompat;
+          import androidx.core.view.WindowInsetsAnimationCompat;
           import androidx.core.view.WindowInsetsCompat;
           import com.getcapacitor.BridgeActivity;
+          import java.util.List;
 
           public class MainActivity extends BridgeActivity {
+              // Keyboard: the page is resized ONCE when the keyboard has finished sliding (not on every animation frame),
+              // so the layout does not shake / lag while the keyboard opens or closes.
+              private boolean imeDeferred = false;
+              private WindowInsetsCompat lastInsets = null;
+
+              private void applyPad(View v) {
+                  if (v == null || lastInsets == null) return;
+                  int types = WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout();
+                  if (!imeDeferred) types |= WindowInsetsCompat.Type.ime();
+                  Insets bars = lastInsets.getInsets(types);
+                  v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+              }
+
               @Override
               public void onCreate(Bundle savedInstanceState) {
                   registerPlugin(NeshLocationPlugin.class);
@@ -871,13 +883,37 @@ jobs:
 
                   View content = findViewById(android.R.id.content);
                   ViewCompat.setOnApplyWindowInsetsListener(content, (v, insets) -> {
-                      Insets bars = insets.getInsets(
-                          WindowInsetsCompat.Type.systemBars()
-                          | WindowInsetsCompat.Type.displayCutout()
-                          | WindowInsetsCompat.Type.ime());
-                      v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+                      lastInsets = insets;
+                      applyPad(v);
                       return WindowInsetsCompat.CONSUMED;
                   });
+                  try {
+                      ViewCompat.setWindowInsetsAnimationCallback(content,
+                          new WindowInsetsAnimationCompat.Callback(WindowInsetsAnimationCompat.Callback.DISPATCH_MODE_CONTINUE_ON_SUBTREE) {
+                              @Override
+                              public void onPrepare(WindowInsetsAnimationCompat animation) {
+                                  if ((animation.getTypeMask() & WindowInsetsCompat.Type.ime()) != 0) {
+                                      imeDeferred = true;
+                                      final View c = findViewById(android.R.id.content);
+                                      // safety: never stay in "deferred" mode if the end callback does not arrive
+                                      if (c != null) c.postDelayed(() -> { if (imeDeferred) { imeDeferred = false; applyPad(c); } }, 700);
+                                  }
+                              }
+
+                              @Override
+                              public WindowInsetsCompat onProgress(WindowInsetsCompat insets, List<WindowInsetsAnimationCompat> running) {
+                                  return insets;
+                              }
+
+                              @Override
+                              public void onEnd(WindowInsetsAnimationCompat animation) {
+                                  if (imeDeferred && (animation.getTypeMask() & WindowInsetsCompat.Type.ime()) != 0) {
+                                      imeDeferred = false;
+                                      applyPad(findViewById(android.R.id.content));
+                                  }
+                              }
+                          });
+                  } catch (Throwable t) { imeDeferred = false; }
                   ViewCompat.requestApplyInsets(content);
 
                   // The page must never slide sideways (left part cut off + yellow strip on the right).
