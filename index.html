@@ -4651,6 +4651,14 @@ html[data-theme="dark"] .cp-cancel-policy b{ color:#BCAE8A; }
 .np-art .np-cut{ position:absolute; right:-8px; bottom:-6px; height:128%; width:auto; max-width:none; object-fit:contain; z-index:3; pointer-events:none; filter:drop-shadow(0 8px 10px rgba(43,36,16,.28)); }
 .np-art.has-cut .np-pic-s, .np-art.has-cut .np-pic-b, .np-art.has-cut .np-pic-t{ display:none !important; }
 </style>
+<style id="nesh-reel-fix">
+/* Reels: steady, no shaking. Page behind is locked, the feed only pans vertically, every reel is its own layer. */
+html:has(#rl-ov.on), html:has(#rl-ov.on) body{ overflow:hidden !important; overscroll-behavior:none; }
+#rl-ov{ overscroll-behavior:none; contain:layout paint; }
+#rl-feed{ touch-action:pan-y; overscroll-behavior:none; contain:layout paint; }
+.rl-item{ contain:layout paint style; }
+.rl-item video{ transform:translateZ(0); backface-visibility:hidden; }
+</style>
 </head>
 <body>
 <div id="nesh-splash" class="show" aria-live="polite">
@@ -8168,6 +8176,23 @@ function neshGetDeviceId() {
   }
 }
 const NESH_DEVICE_ID = neshGetDeviceId();
+
+// ---------- OTA test id = login number ----------
+// The live-update check sends the logged-in mobile number (last 10 digits) as its custom id, so the OTA TEST list
+// can be kept by phone number and survives reinstall / clear storage. Only our own server (api.neshapp.in/ota) gets it.
+(function () {
+  var last = null;
+  setInterval(function () {
+    try {
+      var P = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorUpdater;
+      if (!P || !P.setCustomId) return;
+      var n = String((typeof state !== 'undefined' && state && state.user && state.user.number) || '').replace(/\D/g, '').slice(-10);
+      if (n.length !== 10 || n === last) return;
+      last = n;
+      P.setCustomId({ customId: n });
+    } catch (e) {}
+  }, 5000);
+})();
 
 // Firebase keys can't contain '.', '#', '$', '[', ']', '/' — this scrubs any
 // identifier (phone number, device id) before it's used as a path segment.
@@ -13870,6 +13895,9 @@ function neshIsShown(id) {
 function neshHandleBack() {
   // --- 1) Popups / sheets, top-most first ---
   if (neshIsShown('nesh-blocked-overlay')) return 'stay';       // blocked account: can't dismiss
+  // Reels: back closes the "Login needed" sheet first, then the reel feed itself -> returns to the screen the customer came from
+  { const fl = document.getElementById('fl-sheet'); if (fl && fl.classList.contains('show')) { const no = document.getElementById('fl-no'); if (no) no.click(); else fl.classList.remove('show'); return 'stay'; } }
+  if (typeof neshRlOpenNow === 'function' && neshRlOpenNow()) { neshRlClose(); return 'stay'; }
   if (window.neshVadOpen && window.neshVadOpen()) { window.neshVadClose(); return 'stay'; }   // video ad: back = skip
   if (neshIsShown('bus-video-overlay')) {
     const c = document.getElementById('bus-video-close-btn');
