@@ -177,6 +177,15 @@ jobs:
           html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
           input,textarea,[contenteditable="true"]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default;}
           img{-webkit-user-drag:none;-webkit-touch-callout:none;}
+          /* Android (Material) feel */
+          *{-webkit-tap-highlight-color:transparent;}
+          html,body{overscroll-behavior:none;}
+          button,a,.add-btn,.btn-primary,.cat-card,.rest-card2,.item-card2,.food-card,.fo-card,.food-item-tile{touch-action:manipulation;}
+          .food-card:active,.food-item-tile:active,#food-offers .fo-card:active{transform:none !important;}
+          html:not(.nesh-lite) .btn-primary,html:not(.nesh-lite) .add-btn{box-shadow:0 1px 3px rgba(0,0,0,.20),0 2px 6px rgba(43,36,16,.16);}
+          #nesh-ripple{position:fixed;overflow:hidden;pointer-events:none;z-index:99990;}
+          #nesh-ripple i{position:absolute;border-radius:50%;background:rgba(43,36,16,.16);transform:scale(0);opacity:1;animation:neshRip .45s cubic-bezier(.4,0,.2,1) forwards;}
+          @keyframes neshRip{to{transform:scale(1);opacity:0;}}
           /* No screen fade/slide: it showed the white page behind for a moment (looked like a flicker/hang) and moved the layout. Screens switch instantly. */
           </style>
           <script>
@@ -190,6 +199,35 @@ jobs:
             var t = e.target;
             if (t && t.tagName !== 'INPUT' && t.tagName !== 'TEXTAREA') e.preventDefault();
           });
+          // Material ripple: a soft circle spreads from the touch point, clipped to the tapped button / card.
+          // One fixed overlay (compositor-only transform/opacity), the page layout is never changed. Skipped while scrolling.
+          (function () {
+            var SEL = 'button,.add-btn,.btn-primary,.cat-card,.rest-card2,.item-card2,.food-card,.fo-card,.food-item-tile,.food-chip,.nf-tab,[role="button"]';
+            var t0 = null, sx = 0, sy = 0, tgt = null, host = null;
+            function clear() { clearTimeout(t0); t0 = null; if (host) { host.remove(); host = null; } }
+            document.addEventListener('pointerdown', function (e) {
+              try {
+                clear();
+                tgt = e.target && e.target.closest ? e.target.closest(SEL) : null;
+                if (!tgt || tgt.disabled) return;
+                sx = e.clientX; sy = e.clientY;
+                t0 = setTimeout(function () {
+                  try {
+                    var r = tgt.getBoundingClientRect();
+                    if (r.width < 24 || r.height < 24 || r.width > innerWidth * 1.05 && r.height > innerHeight * 0.6) return;
+                    host = document.createElement('div'); host.id = 'nesh-ripple';
+                    host.style.cssText = 'left:' + r.left + 'px;top:' + r.top + 'px;width:' + r.width + 'px;height:' + r.height + 'px;border-radius:' + getComputedStyle(tgt).borderRadius;
+                    var d = Math.max(r.width, r.height) * 2, i = document.createElement('i');
+                    i.style.cssText = 'width:' + d + 'px;height:' + d + 'px;left:' + (sx - r.left - d / 2) + 'px;top:' + (sy - r.top - d / 2) + 'px';
+                    host.appendChild(i); document.body.appendChild(host);
+                    setTimeout(function () { if (host) { host.remove(); host = null; } }, 520);
+                  } catch (x) {}
+                }, 40);
+              } catch (x) {}
+            }, { passive: true, capture: true });
+            document.addEventListener('pointermove', function (e) { if (t0 && (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8)) clear(); }, { passive: true, capture: true });
+            ['pointercancel', 'scroll'].forEach(function (n) { document.addEventListener(n, function () { if (t0) clear(); }, { passive: true, capture: true }); });
+          })();
           // Light tap vibration (native feel) on Add / primary buttons. Does nothing if the plugin is missing.
           document.addEventListener('click', function (e) {
             try {
@@ -261,7 +299,7 @@ jobs:
           #nesh-splash .sp-orbit .o{
             position:absolute; left:50%; top:50%; width:46px; height:46px; margin:-23px 0 0 -23px;
             transform:rotate(var(--a)) translateY(calc(var(--r)*-1)) rotate(calc(var(--a)*-1));
-            animation:spOrbFade .6s ease var(--d,.4s) both;
+            opacity:1;
           }
           #nesh-splash .sp-orbit .o i{
             display:flex; align-items:center; justify-content:center; width:46px; height:46px; border-radius:50%;
@@ -275,12 +313,12 @@ jobs:
           #nesh-splash .sp-tag, #nesh-splash.no-loc .sp-tag{
             top:calc(46% + min(41vw,162px) + 37px); opacity:1; animation:none; font-weight:700; letter-spacing:.2em; color:#2B2410;
           }
-          #nesh-splash .sp-tag span{ animation:spWord .55s cubic-bezier(.2,.8,.2,1) both; }
+          #nesh-splash .sp-tag span{ animation:none; opacity:1; }
           #nesh-splash .sp-tag span:nth-of-type(1){ animation-delay:.45s; }
           #nesh-splash .sp-tag span:nth-of-type(2){ animation-delay:.6s; }
           #nesh-splash .sp-tag span:nth-of-type(3){ animation-delay:.75s; }
           #nesh-splash .sp-tag span:nth-of-type(4){ animation-delay:.9s; }
-          #nesh-splash .sp-tag b{ width:5px; height:5px; opacity:1; background:linear-gradient(135deg,#1E6BFF,#FF2D6F); animation:spWord .4s ease .7s both; }
+          #nesh-splash .sp-tag b{ width:5px; height:5px; opacity:1; background:linear-gradient(135deg,#1E6BFF,#FF2D6F); animation:none; }
           #nesh-splash::after{ width:96px; margin-left:-48px; height:5px; border-radius:5px; background:rgba(43,36,16,.14); }
           #nesh-splash::before{ width:36px; margin-left:-48px; height:5px; border-radius:5px; background:linear-gradient(90deg,#1E6BFF,#FF2D6F); animation:spBar3 1.2s ease-in-out infinite; }
           @keyframes spOrb{ to{ transform:rotate(360deg); } }
@@ -292,18 +330,18 @@ jobs:
           /* weak phones: same look, standing still */
           html.nesh-lite #nesh-splash .sp-orbit, html.nesh-lite #nesh-splash .sp-orbit .o i, html.nesh-lite #nesh-splash .sp-glow{ animation:none; }
           html.nesh-lite #nesh-splash .sp-up{ display:none; }
+          /* complete from the first frame (the native splash already shows this logo): no fade-in stages, no pulsing, fewer animations = no "hang" look */
+          #nesh-splash .sp-logo, #nesh-splash.no-loc .sp-logo{ animation:none !important; opacity:1; transform:translate(-50%,-50%); }
+          #nesh-splash .sp-glow{ animation:none !important; }
+          #nesh-splash .sp-up{ display:none !important; }
+          #nesh-splash .sp-orbit{ will-change:transform; }
+          #nesh-splash .sp-orbit .o i{ will-change:transform; }
           </style>
           """.replace("\n          ", "\n")
           deco = """
           <div class="sp-deco" aria-hidden="true">
             <i class="sp-glow"></i>
             <div class="sp-orbit"><span class="o" style="--a:0deg;--d:0.4s"><i>🍔</i></span><span class="o" style="--a:90deg;--d:0.55s"><i>🛒</i></span><span class="o" style="--a:180deg;--d:0.7s"><i>🚕</i></span><span class="o" style="--a:270deg;--d:0.85s"><i>🛍️</i></span></div>
-            <svg class="sp-up" style="left:7%;--s:20px;--t:6.5s;--d:0s" viewBox="0 0 24 24"><path d="M6 18 18 6M9 6h9v9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <svg class="sp-up" style="left:24%;--s:28px;--t:7.5s;--d:1.8s" viewBox="0 0 24 24"><path d="M6 18 18 6M9 6h9v9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <svg class="sp-up" style="left:42%;--s:18px;--t:6s;--d:3.2s" viewBox="0 0 24 24"><path d="M6 18 18 6M9 6h9v9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <svg class="sp-up" style="left:60%;--s:26px;--t:7s;--d:.9s" viewBox="0 0 24 24"><path d="M6 18 18 6M9 6h9v9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <svg class="sp-up" style="left:77%;--s:20px;--t:6.8s;--d:2.6s" viewBox="0 0 24 24"><path d="M6 18 18 6M9 6h9v9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <svg class="sp-up" style="left:90%;--s:24px;--t:7.2s;--d:4s" viewBox="0 0 24 24"><path d="M6 18 18 6M9 6h9v9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
           """.replace("\n          ", "\n").strip() + "\n  "
           h2, n = re.subn(r'<div class="sp-deco" aria-hidden="true">.*?</div>\s*(?=<div class="sp-top">)', lambda m: deco, h, count=1, flags=re.S)
@@ -351,8 +389,9 @@ jobs:
             function hideSplash() {
               try { var S = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SplashScreen; if (S && S.hide) S.hide({ fadeOutDuration: 150 }); } catch (e) {}
             }
+            window.neshNativeSplashHide = hideSplash;   // index.html calls this once its own splash is really painted
             if (isNative()) {
-              setTimeout(hideSplash, 5000);
+              setTimeout(hideSplash, 4000);
               document.addEventListener('visibilitychange', function () {
                 if (document.visibilityState === 'visible') { setTimeout(hideSplash, 600); setTimeout(hideSplash, 3000); }
               });
@@ -681,7 +720,7 @@ jobs:
               "android": {"adjustMarginsForEdgeToEdge": "disable"},
               "plugins": {
                   "SystemBars": {"insetsHandling": "disable"},
-                  "SplashScreen": {"launchShowDuration": 0, "launchAutoHide": True, "backgroundColor": "#F2B705", "showSpinner": False},
+                  "SplashScreen": {"launchShowDuration": 0, "launchAutoHide": False, "backgroundColor": "#F2B705", "showSpinner": False},
                   "FirebaseAuthentication": {"providers": ["phone"]}
               }
           }
