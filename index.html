@@ -141,7 +141,9 @@ html[data-theme="dark"] .ff-price-head{ color:#E7E0CD; }
   .food-card{ position:relative; border-radius:24px; overflow:hidden; margin:0 0 16px; box-shadow:0 8px 22px rgba(43,36,16,.18); cursor:pointer; background:#222; transition:transform .15s; }
   .food-card:active{ transform:scale(.98); }
   .food-card-photo{ width:100%; height:210px; object-fit:cover; display:block; }
-  .food-card{ content-visibility:auto; contain-intrinsic-size:auto 210px; }   /* long shop lists: skip off-screen cards -> smoother open + scroll */
+  .food-card{ content-visibility:auto; contain-intrinsic-size:auto 172px; }   /* long shop lists: skip off-screen cards -> smoother open + scroll. Size = real card height (172px) so the page height never jumps. */
+  #screen-home[data-cat="hotel"] .food-card{ contain-intrinsic-size:auto 200px; }
+  #screen-home, #screen-menu{ overflow-anchor:none; }   /* no automatic scroll re-adjusting while the list lays out */
   .food-card::after{ content:""; position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,.86) 0%, rgba(0,0,0,.35) 45%, rgba(0,0,0,0) 70%); pointer-events:none; }
 
   /* ---- Closed shop: browse-only mode ---- */
@@ -16976,6 +16978,7 @@ function goHomeSafe() {
   renderHome();
   showScreen('home');
   persistScreen('home', { category: state.category });
+  try { const sv = window._neshHomeScroll; window._neshHomeScroll = null; if (sv && sv.y > 0 && sv.cat === state.category) neshRestoreScrollY(sv.y); } catch (e) {}
 }
 // Where the cart/checkout card was opened from (set by the Home cart bar). If the customer taps
 // "Add More Items", adds things, and presses Back, they return THERE instead of the shop list.
@@ -16986,11 +16989,20 @@ function neshReturnToOrigin(o) {
       if (!o.restId || (state.selectedRestaurant && state.selectedRestaurant.id === o.restId)) return false;
       openRestaurant(o.restId); return true;
     }
-    if (o.scr === 'home') { if (o.cat) state.category = o.cat; renderHome(); showScreen('home'); persistScreen('home', { category: state.category }); return true; }
+    if (o.scr === 'home') { if (o.cat) state.category = o.cat; renderHome(); showScreen('home'); persistScreen('home', { category: state.category }); try { const sv = window._neshHomeScroll; window._neshHomeScroll = null; if (sv && sv.y > 0 && sv.cat === state.category) neshRestoreScrollY(sv.y); } catch (e) {} return true; }
     if (o.scr === 'category') { goToCategoryScreen(); return true; }
     if (o.scr === 'trending') { showScreen('trending'); return true; }
   } catch (e) {}
   return false;
+}
+// Instant Back: a quick fingerprint of everything the shop list shows (category, filter, search, location, every shop's open/closed state).
+// If it is unchanged when the customer returns, the list on screen is still right, so it is NOT rebuilt (no flicker, no work).
+function neshHomeSig() {
+  try {
+    const st = (RESTAURANTS || []).map(r => r.id + (getShopClosedInfo(r).closed ? 'c' : 'o') + (r.rating || '') + (r.image || '').length).join(',');
+    const cp = state.customerPos ? (state.customerPos.lat + ',' + state.customerPos.lng) : '';
+    return [state.category, foodState.filter, searchInput.value, cp, st].join('|');
+  } catch (e) { return null; }
 }
 function menuBackClicked() {
   { const o = window.neshCkOrigin; window.neshCkOrigin = null; if (o && neshReturnToOrigin(o)) return; }
@@ -17000,16 +17012,18 @@ function menuBackClicked() {
     return;
   }
   if (r && (r.businessType === 'hotel' || r.businessType === 'online_shop')) state.category = r.businessType;
-  renderHome();
+  {
+    const _sv = window._neshHomeScroll;
+    const _same = !!(_sv && _sv.sig && _sv.cat === state.category && _sv.sig === neshHomeSig() && restListEl && restListEl.children.length);
+    if (_same) { try { updateHomeLocationLabel(); updateHomeTrackBtn(); } catch (e) {} }   // list still correct -> keep it as is
+    else renderHome();
+  }
   showScreen('home');
   persistScreen('home', { category: state.category });
-  // Put the shop list back where the customer left it.
+  // Put the shop list back where the customer left it (one clean restore - no visible jumping).
   try {
     const sv = window._neshHomeScroll; window._neshHomeScroll = null;
-    if (sv && sv.y > 0 && sv.cat === state.category) {
-      const go = () => window.scrollTo(0, sv.y);
-      go(); requestAnimationFrame(go); setTimeout(go, 120); setTimeout(go, 400);
-    }
+    if (sv && sv.y > 0 && sv.cat === state.category) neshRestoreScrollY(sv.y);
   } catch (e) {}
 }
 function openRestaurant(id) {
@@ -17018,7 +17032,7 @@ function openRestaurant(id) {
   // Remember where the shop list was scrolled, so Back returns to the same spot (not the top).
   try {
     const _a = document.querySelector('.screen.active');
-    window._neshHomeScroll = (_a && _a.id === 'screen-home') ? { y: window.scrollY || document.documentElement.scrollTop || 0, cat: state.category } : null;
+    window._neshHomeScroll = (_a && _a.id === 'screen-home') ? { y: window.scrollY || document.documentElement.scrollTop || 0, cat: state.category, sig: neshHomeSig() } : null;
   } catch (e) { window._neshHomeScroll = null; }
   state.selectedRestaurant = RESTAURANTS.find(r => r.id === id);
   state.pravasi = isPravasiShop(state.selectedRestaurant);
@@ -17947,7 +17961,22 @@ document.getElementById('item-detail-share-btn').addEventListener('click', async
 // Put the page back at a saved scroll position (the list is re-rendered first, so retry briefly while it lays out).
 function neshRestoreScrollY(y) {
   if (!(y > 0)) return;
-  try { const go = () => window.scrollTo(0, y); go(); requestAnimationFrame(go); setTimeout(go, 120); setTimeout(go, 400); } catch (e) {}
+  try {
+    const de = document.documentElement;
+    const prev = de.style.scrollBehavior; de.style.scrollBehavior = 'auto';   // never animate the restore
+    let touched = false;
+    const stop = () => { touched = true; };
+    window.addEventListener('touchstart', stop, { once: true, passive: true });
+    window.addEventListener('wheel', stop, { once: true, passive: true });
+    const go = () => { if (!touched) window.scrollTo(0, y); };
+    go();                                                  // same frame as the screen switch -> user never sees the top
+    requestAnimationFrame(() => {
+      go();
+      de.style.scrollBehavior = prev;
+    });
+    // Only if the list was still too short to reach the spot (images/layout late) - one quiet retry
+    setTimeout(() => { if (!touched && Math.abs((window.scrollY || 0) - y) > 4) window.scrollTo(0, y); }, 150);
+  } catch (e) {}
 }
 function openItemDetail(itemId, fromHome) {
   if (state.selectedRestaurant && getShopClosedInfo(state.selectedRestaurant).closed) { renderMenu(); showScreen('menu'); return; }
@@ -28067,6 +28096,100 @@ body.has-fnav.fn-kb #screen-home{ padding-bottom:20px !important; }
     } catch (e) {}
     return _alert(msg);
   };
+})();
+</script>
+
+<style id="nesh-native-feel">
+/* ===== Native-app feel: no web-page tells ===== */
+*{ -webkit-tap-highlight-color:transparent; }
+html,body{ overscroll-behavior-y:none; -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+button,.food-card,.cat-card,.item-card2,.ff-chip,.food-chip,.np-card,.lc-hc,.btn-back,.cart-bar{ -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }   /* text elsewhere (addresses, codes) stays copyable */
+img,svg,video{ -webkit-user-drag:none; user-drag:none; -webkit-touch-callout:none; }
+button,a,[role="button"],.food-card,.cat-card,.item-card2,.ff-chip,.food-chip,.np-card,.lc-hc{ touch-action:manipulation; }
+/* instant press feedback (no 300ms wait, no hover stickiness on touch) */
+button:active,[role="button"]:active,.cat-card:active,.item-card2:active,.np-card:active,.lc-hc:active{ opacity:.82; }
+.food-card:active{ transform:scale(.985); transition:transform .08s; }
+/* smooth, flicker-free screen switch (opacity only) */
+.screen.active{ animation:neshScrIn .12s ease-out both; }
+@keyframes neshScrIn{ from{ opacity:.0 } to{ opacity:1 } }
+/* images fade in instead of popping (no layout shift: boxes already have fixed size) */
+.food-card-photo{ background:#e9e2cf; }
+@media (hover:none){ .cat-card:hover,.food-card:hover,.rest-card2:hover,.mart-card:hover,.item-card2:hover{ transform:none !important; } }
+@media (prefers-reduced-motion:reduce){ .screen.active{ animation:none; } }
+
+/* ---- native-style page transitions for the shop flow (Home -> Shop -> Item): slide in like iOS/Android apps ---- */
+.screen.active.nv-fwd{ position:relative; animation:nvF .24s cubic-bezier(.22,.8,.24,1) both; }
+.screen.active.nv-back{ position:relative; animation:nvB .22s cubic-bezier(.22,.8,.24,1) both; }
+@keyframes nvF{ from{ left:34px; opacity:.35 } to{ left:0; opacity:1 } }
+@keyframes nvB{ from{ left:-22px; opacity:.5 } to{ left:0; opacity:1 } }
+@media (prefers-reduced-motion:reduce){ .screen.active.nv-fwd,.screen.active.nv-back{ animation:none; } }
+/* shop photos fade in softly instead of popping (safety: revealed by JS on load/error, and always after 3s) */
+.food-card-photo:not(.nl){ opacity:0; }
+.food-card-photo{ transition:opacity .28s ease-out; }
+</style>
+<script id="nesh-native-feel-js">
+(function(){
+  // long-press on pictures/buttons must not open the browser menu
+  document.addEventListener('contextmenu', function(e){ var t=e.target; if(t&&t.closest&&t.closest('img,button,.food-card,.cat-card,.item-card2')) e.preventDefault(); }, true);
+  // passive touch listeners: scrolling never waits on JS
+  try { window.addEventListener('touchmove', function(){}, { passive:true }); } catch(e){}
+})();
+
+(function(){
+  /* ===== A) native slide transitions (only Home <-> Shop <-> Item, the main flow) ===== */
+  var depth={ 'home':1, 'menu':2, 'item-detail':3 };
+  function wrapShow(){
+    var orig=window.showScreen;
+    if(typeof orig!=='function'||orig.__nv) return;
+    var w=function(id){
+      var prev=null; try{ var a=document.querySelector('.screen.active'); prev=a&&a.id.replace('screen-',''); }catch(e){}
+      var r=orig.apply(this,arguments);
+      try{
+        if(prev&&prev!==id&&depth[prev]&&depth[id]){
+          var el=document.getElementById('screen-'+id);
+          if(el){
+            var c=depth[id]>depth[prev]?'nv-fwd':'nv-back';
+            el.classList.remove('nv-fwd','nv-back'); void el.offsetWidth; el.classList.add(c);
+            var done=function(){ el.classList.remove('nv-fwd','nv-back'); };
+            el.addEventListener('animationend',done,{once:true});
+            setTimeout(done,400);
+          }
+        }
+      }catch(e){}
+      return r;
+    };
+    w.__nv=true;
+    try{ window.showScreen=w; showScreen=w; }catch(e){}
+  }
+  wrapShow();
+
+  /* ===== B) swipe from the left edge = Back (same as the phone's back button) ===== */
+  var sx=0,sy=0,st=0,tracking=false;
+  document.addEventListener('touchstart',function(e){
+    tracking=false; if(!e.touches||e.touches.length!==1) return;
+    var t=e.touches[0]; if(t.clientX>22) return;
+    var a=document.querySelector('.screen.active'); var id=a?a.id.replace('screen-',''):'';
+    if(!id||id==='category'||id==='taxi-track'||id==='placed') return;
+    sx=t.clientX; sy=t.clientY; st=Date.now(); tracking=true;
+  },{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(!tracking) return; tracking=false;
+    var t=e.changedTouches&&e.changedTouches[0]; if(!t) return;
+    var dx=t.clientX-sx, dy=Math.abs(t.clientY-sy);
+    if(dx>70&&dy<60&&dx>dy*1.6&&Date.now()-st<700){
+      try{ if(typeof window.neshHandleBack==='function') window.neshHandleBack(); }catch(x){}
+    }
+  },{passive:true});
+
+  /* ===== C) shop photos: reveal on load (or error), never stay hidden ===== */
+  function reveal(el){ if(el&&el.classList&&el.classList.contains('food-card-photo')) el.classList.add('nl'); }
+  document.addEventListener('load',function(e){ reveal(e.target); },true);
+  document.addEventListener('error',function(e){ reveal(e.target); },true);
+  setInterval(function(){
+    try{ var l=document.querySelectorAll('.food-card-photo:not(.nl)');
+      for(var i=0;i<l.length;i++){ var im=l[i]; if(im.complete||(im.dataset.nvT=(+im.dataset.nvT||0)+1,+im.dataset.nvT>=2)) im.classList.add('nl'); }
+    }catch(e){}
+  },1500);
 })();
 </script>
 </body>
