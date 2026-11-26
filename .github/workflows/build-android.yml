@@ -1425,13 +1425,181 @@ jobs:
       # until this build is live for most customers (older app versions would show nothing for data-only messages).
       # Replaces the NeshMessagingService written by the "Silent OTA push receiver" step above (same class name,
       # still registered in the manifest by that step), so it MUST stay after that step.
-      - name: Rich notification service (shop logo, countdown, auto-dismiss)
+      - name: Rich notification service (shop logo, countdown, auto-dismiss, custom design)
         run: |
           python3 - << 'PYEOF'
           import glob, os
           F = glob.glob("android/app/src/main/java/**/MainActivity.java", recursive=True)[0]
           D = os.path.dirname(F)
           pkg = [l for l in open(F) if l.startswith("package ")][0].strip()
+          RES = "android/app/src/main/res"
+          os.makedirs(RES + "/layout", exist_ok=True)
+          os.makedirs(RES + "/drawable", exist_ok=True)
+
+          open(RES + "/drawable/nn_timer_bg.xml", "w").write('''<?xml version="1.0" encoding="utf-8"?>
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+              <solid android:color="#FFF2B705" />
+              <corners android:radius="20dp" />
+          </shape>
+          ''')
+
+          # collapsed view: logo | title + text + BIG timer pill | picture thumbnail
+          open(RES + "/layout/nesh_notif_small.xml", "w").write('''<?xml version="1.0" encoding="utf-8"?>
+          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:orientation="horizontal"
+              android:gravity="center_vertical"
+              android:paddingTop="4dp"
+              android:paddingBottom="4dp">
+              <ImageView
+                  android:id="@+id/nn_logo"
+                  android:layout_width="44dp"
+                  android:layout_height="44dp"
+                  android:layout_marginRight="10dp"
+                  android:scaleType="centerCrop" />
+              <LinearLayout
+                  android:layout_width="0dp"
+                  android:layout_height="wrap_content"
+                  android:layout_weight="1"
+                  android:orientation="vertical">
+                  <TextView
+                      android:id="@+id/nn_title"
+                      style="@android:style/TextAppearance.Material.Notification.Title"
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:singleLine="true"
+                      android:ellipsize="end" />
+                  <TextView
+                      android:id="@+id/nn_body"
+                      style="@android:style/TextAppearance.Material.Notification"
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:maxLines="2"
+                      android:ellipsize="end" />
+                  <LinearLayout
+                      android:id="@+id/nn_timer_box"
+                      android:layout_width="wrap_content"
+                      android:layout_height="wrap_content"
+                      android:layout_marginTop="4dp"
+                      android:orientation="horizontal"
+                      android:gravity="center_vertical"
+                      android:background="@drawable/nn_timer_bg"
+                      android:paddingLeft="12dp"
+                      android:paddingRight="12dp"
+                      android:paddingTop="2dp"
+                      android:paddingBottom="2dp">
+                      <TextView
+                          android:layout_width="wrap_content"
+                          android:layout_height="wrap_content"
+                          android:text="⏳ "
+                          android:textSize="18sp"
+                          android:textColor="#FF1A1A1A" />
+                      <Chronometer
+                          android:id="@+id/nn_timer"
+                          android:layout_width="wrap_content"
+                          android:layout_height="wrap_content"
+                          android:textSize="24sp"
+                          android:textStyle="bold"
+                          android:textColor="#FF1A1A1A" />
+                  </LinearLayout>
+              </LinearLayout>
+              <ImageView
+                  android:id="@+id/nn_thumb"
+                  android:layout_width="76dp"
+                  android:layout_height="76dp"
+                  android:layout_marginLeft="8dp"
+                  android:scaleType="centerCrop" />
+          </LinearLayout>
+          ''')
+
+          # expanded view: same header row + full width picture below
+          open(RES + "/layout/nesh_notif_big.xml", "w").write('''<?xml version="1.0" encoding="utf-8"?>
+          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:orientation="vertical"
+              android:paddingTop="4dp"
+              android:paddingBottom="6dp">
+              <LinearLayout
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:orientation="horizontal"
+                  android:gravity="center_vertical">
+                  <ImageView
+                      android:id="@+id/nn_logo"
+                      android:layout_width="44dp"
+                      android:layout_height="44dp"
+                      android:layout_marginRight="10dp"
+                      android:scaleType="centerCrop" />
+                  <LinearLayout
+                      android:layout_width="0dp"
+                      android:layout_height="wrap_content"
+                      android:layout_weight="1"
+                      android:orientation="vertical">
+                      <TextView
+                          android:id="@+id/nn_title"
+                          style="@android:style/TextAppearance.Material.Notification.Title"
+                          android:layout_width="match_parent"
+                          android:layout_height="wrap_content"
+                          android:singleLine="true"
+                          android:ellipsize="end" />
+                      <TextView
+                          android:id="@+id/nn_body"
+                          style="@android:style/TextAppearance.Material.Notification"
+                          android:layout_width="match_parent"
+                          android:layout_height="wrap_content"
+                          android:maxLines="2"
+                          android:ellipsize="end" />
+                  </LinearLayout>
+                  <LinearLayout
+                      android:id="@+id/nn_timer_box"
+                      android:layout_width="wrap_content"
+                      android:layout_height="wrap_content"
+                      android:layout_marginLeft="8dp"
+                      android:orientation="horizontal"
+                      android:gravity="center_vertical"
+                      android:background="@drawable/nn_timer_bg"
+                      android:paddingLeft="12dp"
+                      android:paddingRight="12dp"
+                      android:paddingTop="4dp"
+                      android:paddingBottom="4dp">
+                      <TextView
+                          android:layout_width="wrap_content"
+                          android:layout_height="wrap_content"
+                          android:text="⏳ "
+                          android:textSize="18sp"
+                          android:textColor="#FF1A1A1A" />
+                      <Chronometer
+                          android:id="@+id/nn_timer"
+                          android:layout_width="wrap_content"
+                          android:layout_height="wrap_content"
+                          android:textSize="26sp"
+                          android:textStyle="bold"
+                          android:textColor="#FF1A1A1A" />
+                  </LinearLayout>
+              </LinearLayout>
+              <ImageView
+                  android:id="@+id/nn_pic"
+                  android:layout_width="match_parent"
+                  android:layout_height="150dp"
+                  android:layout_marginTop="8dp"
+                  android:scaleType="centerCrop" />
+          </LinearLayout>
+          ''')
+
+          import xml.dom.minidom as md
+          for f in glob.glob(RES + "/layout/nesh_notif_*.xml") + [RES + "/drawable/nn_timer_bg.xml"]:
+              md.parse(f)
+          print("layouts ok")
+
+          # optional custom sound for reel notifications: put the file in the repo at sounds/nesh_reel.mp3
+          if os.path.exists("sounds/nesh_reel.mp3"):
+              os.makedirs(RES + "/raw", exist_ok=True)
+              import shutil
+              shutil.copy("sounds/nesh_reel.mp3", RES + "/raw/nesh_reel.mp3")
+              print("custom reel sound copied")
+
           open(D + "/NeshMessagingService.java", "w").write(pkg + """
 
           import android.app.NotificationChannel;
@@ -1446,7 +1614,12 @@ jobs:
           import android.graphics.PorterDuff;
           import android.graphics.PorterDuffXfermode;
           import android.graphics.Rect;
+          import android.media.AudioAttributes;
+          import android.net.Uri;
           import android.os.Build;
+          import android.os.SystemClock;
+          import android.view.View;
+          import android.widget.RemoteViews;
           import androidx.core.app.NotificationCompat;
           import androidx.core.app.NotificationManagerCompat;
           import com.capacitorjs.plugins.pushnotifications.MessagingService;
@@ -1468,7 +1641,7 @@ jobs:
                           return;
                       }
                       if ("1".equals(d.get("nesh_rich"))) {
-                          // data-only push: drawn natively (round shop logo, big picture, optional countdown + auto-dismiss)
+                          // data-only push: drawn natively (custom design, round shop logo, big timer)
                           showRich(message);
                           return;
                       }
@@ -1493,6 +1666,14 @@ jobs:
                   }
               }
 
+              // keep bitmaps small: notifications with huge bitmaps are dropped by Android
+              private static Bitmap fit(Bitmap src, int maxW) {
+                  if (src == null) return null;
+                  if (src.getWidth() <= maxW) return src;
+                  int h = Math.max(1, Math.round(src.getHeight() * (maxW / (float) src.getWidth())));
+                  return Bitmap.createScaledBitmap(src, maxW, h, true);
+              }
+
               private static Bitmap circle(Bitmap src) {
                   int s = Math.min(src.getWidth(), src.getHeight());
                   Bitmap out = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888);
@@ -1505,6 +1686,30 @@ jobs:
                   return out;
               }
 
+              private static int rid(Context c, String type, String name) {
+                  return c.getResources().getIdentifier(name, type, c.getPackageName());
+              }
+
+              private void fill(RemoteViews rv, Context c, String title, String body, Bitmap logo, Bitmap pic, boolean big, long left) {
+                  rv.setTextViewText(rid(c, "id", "nn_title"), title);
+                  rv.setTextViewText(rid(c, "id", "nn_body"), body);
+                  int idLogo = rid(c, "id", "nn_logo");
+                  if (logo != null) { rv.setImageViewBitmap(idLogo, logo); rv.setViewVisibility(idLogo, View.VISIBLE); }
+                  else rv.setViewVisibility(idLogo, View.GONE);
+                  int idPic = rid(c, "id", big ? "nn_pic" : "nn_thumb");
+                  if (pic != null) { rv.setImageViewBitmap(idPic, pic); rv.setViewVisibility(idPic, View.VISIBLE); }
+                  else rv.setViewVisibility(idPic, View.GONE);
+                  int idBox = rid(c, "id", "nn_timer_box");
+                  if (left > 1000) {
+                      rv.setViewVisibility(idBox, View.VISIBLE);
+                      int idT = rid(c, "id", "nn_timer");
+                      rv.setChronometerCountDown(idT, true);
+                      rv.setChronometer(idT, SystemClock.elapsedRealtime() + left, null, true);
+                  } else {
+                      rv.setViewVisibility(idBox, View.GONE);
+                  }
+              }
+
               private void showRich(RemoteMessage message) {
                   Context c = getApplicationContext();
                   Map<String, String> d = message.getData();
@@ -1515,9 +1720,20 @@ jobs:
                   String ch = d.get("channel_id");
                   if (ch == null || ch.length() == 0) ch = "nesh_follow";
 
+                  // custom sound only for Last Call pushes (channel_id = nesh_lastcall) and only if sounds/nesh_reel.mp3 is in the repo
+                  int soundRes = rid(c, "raw", "nesh_reel");
+                  boolean customSound = soundRes != 0 && "nesh_lastcall".equals(ch);
+
                   NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
                   if (Build.VERSION.SDK_INT >= 26 && nm != null && nm.getNotificationChannel(ch) == null) {
-                      nm.createNotificationChannel(new NotificationChannel(ch, "NESH updates", NotificationManager.IMPORTANCE_HIGH));
+                      NotificationChannel nc = new NotificationChannel(ch, customSound ? "Last call" : "NESH updates", NotificationManager.IMPORTANCE_HIGH);
+                      if (customSound) {
+                          AudioAttributes aa = new AudioAttributes.Builder()
+                              .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                              .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build();
+                          nc.setSound(Uri.parse("android.resource://" + c.getPackageName() + "/" + soundRes), aa);
+                      }
+                      nm.createNotificationChannel(nc);
                   }
 
                   int nid = (int) (System.currentTimeMillis() & 0x7fffffff);
@@ -1530,8 +1746,22 @@ jobs:
                   for (Map.Entry<String, String> e : d.entrySet()) open.putExtra(e.getKey(), e.getValue());
                   PendingIntent pi = PendingIntent.getActivity(c, nid, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-                  int small = c.getResources().getIdentifier("ic_stat_icon_config_sample", "drawable", c.getPackageName());
+                  int small = rid(c, "drawable", "ic_stat_icon_config_sample");
                   if (small == 0) small = c.getApplicationInfo().icon;
+
+                  Bitmap logoRaw = fetch(d.get("shop_logo"));
+                  Bitmap logo = logoRaw != null ? circle(fit(logoRaw, 160)) : null;
+                  Bitmap picRaw = fetch(d.get("image"));
+
+                  long left = 0;
+                  long end = 0;
+                  try {
+                      String ea = d.get("ends_at");
+                      if (ea != null && ea.length() > 0) {
+                          end = Long.parseLong(ea.trim());
+                          left = end - System.currentTimeMillis();
+                      }
+                  } catch (Throwable t) { left = 0; }
 
                   NotificationCompat.Builder b = new NotificationCompat.Builder(c, ch)
                       .setSmallIcon(small)
@@ -1540,29 +1770,33 @@ jobs:
                       .setContentText(body)
                       .setAutoCancel(true)
                       .setPriority(NotificationCompat.PRIORITY_HIGH)
+                      .setDefaults(customSound ? 0 : NotificationCompat.DEFAULT_ALL)
                       .setContentIntent(pi);
+                  if (left > 1000) b.setTimeoutAfter(left);
 
-                  Bitmap logo = fetch(d.get("shop_logo"));
-                  if (logo != null) b.setLargeIcon(circle(logo));
-                  Bitmap pic = fetch(d.get("image"));
-                  if (pic != null) {
-                      b.setStyle(new NotificationCompat.BigPictureStyle().bigPicture(pic).setSummaryText(body));
-                  } else {
-                      b.setStyle(new NotificationCompat.BigTextStyle().bigText(body));
-                  }
-
-                  // optional countdown: ends_at = end time in milliseconds since 1970 (UTC)
+                  boolean custom = false;
                   try {
-                      String ea = d.get("ends_at");
-                      if (ea != null && ea.length() > 0) {
-                          long end = Long.parseLong(ea.trim());
-                          long left = end - System.currentTimeMillis();
-                          if (left > 1000) {
-                              b.setWhen(end).setShowWhen(true).setUsesChronometer(true).setChronometerCountDown(true);
-                              b.setTimeoutAfter(left);
-                          }
+                      int lSmall = rid(c, "layout", "nesh_notif_small");
+                      int lBig = rid(c, "layout", "nesh_notif_big");
+                      if (lSmall != 0 && lBig != 0) {
+                          RemoteViews rs = new RemoteViews(c.getPackageName(), lSmall);
+                          RemoteViews rb = new RemoteViews(c.getPackageName(), lBig);
+                          fill(rs, c, title, body, logo, picRaw != null ? fit(picRaw, 240) : null, false, left);
+                          fill(rb, c, title, body, logo, picRaw != null ? fit(picRaw, 720) : null, true, left);
+                          b.setStyle(new NotificationCompat.DecoratedCustomViewStyle());
+                          b.setCustomContentView(rs);
+                          b.setCustomBigContentView(rb);
+                          custom = true;
                       }
-                  } catch (Throwable t) { }
+                  } catch (Throwable t) { custom = false; }
+
+                  if (!custom) {
+                      // safe fallback: the earlier plain design
+                      if (logo != null) b.setLargeIcon(logo);
+                      if (picRaw != null) b.setStyle(new NotificationCompat.BigPictureStyle().bigPicture(fit(picRaw, 720)).setSummaryText(body));
+                      else b.setStyle(new NotificationCompat.BigTextStyle().bigText(body));
+                      if (left > 1000) b.setWhen(end).setShowWhen(true).setUsesChronometer(true).setChronometerCountDown(true);
+                  }
 
                   try {
                       NotificationManagerCompat.from(c).notify(nid, b.build());
@@ -1637,11 +1871,11 @@ jobs:
       # versionCode 13 (1.0.12) may already be uploaded to Play Console, and every
       # new upload must have a strictly higher versionCode, so this build
       # uses 14. versionName is only the label users see (1.0.13).
-      # This build: versionCode 16 / 1.0.15 (previous upload used 15). Raise both again for every Play upload.
+      # This build: versionCode 17 / 1.0.16 (previous upload used 16). Raise both again for every Play upload.
       - name: Set version code and name
         run: |
-          sed -i "s/versionCode 1/versionCode 16/" android/app/build.gradle
-          sed -i 's/versionName "1.0"/versionName "1.0.15"/' android/app/build.gradle
+          sed -i "s/versionCode 1/versionCode 17/" android/app/build.gradle
+          sed -i 's/versionName "1.0"/versionName "1.0.16"/' android/app/build.gradle
           grep -E "versionCode|versionName" android/app/build.gradle
 
       - name: Fix Kotlin stdlib duplicate class conflict
