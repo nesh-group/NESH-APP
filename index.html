@@ -14742,11 +14742,15 @@ async function neshPushSync() {
       zones = zonesAtPoint(pt).map(z => String(z.id));
     }
     const name = String(state.user.name || '').trim();
-    const key = [state.user.number, token, name, zones ? zones.slice().sort().join(',') : '-'].join('|');
+    // native build number (versionCode): the server sends the rich notification only to builds that can draw it
+    let build = 0;
+    try { const A = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App; if (A && A.getInfo) { const inf = await A.getInfo(); build = parseInt(inf && inf.build, 10) || 0; } } catch (e) {}
+    const key = [state.user.number, token, name, zones ? zones.slice().sort().join(',') : '-', build].join('|');
     if (localStorage.getItem('nesh_push_sync') === key) return;       // nothing changed -> no network call
     const body = { token };
     if (name) body.name = name;
     if (zones) body.zones = zones;
+    if (build) body.build = build;
     if (await neshPushCall('/token', body)) { localStorage.setItem('nesh_push_sync', key); try { neshFollowPull(); } catch (e) {} return; }
     // not saved (no auth session yet / offline): retry a few times
     if (++_neshPushTries < 4) { clearTimeout(_neshPushT); _neshPushT = setTimeout(neshPushSync, 20000); }
