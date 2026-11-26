@@ -41,7 +41,7 @@ jobs:
           # delta files (only the ones production does not have yet); old bundles without "files" skip this
           python3 -c "import json;[print(f['file_hash'], f['file_name']) for f in json.load(open('manifest.json')).get('files', [])]" | sort -u -k1,1 > want.txt
           aws s3 ls "s3://${R2_BUCKET}/production/files/" --endpoint-url "$R2_ENDPOINT" | awk '{print $4}' | sort -u > have.txt || true
-          awk 'NR==FNR{h[$1]=1;next} !($1 in h)' have.txt want.txt > todo.txt
+          awk 'FILENAME==ARGV[1]{h[$1]=1;next} !($1 in h)' have.txt want.txt > todo.txt
           while read H NAME; do
             case "$NAME" in *.html) CT=text/html;; *.js) CT=application/javascript;; *.css) CT=text/css;; *.json) CT=application/json;; *.svg) CT=image/svg+xml;; *) CT=application/octet-stream;; esac
             aws s3 cp "s3://${R2_BUCKET}/test/files/$H" "s3://${R2_BUCKET}/production/files/$H" --endpoint-url "$R2_ENDPOINT" --content-type "$CT" --cache-control "public, max-age=31536000, immutable" --metadata-directive REPLACE --only-show-errors
