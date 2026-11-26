@@ -9570,14 +9570,21 @@ async function neshFollowToggle(o) {
     try { showToast('Could not save. Check the network and try again.'); } catch (e) {}
   } else if (!was) { try { showToast('Following ' + (o.r.name || 'shop')); } catch (e) {} }
 }
-async function neshFollowPull() {   // after login / app start: take the server's list (other phone, reinstall)
+async function neshFollowPull(n) {   // after login / app start: take the server's list (other phone, reinstall). Retries a few times if the login token is not ready yet.
+  n = n || 0;
+  if (window._neshFolBusy) return;
+  window._neshFolBusy = true;
+  let ok = false;
   try {
-    if (!state.user || !state.user.number) return;
-    const t = await neshPushIdToken(); if (!t) return;
-    const r = await fetch(NESH_PUSH_API + '/following', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + t }, body: '{}' });
-    if (!r.ok) return; const j = await r.json();
-    if (j && j.ok && Array.isArray(j.shops)) { neshFollowSave(new Set(j.shops.map(String))); neshFollowPaint(); }
+    if (!state.user || !state.user.number) { window._neshFolBusy = false; return; }
+    const t = await neshPushIdToken();
+    if (t) {
+      const r = await fetch(NESH_PUSH_API + '/following', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + t }, body: '{}' });
+      if (r.ok) { const j = await r.json(); if (j && j.ok && Array.isArray(j.shops)) { neshFollowSave(new Set(j.shops.map(String))); neshFollowPaint(); ok = true; window._neshFolOk = true; } }
+    }
   } catch (e) {}
+  window._neshFolBusy = false;
+  if (!ok && n < 4) setTimeout(function () { neshFollowPull(n + 1); }, 12000);
 }
 window.neshFollowPull = neshFollowPull;
 
@@ -14726,6 +14733,7 @@ async function neshPushSync() {
     // offers/reminders switch changed while offline / before login -> send it first
     const pp = localStorage.getItem('nesh_push_pref_pending');
     if (pp !== null) { if (await neshPushCall('/pref', { on: pp === '1' })) localStorage.removeItem('nesh_push_pref_pending'); }
+    if (!window._neshFolOk) { try { neshFollowPull(); } catch (e) {} }   // follow list must not depend on the push token being ready
     const token = localStorage.getItem('nesh_fcm_token') || '';
     if (token.length < 20) return;
     let zones = null;
