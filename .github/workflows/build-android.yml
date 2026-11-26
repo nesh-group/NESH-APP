@@ -1438,12 +1438,12 @@ jobs:
 
           open(RES + "/drawable/nn_timer_bg.xml", "w").write('''<?xml version="1.0" encoding="utf-8"?>
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-              <solid android:color="#FFF2B705" />
+              <solid android:color="#FFFFFFFF" />
               <corners android:radius="20dp" />
           </shape>
           ''')
 
-          # collapsed view: logo | title + text + BIG timer pill | picture thumbnail
+          # design 1 (logo, text, timer, thumbnail), design 2 (logo, text, timer on the right), big (expanded)
           open(RES + "/layout/nesh_notif_small.xml", "w").write('''<?xml version="1.0" encoding="utf-8"?>
           <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent"
@@ -1477,32 +1477,42 @@ jobs:
                       android:layout_height="wrap_content"
                       android:maxLines="2"
                       android:ellipsize="end" />
-                  <LinearLayout
+                  <FrameLayout
                       android:id="@+id/nn_timer_box"
+                      android:forceDarkAllowed="false"
                       android:layout_width="wrap_content"
                       android:layout_height="wrap_content"
-                      android:layout_marginTop="4dp"
-                      android:orientation="horizontal"
-                      android:gravity="center_vertical"
-                      android:background="@drawable/nn_timer_bg"
-                      android:paddingLeft="12dp"
-                      android:paddingRight="12dp"
-                      android:paddingTop="2dp"
-                      android:paddingBottom="2dp">
-                      <TextView
+                      android:layout_marginTop="4dp">
+                      <ImageView
+                          android:id="@+id/nn_pill_bg"
+                          android:layout_width="match_parent"
+                          android:layout_height="match_parent"
+                          android:src="@drawable/nn_timer_bg"
+                          android:scaleType="fitXY" />
+                      <LinearLayout
                           android:layout_width="wrap_content"
                           android:layout_height="wrap_content"
-                          android:text="⏳ "
-                          android:textSize="18sp"
-                          android:textColor="#FF1A1A1A" />
-                      <Chronometer
-                          android:id="@+id/nn_timer"
-                          android:layout_width="wrap_content"
-                          android:layout_height="wrap_content"
-                          android:textSize="24sp"
-                          android:textStyle="bold"
-                          android:textColor="#FF1A1A1A" />
-                  </LinearLayout>
+                          android:orientation="horizontal"
+                          android:gravity="center_vertical"
+                          android:paddingLeft="12dp"
+                          android:paddingRight="12dp"
+                          android:paddingTop="2dp"
+                          android:paddingBottom="2dp">
+                          <TextView
+                              android:id="@+id/nn_label"
+                              android:layout_width="wrap_content"
+                              android:layout_height="wrap_content"
+                              android:textSize="14sp"
+                              android:textColor="#FFF2B705" />
+                          <Chronometer
+                              android:id="@+id/nn_timer"
+                              android:layout_width="wrap_content"
+                              android:layout_height="wrap_content"
+                              android:textSize="18sp"
+                              android:textStyle="bold"
+                              android:textColor="#FFF2B705" />
+                      </LinearLayout>
+                  </FrameLayout>
               </LinearLayout>
               <ImageView
                   android:id="@+id/nn_thumb"
@@ -1513,7 +1523,79 @@ jobs:
           </LinearLayout>
           ''')
 
-          # expanded view: same header row + full width picture below
+          open(RES + "/layout/nesh_notif_small2.xml", "w").write('''<?xml version="1.0" encoding="utf-8"?>
+          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:orientation="horizontal"
+              android:gravity="center_vertical"
+              android:paddingTop="6dp"
+              android:paddingBottom="6dp">
+              <ImageView
+                  android:id="@+id/nn_logo"
+                  android:layout_width="44dp"
+                  android:layout_height="44dp"
+                  android:layout_marginRight="10dp"
+                  android:scaleType="centerCrop" />
+              <LinearLayout
+                  android:layout_width="0dp"
+                  android:layout_height="wrap_content"
+                  android:layout_weight="1"
+                  android:orientation="vertical">
+                  <TextView
+                      android:id="@+id/nn_title"
+                      style="@android:style/TextAppearance.Material.Notification.Title"
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:singleLine="true"
+                      android:ellipsize="end" />
+                  <TextView
+                      android:id="@+id/nn_body"
+                      style="@android:style/TextAppearance.Material.Notification"
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:maxLines="2"
+                      android:ellipsize="end" />
+              </LinearLayout>
+              <FrameLayout
+                  android:id="@+id/nn_timer_box"
+                  android:forceDarkAllowed="false"
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:layout_marginLeft="8dp">
+                  <ImageView
+                      android:id="@+id/nn_pill_bg"
+                      android:layout_width="match_parent"
+                      android:layout_height="match_parent"
+                      android:src="@drawable/nn_timer_bg"
+                      android:scaleType="fitXY" />
+                  <LinearLayout
+                      android:layout_width="wrap_content"
+                      android:layout_height="wrap_content"
+                      android:orientation="horizontal"
+                      android:gravity="center_vertical"
+                      android:paddingLeft="12dp"
+                      android:paddingRight="12dp"
+                      android:paddingTop="4dp"
+                      android:paddingBottom="4dp">
+                      <TextView
+                          android:id="@+id/nn_label"
+                          android:layout_width="wrap_content"
+                          android:layout_height="wrap_content"
+                          android:textSize="14sp"
+                          android:textColor="#FFF2B705" />
+                      <Chronometer
+                          android:id="@+id/nn_timer"
+                          android:layout_width="wrap_content"
+                          android:layout_height="wrap_content"
+                          android:textSize="18sp"
+                          android:textStyle="bold"
+                          android:textColor="#FFF2B705" />
+                  </LinearLayout>
+              </FrameLayout>
+          </LinearLayout>
+          ''')
+
           open(RES + "/layout/nesh_notif_big.xml", "w").write('''<?xml version="1.0" encoding="utf-8"?>
           <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent"
@@ -1552,32 +1634,42 @@ jobs:
                           android:maxLines="2"
                           android:ellipsize="end" />
                   </LinearLayout>
-                  <LinearLayout
+                  <FrameLayout
                       android:id="@+id/nn_timer_box"
+                      android:forceDarkAllowed="false"
                       android:layout_width="wrap_content"
                       android:layout_height="wrap_content"
-                      android:layout_marginLeft="8dp"
-                      android:orientation="horizontal"
-                      android:gravity="center_vertical"
-                      android:background="@drawable/nn_timer_bg"
-                      android:paddingLeft="12dp"
-                      android:paddingRight="12dp"
-                      android:paddingTop="4dp"
-                      android:paddingBottom="4dp">
-                      <TextView
+                      android:layout_marginLeft="8dp">
+                      <ImageView
+                          android:id="@+id/nn_pill_bg"
+                          android:layout_width="match_parent"
+                          android:layout_height="match_parent"
+                          android:src="@drawable/nn_timer_bg"
+                          android:scaleType="fitXY" />
+                      <LinearLayout
                           android:layout_width="wrap_content"
                           android:layout_height="wrap_content"
-                          android:text="⏳ "
-                          android:textSize="18sp"
-                          android:textColor="#FF1A1A1A" />
-                      <Chronometer
-                          android:id="@+id/nn_timer"
-                          android:layout_width="wrap_content"
-                          android:layout_height="wrap_content"
-                          android:textSize="26sp"
-                          android:textStyle="bold"
-                          android:textColor="#FF1A1A1A" />
-                  </LinearLayout>
+                          android:orientation="horizontal"
+                          android:gravity="center_vertical"
+                          android:paddingLeft="12dp"
+                          android:paddingRight="12dp"
+                          android:paddingTop="4dp"
+                          android:paddingBottom="4dp">
+                          <TextView
+                              android:id="@+id/nn_label"
+                              android:layout_width="wrap_content"
+                              android:layout_height="wrap_content"
+                              android:textSize="18sp"
+                              android:textColor="#FFF2B705" />
+                          <Chronometer
+                              android:id="@+id/nn_timer"
+                              android:layout_width="wrap_content"
+                              android:layout_height="wrap_content"
+                              android:textSize="26sp"
+                              android:textStyle="bold"
+                              android:textColor="#FFF2B705" />
+                      </LinearLayout>
+                  </FrameLayout>
               </LinearLayout>
               <ImageView
                   android:id="@+id/nn_pic"
@@ -1610,6 +1702,7 @@ jobs:
           import android.graphics.Bitmap;
           import android.graphics.BitmapFactory;
           import android.graphics.Canvas;
+          import android.graphics.Color;
           import android.graphics.Paint;
           import android.graphics.PorterDuff;
           import android.graphics.PorterDuffXfermode;
@@ -1690,19 +1783,43 @@ jobs:
                   return c.getResources().getIdentifier(name, type, c.getPackageName());
               }
 
-              private void fill(RemoteViews rv, Context c, String title, String body, Bitmap logo, Bitmap pic, boolean big, long left) {
+              private static int col(String v, int def) {
+                  try {
+                      if (v == null || v.trim().length() == 0) return def;
+                      return Color.parseColor(v.trim());
+                  } catch (Throwable t) {
+                      return def;
+                  }
+              }
+
+              private void fill(RemoteViews rv, Context c, Map<String, String> d, String title, String body, Bitmap logo, Bitmap pic, boolean big, long left) {
                   rv.setTextViewText(rid(c, "id", "nn_title"), title);
-                  rv.setTextViewText(rid(c, "id", "nn_body"), body);
+                  int idBody = rid(c, "id", "nn_body");
+                  if (idBody != 0) rv.setTextViewText(idBody, body);
                   int idLogo = rid(c, "id", "nn_logo");
                   if (logo != null) { rv.setImageViewBitmap(idLogo, logo); rv.setViewVisibility(idLogo, View.VISIBLE); }
                   else rv.setViewVisibility(idLogo, View.GONE);
                   int idPic = rid(c, "id", big ? "nn_pic" : "nn_thumb");
-                  if (pic != null) { rv.setImageViewBitmap(idPic, pic); rv.setViewVisibility(idPic, View.VISIBLE); }
-                  else rv.setViewVisibility(idPic, View.GONE);
+                  if (idPic != 0) {
+                      if (pic != null) { rv.setImageViewBitmap(idPic, pic); rv.setViewVisibility(idPic, View.VISIBLE); }
+                      else rv.setViewVisibility(idPic, View.GONE);
+                  }
                   int idBox = rid(c, "id", "nn_timer_box");
                   if (left > 1000) {
-                      rv.setViewVisibility(idBox, View.VISIBLE);
+                      // looks come from the server: accent, pill_bg, pill_fg (hex like #F2B705), tlabel (text before the timer)
+                      int accent = col(d.get("accent"), 0xFFF2B705);
+                      int pillBg = col(d.get("pill_bg"), 0xFF1A1A1A);
+                      int pillFg = col(d.get("pill_fg"), accent);
+                      String lab = d.get("tlabel");
+                      if (lab == null) lab = "\\u23F3";
+                      if (lab.length() > 14) lab = lab.substring(0, 14);
+                      int idLab = rid(c, "id", "nn_label");
                       int idT = rid(c, "id", "nn_timer");
+                      rv.setViewVisibility(idBox, View.VISIBLE);
+                      rv.setInt(rid(c, "id", "nn_pill_bg"), "setColorFilter", pillBg);
+                      rv.setTextViewText(idLab, lab.length() > 0 ? lab + " " : "");
+                      rv.setTextColor(idLab, pillFg);
+                      rv.setTextColor(idT, pillFg);
                       rv.setChronometerCountDown(idT, true);
                       rv.setChronometer(idT, SystemClock.elapsedRealtime() + left, null, true);
                   } else {
@@ -1765,7 +1882,7 @@ jobs:
 
                   NotificationCompat.Builder b = new NotificationCompat.Builder(c, ch)
                       .setSmallIcon(small)
-                      .setColor(0xFFF2B705)
+                      .setColor(col(d.get("accent"), 0xFFF2B705))
                       .setContentTitle(title)
                       .setContentText(body)
                       .setAutoCancel(true)
@@ -1776,13 +1893,14 @@ jobs:
 
                   boolean custom = false;
                   try {
-                      int lSmall = rid(c, "layout", "nesh_notif_small");
+                      int lSmall = "2".equals(d.get("design")) ? rid(c, "layout", "nesh_notif_small2") : rid(c, "layout", "nesh_notif_small");
+                      if (lSmall == 0) lSmall = rid(c, "layout", "nesh_notif_small");
                       int lBig = rid(c, "layout", "nesh_notif_big");
                       if (lSmall != 0 && lBig != 0) {
                           RemoteViews rs = new RemoteViews(c.getPackageName(), lSmall);
                           RemoteViews rb = new RemoteViews(c.getPackageName(), lBig);
-                          fill(rs, c, title, body, logo, picRaw != null ? fit(picRaw, 240) : null, false, left);
-                          fill(rb, c, title, body, logo, picRaw != null ? fit(picRaw, 720) : null, true, left);
+                          fill(rs, c, d, title, body, logo, picRaw != null ? fit(picRaw, 240) : null, false, left);
+                          fill(rb, c, d, title, body, logo, picRaw != null ? fit(picRaw, 720) : null, true, left);
                           b.setStyle(new NotificationCompat.DecoratedCustomViewStyle());
                           b.setCustomContentView(rs);
                           b.setCustomBigContentView(rb);
@@ -1871,11 +1989,11 @@ jobs:
       # versionCode 13 (1.0.12) may already be uploaded to Play Console, and every
       # new upload must have a strictly higher versionCode, so this build
       # uses 14. versionName is only the label users see (1.0.13).
-      # This build: versionCode 17 / 1.0.16 (previous upload used 16). Raise both again for every Play upload.
+      # This build: versionCode 16 / 1.0.15 (previous upload used 15). Raise both again for every Play upload.
       - name: Set version code and name
         run: |
-          sed -i "s/versionCode 1/versionCode 17/" android/app/build.gradle
-          sed -i 's/versionName "1.0"/versionName "1.0.16"/' android/app/build.gradle
+          sed -i "s/versionCode 1/versionCode 16/" android/app/build.gradle
+          sed -i 's/versionName "1.0"/versionName "1.0.15"/' android/app/build.gradle
           grep -E "versionCode|versionName" android/app/build.gradle
 
       - name: Fix Kotlin stdlib duplicate class conflict
