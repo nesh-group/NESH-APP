@@ -1415,6 +1415,165 @@ jobs:
           cat android/app/src/main/java/com/neshgroup/nesh/NeshMessagingService.java
           grep -n -B1 -A3 "NeshMessagingService\|pushnotifications" android/app/src/main/AndroidManifest.xml
 
+      # RICH FOLLOW-REEL NOTIFICATION (native): round SHOP LOGO, big reel picture, optional COUNTDOWN + auto-dismiss.
+      # FCM cannot draw a round logo by itself, and a notification-type push shown while the app is closed never reaches
+      # app code. So the server sends a DATA-ONLY message with nesh_rich=1 and this service draws the notification.
+      # Data fields it understands: title, body, image (https), shop_logo (https), ends_at (epoch milliseconds, optional:
+      # shows a countdown and removes the notification at that time), channel_id (optional, default nesh_follow),
+      # plus any other keys (type, reel, shop...) which are handed to the web app when the notification is tapped.
+      # Messages without nesh_rich=1 behave exactly as before. The server must NOT switch to data-only sending
+      # until this build is live for most customers (older app versions would show nothing for data-only messages).
+      # Replaces the NeshMessagingService written by the "Silent OTA push receiver" step above (same class name,
+      # still registered in the manifest by that step), so it MUST stay after that step.
+      - name: Rich notification service (shop logo, countdown, auto-dismiss)
+        run: |
+          python3 - << 'PYEOF'
+          import glob, os
+          F = glob.glob("android/app/src/main/java/**/MainActivity.java", recursive=True)[0]
+          D = os.path.dirname(F)
+          pkg = [l for l in open(F) if l.startswith("package ")][0].strip()
+          open(D + "/NeshMessagingService.java", "w").write(pkg + """
+
+          import android.app.NotificationChannel;
+          import android.app.NotificationManager;
+          import android.app.PendingIntent;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.graphics.Bitmap;
+          import android.graphics.BitmapFactory;
+          import android.graphics.Canvas;
+          import android.graphics.Paint;
+          import android.graphics.PorterDuff;
+          import android.graphics.PorterDuffXfermode;
+          import android.graphics.Rect;
+          import android.os.Build;
+          import androidx.core.app.NotificationCompat;
+          import androidx.core.app.NotificationManagerCompat;
+          import com.capacitorjs.plugins.pushnotifications.MessagingService;
+          import com.google.firebase.messaging.RemoteMessage;
+          import ee.forgr.capacitor_updater.HeadlessUpdateWorker;
+          import java.io.InputStream;
+          import java.net.HttpURLConnection;
+          import java.net.URL;
+          import java.util.Map;
+
+          public class NeshMessagingService extends MessagingService {
+              @Override
+              public void onMessageReceived(RemoteMessage message) {
+                  try {
+                      Map<String, String> d = message.getData();
+                      if ("1".equals(d.get("nesh_ota"))) {
+                          // silent update check: never shown to the user, never passed to the web app
+                          HeadlessUpdateWorker.enqueue(getApplicationContext());
+                          return;
+                      }
+                      if ("1".equals(d.get("nesh_rich"))) {
+                          // data-only push: drawn natively (round shop logo, big picture, optional countdown + auto-dismiss)
+                          showRich(message);
+                          return;
+                      }
+                  } catch (Throwable t) {
+                      // a problem here must never break normal pushes
+                  }
+                  super.onMessageReceived(message);
+              }
+
+              private static Bitmap fetch(String u) {
+                  if (u == null || !u.startsWith("https://")) return null;
+                  try {
+                      HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
+                      c.setConnectTimeout(6000);
+                      c.setReadTimeout(8000);
+                      InputStream in = c.getInputStream();
+                      Bitmap b = BitmapFactory.decodeStream(in);
+                      in.close();
+                      return b;
+                  } catch (Throwable t) {
+                      return null;
+                  }
+              }
+
+              private static Bitmap circle(Bitmap src) {
+                  int s = Math.min(src.getWidth(), src.getHeight());
+                  Bitmap out = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888);
+                  Canvas cv = new Canvas(out);
+                  Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+                  cv.drawCircle(s / 2f, s / 2f, s / 2f, p);
+                  p.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_IN));
+                  int x = (src.getWidth() - s) / 2, y = (src.getHeight() - s) / 2;
+                  cv.drawBitmap(src, new Rect(x, y, x + s, y + s), new Rect(0, 0, s, s), p);
+                  return out;
+              }
+
+              private void showRich(RemoteMessage message) {
+                  Context c = getApplicationContext();
+                  Map<String, String> d = message.getData();
+                  String title = d.get("title");
+                  if (title == null || title.length() == 0) title = "NESH";
+                  String body = d.get("body");
+                  if (body == null) body = "";
+                  String ch = d.get("channel_id");
+                  if (ch == null || ch.length() == 0) ch = "nesh_follow";
+
+                  NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+                  if (Build.VERSION.SDK_INT >= 26 && nm != null && nm.getNotificationChannel(ch) == null) {
+                      nm.createNotificationChannel(new NotificationChannel(ch, "NESH updates", NotificationManager.IMPORTANCE_HIGH));
+                  }
+
+                  int nid = (int) (System.currentTimeMillis() & 0x7fffffff);
+                  Intent open = c.getPackageManager().getLaunchIntentForPackage(c.getPackageName());
+                  if (open == null) return;
+                  open.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                  // same extras the normal push tap carries, so the web app gets its usual "notification tapped" event
+                  String mid = message.getMessageId();
+                  open.putExtra("google.message_id", mid != null ? mid : String.valueOf(nid));
+                  for (Map.Entry<String, String> e : d.entrySet()) open.putExtra(e.getKey(), e.getValue());
+                  PendingIntent pi = PendingIntent.getActivity(c, nid, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+                  int small = c.getResources().getIdentifier("ic_stat_icon_config_sample", "drawable", c.getPackageName());
+                  if (small == 0) small = c.getApplicationInfo().icon;
+
+                  NotificationCompat.Builder b = new NotificationCompat.Builder(c, ch)
+                      .setSmallIcon(small)
+                      .setColor(0xFFF2B705)
+                      .setContentTitle(title)
+                      .setContentText(body)
+                      .setAutoCancel(true)
+                      .setPriority(NotificationCompat.PRIORITY_HIGH)
+                      .setContentIntent(pi);
+
+                  Bitmap logo = fetch(d.get("shop_logo"));
+                  if (logo != null) b.setLargeIcon(circle(logo));
+                  Bitmap pic = fetch(d.get("image"));
+                  if (pic != null) {
+                      b.setStyle(new NotificationCompat.BigPictureStyle().bigPicture(pic).setSummaryText(body));
+                  } else {
+                      b.setStyle(new NotificationCompat.BigTextStyle().bigText(body));
+                  }
+
+                  // optional countdown: ends_at = end time in milliseconds since 1970 (UTC)
+                  try {
+                      String ea = d.get("ends_at");
+                      if (ea != null && ea.length() > 0) {
+                          long end = Long.parseLong(ea.trim());
+                          long left = end - System.currentTimeMillis();
+                          if (left > 1000) {
+                              b.setWhen(end).setShowWhen(true).setUsesChronometer(true).setChronometerCountDown(true);
+                              b.setTimeoutAfter(left);
+                          }
+                      }
+                  } catch (Throwable t) { }
+
+                  try {
+                      NotificationManagerCompat.from(c).notify(nid, b.build());
+                  } catch (Throwable t) { }
+              }
+          }
+          """)
+          print("rich notification service written")
+          PYEOF
+          head -30 android/app/src/main/java/com/neshgroup/nesh/NeshMessagingService.java
+
       # Android 11+ hides other apps unless declared: this lets the app list the
       # phone's UPI apps (Google Pay, PhonePe, Paytm...) for the "Pay Online" button.
       - name: Allow the app to see UPI apps (queries)
