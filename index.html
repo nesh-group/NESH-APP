@@ -27588,7 +27588,7 @@ body.has-fnav.nav-hid .order-progress-bar, body.has-bnav.nav-hid .order-progress
     document.documentElement.style.setProperty('--sw-h', Math.max(0,curH-1)+'px');
     // 3) coupon strip + "Cravings Loaded" hero fade away quickly as you scroll (search + chips stay pinned)
     var slot=document.getElementById('np-banner-slot');
-    if(slot){ if(cat==='hotel'){ var p=Math.min(1,Math.max(0,(y-20)/160)); slot.style.opacity=String(1-p); slot.style.transition='none'; } else { slot.style.opacity=''; } }
+    if(slot){ if(cat==='hotel'){ var p=Math.min(1,Math.max(0,(y-10)/110)); slot.style.opacity=String(1-p); slot.style.transition='none'; } else { slot.style.opacity=''; } }
   }
   function req(){ if(!raf) raf=requestAnimationFrame(upd); }
   window.addEventListener('scroll',req,{passive:true,capture:true});
