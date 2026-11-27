@@ -28544,5 +28544,56 @@ button:active,[role="button"]:active,.cat-card:active,.item-card2:active,.np-car
 @media (prefers-reduced-motion:reduce){.nx-btn,.nx-btn::after,.nx-grp::before,.nx-hero::before,.nx-card::before{animation:none!important}}
 .nx-hero{overflow:clip}   /* never scrollable, even programmatically */
 </style>
+<style id="nesh-hero-big">
+/* ===== Bigger, more attractive hero: large delivery boy, taller banner, spotlight + floating sparkles ===== */
+.nx-hero{height:238px !important}
+.nx-hero{background:radial-gradient(120% 90% at 82% 55%,rgba(255,255,255,.55) 0,rgba(255,236,150,.35) 38%,rgba(255,210,31,0) 70%) !important;border-radius:0 0 30px 30px}
+.nx-glow{width:260px !important;height:220px !important;right:-6px !important;top:20px !important}
+.nx-txt{top:30px !important}
+.nx-h{font-size:calc(28px * var(--tzf,1)) !important;text-shadow:0 2px 0 rgba(255,255,255,.35)}
+.nx-tag{padding:6px 11px !important;box-shadow:0 6px 12px -6px rgba(43,26,8,.6)}
+#screen-home .nx-hero>.nx-btn{top:158px !important;padding:12px 24px !important;font-size:calc(14px * var(--tzf,1)) !important}
+.nx-grp{top:22px !important}
+/* delivery boy: ~40% bigger, anchored to the road, with spotlight ring + ground shadow */
+.nx-boy{right:18px !important;bottom:16px !important;width:176px !important;height:214px !important;zoom:1 !important}
+.nx-boy img{filter:drop-shadow(0 12px 10px rgba(43,26,8,.4)) drop-shadow(0 0 14px rgba(255,255,255,.55)) !important;animation:nxk-boybob 2.4s ease-in-out 1.3s infinite;transform-origin:50% 100%}
+.nx-boy::before{width:230px !important;height:230px !important;margin-left:-115px !important;bottom:4px !important;background:radial-gradient(closest-side,rgba(255,255,255,.9),rgba(255,236,150,.45) 55%,rgba(255,255,255,0)) !important;animation:nxk-halo 2.6s ease-in-out infinite}
+.nx-boy::after{content:'';position:absolute;left:50%;bottom:-4px;width:120px;height:14px;margin-left:-60px;border-radius:50%;background:rgba(43,26,8,.3);filter:blur(5px)}
+@keyframes nxk-boybob{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-6px) rotate(1deg)}}
+.nx-road{right:0 !important;width:240px !important;bottom:16px !important;height:5px !important;background:repeating-linear-gradient(90deg,rgba(43,26,8,.35) 0 16px,transparent 16px 30px) !important}
+/* extra sparkles + speed lines around the rider */
+.nx-sl[data-i="2"]::before,.nx-sl[data-i="2"]::after{content:'✦';position:absolute;color:#fff;text-shadow:0 0 8px #fff,0 0 16px rgba(255,255,255,.8);z-index:7;opacity:0;pointer-events:none}
+.nx-sl[data-i="2"]::before{right:168px;top:34px;font-size:18px}
+.nx-sl[data-i="2"]::after{right:22px;top:90px;font-size:14px}
+.nx-sl.nx-on[data-i="2"]::before{animation:nxk-tw2 2.2s ease-in-out 1.2s infinite}
+.nx-sl.nx-on[data-i="2"]::after{animation:nxk-tw2 2.2s ease-in-out 1.9s infinite}
+@keyframes nxk-tw2{0%,100%{opacity:0;transform:scale(.5) rotate(0)}50%{opacity:1;transform:scale(1.2) rotate(40deg)}}
+@media (max-width:390px){.nx-boy{width:170px !important;height:210px !important}.nx-h{font-size:calc(26px * var(--tzf,1)) !important}.nx-grp{zoom:.92}}
+@media (prefers-reduced-motion:reduce){.nx-boy img,.nx-boy::before,.nx-sl[data-i="2"]::before,.nx-sl[data-i="2"]::after{animation:none!important}}
+#screen-home[data-cat="hotel"] #np-banner-slot{padding-bottom:0 !important}
+.nx-road{display:none !important}
+#screen-home .nx-hero{overflow:hidden !important;border-radius:0 0 28px 28px !important}
+.nx-boy::after{bottom:-2px !important;width:110px !important;margin-left:-55px !important}
+#screen-home .nx-hero>.nx-btn{top:164px !important}
+/* ORDER NOW: fixed spot (same on every slide), bigger premium pill; tag gets a bolt chip */
+#screen-home .nx-hero>.nx-btn{top:158px !important;left:20px !important;padding:0 28px !important;height:50px !important;display:flex !important;align-items:center;justify-content:center;font:900 calc(15px * var(--tzf,1))/1 Inter,sans-serif !important;letter-spacing:.6px;border-radius:999px !important;background:linear-gradient(180deg,#FF8A2A 0%,#F2510E 55%,#D93A08 100%) !important;border:2px solid rgba(255,255,255,.75) !important;box-shadow:0 12px 20px -8px rgba(217,58,8,.85),inset 0 2px 0 rgba(255,255,255,.4) !important;text-shadow:0 1px 2px rgba(120,25,0,.45)}
+.nx-tag{display:inline-flex !important;align-items:center;gap:6px;letter-spacing:1.4px !important;border:1.5px solid rgba(255,207,31,.55)}
+.nx-tag::before{content:'⚡';font-size:11px;letter-spacing:0}
+.nx-h{margin-top:14px !important;font-size:calc(30px * var(--tzf,1)) !important}
+@media (max-width:390px){.nx-h{font-size:calc(28px * var(--tzf,1)) !important}}
+.nx-tag{letter-spacing:1px !important;padding:6px 10px !important;font-size:calc(8.5px * var(--tzf,1)) !important}
+#screen-home .nx-hero>.nx-btn{padding:0 22px !important;height:48px !important;font-size:calc(14px * var(--tzf,1)) !important}
+.nx-grp{right:10px !important;width:168px !important;height:158px !important;top:30px !important}
+.nx-grp img.nx-dish{width:124px !important;margin-left:-62px !important}
+/* ===== Big-app edge: yellow stays square; the cream page rises from below with a rounded top (continuation, like Swiggy/Zomato) ===== */
+#screen-home[data-cat="hotel"] #np-banner-slot{border-radius:0 !important;position:relative;padding-bottom:0 !important}
+#screen-home[data-cat="hotel"] #np-banner-slot::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:28px;border-radius:28px 28px 0 0;background:#FAF8F2;z-index:12;pointer-events:none}
+html[data-theme="dark"] #screen-home[data-cat="hotel"] #np-banner-slot::after{background:#221E15}
+#screen-home .nx-hero{height:262px !important;border-radius:0 !important}
+.nx-boy{bottom:36px !important}
+.nx-boy::after{bottom:-4px !important}
+@media (max-width:390px){.nx-boy{bottom:36px !important}}
+@media (max-width:345px){.nx-grp{zoom:1 !important;width:138px !important;height:138px !important;right:8px !important;top:34px !important}.nx-grp img.nx-dish{width:98px !important;margin-left:-49px !important}.nx-info b{font-size:11px !important}.nx-info small{font-size:9px !important}.nx-boy{zoom:1 !important;width:136px !important;height:172px !important;right:8px !important}.nx-h{font-size:calc(24px * var(--tzf,1)) !important}.nx-tag{font-size:calc(7.5px * var(--tzf,1)) !important;padding:5px 8px !important}#screen-home .nx-hero>.nx-btn{height:42px !important;padding:0 16px !important;font-size:calc(12px * var(--tzf,1)) !important;top:166px !important}}
+</style>
 </body>
 </html>
