@@ -4684,6 +4684,44 @@ html:has(#rl-ov.on), html:has(#rl-ov.on) body{ overflow:hidden !important; overs
 .rl-item{ contain:layout paint style; }
 .rl-item video{ transform:translateZ(0); backface-visibility:hidden; }
 </style>
+<style id="nesh-grocery-blinkit">
+/* NESH Groceries – quick-commerce look. CSS only: no JS, no new images, so loading speed is unchanged. Scoped to the Groceries screen. Header photo and product photos are untouched. */
+html:not([data-theme="dark"]) #screen-menu[data-store="1"]{ background:#F6F5F0; }
+#screen-menu[data-store="1"] .menu-header{ position:relative; }
+#screen-menu[data-store="1"] .menu-header::after{ content:"⚡ Delivery in 20 mins"; position:absolute; top:calc(env(safe-area-inset-top,0px) + 12px); right:12px; z-index:3; background:linear-gradient(135deg,#FFD84D,#F2A900); color:#2B2410; font:800 12px/1 'Inter',system-ui,sans-serif; padding:8px 12px; border-radius:999px; box-shadow:0 3px 10px rgba(0,0,0,.3); }
+/* trust line + search */
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] #menu-search-wrap{ background:#F6F5F0; padding:10px 12px 10px; }
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] #menu-search-wrap::before{ content:"🌿 Farm fresh  ·  💰 Best prices  ·  ⚖️ Exact weight"; display:block; text-align:center; font:700 11.5px/1.2 'Inter',sans-serif; color:#6B5E3D; margin:0 0 9px; }
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] #menu-search-wrap .field{ border-radius:14px; border:1.5px solid #F7D56A; background:#fff; box-shadow:0 6px 18px rgba(242,183,5,.26); }
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] #menu-search-wrap .field:focus-within{ border-color:#D69E00; }
+/* body + rail */
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] #menu-body.rail-mode{ background:#F6F5F0; }
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] #menu-body.rail-mode #nesh-cat-rail{ background:#FFF8E0; border-right:0; border-radius:0 18px 18px 0; box-shadow:none; }
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] .nrail-item .nrail-img{ border-radius:50%; border:0; background:#fff; box-shadow:0 1px 3px rgba(43,36,16,.15); }
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] .nrail-item .nrail-name{ color:#7A7357; font-weight:600; }
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] .nrail-item.active{ background:#fff; }
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] .nrail-item.active .nrail-img{ border:0; outline:2.5px solid #F2B705; background:#fff !important; transform:none; box-shadow:none; }
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] .nrail-item.active .nrail-name{ color:#2B2410; font-weight:800; }
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] .nrail-item.active::before{ background:#D69E00; width:4px; border-radius:0 4px 4px 0; }
+/* headings */
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] .item-list-label{ font:800 15px/1.2 'Inter',sans-serif; color:#2B2410; }
+/* product cards (same content, nicer look) */
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] #menu-body.rail-mode .item-card2{ border:1px solid #ECE7D6; border-radius:20px; background:#fff; box-shadow:0 8px 22px rgba(43,36,16,.10); padding:9px 9px 11px; content-visibility:auto; contain-intrinsic-size:auto 400px; }
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] #menu-body.rail-mode .item-img-wrap{ border-radius:16px; background:#FFF8E0; }
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] .item-img-wrap::after{ content:"FRESH"; position:absolute; left:6px; bottom:6px; background:#0B7A50; color:#fff; font:800 9.5px/1 'Inter',sans-serif; letter-spacing:.3px; padding:4px 8px; border-radius:999px; pointer-events:none; }
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] .item-rating2{ background:linear-gradient(135deg,#22B97F,#0E8A5C); border-radius:999px; box-shadow:0 2px 6px rgba(14,138,92,.35); }
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] .item-name2{ font:800 14.5px/1.25 'Inter',sans-serif; color:#2B2410; }
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] .item-weight-input{ border:1.5px solid #ECE7D6 !important; border-radius:9px !important; background:#F6F5F0; }
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] .item-gram-chips button{ border-radius:8px !important; font-weight:700 !important; }
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] .item-gram-chips button.active,
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] .item-gram-chips button.on,
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] .item-gram-chips button.sel{ box-shadow:0 3px 8px rgba(11,122,80,.35); }
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] #menu-body.rail-mode .item-price2{ background:linear-gradient(135deg,#E3F6EB,#C9F0DB); color:#0B7A50; border:1px solid rgba(11,122,80,.25); border-radius:12px; font-size:14px; font-weight:800; padding:8px 10px; }
+/* Add button */
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] .item-row2 .add-btn,
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] #menu-body.rail-mode .item-row2 .add-btn{ background:linear-gradient(135deg,#FFD84D,#F2B705); color:#2B2410; border:0; border-radius:13px; font-weight:800; box-shadow:0 3px 8px rgba(242,183,5,.4); }
+html:not([data-theme="dark"]) #screen-menu[data-store="1"] #menu-body.rail-mode .item-row2 .qty-wrap{ background:#0B7A50; color:#fff; border-radius:13px; box-shadow:none; }
+</style>
 </head>
 <body>
 <div id="nesh-splash" class="show" aria-live="polite">
