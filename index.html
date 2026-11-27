@@ -27568,7 +27568,7 @@ body.has-fnav.nav-hid .order-progress-bar, body.has-bnav.nav-hid .order-progress
     raf=0; if(!init()) return;
     var cat = home.getAttribute('data-cat');
     var on = home.classList.contains('active') && (cat==='hotel' || cat==='online_shop') && window.innerWidth<1000 && home.offsetParent!==null;
-    if(!on){ unpin(); return; }
+    if(!on){ unpin(); var _bs=document.getElementById('np-banner-slot'); if(_bs) _bs.style.opacity=''; return; }   // leaving Food: never leave the hero faded out for the next visit
     var y=window.scrollY||0;
     var fx=sw.classList.contains('nesh-fx'), cx=ff.classList.contains('nesh-fx');
     // natural positions (document coords), measured from the spacers which stay in flow
@@ -27595,6 +27595,9 @@ body.has-fnav.nav-hid .order-progress-bar, body.has-bnav.nav-hid .order-progress
   var lastW=window.innerWidth;
   window.addEventListener('resize',function(){ if(window.innerWidth!==lastW){ lastW=window.innerWidth; unpin(); } req(); });
   window.addEventListener('load',function(){ req(); if(init() && window.ResizeObserver) new ResizeObserver(req).observe(sw); });
+  // coming BACK to Food (from a shop / cart / another tab): re-sync the hero + pinned bars right away, don't wait for a scroll event
+  try{ var _h=document.getElementById('screen-home'); if(_h && window.MutationObserver) new MutationObserver(req).observe(_h,{attributes:true,attributeFilter:['class','data-cat','style']}); }catch(e){}
+  window.addEventListener('pageshow',req); document.addEventListener('visibilitychange',req);
 })();
 </script>
 <style id="nesh-chips-normal-v1">
